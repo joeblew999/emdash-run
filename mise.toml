@@ -209,6 +209,28 @@ run = "sh -c 'skills find \"$1\"' --"
 description = "Install a skill — e.g: mise run skills:add -- kinoward/agent-skills/mise-guide"
 run = "sh -c 'skills add \"$1\" --yes' --"
 
+[tasks."skills:remove"]
+description = "Remove a skill — e.g: mise run skills:remove -- mise-guide"
+run = "sh -c 'skills remove \"$1\" --yes' --"
+
+[tasks."skills:clean"]
+description = "Remove all installed skills"
+run = "skills remove --all --yes"
+
+[tasks."skills:update"]
+description = "Update all skills to latest versions"
+run = "skills update"
+
+[tasks."skills:restore"]
+description = "Restore skills from skills-lock.json (after fresh clone)"
+run = "skills experimental_install"
+
+[tasks."skills:setup"]
+description = "Install the standard skill set for this project"
+run = """
+skills add kinoward/agent-skills/mise-guide --yes
+"""
+
 [tasks."skills:list"]
 description = "List installed skills"
 run = "skills list"
