@@ -31,6 +31,9 @@ export default defineConfig({
 			// but Vite's dep scan doesn't pick it up automatically when processing
 			// workspace packages outside the root. Force-include it here.
 			include: ["@cloudflare/kumo/components/chart"],
+			// @modelcontextprotocol/sdk uses native ESM patterns incompatible with
+			// Vite's SSR dep optimizer — exclude it so Vite serves it directly.
+			exclude: ["@modelcontextprotocol/sdk"],
 		},
 		server: {
 			fs: {

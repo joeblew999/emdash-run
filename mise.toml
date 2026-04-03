@@ -1,5 +1,8 @@
 # $schema = "https://mise.jdx.dev/schema/mise.json"
 
+[settings]
+jobs = 1
+
 [tools]
 node           = "22.22.2"
 pnpm           = "10.28.0"
@@ -24,28 +27,30 @@ _.file                    = "{{config_root}}/run/token-admin.env"
 # =============================================================================
 #
 # First time:
-#   mise run server:build       ← clone emdash + pnpm install (run once)
-#   mise run pitchfork:start    ← start server daemon
-#   mise run mcp:token-admin    ← generate admin token
+#   mise run server:build    ← clone + install + build + config:apply
+#   mise run init            ← marketplace DB + plugin deps + skills (run once)
+#   mise run apply           ← start daemons + token (always idempotent)
 #
-# Every day:
-#   mise run pitchfork:start    ← start server
-#   mise run server:logs        ← follow live logs
+# Every day / after every change:
+#   mise run apply           ← config:apply + plugins:link + skills:sync + restart + token
 #
 # Recovery:
-#   mise run server:reset       ← wipe database
-#   mise run server:clean       ← wipe emdash clone (re-run server:build after)
+#   mise run server:reset    ← wipe database, then: mise run apply
+#   mise run server:clean    ← wipe clone, then: mise run server:build → init → apply
 #
 # =============================================================================
 
-[tasks."pitchfork:start"]
-description = "Apply configs + start all daemons"
-dir = "{{config_root}}"
+[tasks."config:apply"]
+description = "Copy local config files into emdash clone"
 run = """
 cp "$ROOT/config/astro.config.mjs" "$HOST_DIR/astro.config.mjs"
 cp "$ROOT/config/wrangler.jsonc" "$HOST_DIR/wrangler.jsonc"
-# Symlink every plugin in plugins/ into emdash node_modules so package names resolve
-# Handles both scoped (@scope/name) and unscoped (name) package names
+echo "  ✓ config applied"
+"""
+
+[tasks."plugins:link"]
+description = "Symlink all plugins into emdash node_modules"
+run = """
 for d in "$PLUGINS_DIR"/*/; do
   [ -f "$d/package.json" ] || continue
   pkg=$(node -e "process.stdout.write(require('$d/package.json').name)")
@@ -59,9 +64,26 @@ for d in "$PLUGINS_DIR"/*/; do
   fi
   echo "  ✓ linked $pkg"
 done
-mise run skills:sync:emdash
-pitchfork start -l
 """
+
+[tasks."init"]
+description = "One-time init after server:build — marketplace DB + plugin deps + skills"
+depends = ["marketplace:init", "plugins:install-all", "skills:add:all"]
+run = "echo '✓ init done — run: mise run apply'"
+
+[tasks."apply"]
+description = "Apply all config + restart daemons + refresh token — run after every change"
+depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
+run = """
+pitchfork start --force -l
+mise run mcp:token-admin
+echo "✓ apply done"
+"""
+
+[tasks."pitchfork:start"]
+description = "Apply configs + link plugins + start all daemons"
+depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
+run = "pitchfork start -l"
 
 [tasks."pitchfork:stop"]
 description = "Stop all pitchfork daemons"
@@ -79,8 +101,12 @@ run = "pitchfork logs emdash --follow"
 description = "Open pitchfork TUI"
 run = "pitchfork tui"
 
-[tasks."server:build"]
-description = "Clone emdash at $EMDASH_TAG + install deps — run once"
+
+
+
+[tasks."server:clone"]
+description = "Clone emdash at $EMDASH_TAG — run once"
+outputs = ["emdash/pnpm-lock.yaml"]
 dir = "{{config_root}}"
 run = """
 set -euo pipefail
@@ -95,13 +121,23 @@ else
   fi
   echo "→ Already at $EMDASH_TAG"
 fi
+"""
+
+[tasks."server:build"]
+description = "Install deps + build packages + apply config"
+depends = ["server:clone"]
+dir = "{{config_root}}"
+run = """
+set -euo pipefail
+if [ -f "$EMDASH_DIR/packages/core/dist/index.mjs" ]; then
+  echo "→ Already built, skipping"
+  exit 0
+fi
 echo "→ Installing..."
 cd "$EMDASH_DIR" && pnpm install --frozen-lockfile
 echo "→ Building packages..."
 pnpm build
-echo "→ Applying local config..."
-cp "$ROOT/config/astro.config.mjs" "$HOST_DIR/astro.config.mjs"
-cp "$ROOT/config/wrangler.jsonc" "$HOST_DIR/wrangler.jsonc"
+mise run config:apply
 echo "✓ Done — run: mise run pitchfork:start"
 """
 
@@ -160,6 +196,9 @@ run = "sh -c 'cd \"$PLUGINS_DIR/$1\" && pnpm install' --"
 
 [tasks."plugins:install-all"]
 description = "Install deps for all plugins in plugins/"
+wait_for = ["server:build"]
+sources = ["plugins/*/package.json"]
+outputs = ["plugins/*/node_modules/.modules.yaml"]
 run = """
 for d in "$PLUGINS_DIR"/*/; do
   [ -f "$d/package.json" ] || continue
@@ -186,8 +225,15 @@ run = "mise run emdash:cli -- plugin login"
 
 [tasks."marketplace:init"]
 description = "Initialize local marketplace D1 database — run once after server:build"
+depends = ["server:build"]
 dir = "{{config_root}}/emdash/packages/marketplace"
-run = "wrangler d1 execute emdash-marketplace --local --file src/db/schema.sql"
+run = """
+if ls .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -q .; then
+  echo "→ Marketplace DB already initialized, skipping"
+  exit 0
+fi
+wrangler d1 execute emdash-marketplace --local --file src/db/schema.sql
+"""
 
 [tasks."marketplace:start"]
 description = "Start local marketplace worker (called by pitchfork)"
@@ -236,6 +282,7 @@ echo "  ✓ .claude/skills/emdash → $EMDASH_DIR/.claude/skills"
 
 [tasks."skills:add:all"]
 description = "Install the standard skill set for this project"
+wait_for = ["server:build"]
 run = """
 mise run skills:sync:emdash
 skills add kinoward/agent-skills/mise-guide --yes
