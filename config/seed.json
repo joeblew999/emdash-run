@@ -1,0 +1,305 @@
+{
+	"$schema": "https://emdashcms.com/seed.schema.json",
+	"version": "1",
+	"meta": {
+		"name": "Exported Seed",
+		"description": "Exported from existing EmDash database"
+	},
+	"collections": [
+		{
+			"slug": "assemblies",
+			"label": "Assemblies",
+			"labelSingular": "Assembly",
+			"description": "Assembly hierarchy nodes",
+			"fields": [
+				{
+					"slug": "name",
+					"label": "Name",
+					"type": "string",
+					"required": true
+				},
+				{
+					"slug": "project",
+					"label": "Project",
+					"type": "reference",
+					"required": true
+				},
+				{
+					"slug": "parent",
+					"label": "Parent Assembly",
+					"type": "reference"
+				},
+				{
+					"slug": "metadata",
+					"label": "Geometry Metadata",
+					"type": "json"
+				}
+			]
+		},
+		{
+			"slug": "pages",
+			"label": "Pages",
+			"labelSingular": "Page",
+			"supports": [
+				"drafts",
+				"revisions",
+				"search"
+			],
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Title",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "content",
+					"label": "Content",
+					"type": "portableText",
+					"searchable": true
+				}
+			]
+		},
+		{
+			"slug": "parts",
+			"label": "Parts",
+			"labelSingular": "Part",
+			"description": "Individual CAD parts with geometry",
+			"supports": [
+				"drafts",
+				"revisions"
+			],
+			"fields": [
+				{
+					"slug": "name",
+					"label": "Name",
+					"type": "string",
+					"required": true
+				},
+				{
+					"slug": "part_number",
+					"label": "Part Number",
+					"type": "string"
+				},
+				{
+					"slug": "assembly",
+					"label": "Assembly",
+					"type": "reference",
+					"required": true
+				},
+				{
+					"slug": "brep_file",
+					"label": "BREP File",
+					"type": "file"
+				},
+				{
+					"slug": "step_file",
+					"label": "STEP File",
+					"type": "file"
+				},
+				{
+					"slug": "material",
+					"label": "Material",
+					"type": "select"
+				},
+				{
+					"slug": "geometry_meta",
+					"label": "Geometry",
+					"type": "json"
+				}
+			]
+		},
+		{
+			"slug": "posts",
+			"label": "Posts",
+			"labelSingular": "Post",
+			"supports": [
+				"drafts",
+				"revisions",
+				"search"
+			],
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Title",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "featured_image",
+					"label": "Featured Image",
+					"type": "image"
+				},
+				{
+					"slug": "content",
+					"label": "Content",
+					"type": "portableText",
+					"searchable": true
+				},
+				{
+					"slug": "excerpt",
+					"label": "Excerpt",
+					"type": "text"
+				}
+			]
+		},
+		{
+			"slug": "projects",
+			"label": "Projects",
+			"labelSingular": "Project",
+			"description": "Top-level CAD projects",
+			"fields": [
+				{
+					"slug": "name",
+					"label": "Name",
+					"type": "string",
+					"required": true
+				},
+				{
+					"slug": "description",
+					"label": "Description",
+					"type": "text"
+				},
+				{
+					"slug": "metadata",
+					"label": "Metadata",
+					"type": "json"
+				}
+			]
+		}
+	],
+	"taxonomies": [
+		{
+			"name": "category",
+			"label": "Categories",
+			"labelSingular": "Category",
+			"hierarchical": true,
+			"collections": [
+				"posts"
+			]
+		},
+		{
+			"name": "tag",
+			"label": "Tags",
+			"labelSingular": "Tag",
+			"hierarchical": false,
+			"collections": [
+				"posts"
+			]
+		}
+	],
+	"menus": [],
+	"widgetAreas": [],
+	"content": {
+		"assemblies": [
+			{
+				"id": "assemblies:motor-housing",
+				"slug": "motor-housing",
+				"status": "published",
+				"data": {
+					"name": "Motor Housing",
+					"project": "$ref:01KN6DAAQ9SQCSQAK64VGXV7DW"
+				}
+			},
+			{
+				"id": "assemblies:main-bracket",
+				"slug": "main-bracket",
+				"status": "published",
+				"data": {
+					"name": "Main Bracket",
+					"project": "$ref:01KN6C96RZ2S6625N8EDRNFB61"
+				}
+			}
+		],
+		"parts": [
+			{
+				"id": "parts:mounting-plate",
+				"slug": "mounting-plate",
+				"status": "published",
+				"data": {
+					"name": "Mounting Plate",
+					"part_number": "MP-002",
+					"assembly": "$ref:01KN6DAKNHRFNYXKDTMNEV7595",
+					"material": "Steel"
+				}
+			},
+			{
+				"id": "parts:cooling-fin",
+				"slug": "cooling-fin",
+				"status": "published",
+				"data": {
+					"name": "Cooling Fin",
+					"part_number": "CF-001",
+					"assembly": "$ref:01KN6DAKNHRFNYXKDTMNEV7595",
+					"material": "Aluminum"
+				}
+			},
+			{
+				"id": "parts:housing-body",
+				"slug": "housing-body",
+				"status": "published",
+				"data": {
+					"name": "Housing Body",
+					"part_number": "HB-001",
+					"assembly": "$ref:01KN6DAKNHRFNYXKDTMNEV7595",
+					"material": "Aluminum"
+				}
+			},
+			{
+				"id": "parts:side-bracket",
+				"slug": "side-bracket",
+				"status": "published",
+				"data": {
+					"name": "Side Bracket",
+					"part_number": "SB-001",
+					"assembly": "$ref:01KN6C9FC849NY7FH0QFKY47P0",
+					"material": "Steel"
+				}
+			},
+			{
+				"id": "parts:top-plate",
+				"slug": "top-plate",
+				"status": "published",
+				"data": {
+					"name": "Top Plate",
+					"part_number": "TP-001",
+					"assembly": "$ref:01KN6C9FC849NY7FH0QFKY47P0",
+					"material": "Aluminum"
+				}
+			}
+		],
+		"projects": [
+			{
+				"id": "projects:motor-mount-v2",
+				"slug": "motor-mount-v2",
+				"status": "published",
+				"data": {
+					"name": "Motor Mount v2",
+					"description": "Revised motor mount with improved thermal management",
+					"metadata": {
+						"version": 2,
+						"status": "in-review",
+						"owner": "mech-team"
+					}
+				}
+			},
+			{
+				"id": "projects:bracket-assembly-v1",
+				"slug": "bracket-assembly-v1",
+				"status": "published",
+				"data": {
+					"name": "Bracket Assembly v1",
+					"description": "Main structural bracket assembly for v1 prototype",
+					"metadata": {
+						"version": 1,
+						"status": "approved",
+						"owner": "mech-team",
+						"bom_count": 2
+					}
+				}
+			}
+		]
+	}
+}

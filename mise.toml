@@ -1,6 +1,184 @@
+# $schema = "https://mise.jdx.dev/schema/mise.json"
+
 [tools]
-node = "22"
-pnpm = "10.28.0"
+node        = "22.22.2"
+pnpm        = "10.28.0"
+pitchfork   = "2.3.0"
+"npm:wrangler" = "4.71.0"
 
 [env]
-EMDASH_DIR = "{{config_root}}/emdash"
+ROOT          = "{{config_root}}"
+EMDASH_DIR    = "{{config_root}}/emdash"
+HOST_DIR      = "{{config_root}}/emdash/demos/cloudflare"
+PLUGIN_DIR    = "{{config_root}}/plugin"
+LOGS_DIR      = "{{config_root}}/logs"
+RUN_DIR       = "{{config_root}}/run"
+EMDASH_TAG                = "emdash@0.1.0"
+MARKETPLACE_SEED_TOKEN    = "local-dev-seed-token"
+EMDASH_MARKETPLACE_TOKEN  = "local-dev-seed-token"
+_.file                    = "{{config_root}}/run/token-admin.env"
+
+# =============================================================================
+# QUICK REFERENCE
+# =============================================================================
+#
+# First time:
+#   mise run server:build       ← clone emdash + pnpm install (run once)
+#   mise run pitchfork:start    ← start server daemon
+#   mise run mcp:token-admin    ← generate admin token
+#
+# Every day:
+#   mise run pitchfork:start    ← start server
+#   mise run server:logs        ← follow live logs
+#
+# Recovery:
+#   mise run server:reset       ← wipe database
+#   mise run server:clean       ← wipe emdash clone (re-run server:build after)
+#
+# =============================================================================
+
+[tasks."pitchfork:start"]
+description = "Apply configs + start all daemons"
+dir = "{{config_root}}"
+run = """
+cp "$ROOT/config/astro.config.mjs" "$HOST_DIR/astro.config.mjs"
+cp "$ROOT/config/wrangler.jsonc" "$HOST_DIR/wrangler.jsonc"
+# Symlink local plugin package into emdash node_modules so it resolves from astro.config.mjs
+mkdir -p "$EMDASH_DIR/node_modules/@plat-trunk"
+ln -sfn "$PLUGIN_DIR" "$EMDASH_DIR/node_modules/@plat-trunk/emdash-plugin"
+pitchfork start -l
+"""
+
+[tasks."pitchfork:stop"]
+description = "Stop all pitchfork daemons"
+run = "pitchfork stop -a"
+
+[tasks."pitchfork:status"]
+description = "Show all pitchfork daemon status"
+run = "pitchfork status emdash && pitchfork status marketplace"
+
+[tasks."pitchfork:logs"]
+description = "Follow pitchfork dev daemon logs"
+run = "pitchfork logs emdash --follow"
+
+[tasks."pitchfork:tui"]
+description = "Open pitchfork TUI"
+run = "pitchfork tui"
+
+[tasks."server:build"]
+description = "Clone emdash at $EMDASH_TAG + install deps — run once"
+dir = "{{config_root}}"
+run = """
+set -euo pipefail
+mkdir -p "$LOGS_DIR"
+if [ ! -d "$EMDASH_DIR" ]; then
+  echo "→ Cloning emdash @ $EMDASH_TAG..."
+  git clone --depth 1 --branch "$EMDASH_TAG" https://github.com/emdash-cms/emdash.git "$EMDASH_DIR"
+else
+  if ! cd "$EMDASH_DIR" && git tag --points-at HEAD | grep -qF "$EMDASH_TAG"; then
+    echo "✗ Clone does not have tag $EMDASH_TAG — run: mise run server:clean first"
+    exit 1
+  fi
+  echo "→ Already at $EMDASH_TAG"
+fi
+echo "→ Installing..."
+cd "$EMDASH_DIR" && pnpm install --frozen-lockfile
+echo "→ Building packages..."
+pnpm build
+echo "→ Applying local config..."
+cp "$ROOT/config/astro.config.mjs" "$HOST_DIR/astro.config.mjs"
+cp "$ROOT/config/wrangler.jsonc" "$HOST_DIR/wrangler.jsonc"
+echo "✓ Done — run: mise run pitchfork:start"
+"""
+
+[tasks."server:start"]
+description = "Start dev server (called by pitchfork)"
+run = "cd \"$HOST_DIR\" && exec pnpm dev"
+
+[tasks."server:logs"]
+description = "Follow live server logs"
+run = "pitchfork logs emdash --follow"
+
+[tasks."server:reset"]
+description = "⚠ Wipe database"
+run = "rm -f \"$HOST_DIR/data.db\" && echo 'Done — restart server'"
+
+[tasks."server:clean"]
+description = "⚠ Wipe emdash clone — re-run server:build after"
+dir = "{{config_root}}"
+run = """
+set -euo pipefail
+pitchfork stop emdash || true
+rm -rf "$EMDASH_DIR"
+echo "✓ Wiped — run: mise run server:build"
+"""
+
+[tasks."mcp:token-admin"]
+description = "Create admin MCP token → run/token-admin.txt"
+dir = "{{config_root}}"
+run = """
+set -euo pipefail
+mkdir -p "$RUN_DIR"
+TOKEN=$(node "$ROOT/scripts/get-mcp-token.mjs" admin)
+echo "$TOKEN" > "$RUN_DIR/token-admin.txt"
+echo "EMDASH_TOKEN=$TOKEN" > "$RUN_DIR/token-admin.env"
+echo "✓ Token saved → run/token-admin.txt"
+"""
+
+[tasks."mcp:token-user"]
+description = "Create content-only MCP token → run/token-user.txt"
+dir = "{{config_root}}"
+run = """
+set -euo pipefail
+mkdir -p "$RUN_DIR"
+TOKEN=$(node "$ROOT/scripts/get-mcp-token.mjs" user)
+echo "$TOKEN" > "$RUN_DIR/token-user.txt"
+echo "✓ Token saved → run/token-user.txt"
+"""
+
+[tasks."mcp:clean-tokens"]
+description = "Revoke all API tokens"
+run = "node \"$ROOT/scripts/clean-tokens.mjs\""
+
+[tasks."plugin:install"]
+description = "Install plugin deps"
+dir = "{{config_root}}/plugin"
+run = "pnpm install"
+
+[tasks."plugin:validate"]
+description = "Validate plugin structure"
+run = "mise run emdash:cli -- plugin validate --dir plugin"
+
+[tasks."plugin:bundle"]
+description = "Bundle plugin into a tarball → plugin/dist/"
+run = "mise run emdash:cli -- plugin bundle --dir plugin --outDir plugin/dist"
+
+[tasks."plugin:publish"]
+description = "Publish plugin to marketplace (login first with: mise run plugin:login)"
+run = "mise run emdash:cli -- plugin publish --dir plugin --build"
+
+[tasks."plugin:login"]
+description = "Log in to the EmDash Marketplace via GitHub"
+run = "mise run emdash:cli -- plugin login"
+
+[tasks."marketplace:init"]
+description = "Initialize local marketplace D1 database — run once after server:build"
+dir = "{{config_root}}/emdash/packages/marketplace"
+run = "wrangler d1 execute emdash-marketplace --local --file src/db/schema.sql"
+
+[tasks."marketplace:start"]
+description = "Start local marketplace worker (called by pitchfork)"
+dir = "{{config_root}}/emdash/packages/marketplace"
+run = "wrangler dev --port 8787"
+
+[tasks."marketplace:logs"]
+description = "Follow marketplace logs"
+run = "pitchfork logs marketplace --follow"
+
+[tasks."marketplace:publish"]
+description = "Publish plugin to local marketplace"
+run = "mise run emdash:cli -- plugin publish --dir plugin --build --registry http://localhost:8787"
+
+[tasks."emdash:cli"]
+description = "Run emdash CLI against local server — e.g: mise run emdash:cli -- content list posts"
+run = "node \"$ROOT/scripts/emdash.mjs\""

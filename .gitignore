@@ -1,6 +1,9 @@
-emdash/
+/logs/
+/run/
 *.db
 *.db-shm
 *.db-wal
+emdash/
 node_modules/
 .env
+.playwright-mcp/

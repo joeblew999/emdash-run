@@ -1,0 +1,25 @@
+# $schema = "https://pitchfork.jdx.dev/schema.json"
+
+[daemons.emdash]
+run           = "mise run server:start"
+dir           = "."
+auto          = ["start", "stop"]
+retry         = 3
+expected_port = [4321]
+ready_output  = "localhost:4321"
+
+[daemons.emdash.hooks]
+on_ready = "echo '✓ emdash ready → http://localhost:4321/_emdash/admin'"
+on_fail  = "echo '✗ emdash failed — run: mise run server:logs'"
+
+[daemons.marketplace]
+run           = "mise run marketplace:start"
+dir           = "."
+auto          = ["start", "stop"]
+retry         = 3
+expected_port = [8787]
+ready_output  = "localhost:8787"
+
+[daemons.marketplace.hooks]
+on_ready = "echo '✓ marketplace ready → http://localhost:8787'"
+on_fail  = "echo '✗ marketplace failed — run: mise run marketplace:logs'"

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "emdash": {
+      "type": "http",
+      "url": "http://localhost:4321/_emdash/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${EMDASH_TOKEN}"
+      }
+    },
+    "playwright": {
+      "command": "/Users/apple/.local/share/mise/installs/node/22.22.2/bin/npx",
+      "args": ["@playwright/mcp@latest"],
+      "env": {
+        "PATH": "/Users/apple/.local/share/mise/installs/node/22.22.2/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  }
+}
