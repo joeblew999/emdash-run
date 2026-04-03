@@ -12,12 +12,16 @@ Process manager: [pitchfork](https://pitchfork.jdx.dev/) — [mise](https://mise
 curl https://mise.run | sh       # install mise
 mise install                     # install node, pnpm, pitchfork
 mise run server:build            # clone → install → build (slow, ~3 min)
-mise run pitchfork:start         # start server (fast, server already built)
+mise run marketplace:init        # initialize local marketplace DB — once after server:build
+mise run plugin:install          # install plugin package deps
+mise run pitchfork:start         # start both servers (emdash:4321, marketplace:8787)
 mise run mcp:token-admin         # generate admin API token (saved to run/token-admin.env)
 mise run server:seed             # apply CAD schema + sample content from config/seed.json
 mise run claude:gen-permissions  # write .claude/settings.local.json from live MCP tool list
 mise run playwright:auth         # get browser session cookie
 mise run playwright:validate     # confirm everything is working
+mise run marketplace:publish     # bundle + publish plat-trunk plugin to local marketplace
+# then open /_emdash/admin/plugins/marketplace/plat-trunk → Accept & Install
 ```
 
 Then open http://localhost:4321/_emdash/admin/
@@ -78,6 +82,11 @@ mise run mcp:token-admin             # admin token → run/token-admin.txt + run
 mise run mcp:token-user              # user token  → run/token-user.txt
 mise run mcp:clean-tokens            # revoke all tokens
 mise run mcp:clean-tokens -- <name>  # revoke tokens matching name
+
+# Plugin
+mise run plugin:install          # install plugin deps
+mise run marketplace:publish     # bundle + publish to local marketplace (needs pitchfork running)
+mise run marketplace:logs        # follow marketplace logs
 
 # EmDash CLI (remote — talks to server over HTTP)
 mise run emdash:cli -- schema list                              # list collections
