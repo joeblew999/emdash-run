@@ -1,19 +1,23 @@
-Use mise and pitchfork to do everything. Keep them in sync.
+# emdash-run
 
-Make sure it all works — dogfood it yourself and verify.
+README.md is the source of truth for setup order, daily workflow, and recovery steps.
 
-Use the EMDash MCP to work with content. Use Playwright MCP to validate the Web GUI.
+## Rules
 
-See README.md for setup order, daily workflow, and what to run when things break.
+- Use mise for all tasks. Use pitchfork to manage daemons. Keep them in sync.
+- Dogfood everything — run it yourself and verify it works before declaring done.
+- Read `docs/adr/` before making structural changes.
+- Read `emdash/.claude/CLAUDE.md` for EmDash-specific guidance (hooks, schema, MCP).
 
-These help too:
+## Tools
 
-https://mise.jdx.dev/schema/mise.json
-https://pitchfork.jdx.dev/schema.json 
+**MCP — prefer these over CLI:**
+- EmDash MCP: read/write content, schema, media, taxonomy
+- Playwright MCP: validate the admin UI in the browser
 
+**Skills** — automatically loaded from `.claude/skills/`:
+- On a fresh clone: `mise run skills:add:all` (restores marketplace skills + symlinks emdash skills)
 
-EmDash has its own CLAUDE.md at emdash/.claude/CLAUDE.md — read it for EmDash-specific guidance.
-
-Architecture decisions are in docs/adr/ — read them before making structural changes.
-
-Skills in `.claude/skills/` are automatically loaded. On a fresh clone, run `mise run skills:restore` to reinstall marketplace skills, then `mise run skills:sync:emdash` to symlink the emdash skills. Or run `mise run skills:add:all` to do both at once.
+**Schema references:**
+- https://mise.jdx.dev/schema/mise.json
+- https://pitchfork.jdx.dev/schema.json
