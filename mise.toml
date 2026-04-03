@@ -10,7 +10,7 @@ pitchfork   = "2.3.0"
 ROOT          = "{{config_root}}"
 EMDASH_DIR    = "{{config_root}}/emdash"
 HOST_DIR      = "{{config_root}}/emdash/demos/cloudflare"
-PLUGIN_DIR    = "{{config_root}}/plugin"
+PLUGINS_DIR   = "{{config_root}}/plugins"
 LOGS_DIR      = "{{config_root}}/logs"
 RUN_DIR       = "{{config_root}}/run"
 EMDASH_TAG                = "emdash@0.1.0"
@@ -43,9 +43,21 @@ dir = "{{config_root}}"
 run = """
 cp "$ROOT/config/astro.config.mjs" "$HOST_DIR/astro.config.mjs"
 cp "$ROOT/config/wrangler.jsonc" "$HOST_DIR/wrangler.jsonc"
-# Symlink local plugin package into emdash node_modules so it resolves from astro.config.mjs
-mkdir -p "$EMDASH_DIR/node_modules/@plat-trunk"
-ln -sfn "$PLUGIN_DIR" "$EMDASH_DIR/node_modules/@plat-trunk/emdash-plugin"
+# Symlink every plugin in plugins/ into emdash node_modules so package names resolve
+# Handles both scoped (@scope/name) and unscoped (name) package names
+for d in "$PLUGINS_DIR"/*/; do
+  [ -f "$d/package.json" ] || continue
+  pkg=$(node -e "process.stdout.write(require('$d/package.json').name)")
+  if [[ "$pkg" == @*/* ]]; then
+    scope="${pkg%%/*}"
+    name="${pkg#*/}"
+    mkdir -p "$EMDASH_DIR/node_modules/$scope"
+    ln -sfn "$d" "$EMDASH_DIR/node_modules/$scope/$name"
+  else
+    ln -sfn "$d" "$EMDASH_DIR/node_modules/$pkg"
+  fi
+  echo "  ✓ linked $pkg"
+done
 pitchfork start -l
 """
 
@@ -141,21 +153,30 @@ description = "Revoke all API tokens"
 run = "node \"$ROOT/scripts/clean-tokens.mjs\""
 
 [tasks."plugin:install"]
-description = "Install plugin deps"
-dir = "{{config_root}}/plugin"
-run = "pnpm install"
+description = "Install deps for one plugin — e.g: mise run plugin:install -- plat-trunk"
+run = "sh -c 'cd \"$PLUGINS_DIR/$1\" && pnpm install' --"
+
+[tasks."plugins:install-all"]
+description = "Install deps for all plugins in plugins/"
+run = """
+for d in "$PLUGINS_DIR"/*/; do
+  [ -f "$d/package.json" ] || continue
+  echo "→ pnpm install in $d"
+  (cd "$d" && pnpm install)
+done
+"""
 
 [tasks."plugin:validate"]
-description = "Validate plugin structure"
-run = "mise run emdash:cli -- plugin validate --dir plugin"
+description = "Validate a plugin — e.g: mise run plugin:validate -- plat-trunk"
+run = "sh -c 'mise run emdash:cli -- plugin validate --dir \"plugins/$1\"' --"
 
 [tasks."plugin:bundle"]
-description = "Bundle plugin into a tarball → plugin/dist/"
-run = "mise run emdash:cli -- plugin bundle --dir plugin --outDir plugin/dist"
+description = "Bundle a plugin — e.g: mise run plugin:bundle -- plat-trunk"
+run = "sh -c 'mise run emdash:cli -- plugin bundle --dir \"plugins/$1\" --outDir \"plugins/$1/dist\"' --"
 
 [tasks."plugin:publish"]
-description = "Publish plugin to marketplace (login first with: mise run plugin:login)"
-run = "mise run emdash:cli -- plugin publish --dir plugin --build"
+description = "Publish a plugin to public marketplace — e.g: mise run plugin:publish -- plat-trunk"
+run = "sh -c 'mise run emdash:cli -- plugin publish --dir \"plugins/$1\" --build' --"
 
 [tasks."plugin:login"]
 description = "Log in to the EmDash Marketplace via GitHub"
@@ -176,8 +197,8 @@ description = "Follow marketplace logs"
 run = "pitchfork logs marketplace --follow"
 
 [tasks."marketplace:publish"]
-description = "Publish plugin to local marketplace"
-run = "mise run emdash:cli -- plugin publish --dir plugin --build --registry http://localhost:8787"
+description = "Publish a plugin to local marketplace — e.g: mise run marketplace:publish -- plat-trunk"
+run = "sh -c 'mise run emdash:cli -- plugin publish --dir \"plugins/$1\" --build --registry http://localhost:8787' --"
 
 [tasks."emdash:cli"]
 description = "Run emdash CLI against local server — e.g: mise run emdash:cli -- content list posts"

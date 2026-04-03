@@ -13,14 +13,14 @@ curl https://mise.run | sh       # install mise
 mise install                     # install node, pnpm, pitchfork
 mise run server:build            # clone → install → build (slow, ~3 min)
 mise run marketplace:init        # initialize local marketplace DB — once after server:build
-mise run plugin:install          # install plugin package deps
-mise run pitchfork:start         # start both servers (emdash:4321, marketplace:8787)
+mise run plugins:install-all     # install deps for all plugins in plugins/
+mise run pitchfork:start         # start both servers (emdash:4321, marketplace:8787) + symlink plugins
 mise run mcp:token-admin         # generate admin API token (saved to run/token-admin.env)
 mise run server:seed             # apply CAD schema + sample content from config/seed.json
 mise run claude:gen-permissions  # write .claude/settings.local.json from live MCP tool list
 mise run playwright:auth         # get browser session cookie
 mise run playwright:validate     # confirm everything is working
-mise run marketplace:publish     # bundle + publish plat-trunk plugin to local marketplace
+mise run marketplace:publish -- plat-trunk   # bundle + publish to local marketplace
 # then open /_emdash/admin/plugins/marketplace/plat-trunk → Accept & Install
 ```
 
@@ -83,10 +83,12 @@ mise run mcp:token-user              # user token  → run/token-user.txt
 mise run mcp:clean-tokens            # revoke all tokens
 mise run mcp:clean-tokens -- <name>  # revoke tokens matching name
 
-# Plugin
-mise run plugin:install          # install plugin deps
-mise run marketplace:publish     # bundle + publish to local marketplace (needs pitchfork running)
-mise run marketplace:logs        # follow marketplace logs
+# Plugins (plugins/<name>/ — one subdirectory per plugin)
+mise run plugins:install-all              # install deps for all plugins
+mise run plugin:install -- plat-trunk     # install deps for one plugin
+mise run plugin:validate -- plat-trunk    # validate bundle structure
+mise run marketplace:publish -- plat-trunk  # bundle + publish to local marketplace
+mise run marketplace:logs                 # follow marketplace logs
 
 # EmDash CLI (remote — talks to server over HTTP)
 mise run emdash:cli -- schema list                              # list collections
