@@ -213,7 +213,7 @@ run = "sh -c 'skills add \"$1\" --yes' --"
 description = "Remove a skill — e.g: mise run skills:remove -- mise-guide"
 run = "sh -c 'skills remove \"$1\" --yes' --"
 
-[tasks."skills:clean"]
+[tasks."skills:remove:all"]
 description = "Remove all installed skills"
 run = "skills remove --all --yes"
 
