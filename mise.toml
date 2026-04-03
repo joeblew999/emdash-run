@@ -225,7 +225,7 @@ run = "skills update"
 description = "Restore skills from skills-lock.json (after fresh clone)"
 run = "skills experimental_install"
 
-[tasks."skills:setup"]
+[tasks."skills:add:all"]
 description = "Install the standard skill set for this project"
 run = """
 skills add kinoward/agent-skills/mise-guide --yes
