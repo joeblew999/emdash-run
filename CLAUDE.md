@@ -12,6 +12,7 @@ README.md is the source of truth for setup order, daily workflow, and recovery s
 ## Tools
 
 **MCP — prefer these over CLI:**
+- mise MCP: run tasks, inspect tools/env/config (`mise mcp` — registered in `.claude/settings.json`)
 - EmDash MCP: read/write content, schema, media, taxonomy
 - Playwright MCP: validate the admin UI in the browser
 
