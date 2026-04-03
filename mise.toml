@@ -1,10 +1,11 @@
 # $schema = "https://mise.jdx.dev/schema/mise.json"
 
 [tools]
-node        = "22.22.2"
-pnpm        = "10.28.0"
-pitchfork   = "2.3.0"
+node           = "22.22.2"
+pnpm           = "10.28.0"
+pitchfork      = "2.3.0"
 "npm:wrangler" = "4.71.0"
+"npm:skills"   = "1.4.7"
 
 [env]
 ROOT          = "{{config_root}}"
@@ -199,6 +200,18 @@ run = "pitchfork logs marketplace --follow"
 [tasks."marketplace:publish"]
 description = "Publish a plugin to local marketplace — e.g: mise run marketplace:publish -- plat-trunk"
 run = "sh -c 'mise run emdash:cli -- plugin publish --dir \"plugins/$1\" --build --registry http://localhost:8787' --"
+
+[tasks."skills:find"]
+description = "Search skills.sh marketplace — e.g: mise run skills:find -- mise"
+run = "sh -c 'skills find \"$1\"' --"
+
+[tasks."skills:add"]
+description = "Install a skill — e.g: mise run skills:add -- kinoward/agent-skills/mise-guide"
+run = "sh -c 'skills add \"$1\" --yes' --"
+
+[tasks."skills:list"]
+description = "List installed skills"
+run = "skills list"
 
 [tasks."emdash:cli"]
 description = "Run emdash CLI against local server — e.g: mise run emdash:cli -- content list posts"

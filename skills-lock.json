@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "mise-guide": {
+      "source": "kinoward/agent-skills",
+      "sourceType": "github",
+      "computedHash": "a027d7338b9300c5ef5420882554f15e72f3df7826e5a6d0f012e8d64a49c108"
+    }
+  }
+}

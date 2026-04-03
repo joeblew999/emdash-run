@@ -1,0 +1,23 @@
+{
+  "skill_name": "mise-guide",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Set up node 22 and python 3.12 for this project",
+      "expected_output": "Should run mise use node@22 python@3.12 (project-level, not global). Should check mise availability first and show current state.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "Add a DATABASE_URL environment variable with value postgres://localhost:5432/myapp to the project",
+      "expected_output": "Should edit or create mise.toml with [env] section containing DATABASE_URL. Should mention mise.local.toml or .env for secrets.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Create a build task that runs npm run build, then create a dev task that runs npm run dev, with dev depending on build",
+      "expected_output": "Should write tasks in mise.toml with [tasks.build] and [tasks.dev] sections, dev should have depends = [\"build\"].",
+      "files": []
+    }
+  ]
+}
