@@ -59,6 +59,7 @@ for d in "$PLUGINS_DIR"/*/; do
   fi
   echo "  ✓ linked $pkg"
 done
+mise run skills:sync:emdash
 pitchfork start -l
 """
 
@@ -225,9 +226,24 @@ run = "skills update"
 description = "Restore skills from skills-lock.json (after fresh clone)"
 run = "skills experimental_install"
 
+[tasks."skills:sync:emdash"]
+description = "Copy skills from the emdash clone into .agents/skills/"
+run = """
+src="$EMDASH_DIR/.claude/skills"
+dst="$ROOT/.agents/skills"
+mkdir -p "$dst"
+for d in "$src"/*/; do
+  name=$(basename "$d")
+  rm -rf "$dst/$name"
+  cp -r "$d" "$dst/$name"
+  echo "  ✓ synced $name"
+done
+"""
+
 [tasks."skills:add:all"]
 description = "Install the standard skill set for this project"
 run = """
+mise run skills:sync:emdash
 skills add kinoward/agent-skills/mise-guide --yes
 """
 
