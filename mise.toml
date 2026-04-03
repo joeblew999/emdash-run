@@ -227,17 +227,11 @@ description = "Restore skills from skills-lock.json (after fresh clone)"
 run = "skills experimental_install"
 
 [tasks."skills:sync:emdash"]
-description = "Copy skills from the emdash clone into .agents/skills/"
+description = "Symlink .claude/skills/emdash → emdash clone's skills directory"
 run = """
-src="$EMDASH_DIR/.claude/skills"
-dst="$ROOT/.agents/skills"
-mkdir -p "$dst"
-for d in "$src"/*/; do
-  name=$(basename "$d")
-  rm -rf "$dst/$name"
-  cp -r "$d" "$dst/$name"
-  echo "  ✓ synced $name"
-done
+mkdir -p "$ROOT/.claude/skills"
+ln -sfn "$EMDASH_DIR/.claude/skills" "$ROOT/.claude/skills/emdash"
+echo "  ✓ .claude/skills/emdash → $EMDASH_DIR/.claude/skills"
 """
 
 [tasks."skills:add:all"]

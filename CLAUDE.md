@@ -15,3 +15,5 @@ https://pitchfork.jdx.dev/schema.json
 EmDash has its own CLAUDE.md at emdash/.claude/CLAUDE.md — read it for EmDash-specific guidance.
 
 Architecture decisions are in docs/adr/ — read them before making structural changes.
+
+Skills in `.claude/skills/` are automatically loaded. On a fresh clone, run `mise run skills:restore` to reinstall marketplace skills, then `mise run skills:sync:emdash` to symlink the emdash skills. Or run `mise run skills:add:all` to do both at once.
