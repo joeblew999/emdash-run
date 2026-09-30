@@ -16,7 +16,7 @@ to write all tool names into `.claude/settings.local.json`.
 ### 2. Does the plugin field widget wire up?
 
 `plugin/src/admin.tsx` is the geometry preview widget.
-`config/astro.config.mjs` does not yet import or register it.
+`config/server.astro.config.mjs` does not yet import or register it.
 The widget renders geometry metadata inline in the Parts editor.
 
 Status: **not started**
@@ -41,4 +41,4 @@ Status: **not started** — depends on question 2
 
 ## What is broken or messy
 
-- Plugin not wired into `config/astro.config.mjs` yet
+- Plugin not wired into `config/server.astro.config.mjs` yet

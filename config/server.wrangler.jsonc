@@ -1,0 +1,40 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "emdash-run",
+	"main": "./src/worker.ts",
+	"compatibility_date": "2026-01-14",
+	"compatibility_flags": ["nodejs_compat", "disable_nodejs_process_v2"],
+	// D1 Database binding
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "emdash-run",
+		},
+	],
+	// R2 bucket for media storage
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "emdash-run-media",
+		},
+	],
+	// Worker Loader for plugin sandboxing
+	"worker_loaders": [
+		{
+			"binding": "LOADER",
+		},
+	],
+	// KV for session storage — required by @astrojs/cloudflare sessions.
+	// Without this, sessions fall back to in-memory (Chrome flukes through, Safari drops them).
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "SESSION",
+		},
+	],
+	// NOTE: No service binding for marketplace — the emdash handler calls it via
+	// HTTP using the URL from astro.config.mjs (marketplace: "http://localhost:8787").
+	// Adding a service binding here causes miniflare to intercept that fetch and try
+	// to route it through service resolution, which hangs because the marketplace
+	// runs as a separate wrangler dev process outside miniflare's control.
+}

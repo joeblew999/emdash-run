@@ -8,11 +8,12 @@
       }
     },
     "playwright": {
-      "command": "/Users/apple/.local/share/mise/installs/node/22.22.2/bin/npx",
-      "args": ["@playwright/mcp@latest"],
-      "env": {
-        "PATH": "/Users/apple/.local/share/mise/installs/node/22.22.2/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/mise",
+      "args": [
+        "x", "--",
+        "bunx", "@playwright/mcp@latest"
+      ]
     }
   }
 }

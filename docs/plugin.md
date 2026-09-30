@@ -45,10 +45,10 @@ Read-only display + deep link. The actual geometry lives in plat-trunk.
 
 - `plugin/src/index.ts` — written, not tested
 - `plugin/src/admin.tsx` — written, not tested
-- `config/astro.config.mjs` — does NOT yet import or register the plugin
+- `config/server.astro.config.mjs` — does NOT yet import or register the plugin
 - No build step set up yet
 
 ## Next step
 
-Register the plugin in `config/astro.config.mjs` and verify it loads
+Register the plugin in `config/server.astro.config.mjs` and verify it loads
 without errors when `mise run server:start` starts.
