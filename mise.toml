@@ -295,3 +295,15 @@ run = "skills list"
 [tasks."emdash:cli"]
 description = "Run emdash CLI against local server — e.g: mise run emdash:cli -- content list posts"
 run = "node \"$ROOT/scripts/emdash.mjs\""
+
+[tasks."plugins:catalog"]
+description = "Discover EmDash plugins on GitHub → docs/plugin-catalog/"
+run = "node \"$ROOT/scripts/find-plugins.mjs\""
+
+[tasks."plugins:catalog:dry"]
+description = "Discover plugins, print JSON to stdout (no files written)"
+run = "node \"$ROOT/scripts/find-plugins.mjs\" --dry"
+
+[tasks."plugins:catalog:full"]
+description = "Discover plugins + fetch README excerpts (slower)"
+run = "node \"$ROOT/scripts/find-plugins.mjs\" --readmes"
