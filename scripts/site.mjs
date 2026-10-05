@@ -19,6 +19,7 @@ import {
 
 import { devDb, env, run, sh } from "./lib/exec.mjs";
 
+const ROOT = env("ROOT");
 const SITE_DIR = env("SITE_DIR");
 const sub = process.argv[2];
 
@@ -134,6 +135,34 @@ switch (sub) {
 		}
 		console.log(`  → diagnosing ${db.replace(`${SITE_DIR}/`, "")}`);
 		run("node", [`${env("ROOT")}/scripts/emdash.mjs`, "doctor", "-d", db]);
+		break;
+	}
+	case "migrate": {
+		// EmDash's own core migrations — NOT our collections and fields, which the docs are
+		// explicit are never managed this way ("Core migrations do not add or remove your
+		// collections, fields, or taxonomies").
+		//
+		// This reads the DEPLOYED D1, and it needs no admin token: it authenticates with the
+		// Cloudflare credentials (fnox) rather than the site's API. Read-only — `--status`
+		// applies nothing. The database name comes from the wrangler config so a rename does
+		// not silently point this at the wrong place.
+		const wrangler = readFileSync(`${ROOT}/config/site.wrangler.jsonc`, "utf8");
+		const name = /"database_name"\s*:\s*"([^"]+)"/.exec(wrangler)?.[1];
+		if (!name) {
+			console.error("✗ no d1_databases[].database_name in config/site.wrangler.jsonc");
+			process.exit(1);
+		}
+		console.log(`  → migration status for the deployed D1: ${name}`);
+		run("fnox", [
+			"exec",
+			"--",
+			"node",
+			`${env("ROOT")}/scripts/emdash.mjs`,
+			"migrate",
+			"--status",
+			"--d1",
+			name,
+		]);
 		break;
 	}
 	case "reset":

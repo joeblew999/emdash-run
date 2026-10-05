@@ -214,6 +214,10 @@ run = "node \"$ROOT/scripts/site.mjs\" check"
 description = "Diagnose the site's real D1 — database health and scheduler wiring (emdash doctor, pointed at the dev database)"
 run = "node \"$ROOT/scripts/site.mjs\" doctor"
 
+[tasks."site:migrate"]
+description = "Report EmDash CORE migration status for the DEPLOYED D1 (read-only, Cloudflare creds via fnox — no admin token)"
+run = "node \"$ROOT/scripts/site.mjs\" migrate"
+
 [tasks."site:reset"]
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
 run = "node \"$ROOT/scripts/site.mjs\" reset"

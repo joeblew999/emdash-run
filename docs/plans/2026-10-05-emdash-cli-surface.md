@@ -1,6 +1,6 @@
 # 2026-10-05 — Use more of the emdash CLI
 
-**Status:** active — **2 of 4 done**
+**Status:** active — **3 of 4 done**
 
 We call exactly **one** subcommand of the site's CLI: `seed --validate`. The others do things
 this repo currently does by hand, or not at all.
@@ -35,12 +35,14 @@ this repo currently does by hand, or not at all.
   - [x] **`geometry_meta` is `unknown` in the generated types too**, because the field is declared `type: json`. So the panels' `isRecord` guard plus `LABELS` map is the correct handling of an untyped field, not a workaround — generated types would not remove it. Worth knowing before anyone tries to "fix" it.
   - [ ] the types that *would* help are site-side (astro pages), since they are what `emdash-env.d.ts` feeds; the plugins have their own tsconfig and cannot import them
   - [ ] report the missing import upstream (a one-line fix in the `types` command)
-- [ ] **`emdash migrate` → understand production migrations** — locally we rely on dev-bypass auto-migrating
-  - [ ] a `.emdash/migrations.json` manifest is written by the dev server — that is the "exact build manifest" the deployment docs refer to, so start there
-  - [ ] find out what deployment-managed migrations mean for production
-  - [ ] write it down *before* the next schema change
-  - [ ] exercise it once
-  - [ ] related: the site's `deploy` script is just `astro build && wrangler deploy` — no `emdash migrate`, and production has **no secrets at all** (no `EMDASH_ENCRYPTION_KEY`), which `emdash secrets generate` exists to fix
+- [x] **`emdash migrate` → understand production migrations** — answered
+  - [x] **it can read the DEPLOYED D1, and it needs no admin token.** `emdash migrate --status --d1 <name>` authenticates with the Cloudflare credentials (fnox), not the site's API — so migration state is inspectable even while every content command is blocked on auth. Added as `site:migrate` (read-only).
+  - [x] **production is fully current**: `Known applied: 001_initial … 091_redirect_artifacts`, `Pending: none`, `Unknown applied: none`. So production's problem is **not** migrations.
+  - [x] **and this is orthogonal to our schema work.** The docs are explicit that core migrations "do not add or remove your collections, fields, or taxonomies" — so a clean migration state says nothing about the missing `model_id` field. The API path in [`live-content`](2026-10-05-live-content.md) still stands.
+  - [x] the count is 90, not 91: the manifest's name list skips `010` (`009_user_disabled` → `011_sections`), which matches `site:doctor`'s "90 applied, none pending".
+  - [x] `Target fingerprint: 2ac649bc7d22b10d34535e4b63ec6cb65d4ca7e594caf386e4af49753d41c48a` — required for a noninteractive apply (`--expected-target-fingerprint`), which is how a deploy would apply the exact build manifest ahead of traffic instead of relying on runtime auto-migration.
+  - [x] local `--check --database <sqlite>` refuses with "A valid Cloudflare account ID is required for D1 migrations" — the command is D1-oriented, so local migration state is best read from `site:doctor` instead.
+  - [x] noted: `.emdash/migrations.json` is the build manifest (`schemaVersion`, `emdashVersion: 1.1.0`, `migrationSet.names`, `i18n`), written by the dev server — the "exact build manifest" the deployment docs refer to.
 - [ ] **`emdash site export|import` → a whole-site package**
   - [x] exported the local site once: 14 files, 38912 bytes, `sha256:2c154ed4…`
   - [ ] document the package as the backup path
