@@ -74,6 +74,7 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #
 # Every day / after every change:
 #   mise run repo:apply           ← config:apply + plugin:build + plugin:link + skills:sync + restart + token
+#   mise run repo:verify          ← assert the RUNNING site matches what this repo claims
 #
 # Recovery:
 #   mise run site:reset      ← wipe local D1/miniflare state, then: mise run repo:apply
@@ -211,6 +212,10 @@ run = "node \"$ROOT/scripts/repo.mjs\" apply"
 [tasks."repo:urls"]
 description = "Print every URL this project serves"
 run = "node \"$ROOT/scripts/repo.mjs\" urls"
+
+[tasks."repo:verify"]
+description = "Assert the RUNNING site matches what the repo claims — content, the model_id join, and snapshot drift against real R2 objects"
+run = "node \"$ROOT/scripts/repo.mjs\" verify"
 
 [tasks."mise:reorder"]
 description = "Reorder mise.toml's sections (core first, optional extras last) — cosmetic only"

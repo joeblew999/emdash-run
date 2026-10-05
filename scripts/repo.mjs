@@ -5,11 +5,14 @@
  *   init   one-time after site:setup; the real work is in `depends` (plugin:install-all,
  *          skills:add-all), which mise runs first
  *   apply  the daily command: restart the site and refresh the MCP token
+ *   verify assert the RUNNING site matches what this repo claims (content, the model_id
+ *          join, and snapshot drift against the real objects in R2)
  *   urls   print every URL this project serves
  */
 import { rmSync } from "node:fs";
 
 import { env, run, sh } from "./lib/exec.mjs";
+import { verify } from "./lib/verify.mjs";
 
 const SITE_DIR = env("SITE_DIR");
 const SITE_URL = env("SITE_URL");
@@ -59,7 +62,9 @@ Optional daemons — start with: mise run registry:up / mise run plugins-site:up
   plugins UI ${pluginsSiteUrl}/
 
 Live         https://emdash-run.gedw99.workers.dev`);
+} else if (sub === "verify") {
+	await verify();
 } else {
-	console.error(`repo: unknown subcommand "${sub}" (init|apply|urls)`);
+	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|urls)`);
 	process.exit(1);
 }

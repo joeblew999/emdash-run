@@ -37,3 +37,19 @@ export function registryToken() {
 	if (!line) throw new Error(`no ADMIN_TOKEN in ${envFile} — run: mise run registry:env`);
 	return line.slice("ADMIN_TOKEN=".length).trim();
 }
+
+/**
+ * Read a credential from fnox, the single source of truth for secrets.
+ *
+ * Prefers the ambient environment, so a caller that already ran under `fnox exec` pays
+ * nothing. Returns null rather than throwing when the secret is unavailable, so a caller can
+ * report the gap instead of dying — a missing credential is a finding, not a crash.
+ */
+export function secret(name) {
+	if (process.env[name]) return process.env[name];
+	try {
+		return out("fnox", ["exec", "--", "sh", "-c", `printf %s "$${name}"`]) || null;
+	} catch {
+		return null;
+	}
+}

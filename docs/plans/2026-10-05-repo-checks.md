@@ -57,7 +57,13 @@ was a file describing a setup that did not exist.
   - [x] found by hand, and it is the worst of the set because it reports success: `emdash seed <file>` writes a **file** database (`./data.db`) while the dev server reads miniflare's D1 under `.wrangler/state/v3/d1`. So it printed "Content: 11 created / Seed applied successfully" and changed nothing the site could see.
   - [x] `repo:apply` *does* apply the seed (via dev-bypass on first request) but with **skip-on-conflict**: an entry that already exists is left alone. New seed content lands; **edits to existing content never do**, with no error anywhere. Change a part, run `repo:apply`, and the admin keeps showing the old values.
   - [x] `seed:apply` empties the local D1 and reapplies — the only path that picks up content edits. Destructive to local state, and now says so.
+- [x] **Verify the LIVE state, not just the files** — `mise run repo:verify`
+  - [x] the centrepiece: follow every part's `model_id` to the real object in `cad-documents` and compare it **field for field** against the stored snapshot. This is the check that would have caught the fabricated seed on its first run rather than six commits later.
+  - [x] also asserts the site answers, the content API returns parts, and every part declares a `model_id`
+  - [x] **proven to block**: drifted `top-plate.geometry_meta.model_name` in the seed, reapplied, and it reported `model_name is "Definitely Not The Real Name", live is "Default Cube"` — then passed again once restored
+  - [x] credentials go through a new `secret()` helper in `lib/exec.mjs`, which prefers the ambient environment and falls back to asking fnox. A missing credential is reported as a **failure**, not a silent skip — the whole point is that a green run means something.
 - [ ] **Prove the checks actually block**
   - [x] prove the structural checks: reintroduced all three structural bugs at once and `plugin:audit` reported each by name, then passed again once restored (see the note below)
+  - [x] prove the live-state check: drifted one stored field and `repo:verify` named the part, the model, the key, and both values
   - [ ] prove a type error fails `repo:apply`
   - [ ] prove a lint error fails `repo:apply`
