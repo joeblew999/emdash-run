@@ -41,10 +41,10 @@ export default defineConfig({
 			sandboxRunner: sandbox(),
 
 			// The plugin registry — the current name for the plugin marketplace.
-			// EmDash defaults to this when a sandboxRunner is configured; set
-			// explicitly so it is obvious and easy to repoint at a local aggregator
-			// (apps/aggregator) while working on the registry itself.
-			registry: "https://registry.emdashcms.com",
+			// Dev points at the LOCAL registry when EMDASH_REGISTRY_URL is set (server:start
+			// sets it); site:build / site:deploy leave it unset, so production uses the
+			// hosted registry.
+			registry: process.env.EMDASH_REGISTRY_URL ?? "https://registry.emdashcms.com",
 
 			// MCP is enabled by default at /_emdash/api/mcp (Bearer token required).
 		}),

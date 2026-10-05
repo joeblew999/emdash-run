@@ -220,6 +220,9 @@ run = "cd \"$SITE_DIR\" && exec pnpm dev"
 # to be set — it is also written into Astro's lock file.)
 [tasks."server:start".env]
 ASTRO_DEV_BACKGROUND = "1"
+# Point the site's plugin discovery at the LOCAL registry while it is running.
+# Deliberately not set for site:build / site:deploy, so production uses the hosted one.
+EMDASH_REGISTRY_URL  = "http://localhost:8788"
 
 [tasks."server:logs"]
 description = "Follow live site logs"
@@ -256,140 +259,6 @@ echo "✓ Wiped .src — run: mise run server:build → init → apply"
 """
 
 # -----------------------------------------------------------------------------
-# REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)
-# Optional: not needed to run the site, which uses the hosted registry by default.
-# XRPC reads: com.emdashcms.experimental.aggregator.*  ·  http://localhost:8788
-# -----------------------------------------------------------------------------
-
-[tasks."registry:install"]
-description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"
-depends = ["src:clone:emdash"]
-run = """
-set -euo pipefail
-cd "$EMDASH_DIR"
-pnpm install --frozen-lockfile
-pnpm --filter @emdash-cms/aggregator run prebuild
-"""
-
-[tasks."registry:migrate"]
-description = "Apply the registry aggregator's local D1 migrations"
-depends = ["registry:install"]
-dir = "{{config_root}}/.src/emdash/apps/aggregator"
-run = "pnpm run db:migrate:local"
-
-[tasks."registry:env"]
-description = "Create the registry aggregator's local .env (LISTING_POLICY_MODE=open + dev admin token)"
-depends = ["src:clone:emdash"]
-# Without this the aggregator runs with the wrangler.jsonc default,
-# LISTING_POLICY_MODE=projection, which fails closed (needs positive labels from the
-# emdashcms labeller) — so every query returns empty. `.env.example` sets `open`.
-run = """
-set -euo pipefail
-ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
-if [ -f "$ENV_FILE" ]; then
-  echo "  ✓ .env already present"
-  exit 0
-fi
-cp "$EMDASH_DIR/apps/aggregator/.env.example" "$ENV_FILE"
-echo "  ✓ wrote $ENV_FILE (LISTING_POLICY_MODE=open, dev ADMIN_TOKEN)"
-"""
-
-[tasks."registry:start"]
-description = "Start the local registry aggregator on :8788 — called by pitchfork"
-depends = ["registry:migrate", "registry:env"]
-dir = "{{config_root}}/.src/emdash/apps/aggregator"
-# `wrangler dev`, NOT the package's `vite dev`. The Cloudflare vite plugin resolves
-# miniflare@4.20260507.1 + workerd@1.20260507.1, which crash on Durable Object SQLite
-# (`table _cf_ALARM has 3 columns but 2 values were supplied`). wrangler dev works.
-run = "pnpm exec wrangler dev --port 8788"
-
-[tasks."registry:up"]
-description = "Start the registry aggregator daemon via pitchfork"
-run = "pitchfork start registry"
-
-[tasks."registry:logs"]
-description = "Follow registry aggregator logs"
-run = "pitchfork logs registry --follow"
-
-[tasks."registry:project"]
-description = "Build the registry's public projection — without it every read returns empty"
-# Reads gate on an active row in public_projection_state (listing-policy.ts). The
-# generation is built by the LABEL ingest DO (rebuildPublicProjection ← label-ingest-do),
-# and locally there is no label stream — so POST /_admin/labels/replay is what builds it.
-# Run after registry:backfill.
-run = """
-set -euo pipefail
-ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
-TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
-[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
-echo "→ POST /_admin/labels/replay (builds the public projection generation)"
-curl -sS -X POST "http://localhost:8788/_admin/labels/replay" -H "Authorization: Bearer $TOKEN" | head -c 400
-echo
-"""
-
-[tasks."registry:backfill"]
-description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
-# Jetstream only streams NEW records, so a fresh registry is empty until backfill. This
-# calls com.atproto.sync.listReposByCollection on the relay, then fans out one job per
-# (DID × collection) onto the backfill queue. Takes a while and needs the daemon running.
-run = """
-set -euo pipefail
-ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
-TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
-[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
-echo "→ POST /_admin/backfill (relay discovery → backfill queue)"
-curl -sS -X POST "http://localhost:8788/_admin/backfill" \\
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' | head -c 600
-echo
-"""
-
-# -----------------------------------------------------------------------------
-# DEPLOY (Cloudflare)
-# -----------------------------------------------------------------------------
-
-[tasks."site:build"]
-description = "Production-build the site (astro build → .src/site/dist)"
-# A production build leaves .vite/.astro in a state `astro dev` cannot reuse (stale
-# deps_ssr URLs → 500s), so clean up afterwards and warn that dev must be restarted.
-depends = ["config:apply"]
-run = """
-set -uo pipefail
-cd "$SITE_DIR"
-rc=0
-pnpm build || rc=$?
-rm -rf node_modules/.vite .astro
-if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
-exit $rc
-"""
-
-[tasks."site:deploy:dry"]
-description = "Validate the production build + Worker bundle without deploying"
-depends = ["config:apply"]
-run = """
-set -uo pipefail
-cd "$SITE_DIR"
-rc=0
-{ pnpm build && pnpm exec wrangler deploy --dry-run --outdir dist; } || rc=$?
-rm -rf node_modules/.vite .astro
-if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
-exit $rc
-"""
-
-[tasks."site:deploy"]
-description = "Build + deploy the site to Cloudflare (creds via fnox)"
-# Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
-depends = ["config:apply"]
-run = """
-set -uo pipefail
-cd "$SITE_DIR"
-rc=0
-fnox exec -- pnpm run deploy || rc=$?
-rm -rf node_modules/.vite .astro
-if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
-exit $rc
-"""
-
-# -----------------------------------------------------------------------------
 # TOP-LEVEL WORKFLOW
 # -----------------------------------------------------------------------------
 
@@ -408,7 +277,9 @@ description = "Apply config + restart daemons + refresh token — run after ever
 depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
 run = """
 set -euo pipefail
-pitchfork stop -a || true
+# Stop ONLY the site. Optional daemons (registry, plugins-site) must survive an apply —
+# the site's plugin discovery points at the local registry while it is running.
+pitchfork stop emdash || true
 rm -rf "$SITE_DIR/node_modules/.vite"
 # pitchfork waits for ready_http (declared in pitchfork.toml) before returning, so the
 # site is already serving by the time we get here. Readiness is an HTTP check because
@@ -427,6 +298,12 @@ echo "→ admin:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_
 echo "→ mcp:    http://localhost:4321/_emdash/api/mcp (Bearer: run/token-admin.txt)"
 echo "✓ apply done"
 """
+
+[tasks."mise:reorder"]
+description = "Reorder mise.toml's sections (core first, optional extras last) — cosmetic only"
+# Refuses to write unless the section-title set matches exactly, so a section can't be
+# dropped. Run this after adding a new section so the file stays readable.
+run = "node \"$ROOT/scripts/reorder-mise-sections.mjs\" \"$ROOT/mise.toml\""
 
 # -----------------------------------------------------------------------------
 # PITCHFORK (daemon manager)
@@ -486,6 +363,52 @@ echo "✓ Token saved → run/token-user.txt"
 [tasks."mcp:clean-tokens"]
 description = "Revoke all API tokens from the database"
 run = "node \"$ROOT/scripts/clean-tokens.mjs\""
+
+# -----------------------------------------------------------------------------
+# DEPLOY (Cloudflare)
+# -----------------------------------------------------------------------------
+
+[tasks."site:build"]
+description = "Production-build the site (astro build → .src/site/dist)"
+# A production build leaves .vite/.astro in a state `astro dev` cannot reuse (stale
+# deps_ssr URLs → 500s), so clean up afterwards and warn that dev must be restarted.
+depends = ["config:apply"]
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+pnpm build || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
+
+[tasks."site:deploy:dry"]
+description = "Validate the production build + Worker bundle without deploying"
+depends = ["config:apply"]
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+{ pnpm build && pnpm exec wrangler deploy --dry-run --outdir dist; } || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
+
+[tasks."site:deploy"]
+description = "Build + deploy the site to Cloudflare (creds via fnox)"
+# Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
+depends = ["config:apply"]
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+fnox exec -- pnpm run deploy || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
 
 # -----------------------------------------------------------------------------
 # PLUGIN DEVELOPMENT
@@ -632,3 +555,121 @@ run = "node \"$ROOT/scripts/find-plugins.mjs\" --dry"
 [tasks."plugins:catalog:full"]
 description = "Discover plugins + fetch README excerpts (slower)"
 run = "node \"$ROOT/scripts/find-plugins.mjs\" --readmes"
+
+# -----------------------------------------------------------------------------
+# REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)
+# Optional: not needed to run the site, which uses the hosted registry by default.
+# XRPC reads: com.emdashcms.experimental.aggregator.*  ·  http://localhost:8788
+# -----------------------------------------------------------------------------
+
+[tasks."registry:install"]
+description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"
+depends = ["src:clone:emdash"]
+run = """
+set -euo pipefail
+cd "$EMDASH_DIR"
+pnpm install --frozen-lockfile
+pnpm --filter @emdash-cms/aggregator run prebuild
+"""
+
+[tasks."registry:migrate"]
+description = "Apply the registry aggregator's local D1 migrations"
+depends = ["registry:install"]
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+run = "pnpm run db:migrate:local"
+
+[tasks."registry:env"]
+description = "Create the registry aggregator's local .env (LISTING_POLICY_MODE=open + dev admin token)"
+depends = ["src:clone:emdash"]
+# Without this the aggregator runs with the wrangler.jsonc default,
+# LISTING_POLICY_MODE=projection, which fails closed (needs positive labels from the
+# emdashcms labeller) — so every query returns empty. `.env.example` sets `open`.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+if [ -f "$ENV_FILE" ]; then
+  echo "  ✓ .env already present"
+  exit 0
+fi
+cp "$EMDASH_DIR/apps/aggregator/.env.example" "$ENV_FILE"
+echo "  ✓ wrote $ENV_FILE (LISTING_POLICY_MODE=open, dev ADMIN_TOKEN)"
+"""
+
+[tasks."registry:start"]
+description = "Start the local registry aggregator on :8788 — called by pitchfork"
+depends = ["registry:migrate", "registry:env"]
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+# `wrangler dev`, NOT the package's `vite dev`. The Cloudflare vite plugin resolves
+# miniflare@4.20260507.1 + workerd@1.20260507.1, which crash on Durable Object SQLite
+# (`table _cf_ALARM has 3 columns but 2 values were supplied`). wrangler dev works.
+run = "pnpm exec wrangler dev --port 8788"
+
+[tasks."registry:up"]
+description = "Start the registry aggregator daemon via pitchfork"
+run = "pitchfork start registry"
+
+[tasks."registry:logs"]
+description = "Follow registry aggregator logs"
+run = "pitchfork logs registry --follow"
+
+[tasks."registry:project"]
+description = "Build the registry's public projection — without it every read returns empty"
+# Reads gate on an active row in public_projection_state (listing-policy.ts). The
+# generation is built by the LABEL ingest DO (rebuildPublicProjection ← label-ingest-do),
+# and locally there is no label stream — so POST /_admin/labels/replay is what builds it.
+# Run after registry:backfill.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
+[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
+echo "→ POST /_admin/labels/replay (builds the public projection generation)"
+curl -sS -X POST "http://localhost:8788/_admin/labels/replay" -H "Authorization: Bearer $TOKEN" | head -c 400
+echo
+"""
+
+[tasks."registry:backfill"]
+description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
+# Jetstream only streams NEW records, so a fresh registry is empty until backfill. This
+# calls com.atproto.sync.listReposByCollection on the relay, then fans out one job per
+# (DID × collection) onto the backfill queue. Takes a while and needs the daemon running.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
+[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
+echo "→ POST /_admin/backfill (relay discovery → backfill queue)"
+curl -sS -X POST "http://localhost:8788/_admin/backfill" \\
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' | head -c 600
+echo
+"""
+
+# -----------------------------------------------------------------------------
+# PLUGINS SITE (the registry's web UI — plugins.emdashcms.com)
+# Optional, like the registry itself. Not needed to run the host site.
+# -----------------------------------------------------------------------------
+
+[tasks."plugins-site:install"]
+description = "Install + build the deps for the plugins site (registry UI)"
+depends = ["src:clone:emdash"]
+run = """
+set -euo pipefail
+cd "$EMDASH_DIR"
+pnpm install --frozen-lockfile
+pnpm --filter '@emdash-cms/plugins-site^...' build
+"""
+
+[tasks."plugins-site:start"]
+description = "Start the plugins site (registry UI) on :4330 — called by pitchfork"
+depends = ["plugins-site:install"]
+dir = "{{config_root}}/.src/emdash/apps/plugins-site"
+# :4330, not the default :4321 — that is the host site's port.
+run = "pnpm exec astro dev --port 4330"
+
+[tasks."plugins-site:up"]
+description = "Start the plugins site daemon via pitchfork"
+run = "pitchfork start plugins-site"
+
+[tasks."plugins-site:logs"]
+description = "Follow plugins site logs"
+run = "pitchfork logs plugins-site --follow"

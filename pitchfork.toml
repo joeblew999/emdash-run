@@ -24,3 +24,11 @@ dir        = "."
 auto       = ["stop"]
 retry      = 3
 ready_http = "http://localhost:8788/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
+
+# The registry's web UI (plugins.emdashcms.com). Optional. `mise run plugins-site:up`.
+[daemons.plugins-site]
+run        = "mise run plugins-site:start"
+dir        = "."
+auto       = ["stop"]
+retry      = 3
+ready_http = "http://localhost:4330/"
