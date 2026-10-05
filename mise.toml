@@ -73,6 +73,24 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #   are gone but still cached in the browser → "Authentication failed" on login.
 #   dev-bypass skips passkey auth entirely (DEV mode only) and runs migrations + seed.
 #
+# Updating:
+#   EmDash version    bump EMDASH_VERSION below, then: server:clean → server:build → init → apply
+#   Template content  server:clean → server:build → init → apply  (apply alone does NOT re-copy .src/site)
+#   Local plugin      mise run apply
+#
+# Deploy (Cloudflare):
+#   mise run site:deploy:dry   ← build + validate the Worker bundle (no cloud changes)
+#   mise run site:deploy       ← build + deploy (creds via fnox)
+#   Live: https://emdash-run.gedw99.workers.dev
+#
+# Gotchas:
+#   - A production build (site:build / site:deploy) dirties the dev server's Vite cache
+#     → 500s on admin routes. The build tasks clean up and print a reminder; then: mise run apply
+#   - Astro 7 auto-backgrounds under a non-TTY parent; server:start sets
+#     ASTRO_DEV_BACKGROUND so pitchfork can supervise it.
+#   - Astro binds IPv6-only — readiness is `ready_http` in pitchfork.toml, not a port probe.
+#   - `apply` is idempotent and IS the check: if it exits cleanly, the system works.
+#
 # =============================================================================
 
 # -----------------------------------------------------------------------------
