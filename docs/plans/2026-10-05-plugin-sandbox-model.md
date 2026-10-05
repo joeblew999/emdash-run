@@ -13,9 +13,12 @@ The harness already runs a sandboxed plugin: `config/site.astro.config.mjs` has
 ## Items
 
 - [ ] **Scaffold with the real tooling** — both packages are published (`plugin-cli` 0.13.2, `plugin-test` 0.2.7)
-  - [ ] add `@emdash-cms/plugin-cli` and `@emdash-cms/plugin-test` as devDependencies
-  - [ ] add the scripts: `validate`, `build`, `dev`, `typecheck`, `test`, `bundle`
+  - [x] add `@emdash-cms/plugin-cli` and `@emdash-cms/plugin-test` as devDependencies
+  - [x] add the scripts: `validate`, `build`, `dev`, `typecheck`, `test`, `bundle`
+  - [x] fix `pnpm-workspace.yaml` — it still held the scaffold's placeholder `workerd: set this to true or false`, so **every `pnpm install` failed** with `ERR_PNPM_IGNORED_BUILDS`. Set to `true` (the sandbox test harness needs workerd's binary).
   - [ ] `pnpm run validate && pnpm run typecheck && pnpm run test` all pass
+    - [x] `pnpm run typecheck` passes
+    - [ ] `pnpm run validate` — **blocked by design**: it fails with "No manifest at …/emdash-plugin.jsonc". The toolchain is **sandboxed-only**; it cannot validate a native plugin. So this waits on item 2, and item 2 waits on the decision in item 4.
 - [ ] **Write the manifest** — `emdash-plugin.jsonc`
   - [ ] `slug`, `publisher` (DID), `license`, `author`, `security`, `name`, `keywords`
   - [ ] `capabilities` — only what the code uses (`network:request` if the panel fetches)

@@ -2,3 +2,7 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
   sharp: true
+  # `@emdash-cms/plugin-test` runs the plugin inside EmDash's production sandbox, which
+  # needs workerd's binary. This was left as the scaffold's placeholder ("set this to true
+  # or false"), which made every `pnpm install` fail with ERR_PNPM_IGNORED_BUILDS.
+  workerd: true
