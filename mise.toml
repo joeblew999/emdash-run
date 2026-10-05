@@ -222,9 +222,9 @@ pitchfork stop -a || true
 # No --port/--http readiness flag: Astro binds IPv6-only ([::1]:4321), so a
 # probe on 127.0.0.1:4321 never succeeds and pitchfork would wait forever.
 # Rely on pitchfork's default delay, then on our own dev-bypass poll below.
+# pitchfork waits for ready_http (declared in pitchfork.toml) before returning.
 pitchfork start emdash
-# pitchfork's default delay returns before miniflare finishes booting, so poll
-# dev-bypass until 200 (this also runs migrations and applies the seed).
+# Still poll dev-bypass: the first request runs migrations and applies the seed.
 echo "⏳ waiting for the site to be ready..."
 for i in $(seq 1 60); do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:4321/_emdash/api/setup/dev-bypass) || true
@@ -232,6 +232,8 @@ for i in $(seq 1 60); do
   sleep 1
 done
 mise run mcp:token-admin
+echo "→ admin:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+echo "→ mcp:    http://localhost:4321/_emdash/api/mcp (Bearer: run/token-admin.txt)"
 echo "✓ apply done"
 """
 

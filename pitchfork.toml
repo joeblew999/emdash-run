@@ -3,11 +3,15 @@
 # Host site — an official EmDash template copied into .src/site (see ADR-0007).
 # Plugin discovery uses the hosted registry (registry.emdashcms.com).
 [daemons.emdash]
-run           = "mise run server:start"
-dir           = "."
-auto          = ["start", "stop"]
-retry         = 3
+run        = "mise run server:start"
+dir        = "."
+auto       = ["start", "stop"]
+retry      = 3
+# Readiness: Astro binds IPv6-only ([::1]:4321), so an HTTP check on localhost works
+# where a 127.0.0.1 port probe would not. Declared here so `pitchfork start` waits
+# for the site to actually serve before returning.
+ready_http = "http://localhost:4321/"
 
-[daemons.emdash.hooks]
-on_ready = "echo '✓ site ready → http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'"
-on_fail  = "echo '✗ site failed — run: mise run server:logs'"
+# NOTE: lifecycle hooks (on_ready/on_fail/on_stop) only run under pitchfork's
+# supervisor / shell-hook flow, not `pitchfork start` — so the URLs are printed by
+# `mise run apply` instead of here.
