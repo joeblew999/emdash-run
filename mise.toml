@@ -1,6 +1,6 @@
 # $schema = "https://mise.jdx.dev/schema/mise.json"
 #
-# emdash-run — local EmDash harness. See docs/adr/0007-emdash-1.1-templates-src-rework.md.
+# emdash-run — local EmDash harness. See docs/plans/done/0007-emdash-1.1-templates-src-rework.md.
 #
 # Model: the host site is an official EmDash template (starter-cloudflare) copied
 # into .src/site. It consumes the *published* `emdash` npm package.
@@ -23,7 +23,7 @@ pitchfork      = "2.29.0"      # process manager for the daemons
 # Project root (where this mise.toml lives)
 ROOT            = "{{config_root}}"
 
-# Gitignored working checkouts (see ADR-0007)
+# Gitignored working checkouts (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md)
 SRC_DIR         = "{{config_root}}/.src"
 TEMPLATES_DIR   = "{{config_root}}/.src/templates"   # clone of emdash-cms/templates
 SITE_DIR        = "{{config_root}}/.src/site"        # copy of $TEMPLATE — the host site (:4321)
@@ -353,16 +353,12 @@ description = "Run the site's emdash CLI against the local server — e.g: mise 
 run = "node \"$ROOT/scripts/emdash.mjs\""
 
 [tasks."plugin:catalog"]
-description = "Discover EmDash plugins on GitHub → docs/plugin-catalog/"
+description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
 run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
 
 [tasks."plugin:catalog-dry"]
-description = "Discover plugins, print JSON to stdout (no files written)"
+description = "Print the registry catalog to stdout (no files written)"
 run = "node \"$ROOT/scripts/plugin.mjs\" catalog-dry"
-
-[tasks."plugin:catalog-full"]
-description = "Discover plugins + fetch README excerpts (slower)"
-run = "node \"$ROOT/scripts/plugin.mjs\" catalog-full"
 
 # -----------------------------------------------------------------------------
 # REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)

@@ -1,0 +1,676 @@
+[
+	{
+		"slug": "ai-alt-text",
+		"did": "did:plc:tc7kmqcnt5ad4pumbxzxduap",
+		"handle": "lasymphonieagency.com",
+		"name": "AI Alt Text",
+		"description": "Writes alt text for images with Claude, in each entry's language, building on your media library.",
+		"authors": [
+			"La Symphonie"
+		],
+		"license": "MIT",
+		"keywords": [
+			"accessibility",
+			"alt text",
+			"images",
+			"ai",
+			"wcag"
+		],
+		"latestVersion": "0.2.0"
+	},
+	{
+		"slug": "ai-search",
+		"did": "did:plc:n4mihg5idgr5ne4jigcmbh4k",
+		"handle": "shahriar-robbani.bsky.social",
+		"name": "ai-search",
+		"description": "AI search + chat powered by Cloudflare AI Search. Indexes content with built-in storage, injects UI snippets. Sandbox build uses REST APIs.",
+		"authors": [
+			"The Weekend Projects"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "0.5.0"
+	},
+	{
+		"slug": "analytics",
+		"did": "did:plc:iucwrgdd464ddkranaa6ux3l",
+		"handle": "eisbachcode.de",
+		"name": "Analytics",
+		"description": "Cloudflare Web Analytics on the EmDash dashboard and next to your content: traffic, top pages, referrers, countries and views per entry.",
+		"authors": [
+			"Eisbachcode"
+		],
+		"license": "MIT",
+		"keywords": [
+			"analytics",
+			"cloudflare",
+			"dashboard",
+			"widget",
+			"content"
+		],
+		"latestVersion": "0.2.2"
+	},
+	{
+		"slug": "atproto",
+		"did": "did:plc:xyraubanwc5fwemkduw3upi6",
+		"handle": "plugins.emdashcms.com",
+		"name": "AT Protocol Syndication",
+		"description": "Syndicates published content to the AT Protocol network via standard.site lexicons, with optional Bluesky cross-posting.",
+		"authors": [
+			"Matt Kane"
+		],
+		"license": "MIT",
+		"keywords": [
+			"atproto",
+			"bluesky",
+			"syndication",
+			"standard.site"
+		],
+		"latestVersion": "0.2.2"
+	},
+	{
+		"slug": "audit-log",
+		"did": "did:plc:xyraubanwc5fwemkduw3upi6",
+		"handle": "plugins.emdashcms.com",
+		"name": "audit-log",
+		"description": "Tracks content and media changes (create / update / delete) for compliance and debugging.",
+		"authors": [
+			"Matt Kane"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "0.2.2"
+	},
+	{
+		"slug": "auto-unpublish-posts",
+		"did": "did:plc:cmy7eqorxz2blqebuhw2qp7u",
+		"handle": "peachfinthemes.com",
+		"name": "Auto Unpublish Posts",
+		"description": "Unpublish, trash or retag any EmDash post on a date. Collection defaults, email alerts and a run log; Pro adds rules and bulk.",
+		"authors": [
+			"Peachfin Themes"
+		],
+		"license": "Elastic-2.0",
+		"keywords": [
+			"auto unpublish",
+			"expire posts",
+			"post expiration",
+			"schedule",
+			"automation"
+		],
+		"latestVersion": "1.0.0"
+	},
+	{
+		"slug": "bulletin",
+		"did": "did:plc:wozauaevxsfzdcdxdfwogyg4",
+		"handle": "meekmedia.bsky.social",
+		"name": "Bulletin",
+		"description": "Newsletter subscribers with double opt-in, and one-click post-to-email campaigns. Privacy-first, no third-party service.",
+		"authors": [
+			"Manish Sharma"
+		],
+		"license": "MIT",
+		"keywords": [
+			"newsletter",
+			"subscribers",
+			"email",
+			"campaigns",
+			"double-opt-in"
+		],
+		"latestVersion": "0.1.1"
+	},
+	{
+		"slug": "emdash-cf-email-sending",
+		"did": "did:plc:5htva5ewwisu7gfjou2o4mee",
+		"handle": "cfreear.bsky.social",
+		"name": "Cloudflare Email Sending",
+		"description": "Cloudflare Email Sending support for EmDash CMS",
+		"authors": [
+			"Christian Freear"
+		],
+		"license": "MIT",
+		"keywords": [
+			"email",
+			"cloudflare"
+		],
+		"latestVersion": "0.1.2"
+	},
+	{
+		"slug": "comment-notify",
+		"did": "did:plc:tc7kmqcnt5ad4pumbxzxduap",
+		"handle": "lasymphonieagency.com",
+		"name": "Comment Notify",
+		"description": "Emails site admins when a new comment is posted, including comments held for moderation.",
+		"authors": [
+			"La Symphonie"
+		],
+		"license": "MIT",
+		"keywords": [
+			"comments",
+			"moderation",
+			"email",
+			"notifications"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "comment-spam-protection",
+		"did": "did:plc:cmy7eqorxz2blqebuhw2qp7u",
+		"handle": "peachfinthemes.com",
+		"name": "Comment Spam Protection",
+		"description": "Stop comment spam in EmDash with local rules: blocked words, links, language, duplicates and rate limits, with a log of why.",
+		"authors": [
+			"Peachfin Themes"
+		],
+		"license": "Elastic-2.0",
+		"keywords": [
+			"comment spam",
+			"anti-spam",
+			"comments",
+			"moderation",
+			"spam filter"
+		],
+		"latestVersion": "1.0.0"
+	},
+	{
+		"slug": "contact-forms",
+		"did": "did:plc:neov22wblqftd3653r6cl2gl",
+		"handle": "masonjames.com",
+		"name": "Contact Forms",
+		"description": "Single-page contact forms with a field builder, submission inbox, CSV export and notification emails.",
+		"authors": [
+			"Mason James"
+		],
+		"license": "MIT",
+		"keywords": [
+			"forms",
+			"contact",
+			"submissions",
+			"email",
+			"emdash"
+		],
+		"latestVersion": "0.2.0"
+	},
+	{
+		"slug": "contact-form",
+		"did": "did:plc:iilkrygvrmyedxyfqnwmnfe5",
+		"handle": "harsh-pranshtech.bsky.social",
+		"name": "contact-form",
+		"description": "Contact-form submissions store for EmDash CMS: a public submit endpoint, a Block Kit admin page, and a dashboard widget.",
+		"authors": [
+			"Harsh Modi"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "1.0.0"
+	},
+	{
+		"slug": "crosslink",
+		"did": "did:plc:wozauaevxsfzdcdxdfwogyg4",
+		"handle": "meekmedia.bsky.social",
+		"name": "Crosslink",
+		"description": "Internal link suggestions while you write, orphan page reports, and a related-posts JSON route for your theme. No external services.",
+		"authors": [
+			"Manish Sharma"
+		],
+		"license": "MIT",
+		"keywords": [
+			"internal-links",
+			"related-posts",
+			"seo",
+			"orphan-pages",
+			"linking"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "discord-notifier",
+		"did": "did:plc:fgqd25zioc5avtcj3affqoea",
+		"handle": "raghuchinnannan.bsky.social",
+		"name": "Discord Notifier",
+		"description": "Discord alerts for publishes, comments, media and form submissions, with Pro routing and digests.",
+		"authors": [
+			"Raghu Chinnannan"
+		],
+		"license": "MIT",
+		"keywords": [
+			"discord",
+			"notifications",
+			"webhook",
+			"comments",
+			"forms"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "dynamic-qr",
+		"did": "did:plc:suw5qc22clrlpslfo6qapiu4",
+		"handle": "nookeshk.bsky.social",
+		"name": "Dynamic QR",
+		"description": "Dynamic QR codes with scan analytics and customizable styling for EmDash.",
+		"authors": [
+			"Nookesh"
+		],
+		"license": "MIT",
+		"keywords": [
+			"qr",
+			"qr-code",
+			"analytics",
+			"redirect",
+			"tracking"
+		],
+		"latestVersion": "0.2.0"
+	},
+	{
+		"slug": "preflight",
+		"did": "did:plc:y5pxyyqttzpf7bo4v6lhjsij",
+		"handle": "jammaru.com",
+		"name": "EmDash Preflight",
+		"description": "Deterministic publishing policies for every human, API, MCP, agent, and scheduled publish.",
+		"authors": [
+			"jammaru"
+		],
+		"license": "MIT",
+		"keywords": [
+			"publishing",
+			"policy",
+			"validation",
+			"quality",
+			"agent"
+		],
+		"latestVersion": "0.1.1"
+	},
+	{
+		"slug": "emdash-to-buffer",
+		"did": "did:plc:juoj6qmxkdbbino76mobq2on",
+		"handle": "justy.dev",
+		"name": "EmDash to Buffer",
+		"description": "Queue newly published EmDash posts to Buffer channels.",
+		"authors": [
+			"Justin Thompson"
+		],
+		"license": "MIT",
+		"keywords": [
+			"buffer",
+			"syndication",
+			"social"
+		],
+		"latestVersion": "1.1.1"
+	},
+	{
+		"slug": "emdash-to-buffer-plus",
+		"did": "did:plc:efxj3t72atnke555mnnmywju",
+		"handle": "shane.bsky.shas.am",
+		"name": "EmDash to Buffer Plus",
+		"description": "Share new entries to Buffer, fitted to each network, with delivery tracking, an engagement dashboard, an editor panel and MCP tools.",
+		"authors": [
+			"Shane Lord"
+		],
+		"license": "MIT",
+		"keywords": [
+			"buffer",
+			"social",
+			"syndication",
+			"sharing",
+			"publishing"
+		],
+		"latestVersion": "0.1.4"
+	},
+	{
+		"slug": "eventual",
+		"did": "did:plc:g2hei4vcwndrdl3gdbb6np6c",
+		"handle": "vermeulen.solutions",
+		"name": "Eventual",
+		"description": "Manage events, venues, and public feeds in EmDash with MCP tools and an Astro example offering seven visitor views.",
+		"authors": [
+			"Jaap Vermeulen"
+		],
+		"license": "MIT",
+		"keywords": [
+			"events",
+			"calendar",
+			"event management",
+			"iCalendar",
+			"venues"
+		],
+		"latestVersion": "0.10.0"
+	},
+	{
+		"slug": "forms",
+		"did": "did:plc:zfm2t2bsxltpu44kc7g3eyn4",
+		"handle": "netdollar.dev",
+		"name": "Forms",
+		"description": "Contact forms, surveys and multi-step forms for EmDash with conditional logic, entry management, CSV export and email notifications.",
+		"authors": [
+			"Charl Kruger"
+		],
+		"license": "MIT",
+		"keywords": [
+			"forms",
+			"contact form",
+			"form builder",
+			"surveys",
+			"submissions"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "forward-email",
+		"did": "did:plc:nna4pfpnegfsgaym44xqhawf",
+		"handle": "numoteq.com",
+		"name": "Forward Email",
+		"description": "Delivers EmDash transactional email through the Forward Email API.",
+		"authors": [
+			"NUMOTEQ s.r.o."
+		],
+		"license": "MIT",
+		"keywords": [
+			"email",
+			"transactional",
+			"forward-email"
+		],
+		"latestVersion": "0.1.1"
+	},
+	{
+		"slug": "freeform",
+		"did": "did:plc:tsp7az5h6qsqjzqsgz37wonx",
+		"handle": "solspace.com",
+		"name": "Freeform",
+		"description": "Build forms, collect submissions, and send notifications directly from EmDash.",
+		"authors": [
+			"Solspace"
+		],
+		"license": "MIT",
+		"keywords": [
+			"forms",
+			"submissions",
+			"notifications",
+			"webhooks",
+			"emdash"
+		],
+		"latestVersion": "0.1.3"
+	},
+	{
+		"slug": "image-generator",
+		"did": "did:plc:sigh2ltqrtidc6jbtyyepq5q",
+		"handle": "sneaps.io",
+		"name": "Image Generator",
+		"description": "Generate featured images for your entries with AI, one by one or in bulk. OpenAI, OpenRouter and Cloudflare Workers AI.",
+		"authors": [
+			"Benoît Eveillard"
+		],
+		"license": "MIT",
+		"keywords": [
+			"ai",
+			"image-generation",
+			"featured-image",
+			"bulk",
+			"media"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "image-optimizer",
+		"did": "did:plc:x4pa534rsfytqfba2jrzs3zg",
+		"handle": "verco.app",
+		"name": "Image optimizer",
+		"description": "Finds images in the media library that could be smaller. Read-only for now: safe in-place optimization needs EmDash support.",
+		"authors": [
+			"Verco"
+		],
+		"license": "MIT",
+		"keywords": [
+			"images",
+			"media",
+			"optimization",
+			"performance",
+			"report"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "linguadash",
+		"did": "did:plc:3bsmtjuqmxef56ezy4m52azr",
+		"handle": "swiss.ky",
+		"name": "LinguaDash",
+		"description": "Translate EmDash content and SEO fields with DeepL, OpenAI or Cloudflare AI, and see which entries are missing, outdated or need review.",
+		"authors": [
+			"swissky"
+		],
+		"license": "MIT",
+		"keywords": [
+			"translation",
+			"multilingual",
+			"i18n",
+			"deepl",
+			"seo"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "link-guardian",
+		"did": "did:plc:wozauaevxsfzdcdxdfwogyg4",
+		"handle": "meekmedia.bsky.social",
+		"name": "Link Guardian",
+		"description": "Finds broken links and links that only work through a redirect, flags stale links after slug changes, and manages redirects.",
+		"authors": [
+			"Manish Sharma"
+		],
+		"license": "MIT",
+		"keywords": [
+			"broken-links",
+			"redirects",
+			"seo",
+			"404",
+			"link-checker"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "marketplace-test",
+		"did": "did:plc:xyraubanwc5fwemkduw3upi6",
+		"handle": "plugins.emdashcms.com",
+		"name": "marketplace-test",
+		"description": "Maximal sandboxed plugin fixture for registry, consent, runtime, and admin testing.",
+		"authors": [
+			"EmDash"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "0.2.1"
+	},
+	{
+		"slug": "preflight",
+		"did": "did:plc:wozauaevxsfzdcdxdfwogyg4",
+		"handle": "meekmedia.bsky.social",
+		"name": "Preflight",
+		"description": "Pre-publish checklist. Blocks or warns on short posts, missing excerpts, images without alt text, placeholder text, and more.",
+		"authors": [
+			"Manish Sharma"
+		],
+		"license": "MIT",
+		"keywords": [
+			"checklist",
+			"editorial",
+			"publishing",
+			"quality",
+			"workflow"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "propcore",
+		"did": "did:plc:g2dq3sifwffisqt6522ifly2",
+		"handle": "propcore.ai",
+		"name": "Propcore catalog",
+		"description": "Projects, units and live availability from your Propcore workspace, for your EmDash site.",
+		"authors": [
+			"Propcore"
+		],
+		"license": "MIT",
+		"keywords": [
+			"real-estate",
+			"property",
+			"catalog",
+			"propcore"
+		],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "publish-check",
+		"did": "did:plc:p5t4ri3u4rr24wglznjsb5uv",
+		"handle": "emdashplugins.bsky.social",
+		"name": "Publish Check",
+		"description": "Checks before publishing or scheduling: titles, descriptions, headings, alt text, links, HTML blocks and HTTPS embeds.",
+		"authors": [
+			"emdashplugins.nl"
+		],
+		"license": "MIT",
+		"keywords": [
+			"seo",
+			"publishing",
+			"content-policy",
+			"accessibility",
+			"editorial"
+		],
+		"latestVersion": "0.3.0"
+	},
+	{
+		"slug": "resend",
+		"did": "did:plc:53aijmlljtpzteewxptwa2xm",
+		"handle": "msale.com",
+		"name": "Resend",
+		"description": "Deliver EmDash transactional email (magic links, invites, recovery) through the Resend API.",
+		"authors": [
+			"mSales Norway AS"
+		],
+		"license": "MIT",
+		"keywords": [
+			"email",
+			"transactional",
+			"resend",
+			"transport"
+		],
+		"latestVersion": "0.1.1"
+	},
+	{
+		"slug": "seo-suite",
+		"did": "did:plc:suw5qc22clrlpslfo6qapiu4",
+		"handle": "nookeshk.bsky.social",
+		"name": "SEO Suite",
+		"description": "Focus-keyphrase analysis, readability, JSON-LD, redirects, and SEO health for EmDash.",
+		"authors": [
+			"SEO Suite Maintainers"
+		],
+		"license": "MIT",
+		"keywords": [
+			"seo",
+			"json-ld",
+			"redirects",
+			"readability",
+			"focus-keyphrase"
+		],
+		"latestVersion": "0.2.0"
+	},
+	{
+		"slug": "seo-guard",
+		"did": "did:plc:lupfqfew77umm5bup3yyrmni",
+		"handle": "squatchpresscms.bsky.social",
+		"name": "seo-guard",
+		"description": "Blocks publishing posts that fail SEO basics (title and description length, featured image, slug) and reports what needs fixing.",
+		"authors": [
+			"Eclipse Digital"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "seo-guard",
+		"did": "did:plc:u6uomfqtinodqei7xyl4ewe3",
+		"handle": "eclipsedigi.bsky.social",
+		"name": "seo-guard",
+		"description": "Blocks publishing posts that fail SEO basics (title and description length, featured image, slug) and reports what needs fixing.",
+		"authors": [
+			"Eclipse Digital"
+		],
+		"license": "MIT",
+		"keywords": [],
+		"latestVersion": "0.1.0"
+	},
+	{
+		"slug": "simple-history",
+		"did": "did:plc:neov22wblqftd3653r6cl2gl",
+		"handle": "masonjames.com",
+		"name": "Simple History",
+		"description": "Lightweight activity history for EmDash CMS content changes.",
+		"authors": [
+			"Mason James"
+		],
+		"license": "MIT",
+		"keywords": [
+			"history",
+			"audit",
+			"activity",
+			"content",
+			"emdash"
+		],
+		"latestVersion": "0.2.0"
+	},
+	{
+		"slug": "emdash-smtp",
+		"did": "did:plc:neov22wblqftd3653r6cl2gl",
+		"handle": "masonjames.com",
+		"name": "SMTP",
+		"description": "Transactional email providers, sender settings, fallback delivery and private delivery logs for EmDash.",
+		"authors": [
+			"Mason James"
+		],
+		"license": "MIT",
+		"keywords": [
+			"email",
+			"smtp",
+			"transactional",
+			"providers",
+			"emdash"
+		],
+		"latestVersion": "0.4.1"
+	},
+	{
+		"slug": "emdash-umami-analytics",
+		"did": "did:plc:efxj3t72atnke555mnnmywju",
+		"handle": "shane.bsky.shas.am",
+		"name": "Umami Analytics",
+		"description": "Umami analytics on the EmDash dashboard and next to your content: traffic, top pages, referrers, countries and views per entry.",
+		"authors": [
+			"Shane Lord"
+		],
+		"license": "MIT",
+		"keywords": [
+			"analytics",
+			"umami",
+			"dashboard",
+			"widget",
+			"content"
+		],
+		"latestVersion": "0.1.2"
+	},
+	{
+		"slug": "webhook-notifier",
+		"did": "did:plc:xyraubanwc5fwemkduw3upi6",
+		"handle": "plugins.emdashcms.com",
+		"name": "Webhook Notifier",
+		"description": "Posts to user-configured external URLs when content or media changes.",
+		"authors": [
+			"Matt Kane"
+		],
+		"license": "MIT",
+		"keywords": [
+			"webhooks",
+			"notifications",
+			"automation",
+			"integrations"
+		],
+		"latestVersion": "0.2.2"
+	}
+]

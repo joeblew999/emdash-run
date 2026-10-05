@@ -5,7 +5,7 @@ schema (projects → assemblies → parts).
 
 The host site is an official EmDash template — **`starter-cloudflare`** — copied into
 `.src/site` and run against the published `emdash` npm package. There is no emdash
-monorepo clone. See [ADR-0007](docs/adr/0007-emdash-1.1-templates-src-rework.md).
+monorepo clone. See [ADR-0007](docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
 
 Process manager: [pitchfork](https://pitchfork.jdx.dev/) · task runner: [mise](https://mise.jdx.dev/).
 
@@ -52,6 +52,6 @@ Provisioned resources (recorded in `config/site.wrangler.jsonc`):
 
 ## Docs
 
-- `docs/adr/` — decisions; start with [ADR-0007](docs/adr/0007-emdash-1.1-templates-src-rework.md)
+- `docs/plans/` — active plans · `docs/plans/done/` — closed ones (incl. the former ADRs, `000N-`)
 - `docs/plugin.md` — the plat-trunk plugin and its geometry panel in the Parts editor
 - `docs/big-picture.md`, `docs/exploring.md` — why this exists, and what was explored

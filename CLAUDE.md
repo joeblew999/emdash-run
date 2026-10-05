@@ -18,7 +18,7 @@ is orientation only.
   config, relinks plugins, restarts the site, mints the MCP token. It is *not* proof of
   correctness: for user-facing changes, also verify the actual behaviour (admin UI, MCP
   call, HTTP response).
-- Read `docs/adr/` before structural changes.
+- Read `docs/plans/` before structural changes (closed plans in `docs/plans/done/`, including the former ADRs).
 - EmDash API questions (hooks, schema, seed, CLI, plugin authoring): read the skills
   shipped with the site at `.claude/skills/emdash/` — `building-emdash-site`,
   `creating-plugins`, `emdash-cli`. The site is an official template, not the monorepo.

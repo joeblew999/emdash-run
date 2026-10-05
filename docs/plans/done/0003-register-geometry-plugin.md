@@ -7,6 +7,10 @@ date: "2026-04-02"
 
 # ADR-0003 — Register the geometry preview plugin in astro.config.mjs
 
+> **Closed 2026-10-05.** Archived from `docs/adr/` when ADRs were folded into plans —
+> every decision here is implemented or superseded. Kept for history; see
+> `docs/plans/README.md`. References below are historical.
+
 > **Implemented (2026-10-05).** `@plat-trunk/emdash-plugin` is a **native** plugin
 > registered in `config/site.astro.config.mjs` via `platTrunkPlugin()`. The geometry
 > preview is a **content editor panel** (`contentEditorPanels`, `collections: ["parts"]`)

@@ -11,12 +11,12 @@ Archived here because every item is finished; the active plan is one level up.
 
 - [x] **Host the official template.** `.src/site` is a copy of `starter-cloudflare`,
       running against the published `emdash` npm package. No monorepo clone on the
-      default path. See ADR-0007.
+      default path. See docs/plans/done/0007-emdash-1.1-templates-src-rework.md.
 - [x] **Registry, not marketplace.** `emdash@1.1.0` deprecated the Marketplace; discovery
       and installs go through the plugin registry. No `marketplace:` option, no `:8787`
       worker.
 - [x] **Geometry preview in the Parts editor.** Native `@plat-trunk/emdash-plugin` with a
-      `contentEditorPanels` panel for the `parts` collection (ADR-0003). Verified in the
+      `contentEditorPanels` panel for the `parts` collection (docs/plans/done/0003-register-geometry-plugin.md). Verified in the
       admin: `Housing Body` renders Vertices 5124 / Faces 2688 / bbox 150 × 110 × 65 /
       Watertight No / Validation warn.
 - [x] **Seed validation.** EmDash silently skips an invalid seed, so `config:apply` runs

@@ -7,6 +7,10 @@ date: "2026-04-02"
 
 # ADR-0004 — MCP token is invalidated after teardown — Claude Code restart required
 
+> **Closed 2026-10-05.** Archived from `docs/adr/` when ADRs were folded into plans —
+> every decision here is implemented or superseded. Kept for history; see
+> `docs/plans/README.md`. References below are historical.
+
 ## Status
 
 Accepted

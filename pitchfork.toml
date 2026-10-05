@@ -1,6 +1,6 @@
 # $schema = "https://pitchfork.jdx.dev/schema.json"
 
-# Host site — an official EmDash template copied into .src/site (see ADR-0007).
+# Host site — an official EmDash template copied into .src/site (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
 # Plugin discovery uses the hosted registry (registry.emdashcms.com).
 [daemons.emdash]
 run        = "mise run site:dev"

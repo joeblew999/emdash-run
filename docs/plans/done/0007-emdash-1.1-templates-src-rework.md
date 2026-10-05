@@ -7,6 +7,10 @@ date: "2026-10-05"
 
 # ADR-0007 — Rework onto emdash@1.1.0 using `.src/` and official templates
 
+> **Closed 2026-10-05.** Archived from `docs/adr/` when ADRs were folded into plans —
+> every decision here is implemented or superseded. Kept for history; see
+> `docs/plans/README.md`. References below are historical.
+
 ## Status
 
 Accepted. Supersedes [0006](0006-templates-src-clone-and-run.md). Revises

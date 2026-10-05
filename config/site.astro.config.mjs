@@ -3,7 +3,7 @@
 // This file lives in config/ but is COPIED into .src/site/ by `config:apply`.
 // Imports resolve from that location via pnpm (published packages, no monorepo).
 //
-// The host site is the official starter-cloudflare template (see ADR-0007).
+// The host site is the official starter-cloudflare template (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
 import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
 import { d1, r2, sandbox } from "@emdash-cms/cloudflare";

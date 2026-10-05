@@ -7,6 +7,10 @@ date: "2026-04-02"
 
 # ADR-0002 — Commit CAD schema as seed to eliminate server:setup from rebuild flow
 
+> **Closed 2026-10-05.** Archived from `docs/adr/` when ADRs were folded into plans —
+> every decision here is implemented or superseded. Kept for history; see
+> `docs/plans/README.md`. References below are historical.
+
 > **Superseded by [ADR-0007](0007-emdash-1.1-templates-src-rework.md) (2026-10-05).**
 > `server:setup`, `server:seed`, `HOST_DIR` and `config/seed.json` no longer exist.
 > The seed is now `config/cad.seed.json`, merged into the site seed by
