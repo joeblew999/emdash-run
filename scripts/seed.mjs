@@ -27,6 +27,7 @@ import { rmSync } from "node:fs";
 import { env, run, sh } from "./lib/exec.mjs";
 
 const SITE_DIR = env("SITE_DIR");
+const SITE_URL = env("SITE_URL");
 const sub = process.argv[2];
 
 if (sub === "validate") {
@@ -38,7 +39,15 @@ if (sub === "validate") {
 
 	// repo:apply restarts the site and polls dev-bypass, which migrates and re-applies the seed.
 	run("mise", ["run", "repo:apply"]);
-	console.log("✓ seed applied — the admin will show the new content");
+
+	// That poll is a server-side POST, so it cannot set the BROWSER's session cookie. The D1
+	// it just replaced held the old sessions, so any open admin tab is now signed out. Say
+	// so, and hand over the URL that signs in — otherwise the first thing you see after a
+	// successful seed is a login page, and it reads as a failure.
+	console.log("✓ seed applied");
+	console.log("  the D1 was replaced, so your admin session is gone. Sign in again at:");
+	console.log(`  ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);
+	console.log("  then: mise run repo:verify");
 } else {
 	console.error(`seed: unknown subcommand "${sub}" (validate|apply)`);
 	process.exit(1);
