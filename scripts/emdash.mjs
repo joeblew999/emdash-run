@@ -2,20 +2,32 @@
 /**
  * emdash.mjs
  *
- * Appends --url after user args so the CLI parses them correctly.
- * The CLI auto-uses dev-bypass for localhost — no token needed.
+ * Runs the emdash CLI that ships with the host site (.src/site/node_modules),
+ * pointed at the local dev server. Appends --url after user args so the CLI
+ * parses them correctly.
  *
  * Usage: node scripts/emdash.mjs content list projects
  */
 
-import { spawn } from "child_process";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const CLI = join(ROOT, "emdash/packages/core/dist/cli/index.mjs");
+const SITE_DIR = join(ROOT, ".src", "site");
+const CLI = join(SITE_DIR, "node_modules", "emdash", "dist", "cli", "index.mjs");
+
+if (!existsSync(CLI)) {
+	console.error(`emdash CLI not found at ${CLI}`);
+	console.error("Run: mise run server:build");
+	process.exit(1);
+}
 
 const args = [...process.argv.slice(2), "--url", "http://localhost:4321"];
 
-const child = spawn(process.execPath, [CLI, ...args], { stdio: "inherit" });
+const child = spawn(process.execPath, [CLI, ...args], {
+	stdio: "inherit",
+	cwd: SITE_DIR,
+});
 child.on("exit", (code) => process.exit(code ?? 0));

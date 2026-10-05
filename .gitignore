@@ -3,12 +3,16 @@
 *.db
 *.db-shm
 *.db-wal
-emdash/
+# Gitignored working checkouts (see ADR-0007): templates + host site + emdash monorepo
+.src/
 node_modules/
 .env
 .playwright-mcp/
 .claude/settings.local.json
-.agents/skills/emdash/
-.claude/skills/emdash/
+# Skills are installed by `skills add` and reproducible from skills-lock.json — do not
+# vendor them. Whole dirs: the CLI writes a shared .agents/skills store plus per-agent
+# symlinks, and nothing in there is useful to commit.
+/.agents/skills/
+/.claude/skills/
 .crush/
 .goose/

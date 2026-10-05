@@ -1,0 +1,50 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "emdash-run",
+	"main": "./src/worker.ts",
+	"compatibility_date": "2026-02-24",
+	"compatibility_flags": ["nodejs_compat"],
+
+	// D1 database binding — local dev uses miniflare state under .wrangler/state.
+	// Add a real "database_id" when you first deploy (see TODO: Cloudflare deploy).
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "emdash-run",
+		},
+	],
+
+	// R2 bucket for media storage
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "emdash-run-media",
+		},
+	],
+
+	// Worker Loader — required by the plugin sandbox runner (sandbox()).
+	// Sandboxed plugins run as Dynamic Workers through this binding.
+	"worker_loaders": [
+		{
+			"binding": "LOADER",
+		},
+	],
+
+	// KV for session storage @astrojs/cloudflare sessions.
+	// Without a KV namespace, sessions fall back to in-memory — Chrome flukes through,
+	// Safari drops them. Keep this even though the stock template omits it.
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "SESSION",
+		},
+	],
+
+	// General maintenance cron trigger (matches the template).
+	"triggers": {
+		"crons": ["* * * * *"],
+	},
+
+	// Plugin discovery uses the hosted registry (registry.emdashcms.com), enabled by
+	// emdash's `sandboxRunner`; no service binding is needed.
+}

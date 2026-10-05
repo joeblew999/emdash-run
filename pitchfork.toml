@@ -1,25 +1,13 @@
 # $schema = "https://pitchfork.jdx.dev/schema.json"
 
+# Host site — an official EmDash template copied into .src/site (see ADR-0007).
+# Plugin discovery uses the hosted registry (registry.emdashcms.com).
 [daemons.emdash]
 run           = "mise run server:start"
 dir           = "."
 auto          = ["start", "stop"]
 retry         = 3
-expected_port = [4321]
-ready_output  = "localhost:4321"
 
 [daemons.emdash.hooks]
-on_ready = "echo '✓ emdash ready → http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'"
-on_fail  = "echo '✗ emdash failed — run: mise run server:logs'"
-
-[daemons.marketplace]
-run           = "mise run marketplace:start"
-dir           = "."
-auto          = ["start", "stop"]
-retry         = 3
-expected_port = [8787]
-ready_output  = "localhost:8787"
-
-[daemons.marketplace.hooks]
-on_ready = "echo '✓ marketplace ready → http://localhost:8787/health  |  http://localhost:8787/api/v1/plugins'"
-on_fail  = "echo '✗ marketplace failed — run: mise run marketplace:logs'"
+on_ready = "echo '✓ site ready → http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'"
+on_fail  = "echo '✗ site failed — run: mise run server:logs'"
