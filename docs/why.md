@@ -72,8 +72,15 @@ nothing else, with no custom auth to build. See [`auth.md`](auth.md).
 
 - The unified MCP surface — content *and* geometry as one tool set for agents — has not
   been started.
-- The Geometry panel renders stored values; it does not yet fetch live stats from the
-  geometry worker.
+- The Geometry panel renders stored values, and those values are **illustrative**: the seed's
+  `geometry_meta` (vertices, faces, watertight, volume) has no source, and its `model` paths
+  (`cad/parts/mp-002.step`) exist in no bucket. The real plat-trunk geometry *does* exist — in
+  the `cad-documents` bucket, as `models/<id>/{manifest,scene}.json` plus an Automerge binary —
+  but nothing in this repo reads it yet. There is no join between a `parts` entry and a
+  `models/<id>` document.
+- **The geometry worker is unverified.** Every doc that names it points at
+  `cad.ubuntusoftware.net`, which has no DNS record; the domain `ubuntusoftware.net` resolves,
+  that subdomain does not. So the middle box in the diagram above is a plan, not a deployment.
 
 What is left lives in [`plans/`](plans/); what is finished is in
 [`plans/done/`](plans/done/).
