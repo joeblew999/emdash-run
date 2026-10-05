@@ -1,7 +1,8 @@
 # 2026-10-05 — Adopt the sandboxed plugin model
 
-**Status:** active — **2 of 8 done** (items 2 and 4 are close; both are blocked only on
-a publisher DID and on writing the comparison)
+**Status:** active — **2 of 8 top-level items done** (items 2 and 4 carry done sub-items but
+stay open: item 2 needs a publisher DID, and item 4 needs that DID, the `fields` truncation fix,
+and the written comparison)
 
 `plugins/plat-trunk` is a **native** plugin: the host imports it and it renders a React panel
 directly. Published plugins are **sandboxed** — a manifest declaring what they may do, plus a
@@ -64,7 +65,11 @@ plugin sweep became generic, at which point one of them broke `repo:apply`.
   - [x] register it in `config/site.astro.config.mjs` under `sandboxed: []`, leaving the native one in `plugins: []` — **verified**: the dev server logs `Loaded sandboxed plugin plat-trunk-sandboxed:0.1.0 with capabilities: [content:read]` and the site starts.
   - [x] implement the same geometry panel as a sandbox route (`admin.editorPanels` → the private `editor/geometry` route returning Block Kit), reading the saved entry through capability-gated `ctx.content` and the host-attested `routeCtx.ui.entry`
   - [x] `pnpm run validate && pnpm run typecheck && pnpm run test` pass in the new plugin — 2 tests, run through EmDash's production sandbox wrapper
-  - [x] **both panels appear on the same Part in the real admin** — the native `<dl>` expanded with the seeded values (Part number `HB-001`, Vertices `5124`, … Model `cad/parts/hb-001.step`) and the sandboxed panel present alongside it as a collapsed `Geometry` panel on the same entry. That matches the documented behaviour: sandboxed panels start collapsed and call their private route only when opened.
+  - [x] **both panels appear on the same Part in the real admin** — the native `<dl>` and the
+    sandboxed `Geometry` panel on the same entry, with the sandboxed one starting collapsed and
+    calling its private route only when opened, as documented. (The values quoted here used to be
+    the seed's old fabricated ones — `HB-001`, `Vertices 5124`, `cad/parts/hb-001.step` — which no
+    longer exist; the real, verified values are in the visual-verification item below.)
   - [ ] replace the placeholder publisher DID (`did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID`) with a real one before any release
   - [x] prove the route runs in the **real site** sandbox, not only the test host — `POST /_emdash/api/plugins/plat-trunk-sandboxed/editor/geometry` with the admin token returns `{"success":true,"data":{"blocks":[{"type":"context","text":"No saved entry in context."}]}}`. That confirms the route is mounted, that it returns **Block Kit**, and that it **refuses to be told which entry to read** — identity comes only from the host-attested `routeCtx.ui.entry`.
   - [x] **read the panel's rendered Block Kit in the browser** — done. It required abandoning the
