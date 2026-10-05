@@ -8,6 +8,7 @@
  *   verify assert the RUNNING site matches what this repo claims (content, the model_id
  *          join, and snapshot drift against the real objects in R2)
  *   check  lint + formatting over scripts/ and the plugins
+ *   test   unit-test the repo's own scripts (tests/*.test.mjs)
  *   format apply formatting (the fix for a failing `check`)
  *   urls   print every URL this project serves
  */
@@ -75,10 +76,12 @@ Live         https://emdash-run.gedw99.workers.dev`);
 } else if (sub === "check") {
 	const { check } = await import("./lib/check.mjs");
 	check();
+} else if (sub === "test") {
+	run("vitest", ["run"]);
 } else if (sub === "format") {
 	const { format } = await import("./lib/check.mjs");
 	format();
 } else {
-	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|check|format|urls)`);
+	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|check|test|format|urls)`);
 	process.exit(1);
 }

@@ -30,6 +30,9 @@ pitchfork      = "2.29.0"      # process manager for the daemons
 "npm:oxlint"          = "1.74.0"
 "npm:oxfmt"           = "0.59.0"
 "npm:oxlint-tsgolint" = "0.25.0"
+# Test runner for the repo's own scripts (`tests/*.test.mjs`). Matches the version the
+# sandboxed plugin already uses, so there is one vitest in the story, not two.
+"npm:vitest"          = "4.1.11"
 
 [env]
 # Project root (where this mise.toml lives)
@@ -232,6 +235,10 @@ run = "node \"$ROOT/scripts/repo.mjs\" verify"
 [tasks."repo:check"]
 description = "Lint + formatting over scripts/ and the plugins (oxlint --type-aware, oxfmt)"
 run = "node \"$ROOT/scripts/repo.mjs\" check"
+
+[tasks."repo:test"]
+description = "Unit-test the repo's own scripts (tests/*.test.mjs)"
+run = "node \"$ROOT/scripts/repo.mjs\" test"
 
 [tasks."repo:format"]
 description = "Apply formatting to scripts/ and the plugins — the fix for a failing repo:check"

@@ -1,7 +1,7 @@
 # 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active — **5 of 7 done** (item 7 is partly done: the structural, live-state and
-lint checks have each been proven to block)
+**Status:** active — **6 of 7 done** (item 7 is partly done: the structural, live-state, lint
+and unit-test checks have each been proven to block)
 
 Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
 plugin typecheck into `repo:apply` immediately found three real faults, so the rest of this
@@ -48,11 +48,15 @@ was a file describing a setup that did not exist.
 - [ ] **Typecheck the site**
   - [ ] `site:check` task running `astro check` against `.src/site` (`@astrojs/check` is already installed)
   - [ ] wire it into `repo:apply`
-- [ ] **Test the scripts** — 13 `scripts/*.mjs`, zero tests today: JSON parsing, `fetch`, symlinks, paths
-  - [ ] pick a runner (vitest, as the plugin ecosystem uses)
-  - [ ] unit tests for the pure helpers — catalog shaping, plugin-name resolution, seed merge
-  - [ ] `repo:test` task
-  - [ ] wire it into `repo:apply`
+- [x] **Test the scripts** — `mise run repo:test`, vitest, 10 tests
+  - [x] picked vitest, at the version the sandboxed plugin already uses (4.1.11), so there is one test runner in the story rather than two
+  - [x] pinned in mise `[tools]` like oxlint/oxfmt, for the same reason: no root package.json
+  - [x] **the refactor was the real work.** `merge-seed.mjs` was a top-level script — it read files, wrote output and called `process.exit` at import time, so its rules could only be exercised by running the whole of `config:apply` against the real template. Split into a pure `mergeSeeds(base, cad)` plus the I/O in `config.mjs`.
+  - [x] what the tests pin, including what was previously only discoverable by reading the code: the collision rules are **not uniform** (collections/taxonomies go to the template, content goes to CAD), content is emitted dependency-first so `$ref:` values resolve, `menus`/`widgetAreas`/`settings` come from the template with a CAD fallback, and `version` falls back `base → cad → "1"`
+  - [x] a real bug fixed on the way: the dedupe key was `` `${key}:${id}` ``, which built `parts:parts:motor-housing` and so could not catch a cross-collection duplicate. Ids are already namespaced, so it is now the id alone, and a test covers it.
+  - [x] `vitest.config.mjs` is a **plain object**, not `defineConfig` — `vitest/config` cannot resolve with no root `node_modules`, and vitest dies at startup with `ERR_MODULE_NOT_FOUND`
+  - [x] **proven to block**: removed the "base wins" loop from `union()` and two tests failed with `expected 'Posts (CAD)' to be 'Posts (template)'` — then passed again once restored
+  - [ ] still uncovered: the other lib helpers (`get-mcp-token`, `clean-tokens`) do `fetch` and token cleanup, so they need a different testing approach than pure functions
 - [x] **Structural checks across plugins** — `mise run plugin:audit`, wired into `repo:apply`
   - [x] a script the toolchain can never run: a `scripts` entry invoking `emdash-plugin` while the plugin has no `emdash-plugin.jsonc`. This was real: the native plugin declared `validate`/`build`/`bundle`/`test` that could never succeed, and nobody noticed until a sweep tried to run one.
   - [x] an unbuilt sandbox bundle: `exports["./sandbox"]` pointing at a file that does not exist. Also real — `plugin:link` without `plugin:build` leaves the site importing a file that is not there.
@@ -67,6 +71,7 @@ was a file describing a setup that did not exist.
   - [x] also asserts the site answers, the content API returns parts, and every part declares a `model_id`
   - [x] **proven to block**: drifted `top-plate.geometry_meta.model_name` in the seed, reapplied, and it reported `model_name is "Definitely Not The Real Name", live is "Default Cube"` — then passed again once restored
   - [x] credentials go through a new `secret()` helper in `lib/exec.mjs`, which prefers the ambient environment and falls back to asking fnox. A missing credential is reported as a **failure**, not a silent skip — the whole point is that a green run means something.
+  - [x] found while using it: `config:apply` writes files **Vite watches** (`astro.config.mjs`, `wrangler.jsonc`, `seed/seed.json`), so the dev server restarts underneath you and a verify run straight afterwards raced it — reporting `site responds — fetch failed` for what was really "not ready yet". The liveness check now retries for 20s. A check that cries wolf is worse than no check.
 - [ ] **Prove the checks actually block**
   - [x] prove the structural checks: reintroduced all three structural bugs at once and `plugin:audit` reported each by name, then passed again once restored (see the note below)
   - [x] prove the live-state check: drifted one stored field and `repo:verify` named the part, the model, the key, and both values

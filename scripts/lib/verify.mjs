@@ -40,13 +40,28 @@ export async function verify() {
 	};
 
 	// ── 1. the site answers at all ────────────────────────────────────────────
+	// Retried, deliberately. `config:apply` writes files Vite watches (`astro.config.mjs`,
+	// `wrangler.jsonc`, `seed/seed.json`), so the dev server restarts underneath you and a
+	// verify run straight afterwards races it. A single attempt reports "fetch failed" for
+	// what is really "not ready yet" — the kind of false alarm that teaches people to ignore
+	// the check. The site binds IPv6-only (`[::1]:4321`), so `localhost` is the right host.
 	let siteUp = false;
-	try {
-		const res = await fetch(SITE_URL, { redirect: "manual" });
-		siteUp = res.status < 500;
-		record(siteUp, "site responds", `${res.status}`);
-	} catch (error) {
-		record(false, "site responds", error.message);
+	let lastError = "";
+	const deadline = Date.now() + 20_000;
+	for (;;) {
+		try {
+			const res = await fetch(SITE_URL, { redirect: "manual" });
+			siteUp = res.status < 500;
+			record(siteUp, "site responds", `${res.status}`);
+			break;
+		} catch (error) {
+			lastError = error.message;
+			if (Date.now() >= deadline) {
+				record(false, "site responds", `${lastError} — gave up after 20s`);
+				break;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
 	}
 
 	if (!siteUp) {
