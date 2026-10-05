@@ -14,7 +14,7 @@ is orientation only.
   `site:dev`; keep it in sync with the daemon definition.
 - **Dogfood: run it and read the output.** Reasoning about a change is not validation.
   Never call something done without executing it and looking at the result.
-- **After a change, `mise run apply`.** It is the quick end-to-end check — re-applies
+- **After a change, `mise run repo:apply`.** It is the quick end-to-end check — re-applies
   config, relinks plugins, restarts the site, mints the MCP token. It is *not* proof of
   correctness: for user-facing changes, also verify the actual behaviour (admin UI, MCP
   call, HTTP response).
@@ -38,12 +38,12 @@ is orientation only.
 Paths and what is generated are mapped in `README.md` (§ "Where things are").
 
 `.src/emdash/` is an **optional** shallow clone of the emdash monorepo
-(`mise run src:clone:emdash`) — read EmDash's own source when the published types/docs are
+(`mise run src:clone-emdash`) — read EmDash's own source when the published types/docs are
 not enough. It is not part of the default flow and is not installed.
 
 The one rule that matters: **never edit anything under `.src/`** — it is generated from
 `config/` and the template, and gets overwritten by `config:apply` / `site:sync`. Change
-`config/` and re-run `mise run apply`.
+`config/` and re-run `mise run repo:apply`.
 
 ## Tools
 
@@ -54,7 +54,7 @@ The one rule that matters: **never edit anything under `.src/`** — it is gener
 
 **Skills** load from `.claude/skills/`:
 - `.claude/skills/emdash` — symlink to the site's shipped EmDash skills, refreshed by
-  `mise run skills:sync:emdash` (which `apply` runs).
-- On a fresh clone: `mise run skills:add:all` restores skills from `skills-lock.json`.
+  `mise run skills:sync` (which `apply` runs).
+- On a fresh clone: `mise run skills:add-all` restores skills from `skills-lock.json`.
 
 **Schema references:** https://mise.jdx.dev/schema/mise.json · https://pitchfork.jdx.dev/schema.json

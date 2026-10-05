@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  *   mise run config:apply      — write our config into .src/site, merge + validate the seed
- *   mise run seed:validate     — validate the merged seed (EmDash silently skips a bad one)
+ *
+ * (Seed validation lives in scripts/seed.mjs, so it maps to the seed: namespace.)
  */
 import { copyFileSync, existsSync } from "node:fs";
 
@@ -18,13 +19,11 @@ if (sub === "apply") {
 	}
 	copyFileSync(`${ROOT}/config/site.astro.config.mjs`, `${SITE_DIR}/astro.config.mjs`);
 	copyFileSync(`${ROOT}/config/site.wrangler.jsonc`, `${SITE_DIR}/wrangler.jsonc`);
-	run("node", [`${ROOT}/scripts/merge-seed.mjs`]);
+	run("node", [`${ROOT}/scripts/lib/merge-seed.mjs`]);
 	// An invalid seed is skipped by EmDash with no error — fail loudly here instead.
 	run("mise", ["run", "seed:validate"]);
 	console.log("  ✓ config applied to .src/site");
-} else if (sub === "validate-seed") {
-	run("mise", ["run", "emdash:cli", "--", "seed", "--validate", `${SITE_DIR}/seed/seed.json`]);
 } else {
-	console.error(`config: unknown subcommand "${sub}" (apply|validate-seed)`);
+	console.error(`config: unknown subcommand "${sub}" (apply)`);
 	process.exit(1);
 }

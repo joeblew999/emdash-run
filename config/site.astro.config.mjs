@@ -11,7 +11,7 @@ import { formsPlugin } from "@emdash-cms/plugin-forms";
 import webhookNotifier from "@emdash-cms/plugin-webhook-notifier";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
-// local plugin — in plugins/, symlinked into the site's node_modules by: mise run plugins:link
+// local plugin — in plugins/, symlinked into the site's node_modules by: mise run plugin:link
 // Standard-format: "." exposes the descriptor factory, "./plugin" the implementation.
 import { platTrunkPlugin } from "@plat-trunk/emdash-plugin";
 

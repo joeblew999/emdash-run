@@ -26,7 +26,7 @@ Archived here because every item is finished; the active plan is one level up.
 - [x] **Where the data lives.** Local: miniflare D1 state under `.src/site/.wrangler/state`
       (wiped by `mise run site:reset`). Production: a D1 database + an R2 bucket.
 - [x] **Generated skills are not tracked.** `.agents/skills/` and `.claude/skills/` are
-      gitignored; `skills-lock.json` + `mise run skills:add:all` reproduce them.
+      gitignored; `skills-lock.json` + `mise run skills:add-all` reproduce them.
 - [x] **Builds clean up after themselves.** A production build dirties the dev server's
       Vite cache (stale `deps_ssr` URLs → 500s), so the build tasks wipe `.vite` + `.astro`
       and tell you to re-run `apply`.

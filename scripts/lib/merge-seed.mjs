@@ -19,9 +19,11 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// ROOT comes from mise ([env]). Deriving it from this file's own location breaks the
+// moment the file moves — it used to sit one level up, in scripts/.
+const ROOT = process.env.ROOT;
+if (!ROOT) throw new Error("ROOT is not set — run this via mise (mise run config:apply)");
 const TEMPLATES_DIR = join(ROOT, ".src", "templates");
 const SITE_DIR = join(ROOT, ".src", "site");
 const TEMPLATE = process.env.TEMPLATE ?? "starter-cloudflare";

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  *   mise run plugin:install -- <name>          (one plugin)
- *   mise run plugins:install-all | plugins:link (all plugins)
+ *   mise run plugin:install-all | plugin:link (all plugins)
  *   mise run plugin:validate|bundle|publish|login -- <name>
- *   mise run plugins:catalog | :catalog:dry | :catalog:full
+ *   mise run plugin:catalog | :catalog:dry | :catalog:full
  *
  * Singular = one plugin (takes a name); plural = all plugins.
  */
@@ -68,13 +68,13 @@ switch (sub) {
 		process.exit(1);
 
 	case "catalog":
-		run("node", [`${ROOT}/scripts/find-plugins.mjs`]);
+		run("node", [`${ROOT}/scripts/lib/find-plugins.mjs`]);
 		break;
 	case "catalog-dry":
-		run("node", [`${ROOT}/scripts/find-plugins.mjs`, "--dry"]);
+		run("node", [`${ROOT}/scripts/lib/find-plugins.mjs`, "--dry"]);
 		break;
 	case "catalog-full":
-		run("node", [`${ROOT}/scripts/find-plugins.mjs`, "--readmes"]);
+		run("node", [`${ROOT}/scripts/lib/find-plugins.mjs`, "--readmes"]);
 		break;
 
 	default:

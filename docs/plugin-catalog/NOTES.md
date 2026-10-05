@@ -26,13 +26,13 @@ who's behind a plugin, why it matters, gotchas, dependencies on internal APIs.
 ## Generation
 
 ```sh
-mise run plugins:catalog          # default: write INDEX.md + plugins.json + stubs
-mise run plugins:catalog:full     # also fetches README excerpts (slower)
-mise run plugins:catalog:dry      # print to stdout, write nothing
+mise run plugin:catalog          # default: write INDEX.md + plugins.json + stubs
+mise run plugin:catalog-full     # also fetches README excerpts (slower)
+mise run plugin:catalog-dry      # print to stdout, write nothing
 ```
 
 Auth: needs a GitHub token (5000 req/hr authed vs 60 req/hr unauth). With fnox:
 
 ```sh
-fnox exec -- mise run plugins:catalog
+fnox exec -- mise run plugin:catalog
 ```

@@ -31,7 +31,7 @@ logs/     pitchfork daemon logs              ← gitignored
 run/      token-admin.txt, token-admin.env,
           token-user.txt                    ← gitignored
 .src/     templates/, site/                 ← gitignored working checkouts
-          emdash/                           ← optional, on-demand (src:clone:emdash)
+          emdash/                           ← optional, on-demand (src:clone-emdash)
 plugins/  plat-trunk/                       ← local plugin, symlinked into .src/site
 docs/     adr/, plugin.md, exploring.md, big-picture.md
 ```

@@ -40,7 +40,7 @@ EMDASH_REPO     = "https://github.com/emdash-cms/emdash"
 # and `@emdash-cms/cloudflare` to exactly this.
 EMDASH_VERSION  = "1.1.0"
 
-# Local plugins under development — symlinked into the site's node_modules by plugins:link
+# Local plugins under development — symlinked into the site's node_modules by plugin:link
 PLUGINS_DIR     = "{{config_root}}/plugins"
 
 # Runtime output dirs (both gitignored)
@@ -68,26 +68,26 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #
 # First time:
 #   mise run site:setup      ← clone templates → copy site → install → apply config
-#   mise run init            ← plugin deps + skills (run once)
-#   mise run apply           ← start daemons + generate token (idempotent)
+#   mise run repo:init            ← plugin deps + skills (run once)
+#   mise run repo:apply           ← start daemons + generate token (idempotent)
 #
 # Every day / after every change:
-#   mise run apply           ← config:apply + plugins:link + skills:sync + restart + token
+#   mise run repo:apply           ← config:apply + plugin:link + skills:sync + restart + token
 #
 # Recovery:
-#   mise run site:reset      ← wipe local D1/miniflare state, then: mise run apply
+#   mise run site:reset      ← wipe local D1/miniflare state, then: mise run repo:apply
 #   mise run site:clean      ← wipe .src/site, then: site:setup → init → apply
 #   mise run site:regen      ← wipe .src entirely (templates + site), then: site:setup → init → apply
 #
 # Optional (not on the default path):
-#   mise run src:clone:emdash  ← shallow clone of the emdash monorepo into .src/emdash
+#   mise run src:clone-emdash  ← shallow clone of the emdash monorepo into .src/emdash
 #   mise run registry:up       ← run the local plugin registry (the "marketplace") on :8788
 #   mise run registry:backfill ← ingest publishers' records (Jetstream only streams new)
 #   mise run registry:project  ← build the public projection (else reads return nothing)
 #   mise run plugins-site:up   ← run the registry's web UI on :4330
 #
 # URLs (once running):
-#   mise run urls            ← prints every URL below
+#   mise run repo:urls            ← prints every URL below
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
 #   http://localhost:4321/_emdash/api/mcp   ← MCP endpoint (enabled by default; Bearer token from run/token-admin.txt)
 #   http://localhost:8788/health   ← local registry (JSON API under /xrpc/…) — only if `mise run registry:up`
@@ -101,16 +101,16 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # Updating:
 #   EmDash version    bump EMDASH_VERSION below, then: site:clean → site:setup → init → apply
 #   Template content  site:clean → site:setup → init → apply  (apply alone does NOT re-copy .src/site)
-#   Local plugin      mise run apply
+#   Local plugin      mise run repo:apply
 #
 # Deploy (Cloudflare):
-#   mise run site:deploy:dry   ← build + validate the Worker bundle (no cloud changes)
+#   mise run site:deploy-dry   ← build + validate the Worker bundle (no cloud changes)
 #   mise run site:deploy       ← build + deploy (creds via fnox)
 #   Live: https://emdash-run.gedw99.workers.dev
 #
 # Gotchas:
 #   - A production build (site:build / site:deploy) dirties the dev server's Vite cache
-#     → 500s on admin routes. The build tasks clean up and print a reminder; then: mise run apply
+#     → 500s on admin routes. The build tasks clean up and print a reminder; then: mise run repo:apply
 #   - Astro 7 auto-backgrounds under a non-TTY parent; site:dev sets ASTRO_DEV_BACKGROUND
 #     so pitchfork can supervise it.
 #   - Astro binds IPv6-only — readiness is `ready_http` in pitchfork.toml, not a port probe.
@@ -122,13 +122,13 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # SRC (gitignored checkouts)
 # -----------------------------------------------------------------------------
 
-[tasks."src:clone:templates"]
+[tasks."src:clone-templates"]
 description = "Clone/update emdash-cms/templates into .src/templates"
-run = "node \"$ROOT/scripts/src.mjs\" templates"
+run = "node \"$ROOT/scripts/src.mjs\" clone-templates"
 
-[tasks."src:clone:emdash"]
+[tasks."src:clone-emdash"]
 description = "Clone the emdash monorepo (shallow, tag emdash@$EMDASH_VERSION) into .src/emdash — on demand"
-run = "node \"$ROOT/scripts/src.mjs\" emdash"
+run = "node \"$ROOT/scripts/src.mjs\" clone-emdash"
 
 # -----------------------------------------------------------------------------
 # SITE (host site = official template copy, runs on :4321)
@@ -136,7 +136,7 @@ run = "node \"$ROOT/scripts/src.mjs\" emdash"
 
 [tasks."site:sync"]
 description = "Copy $TEMPLATE into .src/site (pristine copy; drops the template's packageManager pin)"
-depends = ["src:clone:templates"]
+depends = ["src:clone-templates"]
 run = "node \"$ROOT/scripts/site.mjs\" sync"
 
 [tasks."site:install"]
@@ -150,12 +150,12 @@ run = "node \"$ROOT/scripts/config.mjs\" apply"
 
 [tasks."seed:validate"]
 description = "Validate the merged site seed — EmDash silently skips an invalid one"
-run = "node \"$ROOT/scripts/config.mjs\" validate-seed"
+run = "node \"$ROOT/scripts/seed.mjs\" validate"
 
 [tasks."site:setup"]
 description = "One-time: clone templates → copy site → install → apply config"
 depends = ["site:install", "config:apply"]
-run = "echo '✓ setup done — run: mise run init'"
+run = "echo '✓ setup done — run: mise run repo:init'"
 
 [tasks."site:dev"]
 description = "Run the site dev server on :4321 — called by pitchfork, do not run directly"
@@ -178,7 +178,7 @@ description = "Open admin UI in browser via dev-bypass (runs migrations + seed; 
 run = "node \"$ROOT/scripts/site.mjs\" open"
 
 [tasks."site:reset"]
-description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run apply"
+description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
 run = "node \"$ROOT/scripts/site.mjs\" reset"
 
 [tasks."site:clean"]
@@ -193,23 +193,27 @@ run = "node \"$ROOT/scripts/site.mjs\" regen"
 # TOP-LEVEL WORKFLOW
 # -----------------------------------------------------------------------------
 
-[tasks."init"]
+[tasks."repo:init"]
 description = "One-time init after site:setup — plugin deps + skills"
-depends = ["plugins:install-all", "skills:add:all"]
-run = "echo '✓ init done — run: mise run apply'"
+depends = ["plugin:install-all", "skills:add-all"]
+run = "node \"$ROOT/scripts/repo.mjs\" init"
 
-[tasks."apply"]
+[tasks."repo:apply"]
 description = "Apply config + restart the site + refresh token — run after every change"
-depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
-run = "node \"$ROOT/scripts/apply.mjs\""
+depends = ["config:apply", "plugin:link", "skills:sync", "mise:check"]
+run = "node \"$ROOT/scripts/repo.mjs\" apply"
 
-[tasks."urls"]
+[tasks."repo:urls"]
 description = "Print every URL this project serves"
-run = "node \"$ROOT/scripts/urls.mjs\""
+run = "node \"$ROOT/scripts/repo.mjs\" urls"
 
 [tasks."mise:reorder"]
 description = "Reorder mise.toml's sections (core first, optional extras last) — cosmetic only"
-run = "node \"$ROOT/scripts/reorder-mise-sections.mjs\" \"$ROOT/mise.toml\""
+run = "node \"$ROOT/scripts/mise.mjs\" reorder"
+
+[tasks."mise:check"]
+description = "Assert the 1:1 mapping between mise namespaces and scripts/<namespace>.mjs"
+run = "node \"$ROOT/scripts/mise.mjs\" check"
 
 # -----------------------------------------------------------------------------
 # PITCHFORK (daemon manager)
@@ -217,7 +221,7 @@ run = "node \"$ROOT/scripts/reorder-mise-sections.mjs\" \"$ROOT/mise.toml\""
 
 [tasks."pitchfork:start"]
 description = "Apply configs + link plugins + start the site daemon (without forcing restart)"
-depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
+depends = ["config:apply", "plugin:link", "skills:sync"]
 run = "pitchfork start emdash"
 
 [tasks."pitchfork:stop"]
@@ -261,17 +265,17 @@ run = "node \"$ROOT/scripts/mcp.mjs\" clean-tokens"
 [tasks."site:build"]
 description = "Production-build the site (astro build → .src/site/dist)"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/build.mjs\" build"
+run = "node \"$ROOT/scripts/site.mjs\" build"
 
-[tasks."site:deploy:dry"]
+[tasks."site:deploy-dry"]
 description = "Validate the production build + Worker bundle without deploying"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/build.mjs\" dry"
+run = "node \"$ROOT/scripts/site.mjs\" deploy-dry"
 
 [tasks."site:deploy"]
 description = "Build + deploy the site to Cloudflare (creds via fnox)"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/build.mjs\" deploy"
+run = "node \"$ROOT/scripts/site.mjs\" deploy"
 
 # -----------------------------------------------------------------------------
 # PLUGIN DEVELOPMENT
@@ -281,18 +285,18 @@ run = "node \"$ROOT/scripts/build.mjs\" deploy"
 
 [tasks."plugin:install"]
 description = "Install deps for one plugin — e.g: mise run plugin:install -- plat-trunk"
-run = "node \"$ROOT/scripts/plugins.mjs\" install"
+run = "node \"$ROOT/scripts/plugin.mjs\" install"
 
-[tasks."plugins:install-all"]
+[tasks."plugin:install-all"]
 description = "Install deps for all plugins in plugins/"
 wait_for = ["site:setup"]
 sources = ["plugins/*/package.json"]
 outputs = ["plugins/*/node_modules/.modules.yaml"]
-run = "node \"$ROOT/scripts/plugins.mjs\" install-all"
+run = "node \"$ROOT/scripts/plugin.mjs\" install-all"
 
-[tasks."plugins:link"]
+[tasks."plugin:link"]
 description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
-run = "node \"$ROOT/scripts/plugins.mjs\" link"
+run = "node \"$ROOT/scripts/plugin.mjs\" link"
 
 # Sandboxed-plugin publishing (validate / bundle / publish / login) lives in the separate
 # `@emdash-cms/plugin-cli` package — binary `emdash-plugin` — and needs an
@@ -315,7 +319,7 @@ run = "node \"$ROOT/scripts/skills.mjs\" add"
 description = "Remove a skill — e.g: mise run skills:remove -- mise-guide"
 run = "node \"$ROOT/scripts/skills.mjs\" remove"
 
-[tasks."skills:remove:all"]
+[tasks."skills:remove-all"]
 description = "Remove all installed skills"
 run = "node \"$ROOT/scripts/skills.mjs\" remove-all"
 
@@ -331,11 +335,11 @@ run = "node \"$ROOT/scripts/skills.mjs\" restore"
 description = "List installed skills"
 run = "node \"$ROOT/scripts/skills.mjs\" list"
 
-[tasks."skills:sync:emdash"]
+[tasks."skills:sync"]
 description = "Symlink the site's shipped EmDash skills into .claude/skills/emdash"
-run = "node \"$ROOT/scripts/skills.mjs\" sync-emdash"
+run = "node \"$ROOT/scripts/skills.mjs\" sync"
 
-[tasks."skills:add:all"]
+[tasks."skills:add-all"]
 description = "Install the standard skill set for this project (run once after init)"
 wait_for = ["site:setup"]
 run = "node \"$ROOT/scripts/skills.mjs\" add-all"
@@ -348,17 +352,17 @@ run = "node \"$ROOT/scripts/skills.mjs\" add-all"
 description = "Run the site's emdash CLI against the local server — e.g: mise run emdash:cli -- content list posts"
 run = "node \"$ROOT/scripts/emdash.mjs\""
 
-[tasks."plugins:catalog"]
+[tasks."plugin:catalog"]
 description = "Discover EmDash plugins on GitHub → docs/plugin-catalog/"
-run = "node \"$ROOT/scripts/plugins.mjs\" catalog"
+run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
 
-[tasks."plugins:catalog:dry"]
+[tasks."plugin:catalog-dry"]
 description = "Discover plugins, print JSON to stdout (no files written)"
-run = "node \"$ROOT/scripts/plugins.mjs\" catalog-dry"
+run = "node \"$ROOT/scripts/plugin.mjs\" catalog-dry"
 
-[tasks."plugins:catalog:full"]
+[tasks."plugin:catalog-full"]
 description = "Discover plugins + fetch README excerpts (slower)"
-run = "node \"$ROOT/scripts/plugins.mjs\" catalog-full"
+run = "node \"$ROOT/scripts/plugin.mjs\" catalog-full"
 
 # -----------------------------------------------------------------------------
 # REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)
@@ -368,7 +372,7 @@ run = "node \"$ROOT/scripts/plugins.mjs\" catalog-full"
 
 [tasks."registry:install"]
 description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"
-depends = ["src:clone:emdash"]
+depends = ["src:clone-emdash"]
 # Skipped when the lockfile has not changed — otherwise every `registry:up` re-installs
 # the whole monorepo.
 sources = [".src/emdash/pnpm-lock.yaml"]
@@ -382,7 +386,7 @@ run = "node \"$ROOT/scripts/registry.mjs\" migrate"
 
 [tasks."registry:env"]
 description = "Create the registry aggregator's local .env (LISTING_POLICY_MODE=open + dev admin token)"
-depends = ["src:clone:emdash"]
+depends = ["src:clone-emdash"]
 run = "node \"$ROOT/scripts/registry.mjs\" env"
 
 [tasks."registry:start"]
@@ -413,7 +417,7 @@ run = "node \"$ROOT/scripts/registry.mjs\" project"
 
 [tasks."plugins-site:install"]
 description = "Install + build the deps for the plugins site (registry UI)"
-depends = ["src:clone:emdash"]
+depends = ["src:clone-emdash"]
 sources = [".src/emdash/pnpm-lock.yaml"]
 outputs = [".src/emdash/node_modules/.modules.yaml"]
 run = "node \"$ROOT/scripts/plugins-site.mjs\" install"

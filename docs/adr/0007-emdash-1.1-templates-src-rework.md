@@ -47,7 +47,7 @@ Adopt the `.src/` + official-template model (the direction that was merely
 
 | Path | What | How it is produced |
 |------|------|--------------------|
-| `.src/templates/` | clone of `emdash-cms/templates` | `mise run src:clone:templates` |
+| `.src/templates/` | clone of `emdash-cms/templates` | `mise run src:clone-templates` |
 | `.src/site/` | **the host site**, a copy of the chosen template | `mise run site:sync` (`rm` + `cp -R`) |
 
 The host template is **`starter-cloudflare`**. `blank` was retired upstream
@@ -94,7 +94,7 @@ worker, no `marketplace:*` tasks. Plugin work uses `plugins: []` / `sandboxed: [
 with the site's own `emdash` CLI; discovery uses the hosted registry.
 
 > **Update (2026-10-05).** The clone is available again **on demand** via
-> `mise run src:clone:emdash` — shallow, tag-pinned, ~100 MB, *not* installed. It is for
+> `mise run src:clone-emdash` — shallow, tag-pinned, ~100 MB, *not* installed. It is for
 > reading EmDash's own source (its `dist` types are not always enough) and for running
 > the local registry aggregator (`apps/aggregator`). It remains off the default path.
 

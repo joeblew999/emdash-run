@@ -7,13 +7,13 @@
  *
  * Auth:
  *   Reads GITHUB_TOKEN (or GH_TOKEN) from env. With fnox:
- *     fnox exec -- mise run plugins:catalog
+ *     fnox exec -- mise run plugin:catalog
  *   No token works (60 req/hr unauth, hits the wall fast).
  *
  * Usage (via mise):
- *   mise run plugins:catalog          ← discover + write
- *   mise run plugins:catalog:dry      ← print JSON to stdout, no files
- *   mise run plugins:catalog:full     ← include README excerpts (slower)
+ *   mise run plugin:catalog          ← discover + write
+ *   mise run plugin:catalog-dry      ← print JSON to stdout, no files
+ *   mise run plugin:catalog-full     ← include README excerpts (slower)
  *
  * Direct:
  *   node scripts/find-plugins.mjs [--dry] [--readmes] [--include-empty]

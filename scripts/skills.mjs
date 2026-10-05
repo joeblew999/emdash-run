@@ -35,7 +35,7 @@ function syncEmdash() {
 }
 
 switch (sub) {
-	case "sync-emdash":
+	case "sync":
 		syncEmdash();
 		break;
 	case "add-all":

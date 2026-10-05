@@ -14,7 +14,7 @@ ready_http = "http://localhost:4321/"
 
 # NOTE: lifecycle hooks (on_ready/on_fail/on_stop) only run under pitchfork's
 # supervisor / shell-hook flow, not `pitchfork start` — so the URLs are printed by
-# `mise run apply` instead of here.
+# `mise run repo:apply` instead of here.
 
 # Local plugin registry (the "marketplace"): the emdash monorepo's aggregator on :8788.
 # Optional — not started by `apply`. Start it with `mise run registry:up`.

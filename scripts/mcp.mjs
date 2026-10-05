@@ -12,7 +12,7 @@ mkdirSync(RUN_DIR, { recursive: true });
 
 if (sub === "token-admin" || sub === "token-user") {
 	const admin = sub === "token-admin";
-	const token = out("node", [`${ROOT}/scripts/get-mcp-token.mjs`, admin ? "admin" : "user"]);
+	const token = out("node", [`${ROOT}/scripts/lib/get-mcp-token.mjs`, admin ? "admin" : "user"]);
 	if (admin) {
 		// admin token = full access (content, schema, media, taxonomy, plugins)
 		writeFileSync(`${RUN_DIR}/token-admin.txt`, `${token}\n`);
@@ -24,7 +24,7 @@ if (sub === "token-admin" || sub === "token-user") {
 		console.log("✓ Token saved → run/token-user.txt");
 	}
 } else if (sub === "clean-tokens") {
-	run("node", [`${ROOT}/scripts/clean-tokens.mjs`]);
+	run("node", [`${ROOT}/scripts/lib/clean-tokens.mjs`]);
 } else {
 	console.error(`mcp: unknown subcommand "${sub}" (token-admin|token-user|clean-tokens)`);
 	process.exit(1);

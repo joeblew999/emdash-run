@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `mise run src:clone:templates` | `mise run src:clone:emdash`
+ * `mise run src:clone-templates` | `mise run src:clone-emdash`
  *
  * Clones/updates the gitignored checkouts under .src/. Templates are always needed;
  * the emdash monorepo is optional (reading EmDash source, running the local registry).
