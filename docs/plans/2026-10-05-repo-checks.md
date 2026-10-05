@@ -8,13 +8,16 @@ when something breaks at runtime. That is the biggest gap in the harness.
 
 ## Items
 
-### 1. `plugin:typecheck`
+### 1. Typecheck and test the plugin — via the plugin CLI
 
-`tsc` is already available in the site's `node_modules`. Add `typescript` as a devDependency
-of `plugins/plat-trunk` and a task that runs `tsc --noEmit` against its tsconfig.
+Do not hand-roll this. The plugin toolchain provides it: `emdash-plugin validate`
+(manifest), `emdash-plugin build`, `tsc --noEmit`, and `vitest` through
+`@emdash-cms/plugin-test`, which runs the plugin inside EmDash's production sandbox
+wrapper. This item is that toolchain wired into a task — see
+`2026-10-05-plugin-sandbox-model.md`.
 
-**Done means:** `mise run plugin:typecheck` exits 0 — and fails on a deliberately
-introduced type error.
+**Done means:** `mise run plugin:check` runs validate + typecheck + test and exits 0, and
+fails on a deliberately introduced type error.
 
 ### 2. `repo:check` — lint and format
 

@@ -27,7 +27,9 @@ on the live site or `wrangler d1 execute --remote`.
 
 ### 3. Check production secrets
 
-Establish whether the live Worker needs secrets the local one does not (an encryption key
-for secret settings fields is the likely one), and document the `wrangler secret put` path.
+`emdash secrets generate` creates `EMDASH_ENCRYPTION_KEY`, which EmDash needs to store
+`type: "secret"` settings encrypted. Establish whether the live Worker has one — the local
+site may have been created without it — and set it with `wrangler secret put` if not.
 
-**Done means:** either nothing is needed, or the secrets are set and written down.
+**Done means:** either nothing is needed, or the secret is set on the live Worker and
+written down.

@@ -71,3 +71,13 @@ pnpm exec emdash-plugin validate | bundle | publish | login <handle>
 ```
 
 See `.claude/skills/emdash/creating-plugins` (shipped with the site).
+
+**Open question — stay native, or move to sandboxed?** Sandboxed is the model the ecosystem
+actually ships: a real published example is
+[`swissky/emdash-plugin-linguadash`](https://github.com/swissky/emdash-plugin-linguadash).
+It brings an `emdash-plugin.jsonc` manifest declaring `capabilities`, `allowedHosts` and
+`storage` (a trust contract users consent to at install), a dev loop
+(`validate` / `typecheck` / `test` via `@emdash-cms/plugin-test` / `build`), extra admin
+surfaces (settings pages, custom admin pages) and a registry release pipeline — none of
+which we have today. Tracked in
+[`plans/2026-10-05-plugin-sandbox-model.md`](plans/2026-10-05-plugin-sandbox-model.md).
