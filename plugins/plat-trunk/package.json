@@ -16,12 +16,7 @@
 		"src"
 	],
 	"scripts": {
-		"validate": "emdash-plugin validate",
-		"build": "emdash-plugin build",
-		"dev": "emdash-plugin dev",
-		"bundle": "emdash-plugin bundle",
-		"typecheck": "tsc --noEmit",
-		"test": "emdash-plugin validate && vitest run"
+		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"emdash": "^1.1.0",

@@ -72,7 +72,7 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #   mise run repo:apply           ← start daemons + generate token (idempotent)
 #
 # Every day / after every change:
-#   mise run repo:apply           ← config:apply + plugin:link + skills:sync + restart + token
+#   mise run repo:apply           ← config:apply + plugin:build + plugin:link + skills:sync + restart + token
 #
 # Recovery:
 #   mise run site:reset      ← wipe local D1/miniflare state, then: mise run repo:apply
@@ -200,7 +200,7 @@ run = "node \"$ROOT/scripts/repo.mjs\" init"
 
 [tasks."repo:apply"]
 description = "Apply config + restart the site + refresh token — run after every change"
-depends = ["config:apply", "plugin:link", "plugin:typecheck", "skills:sync", "mise:check"]
+depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "skills:sync", "mise:check"]
 run = "node \"$ROOT/scripts/repo.mjs\" apply"
 
 [tasks."repo:urls"]
@@ -221,7 +221,7 @@ run = "node \"$ROOT/scripts/mise.mjs\" check"
 
 [tasks."pitchfork:start"]
 description = "Apply configs + link plugins + start the site daemon (without forcing restart)"
-depends = ["config:apply", "plugin:link", "skills:sync"]
+depends = ["config:apply", "plugin:build", "plugin:link", "skills:sync"]
 run = "pitchfork start emdash"
 
 [tasks."pitchfork:stop"]
@@ -302,10 +302,33 @@ run = "node \"$ROOT/scripts/plugin.mjs\" link"
 description = "Typecheck every plugin that declares a typecheck script"
 run = "node \"$ROOT/scripts/plugin.mjs\" typecheck"
 
-# Sandboxed-plugin publishing (validate / bundle / publish / login) lives in the separate
-# `@emdash-cms/plugin-cli` package — binary `emdash-plugin` — and needs an
-# `emdash-plugin.jsonc` manifest. plat-trunk is a NATIVE plugin, distributed as an npm
-# package, so that flow does not apply here. See docs/plugin.md.
+# Sandboxed-plugin build + release. The CLI is `@emdash-cms/plugin-cli` (binary
+# `emdash-plugin`) and needs an `emdash-plugin.jsonc`. These sweep every plugin and run the
+# script only if it declares one, so a native plugin is skipped rather than failed.
+#
+# `plugin:build` is not optional before `plugin:link`: a sandboxed plugin's `./sandbox` export
+# points at its built bundle, so linking without building leaves the site importing a file
+# that does not exist. See docs/plugin.md.
+
+[tasks."plugin:build"]
+description = "Build every plugin that declares a build script (sandboxed bundles)"
+run = "node \"$ROOT/scripts/plugin.mjs\" build"
+
+[tasks."plugin:validate"]
+description = "Validate plugin manifests (sandboxed plugins only)"
+run = "node \"$ROOT/scripts/plugin.mjs\" validate"
+
+[tasks."plugin:bundle"]
+description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- plat-trunk-sandboxed"
+run = "node \"$ROOT/scripts/plugin.mjs\" bundle"
+
+[tasks."plugin:publish"]
+description = "Publish a plugin to the registry — e.g: mise run plugin:publish -- plat-trunk-sandboxed"
+run = "node \"$ROOT/scripts/plugin.mjs\" publish"
+
+[tasks."plugin:login"]
+description = "Log in to the plugin registry (publisher identity)"
+run = "node \"$ROOT/scripts/plugin.mjs\" login"
 
 # -----------------------------------------------------------------------------
 # SKILLS (Claude Code agent skills)

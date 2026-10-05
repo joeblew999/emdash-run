@@ -11,11 +11,22 @@ import { formsPlugin } from "@emdash-cms/plugin-forms";
 import webhookNotifier from "@emdash-cms/plugin-webhook-notifier";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
-// local plugin — in plugins/, symlinked into the site's node_modules by: mise run plugin:link
-// NATIVE: `.` is the descriptor factory and `./admin` the React panel. (The sandboxed
-// convention is different — `.` descriptor + `./sandbox` implementation — and is what
-// `sandboxed:` below uses. See docs/plugin.md.)
+// Local plugins — in plugins/, symlinked into the site's node_modules by: mise run plugin:link
+//
+// The two `plat-trunk` entries below are the SAME feature built both ways on purpose. That is
+// the point of this harness: one panel, two trust models, so the trade-off gets measured
+// rather than argued. See docs/plugin.md.
+//
+//   @plat-trunk/emdash-plugin  NATIVE  — factory call, `.` descriptor + `./admin` React panel.
+//   plat-trunk-sandboxed       SANDBOX — the PACKAGE ROOT, not `/sandbox`. `emdash-plugin
+//                                        build` generates a descriptor there that names
+//                                        `plat-trunk-sandboxed/sandbox` as its own entrypoint
+//                                        and is passed in as-is (no factory call). Importing
+//                                        `/sandbox` directly hands EmDash the implementation
+//                                        and it fails with "Plugin \"undefined\" uses the
+//                                        native format".
 import { platTrunkPlugin } from "@plat-trunk/emdash-plugin";
+import platTrunkSandboxed from "plat-trunk-sandboxed";
 
 export default defineConfig({
 	output: "server",
@@ -39,8 +50,7 @@ export default defineConfig({
 			],
 
 			// Sandboxed plugins (run in isolated Worker isolates via the LOADER binding).
-			// The harness is already a sandbox host — only our own plugin is native.
-			sandboxed: [webhookNotifier],
+			sandboxed: [webhookNotifier, platTrunkSandboxed],
 			sandboxRunner: sandbox(),
 
 			// The plugin registry — the current name for the plugin marketplace.

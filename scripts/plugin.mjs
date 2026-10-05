@@ -2,10 +2,14 @@
 /**
  *   mise run plugin:install -- <name>          (one plugin)
  *   mise run plugin:install-all | plugin:link (all plugins)
- *   mise run plugin:validate|bundle|publish|login -- <name>
+ *   mise run plugin:build | :validate | :bundle | :publish | :login
  *   mise run plugin:catalog | :catalog:dry | :catalog:full
  *
  * Singular = one plugin (takes a name); plural = all plugins.
+ *
+ * Every subcommand here sweeps `plugins/` and runs each plugin's OWN script, so a new plugin
+ * joins the flow by declaring the script and nothing in this file changes. That is why the
+ * native and sandboxed plugins coexist here without a branch on which kind they are.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -124,13 +128,33 @@ switch (sub) {
 
 	case "validate":
 	case "bundle":
+	case "build":
 	case "publish":
-	case "login":
-		// Deliberately not implemented: these belong to the sandboxed-plugin flow
-		// (`@emdash-cms/plugin-cli` / `emdash-plugin`, needs an emdash-plugin.jsonc).
-		// plat-trunk is native, distributed as an npm package. See docs/plugin.md.
-		console.error(`${sub}: not applicable — sandboxed plugins only (see docs/plugin.md)`);
-		process.exit(1);
+	case "login": {
+		// The sandboxed-plugin flow (`@emdash-cms/plugin-cli`, binary `emdash-plugin`), which
+		// needs an `emdash-plugin.jsonc`. Not every plugin is sandboxed, so this applies the
+		// same rule as `typecheck`: run the plugin's own script. A plugin that declares it opts
+		// in; one that does not is skipped rather than failed. Singular takes a name, plural
+		// sweeps every plugin.
+		//
+		// `build` is separate from `bundle` on purpose: a sandboxed plugin's `./sandbox` export
+		// points at the built bundle, so `plugin:link` without a build leaves the site
+		// importing a file that does not exist yet.
+		const targets = name ? [name] : pluginDirs();
+		let ran = 0;
+		for (const dir of targets) {
+			const manifest = JSON.parse(readFileSync(`${PLUGINS_DIR}/${dir}/package.json`, "utf8"));
+			if (!manifest.scripts?.[sub]) continue;
+			console.log(`→ ${sub} ${manifest.name}`);
+			run("pnpm", ["--dir", `${PLUGINS_DIR}/${dir}`, "run", sub]);
+			ran += 1;
+		}
+		if (ran === 0) {
+			console.error(`plugin:${sub}: no plugin declares a "${sub}" script — see docs/plugin.md`);
+			process.exit(1);
+		}
+		break;
+	}
 
 	case "typecheck":
 		// Every plugin that declares a `typecheck` script. Runs the plugin's own tsc, so the
