@@ -167,8 +167,15 @@ fi
 cp "$ROOT/config/site.astro.config.mjs" "$SITE_DIR/astro.config.mjs"
 cp "$ROOT/config/site.wrangler.jsonc"   "$SITE_DIR/wrangler.jsonc"
 node "$ROOT/scripts/merge-seed.mjs"
+# EmDash silently skips an invalid seed (no error, no collections) — validate here so
+# apply fails loudly instead.
+mise run seed:validate
 echo "  ✓ config applied to .src/site"
 """
+
+[tasks."seed:validate"]
+description = "Validate the merged site seed — EmDash silently skips an invalid one"
+run = "mise run emdash:cli -- seed --validate \"$SITE_DIR/seed/seed.json\""
 
 [tasks."server:build"]
 description = "One-time: clone templates → copy site → install → apply config"
