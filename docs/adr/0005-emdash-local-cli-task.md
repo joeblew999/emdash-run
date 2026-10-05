@@ -1,11 +1,15 @@
 ---
 id: "0005"
 title: "Separate mise tasks for remote vs local emdash CLI commands"
-status: "implemented"
+status: "superseded"
 date: "2026-04-02"
 ---
 
 # ADR-0005 — Separate mise tasks for remote vs local emdash CLI commands
+
+> **Superseded by [ADR-0007](0007-emdash-1.1-templates-src-rework.md) (2026-10-05).**
+> `emdash:local`, `HOST_DIR` and the monorepo `data.db` flow no longer exist. The CLI
+> now ships with the site and is run via `mise run emdash:cli` (`scripts/emdash.mjs`).
 
 ## Status
 

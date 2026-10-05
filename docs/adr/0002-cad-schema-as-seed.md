@@ -1,11 +1,16 @@
 ---
 id: "0002"
 title: "Commit CAD schema as seed to eliminate server:setup from rebuild flow"
-status: "implemented"
+status: "superseded"
 date: "2026-04-02"
 ---
 
 # ADR-0002 — Commit CAD schema as seed to eliminate server:setup from rebuild flow
+
+> **Superseded by [ADR-0007](0007-emdash-1.1-templates-src-rework.md) (2026-10-05).**
+> `server:setup`, `server:seed`, `HOST_DIR` and `config/seed.json` no longer exist.
+> The seed is now `config/cad.seed.json`, merged into the site seed by
+> `scripts/merge-seed.mjs` and applied automatically on first request.
 
 ## Status
 

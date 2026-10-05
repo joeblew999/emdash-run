@@ -1,11 +1,15 @@
 ---
 id: "0006"
 title: "Clone emdash-cms/templates into .src and run via mise + pitchfork"
-status: "proposed"
+status: "superseded"
 date: "2026-04-02"
 ---
 
 # ADR-0006 — Clone emdash-cms/templates into .src and run via mise + pitchfork
+
+> **Superseded by [ADR-0007](0007-emdash-1.1-templates-src-rework.md) (2026-10-05),
+> which implemented this direction** (`.src/templates` → `.src/site`, host =
+> `starter-cloudflare`). The `demos/plugins-demo` references below are historical.
 
 ## Status
 

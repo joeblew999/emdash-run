@@ -7,6 +7,10 @@ date: "2026-04-02"
 
 # ADR-0001 — Enable drafts and revisions on CAD collections
 
+> **Note (2026-10-05):** written before [ADR-0007](0007-emdash-1.1-templates-src-rework.md).
+> The `server:setup` / `config/seed.json` references below are historical — the CAD
+> schema now lives in `config/cad.seed.json` and is applied through the site seed.
+
 ## Status
 
 Implemented
