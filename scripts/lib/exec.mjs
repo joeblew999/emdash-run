@@ -4,7 +4,8 @@
  * scripts can run with stdio inherited (so pitchfork can supervise them).
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /** Run a command in the foreground; throws on a non-zero exit. */
 export function run(cmd, args = [], opts = {}) {
@@ -52,4 +53,25 @@ export function secret(name) {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * The dev server's ACTUAL database, as a path a file-based CLI can read.
+ *
+ * EmDash's file-based commands (`doctor`, `seed`, `export-seed`) all default to `./data.db`,
+ * which a Cloudflare site never uses: the dev server reads miniflare's D1 under
+ * `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/`. So the default silently reports on the
+ * wrong database — `emdash doctor` cheerfully announced "no users" while the real local
+ * database had one, and `emdash seed` printed "Seed applied successfully" into a file the site
+ * never reads.
+ *
+ * Returns null when there is no local D1 yet, so a caller can say so rather than guess.
+ */
+export function devDb() {
+	const dir = join(env("SITE_DIR"), ".wrangler", "state", "v3", "d1", "miniflare-D1DatabaseObject");
+	if (!existsSync(dir)) return null;
+	const db = readdirSync(dir).find(
+		(name) => name.endsWith(".sqlite") && name !== "metadata.sqlite",
+	);
+	return db ? join(dir, db) : null;
 }

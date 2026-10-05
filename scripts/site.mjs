@@ -17,7 +17,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 
-import { env, run, sh } from "./lib/exec.mjs";
+import { devDb, env, run, sh } from "./lib/exec.mjs";
 
 const SITE_DIR = env("SITE_DIR");
 const sub = process.argv[2];
@@ -121,6 +121,19 @@ switch (sub) {
 	case "check": {
 		const { siteCheck } = await import("./lib/check.mjs");
 		siteCheck();
+		break;
+	}
+	case "doctor": {
+		// `emdash doctor` defaults to ./data.db, which a Cloudflare site never uses — it would
+		// diagnose an empty file and report "no users" on a healthy site. Point it at the D1 the
+		// dev server actually reads.
+		const db = devDb();
+		if (!db) {
+			console.error("✗ no local D1 yet — run: mise run repo:apply");
+			process.exit(1);
+		}
+		console.log(`  → diagnosing ${db.replace(`${SITE_DIR}/`, "")}`);
+		run("node", [`${env("ROOT")}/scripts/emdash.mjs`, "doctor", "-d", db]);
 		break;
 	}
 	case "reset":

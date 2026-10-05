@@ -210,6 +210,10 @@ run = "node \"$ROOT/scripts/site.mjs\" open"
 description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs. Stops and restarts the site"
 run = "node \"$ROOT/scripts/site.mjs\" check"
 
+[tasks."site:doctor"]
+description = "Diagnose the site's real D1 — database health and scheduler wiring (emdash doctor, pointed at the dev database)"
+run = "node \"$ROOT/scripts/site.mjs\" doctor"
+
 [tasks."site:reset"]
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
 run = "node \"$ROOT/scripts/site.mjs\" reset"
