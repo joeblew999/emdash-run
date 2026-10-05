@@ -5,16 +5,17 @@
 	"compatibility_date": "2026-02-24",
 	"compatibility_flags": ["nodejs_compat"],
 
-	// D1 database binding — local dev uses miniflare state under .wrangler/state.
-	// Add a real "database_id" when you first deploy (see TODO: Cloudflare deploy).
+	// D1 database — provisioned by the first `mise run site:deploy`.
+	// Local dev uses miniflare state under .wrangler/state; the id is only used remotely.
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "emdash-run",
+			"database_id": "115eb6d3-43df-4139-95bb-7900512ced12",
 		},
 	],
 
-	// R2 bucket for media storage
+	// R2 bucket for media storage (created by `wrangler r2 bucket create emdash-run-media`)
 	"r2_buckets": [
 		{
 			"binding": "MEDIA",
@@ -30,13 +31,12 @@
 		},
 	],
 
-	// KV for session storage @astrojs/cloudflare sessions.
-	// Without a KV namespace, sessions fall back to in-memory — Chrome flukes through,
-	// Safari drops them. Keep this even though the stock template omits it.
+	// KV for session storage (@astrojs/cloudflare sessions). Real namespace id —
+	// the local placeholder ("SESSION") is rejected by a real deploy.
 	"kv_namespaces": [
 		{
 			"binding": "SESSION",
-			"id": "SESSION",
+			"id": "29c6fd5b70644857a4ffbcf359973841",
 		},
 	],
 

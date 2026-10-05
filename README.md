@@ -83,14 +83,23 @@ plugins/  plat-trunk/                       ← local plugin, symlinked into .sr
 
 ## Deploy (Cloudflare)
 
+Live: **https://emdash-run.gedw99.workers.dev**
+
 ```bash
 mise run site:deploy:dry   # build + validate the Worker bundle (no cloud changes)
-mise run site:deploy       # build + deploy (provisions D1/R2 on first run)
+mise run site:deploy       # build + deploy
 ```
 
-Cloudflare credentials come from `fnox` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
-The first real deploy provisions the D1 database; wrangler writes its `database_id`
-into `.src/site/wrangler.jsonc` — copy that back into `config/site.wrangler.jsonc`.
+Credentials come from `fnox` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
+Provisioned resources are recorded in `config/site.wrangler.jsonc`:
+
+| Binding | Resource | Name / Id |
+|---------|----------|-----------|
+| `DB` | D1 | `emdash-run` — `115eb6d3-43df-4139-95bb-7900512ced12` |
+| `SESSION` | KV | `29c6fd5b70644857a4ffbcf359973841` |
+| `MEDIA` | R2 | `emdash-run-media` |
+
+D1 migrations and the seed run automatically on the first request.
 
 ---
 

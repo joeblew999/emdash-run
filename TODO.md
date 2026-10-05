@@ -1,8 +1,5 @@
 # TODO
 
-- [ ] First Cloudflare deploy — the build + `wrangler deploy --dry-run` are verified
-      (`mise run site:deploy:dry`); the real `mise run site:deploy` provisions D1/R2
-      and needs Cloudflare creds via fnox.
 - [ ] Wire the geometry preview widget into `config/site.astro.config.mjs`
       (still not registered — see `docs/exploring.md`, ADR-0003).
 - [ ] Local registry aggregator (`apps/aggregator` in the emdash monorepo) is
@@ -15,6 +12,8 @@
 
 ## Done
 
+- [x] First Cloudflare deploy → **https://emdash-run.gedw99.workers.dev** (D1 + KV + R2
+      provisioned; ids recorded in `config/site.wrangler.jsonc`).
 - [x] Use a `.src/` folder and clone sources into it — templates + site + emdash
       monorepo. Done in ADR-0007.
 - [x] Where is the data stored? Local D1/miniflare state under
