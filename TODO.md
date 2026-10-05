@@ -1,6 +1,8 @@
 # TODO
 
-- [ ] First Cloudflare deploy (`config/site.wrangler.jsonc` needs a real `database_id`).
+- [ ] First Cloudflare deploy — the build + `wrangler deploy --dry-run` are verified
+      (`mise run site:deploy:dry`); the real `mise run site:deploy` provisions D1/R2
+      and needs Cloudflare creds via fnox.
 - [ ] Wire the geometry preview widget into `config/site.astro.config.mjs`
       (still not registered — see `docs/exploring.md`, ADR-0003).
 - [ ] Local registry aggregator (`apps/aggregator` in the emdash monorepo) is
