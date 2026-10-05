@@ -33,14 +33,18 @@ plugins/plat-trunk/
 Field: `geometry_meta` (type: json) on the `parts` collection
 Widget id: `plat-trunk:preview`
 
-Receives the JSON field value (contains R2 key, vertex/face/edge counts, bounding box, validation status).
-Fetches geometry thumbnail/stats from `cad.ubuntusoftware.net` (our Hono Worker).
-Renders inline stats + validation badge + link to full CAD viewport.
+Receives the JSON field value (vertex/face/edge counts, bounding box, volume, validation
+status, model path) and renders it as a label/value grid.
+
+**It makes no network calls.** This section used to claim it "fetches geometry
+thumbnail/stats from `cad.ubuntusoftware.net`" — it does not, and never has. There is no
+`fetch`, no `XMLHttpRequest` and no `ctx.http` anywhere in either plugin; the hostname
+appeared only in prose. The panel renders what is stored on the entry and nothing else.
 
 ### What the widget does NOT do
 
-No geometry processing. No WASM. No CRDT. No writes to plat-trunk.
-Read-only display + deep link. The actual geometry lives in plat-trunk.
+No geometry processing. No WASM. No CRDT. No writes to plat-trunk. No fetching.
+Read-only display of the entry's stored fields.
 
 ## Status
 - **Done.** `plugins/plat-trunk/src/index.ts` — native descriptor + `createPlugin`
@@ -57,9 +61,12 @@ Read-only display + deep link. The actual geometry lives in plat-trunk.
 
 ## Next step
 
-Fetch live geometry stats from the plat-trunk worker (`cad.ubuntusoftware.net`) in the
-panel, and add a validation badge + deep link to the CAD viewport. The panel currently
-renders only what is stored on the entry.
+See [`plans/2026-10-05-panel-live-geometry.md`](plans/2026-10-05-panel-live-geometry.md).
+In short: the **validation badge** can be driven by `geometry_meta.validation`, which the
+entries already store, and the **deep link** needs a URL pattern rather than an API — only
+**live** stats need the geometry worker. And that worker is not reachable:
+`ubuntusoftware.net` resolves over Cloudflare NS, but `cad.ubuntusoftware.net` has no DNS
+record at all, so no call could succeed even once written.
 
 ## Publishing — native vs sandboxed
 This plugin is **native**: it ships as an npm package and is installed into the site
