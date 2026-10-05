@@ -15,11 +15,13 @@ import { env, registryToken, run, sh } from "./lib/exec.mjs";
 
 const EMDASH_DIR = env("EMDASH_DIR");
 const APP = `${EMDASH_DIR}/apps/aggregator`;
+const REGISTRY_URL = env("REGISTRY_URL");
+const REGISTRY_PORT = env("REGISTRY_PORT");
 const sub = process.argv[2];
 
 /** POST to an /_admin route with the dev token; print status + a short body. */
 async function admin(path, body) {
-	const res = await fetch(`http://localhost:8788${path}`, {
+	const res = await fetch(`${REGISTRY_URL}${path}`, {
 		method: "POST",
 		headers: {
 			authorization: `Bearer ${registryToken()}`,
@@ -52,11 +54,11 @@ switch (sub) {
 		console.log(`  ✓ wrote ${APP}/.env (LISTING_POLICY_MODE=open, dev ADMIN_TOKEN)`);
 		break;
 	case "start":
-		run("pnpm", ["exec", "wrangler", "dev", "--port", "8788"], { cwd: APP });
+		run("pnpm", ["exec", "wrangler", "dev", "--port", REGISTRY_PORT], { cwd: APP });
 		break;
 	case "up":
 		sh("pitchfork start registry");
-		console.log("→ registry: http://localhost:8788/health  (JSON API under /xrpc/com.emdashcms.experimental.aggregator.*)");
+		console.log(`→ registry: ${REGISTRY_URL}/health  (JSON API under /xrpc/com.emdashcms.experimental.aggregator.*)`);
 		break;
 	case "logs":
 		run("pitchfork", ["logs", "registry", "--follow"]);

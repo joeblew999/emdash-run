@@ -13,6 +13,10 @@ import { env, run } from "./lib/exec.mjs";
 const SITE_DIR = env("SITE_DIR");
 const sub = process.argv[2];
 
+// [env] sets EMDASH_REGISTRY_URL so the dev site uses the LOCAL registry. A production
+// build must use the hosted one, so drop it before building.
+delete process.env.EMDASH_REGISTRY_URL;
+
 let rc = 0;
 try {
 	if (sub === "build") {
