@@ -46,8 +46,14 @@ Read-only display + deep link. The actual geometry lives in plat-trunk.
 - **Done.** `plugins/plat-trunk/src/index.ts` — native descriptor + `createPlugin`
 - **Done.** `plugins/plat-trunk/src/admin/index.tsx` — `contentEditorPanels` geometry panel
 - **Done.** Registered in `config/site.astro.config.mjs` as `platTrunkPlugin()`
-- **Verified.** Renders in the Parts editor: "Geometry" → Part number / Material (plus
-  any keys on `geometry_meta`)
+- **Done.** `plugins/plat-trunk-sandboxed` — the same panel as a sandboxed plugin: Block Kit
+  from the private `editor/geometry` route, declared via `admin.editorPanels`, reading the
+  saved part through capability-gated `ctx.content`
+- **Verified.** Both panels render on the same Part in the admin — the native `<dl>` expanded
+  with the seeded values, the sandboxed panel alongside it (collapsed, as sandboxed panels
+  start closed and call their route only when opened)
+- **Verified.** The dev server logs
+  `Loaded sandboxed plugin plat-trunk-sandboxed:0.1.0 with capabilities: [content:read]`
 
 ## Next step
 
@@ -80,16 +86,39 @@ same panel two ways is the finding. `plugins/plat-trunk` is native;
 | | native (`plugins/plat-trunk`) | sandboxed (`plugins/plat-trunk-sandboxed`) |
 |---|---|---|
 | Registered as | `plugins: [platTrunkPlugin()]` | `sandboxed: [platTrunkSandboxed]` + `sandboxRunner` |
+| Import | a **factory call** — `platTrunkPlugin()` | the package **root**, as-is (no call). `/sandbox` is the entrypoint the root's descriptor names, not something you import |
 | Manifest | none | `emdash-plugin.jsonc` — `capabilities` / `allowedHosts` / `storage` are a consent contract |
 | Code shape | a React component the host imports | `SandboxedPlugin`: `routes` + hooks the host invokes |
-| UI | `contentEditorPanels` → React | `admin.editorPanels` → a route the sandbox serves |
+| UI | `contentEditorPanels` → React `<dl>` | `admin.editorPanels` → a private route returning Block Kit (`fields` is the two-column grid) |
+| Panel behaviour | renders with the editor | collapses until opened, then calls the route |
+| Reading the entry | `entry.data` handed to the component | `routeCtx.ui.entry` (host-attested) → `ctx.content.get(collection, id)` |
 | Build | none — the host compiles the source | `emdash-plugin build` → `dist/{index,plugin}.mjs` + `manifest.json` |
-| Test | none | `@emdash-cms/plugin-test`: `createPluginTestHost()` → `host.invokeRoute(…)`, in EmDash's production sandbox |
-| Privileges | whatever the host has | only what the manifest declares — by default just logging, KV and route/hook registration |
+| Test | none | `@emdash-cms/plugin-test`: `createPluginTestHost()` → `invokeRoute(…)`, `createPluginRuntimeTestHost()` → `admin.loadEditorPanel(…)`, both through EmDash's production sandbox |
+| Privileges | whatever the host has | only what the manifest declares — here just `content:read` |
 | Release | npm only | registry + npm with provenance; changing the trust contract **requires** a version bump |
+| Ships browser code | yes | **no** — the host renders the blocks |
 
 The scaffold also gave us things we had nowhere: a passing test through the sandbox harness,
 `vitest.config.ts`, and `skills/creating-plugins/SKILL.md` with `.claude/skills` +
 `.claude/CLAUDE.md` symlinks — the same AGENTS.md pattern we chose independently.
+
+## What actually bit us
+
+All four were files lying about the setup, not missing features:
+
+1. **The scaffolder targets EmDash 0.x.** It wrote `emdash: ">=0.12.0 <1.0.0"` and installed
+   **0.42.0** while the site runs **1.1.0** — so its green test proved nothing about our stack.
+   Pinned to `^1.1.0` before trusting anything it said.
+2. **The capability is `content:read`.** A stale comment inside emdash's own `plugin-types`
+   says `read:content`; the documented name is what the bundle-time check enforces.
+3. **The import is the package root.** Importing `/sandbox` directly hands EmDash the
+   implementation and it refuses: *Plugin "undefined" uses the native format and cannot be
+   placed in `sandboxed: []`*.
+4. **`plugin:link` alone is not enough** — the descriptor points at a built bundle, so
+   `plugin:build` has to run before the site resolves it. It now runs in `repo:apply`.
+
+And one that hid the rest: the **native** plugin had `validate` / `build` / `bundle` / `test`
+scripts pointing at the sandboxed CLI, with no manifest and no tests to run them. They went
+unnoticed until the plugin sweep became generic, where one of them broke `repo:apply`.
 
 Tracked in [`plans/2026-10-05-plugin-sandbox-model.md`](plans/2026-10-05-plugin-sandbox-model.md).
