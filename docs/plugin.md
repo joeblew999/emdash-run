@@ -56,7 +56,6 @@ panel, and add a validation badge + deep link to the CAD viewport. The panel cur
 renders only what is stored on the entry.
 
 ## Publishing — native vs sandboxed
-
 This plugin is **native**: it ships as an npm package and is installed into the site
 (`plugins: []` in `astro.config`). There is no registry-publish step for it.
 
@@ -72,12 +71,25 @@ pnpm exec emdash-plugin validate | bundle | publish | login <handle>
 
 See `.claude/skills/emdash/creating-plugins` (shipped with the site).
 
-**Open question — stay native, or move to sandboxed?** Sandboxed is the model the ecosystem
-actually ships: a real published example is
-[`swissky/emdash-plugin-linguadash`](https://github.com/swissky/emdash-plugin-linguadash).
-It brings an `emdash-plugin.jsonc` manifest declaring `capabilities`, `allowedHosts` and
-`storage` (a trust contract users consent to at install), a dev loop
-(`validate` / `typecheck` / `test` via `@emdash-cms/plugin-test` / `build`), extra admin
-surfaces (settings pages, custom admin pages) and a registry release pipeline — none of
-which we have today. Tracked in
-[`plans/2026-10-05-plugin-sandbox-model.md`](plans/2026-10-05-plugin-sandbox-model.md).
+## The two models, side by side
+
+We run **both**, deliberately. The harness exists to evaluate EmDash, so implementing the
+same panel two ways is the finding. `plugins/plat-trunk` is native;
+`plugins/plat-trunk-sandboxed` is the scaffolded sandboxed twin (`emdash-plugin init`).
+
+| | native (`plugins/plat-trunk`) | sandboxed (`plugins/plat-trunk-sandboxed`) |
+|---|---|---|
+| Registered as | `plugins: [platTrunkPlugin()]` | `sandboxed: [platTrunkSandboxed]` + `sandboxRunner` |
+| Manifest | none | `emdash-plugin.jsonc` — `capabilities` / `allowedHosts` / `storage` are a consent contract |
+| Code shape | a React component the host imports | `SandboxedPlugin`: `routes` + hooks the host invokes |
+| UI | `contentEditorPanels` → React | `admin.editorPanels` → a route the sandbox serves |
+| Build | none — the host compiles the source | `emdash-plugin build` → `dist/{index,plugin}.mjs` + `manifest.json` |
+| Test | none | `@emdash-cms/plugin-test`: `createPluginTestHost()` → `host.invokeRoute(…)`, in EmDash's production sandbox |
+| Privileges | whatever the host has | only what the manifest declares — by default just logging, KV and route/hook registration |
+| Release | npm only | registry + npm with provenance; changing the trust contract **requires** a version bump |
+
+The scaffold also gave us things we had nowhere: a passing test through the sandbox harness,
+`vitest.config.ts`, and `skills/creating-plugins/SKILL.md` with `.claude/skills` +
+`.claude/CLAUDE.md` symlinks — the same AGENTS.md pattern we chose independently.
+
+Tracked in [`plans/2026-10-05-plugin-sandbox-model.md`](plans/2026-10-05-plugin-sandbox-model.md).

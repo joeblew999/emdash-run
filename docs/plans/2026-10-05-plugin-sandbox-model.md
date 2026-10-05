@@ -29,9 +29,15 @@ The harness already runs a sandboxed plugin: `config/site.astro.config.mjs` has
   - [ ] `admin.settingsSchema` with the geometry worker URL as a setting
   - [ ] the panel reads the setting instead of hardcoding it
   - [ ] seen in the admin, saved, and used
-- [ ] **Decide native vs sandboxed**
-  - [ ] write the decision and its cost into `docs/plugin.md`
-  - [ ] if sandboxed: list exactly what we lose (React panels, direct host access)
+- [ ] **Build both — keep the native plugin, add a sandboxed twin**
+  - [x] decide: **both, not either.** The harness exists to evaluate EmDash, so implementing the same panel both ways is the strongest comparison — and it forces us to learn both models.
+  - [x] scaffold the second plugin — `emdash-plugin init` wrote 14 files into `plugins/plat-trunk-sandboxed`. `pnpm install`, `validate` ("Manifest is valid"), `test` (**1 passing through the sandbox harness**) and `build` all work.
+  - [ ] replace the placeholder publisher DID (`did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID`) with a real one before any release
+  - [ ] write its `emdash-plugin.jsonc`: `capabilities`, `allowedHosts`, `storage` — only what it uses
+  - [ ] register it in `config/site.astro.config.mjs` under `sandboxed: []`, leaving the native one in `plugins: []`
+  - [ ] implement the same geometry panel as a sandbox route (`admin.editorPanels`)
+  - [ ] `pnpm run validate && pnpm run typecheck && pnpm run test` pass in the new plugin
+  - [ ] compare them in `docs/plugin.md`: what the sandboxed one could not do, and what the native one cannot
 - [ ] **Public-site components** (`./astro`) — sandboxed plugins cannot add markup, so they ship components
   - [ ] one component that renders part/assembly data
   - [ ] rendered on the public site
@@ -42,5 +48,5 @@ The harness already runs a sandboxed plugin: `config/site.astro.config.mjs` has
   - [ ] `emdash-plugin bundle` produces a bundle
   - [ ] a publisher DID obtained and recorded
   - [ ] the version-bump rule written down: changing `capabilities` / `allowedHosts` / `storage` **requires** a version bump
-- [ ] **Carry the plugin-authoring skill**
-  - [ ] `skills/creating-plugins/SKILL.md` in the repo, or the reason it is not, written down
+- [x] **Carry the plugin-authoring skill**
+  - [x] `emdash-plugin init` ships `skills/creating-plugins/SKILL.md` plus `.claude/skills` and `.claude/CLAUDE.md` symlinks — the sandboxed twin has all three (and uses the same AGENTS.md + symlink pattern we chose independently)
