@@ -23,6 +23,16 @@ is orientation only.
   shipped with the site at `.claude/skills/emdash/` — `building-emdash-site`,
   `creating-plugins`, `emdash-cli`. The site is an official template, not the monorepo.
 
+## Tasks and scripts
+
+`mise.toml` is the interface; `scripts/*.mjs` are the implementation. Every script in
+`scripts/` is called by a task — so:
+
+- run the task, never the script directly;
+- don't inline non-trivial logic into `mise.toml`; put it in `scripts/` and call it from
+  a task;
+- the mapping is discoverable: `grep -o 'scripts/[^"]*' mise.toml`.
+
 ## Layout
 
 Paths and what is generated are mapped in `README.md` (§ "Where things are").

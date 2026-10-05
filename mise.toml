@@ -5,6 +5,9 @@
 # Model: the host site is an official EmDash template (starter-cloudflare) copied
 # into .src/site. It consumes the *published* `emdash` npm package — there is no
 # emdash monorepo clone and no legacy marketplace.
+#
+# Tasks are the interface; scripts/*.mjs hold the implementation. Every script is
+# called by a task — run the task, not the script.
 
 [settings]
 # Serial task execution — avoids pnpm lockfile conflicts during install
