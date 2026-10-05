@@ -76,8 +76,11 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #   mise run registry:project  ← build the public projection (else reads return nothing)
 #
 # URLs (once running):
+#   mise run urls            ← prints every URL below
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
 #   http://localhost:4321/_emdash/api/mcp   ← MCP endpoint (enabled by default; Bearer token from run/token-admin.txt)
+#   http://localhost:8788/   ← local registry (XRPC) — only if `mise run registry:up`
+#   http://localhost:4330/   ← plugins UI            — only if `mise run plugins-site:up`
 #
 # Why dev-bypass and NOT the login page:
 #   Passkeys are stored in the database. server:reset wipes it → old passkey credentials
@@ -297,6 +300,20 @@ mise run mcp:token-admin
 echo "→ admin:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
 echo "→ mcp:    http://localhost:4321/_emdash/api/mcp (Bearer: run/token-admin.txt)"
 echo "✓ apply done"
+"""
+
+[tasks."urls"]
+description = "Print every URL this project serves"
+run = """
+echo "Host site"
+echo "  admin      http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+echo "  mcp        http://localhost:4321/_emdash/api/mcp   (Bearer: run/token-admin.txt)"
+echo
+echo "Optional daemons — start with: mise run registry:up / mise run plugins-site:up"
+echo "  registry   http://localhost:8788/   (XRPC com.emdashcms.experimental.aggregator.*)"
+echo "  plugins UI http://localhost:4330/"
+echo
+echo "Live         https://emdash-run.gedw99.workers.dev"
 """
 
 [tasks."mise:reorder"]
@@ -606,7 +623,7 @@ run = "pnpm exec wrangler dev --port 8788"
 
 [tasks."registry:up"]
 description = "Start the registry aggregator daemon via pitchfork"
-run = "pitchfork start registry"
+run = "pitchfork start registry && echo '→ registry: http://localhost:8788/  (XRPC com.emdashcms.experimental.aggregator.*)'"
 
 [tasks."registry:logs"]
 description = "Follow registry aggregator logs"
@@ -668,7 +685,7 @@ run = "pnpm exec astro dev --port 4330"
 
 [tasks."plugins-site:up"]
 description = "Start the plugins site daemon via pitchfork"
-run = "pitchfork start plugins-site"
+run = "pitchfork start plugins-site && echo '→ plugins UI: http://localhost:4330/'"
 
 [tasks."plugins-site:logs"]
 description = "Follow plugins site logs"
