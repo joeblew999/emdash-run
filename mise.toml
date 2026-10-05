@@ -71,7 +71,7 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #
 # Optional (not on the default path):
 #   mise run src:clone:emdash  ← shallow clone of the emdash monorepo into .src/emdash
-#                                (read EmDash source; run the local registry aggregator)
+#   mise run registry:up       ← run the local plugin registry (the "marketplace") on :8788
 #
 # URLs (once running):
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
@@ -252,6 +252,45 @@ rm -rf "$SRC_DIR"
 mise run src:clone:templates
 echo "✓ Wiped .src — run: mise run server:build → init → apply"
 """
+
+# -----------------------------------------------------------------------------
+# REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)
+# Optional: not needed to run the site, which uses the hosted registry by default.
+# XRPC reads: com.emdashcms.experimental.aggregator.*  ·  http://localhost:8788
+# -----------------------------------------------------------------------------
+
+[tasks."registry:install"]
+description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"
+depends = ["src:clone:emdash"]
+run = """
+set -euo pipefail
+cd "$EMDASH_DIR"
+pnpm install --frozen-lockfile
+pnpm --filter @emdash-cms/aggregator run prebuild
+"""
+
+[tasks."registry:migrate"]
+description = "Apply the registry aggregator's local D1 migrations"
+depends = ["registry:install"]
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+run = "pnpm run db:migrate:local"
+
+[tasks."registry:start"]
+description = "Start the local registry aggregator on :8788 — called by pitchfork"
+depends = ["registry:migrate"]
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+# `wrangler dev`, NOT the package's `vite dev`. The Cloudflare vite plugin resolves
+# miniflare@4.20260507.1 + workerd@1.20260507.1, which crash on Durable Object SQLite
+# (`table _cf_ALARM has 3 columns but 2 values were supplied`). wrangler dev works.
+run = "pnpm exec wrangler dev --port 8788"
+
+[tasks."registry:up"]
+description = "Start the registry aggregator daemon via pitchfork"
+run = "pitchfork start registry"
+
+[tasks."registry:logs"]
+description = "Follow registry aggregator logs"
+run = "pitchfork logs registry --follow"
 
 # -----------------------------------------------------------------------------
 # DEPLOY (Cloudflare)
