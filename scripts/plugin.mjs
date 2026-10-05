@@ -2,6 +2,7 @@
 /**
  *   mise run plugin:install -- <name>          (one plugin)
  *   mise run plugin:install-all | plugin:link (all plugins)
+ *   mise run plugin:audit                      (structural checks across plugins/)
  *   mise run plugin:build | :validate | :bundle | :publish | :login
  *   mise run plugin:catalog | :catalog:dry | :catalog:full
  *
@@ -26,6 +27,14 @@ const pluginDirs = () =>
 	readdirSync(PLUGINS_DIR, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory() && existsSync(`${PLUGINS_DIR}/${entry.name}/package.json`))
 		.map((entry) => entry.name);
+
+function readJson(path) {
+	try {
+		return JSON.parse(readFileSync(path, "utf8"));
+	} catch {
+		return null;
+	}
+}
 
 function requireName() {
 	if (!name) {
@@ -99,6 +108,87 @@ ${rows.join("\n")}
 	console.log(`  ✓ ${packages.length} packages → docs/plugin-catalog/`);
 }
 
+/**
+ * Structural checks across every plugin in `plugins/`.
+ *
+ * Every rule here encodes a bug that was found by hand, and each one presented as "the
+ * feature is broken" when the real fault was a file describing a setup that did not exist:
+ *
+ *   1. A script the toolchain can never run. The native plugin declared `validate`, `build`,
+ *      `bundle` and `test` pointing at the sandboxed CLI while having no manifest and no
+ *      tests. Unrunnable for months; it only surfaced when a sweep tried to run one.
+ *   2. A sandboxed plugin whose `./sandbox` entry has not been built. The descriptor names a
+ *      built bundle as its entrypoint, so linking without building leaves the site importing
+ *      a file that is not there.
+ *   3. A plugin pinned to a different `emdash` than the site runs. The scaffold asked for
+ *      0.x and installed 0.42.0 while the site ran 1.1.0 — so its passing test was evidence
+ *      about a different CMS.
+ *   4. `network:request` with nothing to allow. The bundle-time check rejects it, so failing
+ *      here just fails earlier, with a better message.
+ *
+ * The manifest is parsed with regexes rather than a JSONC parser on purpose: this is a
+ * lint, and `emdash-plugin validate` remains the authority on whether a manifest is valid.
+ */
+function audit() {
+	const failures = [];
+
+	const siteEmdash = readJson(`${SITE_DIR}/node_modules/emdash/package.json`)?.version ?? null;
+
+	for (const dir of pluginDirs()) {
+		const abs = `${PLUGINS_DIR}/${dir}`;
+		const manifest = readJson(`${abs}/package.json`);
+		if (!manifest) continue;
+
+		const label = manifest.name ?? dir;
+		const hasPluginManifest = existsSync(`${abs}/emdash-plugin.jsonc`);
+
+		// 1. a script the toolchain cannot run.
+		for (const [name, command] of Object.entries(manifest.scripts ?? {})) {
+			if (/\bemdash-plugin\b/.test(command) && !hasPluginManifest) {
+				failures.push(
+					`${label}: script "${name}" runs emdash-plugin but the plugin has no emdash-plugin.jsonc — it can never succeed`,
+				);
+			}
+		}
+
+		// 2. the sandbox bundle has not been built.
+		const entry = manifest.exports?.["./sandbox"];
+		const relative = typeof entry === "string" ? entry : (entry?.import ?? entry?.default);
+		if (hasPluginManifest && typeof relative === "string" && !existsSync(`${abs}/${relative}`)) {
+			failures.push(
+				`${label}: exports "./sandbox" → ${relative}, which does not exist — run \`mise run plugin:build\``,
+			);
+		}
+
+		// 3. emdash drift from the site.
+		const pinned = readJson(`${abs}/node_modules/emdash/package.json`)?.version ?? null;
+		if (siteEmdash && pinned && pinned !== siteEmdash) {
+			failures.push(
+				`${label}: has emdash ${pinned} installed, but the site runs ${siteEmdash} — a green test here says nothing about the site`,
+			);
+		}
+
+		// 4. network access declared with nothing to allow.
+		if (hasPluginManifest) {
+			const raw = readFileSync(`${abs}/emdash-plugin.jsonc`, "utf8");
+			const list = (key) => new RegExp(`"${key}"\\s*:\\s*\\[([^\\]]*)\\]`).exec(raw)?.[1] ?? "";
+			const capabilities = list("capabilities");
+			if (capabilities.includes("network:request") && !capabilities.includes("network:request:unrestricted")) {
+				if (!list("allowedHosts").trim()) {
+					failures.push(`${label}: declares network:request but allowedHosts is empty — the bundle-time check will reject it`);
+				}
+			}
+		}
+	}
+
+	if (failures.length) {
+		console.error(`plugin:audit found ${failures.length} problem(s):`);
+		for (const failure of failures) console.error(`  ✗ ${failure}`);
+		process.exit(1);
+	}
+	console.log(`  ✓ ${pluginDirs().length} plugins consistent`);
+}
+
 switch (sub) {
 	case "install":
 		requireName();
@@ -165,6 +255,10 @@ switch (sub) {
 			console.log(`→ typecheck ${manifest.name}`);
 			run("pnpm", ["--dir", `${PLUGINS_DIR}/${dir}`, "run", "typecheck"]);
 		}
+		break;
+
+	case "audit":
+		audit();
 		break;
 
 	case "catalog":

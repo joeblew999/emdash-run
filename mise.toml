@@ -200,7 +200,7 @@ run = "node \"$ROOT/scripts/repo.mjs\" init"
 
 [tasks."repo:apply"]
 description = "Apply config + restart the site + refresh token — run after every change"
-depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "skills:sync", "mise:check"]
+depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync", "mise:check"]
 run = "node \"$ROOT/scripts/repo.mjs\" apply"
 
 [tasks."repo:urls"]
@@ -301,6 +301,10 @@ run = "node \"$ROOT/scripts/plugin.mjs\" link"
 [tasks."plugin:typecheck"]
 description = "Typecheck every plugin that declares a typecheck script"
 run = "node \"$ROOT/scripts/plugin.mjs\" typecheck"
+
+[tasks."plugin:audit"]
+description = "Structural checks across plugins/ — phantom scripts, unbuilt sandbox bundles, emdash drift, empty allowedHosts"
+run = "node \"$ROOT/scripts/plugin.mjs\" audit"
 
 # Sandboxed-plugin build + release. The CLI is `@emdash-cms/plugin-cli` (binary
 # `emdash-plugin`) and needs an `emdash-plugin.jsonc`. These sweep every plugin and run the
