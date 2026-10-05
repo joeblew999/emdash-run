@@ -1,7 +1,11 @@
-// @ts-nocheck
-// NOTE: TS errors for missing modules are false positives.
-// This file lives in config/ but is COPIED into .src/site/ by `config:apply`.
-// Imports resolve from that location via pnpm (published packages, no monorepo).
+// This file lives in config/ but is COPIED into .src/site/ by `config:apply`, so its imports
+// resolve from that location via pnpm (published packages, no monorepo). That is why
+// `mise run site:check` runs against the copy rather than this path.
+//
+// It used to carry `// @ts-nocheck` for "TS errors for missing modules are false positives".
+// That went stale: with the suppression removed the file typechecks clean (`tsc --checkJs`
+// reports nothing, and `astro check` loads it without complaint), so the suppression was only
+// hiding real errors from editors.
 //
 // The host site is the official starter-cloudflare template (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
 import cloudflare from "@astrojs/cloudflare";

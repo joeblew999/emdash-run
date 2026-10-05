@@ -1,7 +1,7 @@
 # 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active — **6 of 7 done** (item 7 is partly done: the structural, live-state, lint
-and unit-test checks have each been proven to block)
+**Status:** active — **7 of 8 done** (item 8 is partly done: structural, live-state, lint,
+unit-test and type checks have each been proven to block)
 
 Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
 plugin typecheck into `repo:apply` immediately found three real faults, so the rest of this
@@ -45,9 +45,12 @@ was a file describing a setup that did not exist.
   - [x] formatting scoped to code, deliberately not `.`: oxfmt also formats TOML and Markdown, and `mise.toml` is this repo's declared source of truth (already broken once by an over-eager edit)
   - [x] **why this earns its place beyond style:** nothing validated `scripts/` until it ran. An unclosed template literal introduced during this session stayed invisible until that exact code path executed. Lint parses every file, so that class dies at check time.
   - [x] found while proving it: `repo.mjs` statically imported its helpers, so a syntax error in **any** helper aborted **every** subcommand at module load with a raw Node stack — a typo in `verify.mjs` made `repo:apply` refuse to restart the site. Helpers are now imported lazily, so the blast radius is one subcommand.
-- [ ] **Typecheck the site**
-  - [ ] `site:check` task running `astro check` against `.src/site` (`@astrojs/check` is already installed)
-  - [ ] wire it into `repo:apply`
+- [x] **Typecheck the site** — `mise run site:check`, two passes
+  - [x] `astro check` against `.src/site`: 14 files, 0 errors, 0 warnings, 0 hints. It also **loads** `astro.config.mjs`, so a config that throws on load fails here — the class that actually bit us when the sandboxed import was wrong.
+  - [x] `tsc --checkJs astro.config.mjs`, because `astro check` **executes** the config rather than analysing it. Proved complementary by injection: a JSDoc type error gives `astro check` 0 errors and `tsc` `TS2322`.
+  - [x] **removed a stale `// @ts-nocheck`** from `config/site.astro.config.mjs`. It claimed "TS errors for missing modules are false positives" and described the pre-rework layout; with it gone the file typechecks clean, so it was only hiding real errors from editors.
+  - [x] `--ignoreConfig` is required: the site has a `tsconfig.json`, and tsc refuses to combine it with explicit file arguments.
+  - [x] **not wired into `repo:apply`, deliberately.** `site:check` runs `astro check` in `.src/site` — the same directory as the live dev server — and two processes fighting over `.astro/` and the vite cache is a worse failure than a check that runs on demand. `plugin:typecheck` is wired in because it runs in its own package.
 - [x] **Test the scripts** — `mise run repo:test`, vitest, 10 tests
   - [x] picked vitest, at the version the sandboxed plugin already uses (4.1.11), so there is one test runner in the story rather than two
   - [x] pinned in mise `[tools]` like oxlint/oxfmt, for the same reason: no root package.json
@@ -76,5 +79,5 @@ was a file describing a setup that did not exist.
   - [x] prove the structural checks: reintroduced all three structural bugs at once and `plugin:audit` reported each by name, then passed again once restored (see the note below)
   - [x] prove the live-state check: drifted one stored field and `repo:verify` named the part, the model, the key, and both values
   - [x] prove the lint check: reintroduced the same unclosed template literal and `repo:check` reported `scripts/lib/verify.mjs:40:16: error: Expected a semicolon…` — file, line, column — while `repo:urls` kept working, confirming the lazy-import fix
-  - [ ] prove a **type** error (not a parse error) fails the checks — `tsc` is the candidate, not oxlint
-  - [ ] decide whether `repo:check` should gate `repo:apply`. It is ~30ms; the open question is whether a lint failure ought to block a site restart, or just be reported.
+  - [x] prove a **type** error: injected `/** @type {string} */ const neverUsed = 123;` into the config copy. `astro check` reported 0 errors — it only loads the config, and that line runs fine — while `tsc --checkJs` reported `TS2322: Type 'number' is not assignable to type 'string'`. The two passes are complementary, not redundant.
+  - [x] decided: **`repo:check` does not gate `repo:apply`.** Speed is not the reason (it is ~30ms) — the reason is that a restart is also the *recovery* path, so gating it on a lint pass means a style finding can leave you unable to bring the site up. `plugin:audit` does gate it, because it catches faults that would make the restart produce a *wrong* site. `plugin:typecheck` also gates it, which is arguably inconsistent with this reasoning — worth revisiting if a type error ever blocks a recovery that was needed.

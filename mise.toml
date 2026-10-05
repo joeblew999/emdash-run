@@ -198,6 +198,10 @@ run = "node \"$ROOT/scripts/site.mjs\" logs"
 description = "Open admin UI in browser via dev-bypass (runs migrations + seed; skips passkey auth)"
 run = "node \"$ROOT/scripts/site.mjs\" open"
 
+[tasks."site:check"]
+description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs"
+run = "node \"$ROOT/scripts/site.mjs\" check"
+
 [tasks."site:reset"]
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
 run = "node \"$ROOT/scripts/site.mjs\" reset"

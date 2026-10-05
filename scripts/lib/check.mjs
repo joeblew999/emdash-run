@@ -16,7 +16,7 @@
  * Prose (`docs/`) and generated files (`skills-lock.json`) gain nothing from reformatting and
  * cost reviewable diffs.
  */
-import { run } from "./exec.mjs";
+import { env, run } from "./exec.mjs";
 
 /** The code we own. Not config, not prose, not generated output. */
 const CODE = [
@@ -25,6 +25,52 @@ const CODE = [
 	"plugins/plat-trunk-sandboxed/src",
 	"plugins/plat-trunk-sandboxed/tests",
 ];
+
+/**
+ * `site:check` — typecheck the host site.
+ *
+ * Two passes, because they cover different things and neither covers both:
+ *
+ *   `astro check`   the template's own `.astro` and `.ts` files. It also **loads**
+ *                   `astro.config.mjs`, so a config that throws on load fails here — which is
+ *                   the class that actually bit us: importing `plat-trunk-sandboxed/sandbox`
+ *                   instead of the package root made EmDash reject the config at load time.
+ *   `tsc --checkJs` the **types** of that same config file, which `astro check` never inspects:
+ *                   it executes the config rather than analysing it. Verified by injection —
+ *                   a deliberate JSDoc type error survives `astro check` and is caught here.
+ *
+ * Both run against `.src/site`, the copy `config:apply` writes, because that is where the
+ * imports resolve via pnpm. `--ignoreConfig` is required: the site has a tsconfig.json, and
+ * tsc refuses to combine it with explicit file arguments.
+ */
+export function siteCheck() {
+	const siteDir = env("SITE_DIR");
+
+	console.log("→ astro check (the site, and that its config loads)");
+	run("pnpm", ["exec", "astro", "check"], { cwd: siteDir });
+
+	console.log("→ tsc --checkJs astro.config.mjs (the types astro check does not see)");
+	run(
+		"pnpm",
+		[
+			"exec",
+			"tsc",
+			"--noEmit",
+			"--ignoreConfig",
+			"--allowJs",
+			"--checkJs",
+			"--moduleResolution",
+			"bundler",
+			"--module",
+			"esnext",
+			"--target",
+			"es2022",
+			"--skipLibCheck",
+			"astro.config.mjs",
+		],
+		{ cwd: siteDir },
+	);
+}
 
 export function check() {
 	console.log("→ oxlint --type-aware --deny-warnings");

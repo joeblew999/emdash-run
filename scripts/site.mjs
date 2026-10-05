@@ -118,6 +118,11 @@ switch (sub) {
 	case "open":
 		sh(`open '${env("SITE_URL")}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'`);
 		break;
+	case "check": {
+		const { siteCheck } = await import("./lib/check.mjs");
+		siteCheck();
+		break;
+	}
 	case "reset":
 		rmSync(`${SITE_DIR}/.wrangler/state`, { recursive: true, force: true });
 		console.log("Done — run: mise run repo:apply");
