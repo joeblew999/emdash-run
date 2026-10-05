@@ -105,7 +105,7 @@ switch (sub) {
 		run("pitchfork", ["logs", "emdash", "--follow"]);
 		break;
 	case "open":
-		sh(`open 'http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'`);
+		sh(`open '${env("SITE_URL")}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'`);
 		break;
 	case "reset":
 		rmSync(`${SITE_DIR}/.wrangler/state`, { recursive: true, force: true });

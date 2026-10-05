@@ -27,6 +27,7 @@ ROOT            = "{{config_root}}"
 SRC_DIR         = "{{config_root}}/.src"
 TEMPLATES_DIR   = "{{config_root}}/.src/templates"   # clone of emdash-cms/templates
 SITE_DIR        = "{{config_root}}/.src/site"        # copy of $TEMPLATE — the host site (:4321)
+SITE_URL        = "http://localhost:4321"            # the host site as a URL — scripts read this, never a literal
 EMDASH_DIR      = "{{config_root}}/.src/emdash"      # optional emdash monorepo clone (on demand)
 
 # Which official template to host. `blank` was retired upstream; starter-cloudflare
@@ -151,6 +152,10 @@ run = "node \"$ROOT/scripts/config.mjs\" apply"
 [tasks."seed:validate"]
 description = "Validate the merged site seed — EmDash silently skips an invalid one"
 run = "node \"$ROOT/scripts/seed.mjs\" validate"
+
+[tasks."seed:apply"]
+description = "Get the seed into the RUNNING dev site — empties local D1 then reapplies (discards local content + admin session)"
+run = "node \"$ROOT/scripts/seed.mjs\" apply"
 
 [tasks."site:setup"]
 description = "One-time: clone templates → copy site → install → apply config"

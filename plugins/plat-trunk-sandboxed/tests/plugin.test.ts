@@ -41,6 +41,7 @@ describe("geometry editor panel", () => {
 			label: "Parts",
 			fields: [
 				{ slug: "part_number", label: "Part number", type: "text" },
+				{ slug: "model_id", label: "Model", type: "text" },
 				{ slug: "material", label: "Material", type: "text" },
 				{ slug: "assembly", label: "Assembly", type: "text" },
 				{ slug: "geometry_meta", label: "Geometry", type: "json" },
@@ -51,20 +52,19 @@ describe("geometry editor panel", () => {
 			data: {
 				part_number: "MP-002",
 				material: "Steel",
-				// A reference field: the panel hides it, so a part that has one
-				// proves hiding works rather than being untested.
+				model_id: "punched-cube",
+				// A reference field. The panel reads only `geometry_meta`, so a part that
+				// has one proves top-level fields are not leaking rather than being untested.
 				assembly: "asm-motor-housing",
+				// Snapshot of the linked model's manifest.json in cad-documents.
 				geometry_meta: {
-					vertices: 1842,
-					faces: 964,
-					edges: 2790,
-					bbox_mm: "120 × 80 × 12",
-					volume_cm3: 48.2,
-					watertight: true,
-					validation: "ok",
-					source: "plat-trunk",
-					format: "STEP",
-					model: "cad/parts/mp-002.step",
+					model_name: "Model punched-cube",
+					objects: 1,
+					model_version: "0.7.0",
+					model_updated: "2026-03-09T10:07:24.183Z",
+					format: "automerge",
+					source: "cad-documents",
+					synced: "2026-10-05",
 				},
 			},
 		});
@@ -84,25 +84,22 @@ describe("geometry editor panel", () => {
 
 		// Order-independent, but exact in both directions: no missing labels and
 		// no extra ones sneaking in.
-		expect(rows).toHaveLength(12);
+		expect(rows).toHaveLength(9);
 		expect(rows).toEqual(
 			expect.arrayContaining([
 				{ label: "Part number", value: "MP-002" },
 				{ label: "Material", value: "Steel" },
-				{ label: "Vertices", value: "1842" },
-				{ label: "Faces", value: "964" },
-				{ label: "Edges", value: "2790" },
-				{ label: "Bounding box", value: "120 × 80 × 12" },
-				{ label: "Volume (cm³)", value: "48.2" },
-				{ label: "Watertight", value: "Yes" },
-				{ label: "Validation", value: "ok" },
-				{ label: "Source", value: "plat-trunk" },
-				{ label: "Format", value: "STEP" },
-				{ label: "Model", value: "cad/parts/mp-002.step" },
+				{ label: "Model", value: "Model punched-cube" },
+				{ label: "Objects", value: "1" },
+				{ label: "Model version", value: "0.7.0" },
+				{ label: "Model updated", value: "2026-03-09T10:07:24.183Z" },
+				{ label: "Format", value: "automerge" },
+				{ label: "Source", value: "cad-documents" },
+				{ label: "Synced", value: "2026-10-05" },
 			]),
 		);
 
-		// Reference fields must not leak into the editor panel.
+		// Top-level fields must not leak into the editor panel.
 		expect(JSON.stringify(response)).not.toContain("asm-motor-housing");
 	});
 });

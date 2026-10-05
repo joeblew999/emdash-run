@@ -76,20 +76,26 @@ reachable with zero servers.
 
 ## Items
 
-- [ ] **Decide the join: `parts` entry → `models/<id>`** — this is the real blocker now
-  - [ ] replace the fabricated `geometry_meta.model` paths with real model ids
-  - [ ] decide whether to add a `model_id` field or reuse `geometry_meta.model`
-  - [ ] decide whether the panel reads `cad-documents` directly or indirectly
-- [ ] **Drop the fiction from the seed**
-  - [ ] either derive `geometry_meta`'s stats from a real model, or label them clearly as sample data
-  - [ ] delete or populate `brep_file` / `step_file` — they are `null` on every entry, so they currently declare a capability nothing uses
-- [ ] **Validation badge** — no server needed
-  - [ ] drive it from `geometry_meta.validation`, which the seed carries (`ok` / `warn`), and state plainly that the value is seed data until the join exists
+- [x] **Decide the join: `parts` → `models/<id>`** — decided and implemented
+  - [x] a new `model_id` field on `parts`, rather than reusing `geometry_meta.model`: the id is the *reference*, and `geometry_meta` is a *snapshot of that reference's metadata*. Merging them would leave it ambiguous which is authoritative.
+  - [x] the fabricated `geometry_meta.model` path is gone
+  - [x] the panel reads it **indirectly**, through the entry. A browser component cannot use an R2 binding, and there is no endpoint — reading `cad-documents` directly needs one of those. Recorded as a deliberate deferral, not an oversight.
+- [x] **Drop the fiction from the seed** — done, verified in the admin
+  - [x] every `geometry_meta` value is a real manifest field from a real model (`model_name`, `objects`, `model_version`, `model_updated`, `format`, `source`, `synced`)
+  - [x] the fabricated tessellation stats are **deleted**, not relabelled — nothing can source them yet
+  - [x] `brep_file` and `step_file` **deleted** from the collection: `null` on every entry, and no STEP/BREP object exists in any of the account's 20 buckets
+  - [x] `format` is `automerge`, which is what is actually stored
+  - [x] verified: the panel renders Part number / Material / Model / Objects / Model version / Model updated / Format / Source / Synced, and the content API returns the same
+  - [x] the sandboxed twin's test asserts the same rows, so both models stay equivalent
+  - [x] **made the seed actually reachable** — see the seed-apply gap in [`repo-checks`](2026-10-05-repo-checks.md); a seed edit previously could not reach the running site at all
+- [ ] **Validation badge** — now blocked rather than readyable
+  - deleting the fabricated stats removed the only `validation` value the panel had. `manifest.json` has no validation field, so a real one needs whatever can read `scene.json`
+  - [ ] (unblock) find a real source for validation status
 - [ ] **Deep link into the CAD viewport** — needs a URL pattern, not an API
-  - [ ] obtain the plat-trunk viewer URL pattern for a model id
+  - [ ] obtain the plat-trunk viewer URL pattern for a model id, and confirm a model id alone addresses it
   - [ ] render it and confirm in a browser that it opens the right model
-- [ ] **Fetch live stats** — genuinely blocked, but smaller than it read
-  - [ ] (unblock) find out whether the panel can read the model's `manifest.json` as-is — that alone yields name, description, objectCount, version and `updatedAt` with no worker
+- [ ] **Fetch live stats** — the manifest half is now shown; only the scene half is missing
+  - [x] answered: a model's `manifest.json` yields name, description, objectCount, version and `updatedAt`. Those are now rendered — from a snapshot taken 2026-10-05, and the panel says so via `synced`
+  - [ ] (unblock) decide whether the panel should read the manifest live instead of from a snapshot. That needs an endpoint or a binding, so it is the same question as the worker
   - [ ] (unblock) confirm whether tessellation stats (vertices/faces/bbox/volume) can be computed anywhere today, or whether that is what the worker is for
-  - [ ] fetch and render, replacing or augmenting the stored `geometry_meta`
-  - [ ] verified in the admin — the values change when the model changes
+  - [ ] make staleness visible: `synced` is shown, but nothing warns when it is old

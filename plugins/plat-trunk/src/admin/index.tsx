@@ -14,21 +14,24 @@ interface PanelContext {
 	locale?: string;
 }
 
-/** Reference fields aren't useful as inline text, so keep them out of the table. */
-const HIDDEN = new Set(["assembly", "brep_file", "step_file"]);
+/**
+ * Keys that would be a file reference rather than a display value. Nothing currently uses
+ * them; kept as a guard, because a bare R2 key rendered as text is useless in the panel.
+ */
+const HIDDEN = new Set(["scene_key", "automerge_key", "brep_file", "step_file"]);
 
-/** Friendlier labels for the keys we seed into `geometry_meta`. */
+/**
+ * Labels for the keys in `geometry_meta`. Those keys are a snapshot of the linked
+ * plat-trunk model's `manifest.json` — see `model_id` and `config/cad.seed.json`.
+ */
 const LABELS: Record<string, string> = {
-	vertices: "Vertices",
-	faces: "Faces",
-	edges: "Edges",
-	bbox_mm: "Bounding box",
-	volume_cm3: "Volume (cm³)",
-	watertight: "Watertight",
-	validation: "Validation",
-	source: "Source",
+	model_name: "Model",
+	objects: "Objects",
+	model_version: "Model version",
+	model_updated: "Model updated",
 	format: "Format",
-	model: "Model",
+	source: "Source",
+	synced: "Synced",
 };
 
 function format(value: unknown): string {

@@ -1,6 +1,6 @@
 # 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active — **2 of 6 done** (and the proof in item 6 is partly done: the structural
+**Status:** active — **3 of 7 done** (and the proof in item 7 is partly done: the structural
 checks have been proven to block)
 
 Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
@@ -53,6 +53,10 @@ was a file describing a setup that did not exist.
   - [x] an unbuilt sandbox bundle: `exports["./sandbox"]` pointing at a file that does not exist. Also real — `plugin:link` without `plugin:build` leaves the site importing a file that is not there.
   - [x] emdash drift from the site: a plugin with a different `emdash` installed than the site runs. Also real — the scaffold installed 0.42.0 while the site ran 1.1.0, so its green test was evidence about a different CMS.
   - [x] `network:request` declared with an empty `allowedHosts` — fails the bundle-time check, so failing here fails earlier with a better message.
+- [x] **Make a seed edit actually reachable** — `mise run seed:apply`
+  - [x] found by hand, and it is the worst of the set because it reports success: `emdash seed <file>` writes a **file** database (`./data.db`) while the dev server reads miniflare's D1 under `.wrangler/state/v3/d1`. So it printed "Content: 11 created / Seed applied successfully" and changed nothing the site could see.
+  - [x] `repo:apply` *does* apply the seed (via dev-bypass on first request) but with **skip-on-conflict**: an entry that already exists is left alone. New seed content lands; **edits to existing content never do**, with no error anywhere. Change a part, run `repo:apply`, and the admin keeps showing the old values.
+  - [x] `seed:apply` empties the local D1 and reapplies — the only path that picks up content edits. Destructive to local state, and now says so.
 - [ ] **Prove the checks actually block**
   - [x] prove the structural checks: reintroduced all three structural bugs at once and `plugin:audit` reported each by name, then passed again once restored (see the note below)
   - [ ] prove a type error fails `repo:apply`

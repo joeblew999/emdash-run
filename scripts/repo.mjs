@@ -12,6 +12,7 @@ import { rmSync } from "node:fs";
 import { env, run, sh } from "./lib/exec.mjs";
 
 const SITE_DIR = env("SITE_DIR");
+const SITE_URL = env("SITE_URL");
 const sub = process.argv[2];
 
 if (sub === "init") {
@@ -30,23 +31,27 @@ if (sub === "init") {
 
 	// dev-bypass also runs migrations and applies the seed on the first request, so poll it
 	// until it answers before minting the MCP token.
+	//
+	// Note it applies with skip-on-conflict: an entry that already exists is left alone. So
+	// this picks up NEW seed content but never EDITS to existing content — for those you
+	// have to empty the D1 first (`mise run seed:apply`).
 	console.log("⏳ waiting for the site to be ready...");
 	for (let i = 0; i < 60; i++) {
-		const res = await fetch("http://localhost:4321/_emdash/api/setup/dev-bypass", { method: "POST" }).catch(() => null);
+		const res = await fetch(`${SITE_URL}/_emdash/api/setup/dev-bypass`, { method: "POST" }).catch(() => null);
 		if (res?.status === 200) break;
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	}
 
 	run("mise", ["run", "mcp:token-admin"]);
-	console.log("→ admin:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin");
-	console.log("→ mcp:    http://localhost:4321/_emdash/api/mcp (Bearer: run/token-admin.txt)");
+	console.log(`→ admin:  ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);
+	console.log(`→ mcp:    ${SITE_URL}/_emdash/api/mcp (Bearer: run/token-admin.txt)`);
 	console.log("✓ apply done");
 } else if (sub === "urls") {
 	const registryUrl = process.env.REGISTRY_URL ?? "http://localhost:8788";
 	const pluginsSiteUrl = process.env.PLUGINS_SITE_URL ?? "http://localhost:4330";
 	console.log(`Host site
-  admin      http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
-  mcp        http://localhost:4321/_emdash/api/mcp   (Bearer: run/token-admin.txt)
+  admin      ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+  mcp        ${SITE_URL}/_emdash/api/mcp   (Bearer: run/token-admin.txt)
 
 Optional daemons — start with: mise run registry:up / mise run plugins-site:up
   registry   ${registryUrl}/health   (JSON API under /xrpc/com.emdashcms.experimental.aggregator.*)

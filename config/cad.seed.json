@@ -2,8 +2,8 @@
 	"$schema": "https://emdashcms.com/seed.schema.json",
 	"version": "1",
 	"meta": {
-		"name": "Exported Seed",
-		"description": "Exported from existing EmDash database"
+		"name": "emdash-run CAD seed",
+		"description": "Hand-maintained, not a database export. Each part carries a model_id pointing at a plat-trunk model in the cad-documents R2 bucket, plus geometry_meta holding a snapshot of that model manifest.json read on 2026-10-05. Tessellation stats (vertices/faces/volume) are deliberately absent: they are properties of the model scene.json, not its manifest, and nothing here computes them yet."
 	},
 	"collections": [
 		{
@@ -89,14 +89,9 @@
 					"required": true
 				},
 				{
-					"slug": "brep_file",
-					"label": "BREP File",
-					"type": "file"
-				},
-				{
-					"slug": "step_file",
-					"label": "STEP File",
-					"type": "file"
+					"slug": "model_id",
+					"label": "Model",
+					"type": "string"
 				},
 				{
 					"slug": "material",
@@ -224,17 +219,15 @@
 					"assembly": "$ref:assemblies:motor-housing",
 					"material": "Steel",
 					"geometry_meta": {
-						"vertices": 1842,
-						"faces": 964,
-						"edges": 2790,
-						"bbox_mm": "120 × 80 × 12",
-						"volume_cm3": 48.2,
-						"watertight": true,
-						"validation": "ok",
-						"source": "plat-trunk",
-						"format": "STEP",
-						"model": "cad/parts/mp-002.step"
-					}
+						"model_name": "Model punched-cube",
+						"objects": 1,
+						"model_version": "0.7.0",
+						"model_updated": "2026-03-09T10:07:24.183Z",
+						"format": "automerge",
+						"source": "cad-documents",
+						"synced": "2026-10-05"
+					},
+					"model_id": "punched-cube"
 				}
 			},
 			{
@@ -247,17 +240,15 @@
 					"assembly": "$ref:assemblies:motor-housing",
 					"material": "Aluminum",
 					"geometry_meta": {
-						"vertices": 3260,
-						"faces": 1712,
-						"edges": 4980,
-						"bbox_mm": "90 × 60 × 24",
-						"volume_cm3": 12.6,
-						"watertight": true,
-						"validation": "ok",
-						"source": "plat-trunk",
-						"format": "STEP",
-						"model": "cad/parts/cf-001.step"
-					}
+						"model_name": "Model stacked-cubes",
+						"objects": 3,
+						"model_version": "0.7.0",
+						"model_updated": "2026-03-25T04:57:17.205Z",
+						"format": "automerge",
+						"source": "cad-documents",
+						"synced": "2026-10-05"
+					},
+					"model_id": "stacked-cubes"
 				}
 			},
 			{
@@ -270,17 +261,15 @@
 					"assembly": "$ref:assemblies:motor-housing",
 					"material": "Aluminum",
 					"geometry_meta": {
-						"vertices": 5124,
-						"faces": 2688,
-						"edges": 7836,
-						"bbox_mm": "150 × 110 × 65",
-						"volume_cm3": 214.8,
-						"watertight": false,
-						"validation": "warn",
-						"source": "plat-trunk",
-						"format": "STEP",
-						"model": "cad/parts/hb-001.step"
-					}
+						"model_name": "Merged Cubes",
+						"objects": 1,
+						"model_version": "0.7.0",
+						"model_updated": "2026-04-02T02:10:02.196Z",
+						"format": "automerge",
+						"source": "cad-documents",
+						"synced": "2026-10-05"
+					},
+					"model_id": "merged-cubes"
 				}
 			},
 			{
@@ -293,17 +282,15 @@
 					"assembly": "$ref:assemblies:main-bracket",
 					"material": "Steel",
 					"geometry_meta": {
-						"vertices": 2140,
-						"faces": 1120,
-						"edges": 3252,
-						"bbox_mm": "80 × 45 × 8",
-						"volume_cm3": 21.4,
-						"watertight": true,
-						"validation": "ok",
-						"source": "plat-trunk",
-						"format": "STEP",
-						"model": "cad/parts/sb-001.step"
-					}
+						"model_name": "Model cube-and-cylinder",
+						"objects": 2,
+						"model_version": "0.7.0",
+						"model_updated": "2026-03-28T15:51:39.679Z",
+						"format": "automerge",
+						"source": "cad-documents",
+						"synced": "2026-10-05"
+					},
+					"model_id": "cube-and-cylinder"
 				}
 			},
 			{
@@ -316,17 +303,15 @@
 					"assembly": "$ref:assemblies:main-bracket",
 					"material": "Aluminum",
 					"geometry_meta": {
-						"vertices": 1180,
-						"faces": 604,
-						"edges": 1786,
-						"bbox_mm": "100 × 70 × 6",
-						"volume_cm3": 9.8,
-						"watertight": true,
-						"validation": "ok",
-						"source": "plat-trunk",
-						"format": "STEP",
-						"model": "cad/parts/tp-001.step"
-					}
+						"model_name": "Default Cube",
+						"objects": 1,
+						"model_version": "0.7.0",
+						"model_updated": "2026-02-28T11:24:15.015Z",
+						"format": "automerge",
+						"source": "cad-documents",
+						"synced": "2026-10-05"
+					},
+					"model_id": "default-cube"
 				}
 			}
 		],

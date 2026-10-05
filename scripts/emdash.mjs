@@ -24,7 +24,7 @@ if (!existsSync(CLI)) {
 	process.exit(1);
 }
 
-const args = [...process.argv.slice(2), "--url", "http://localhost:4321"];
+const args = [...process.argv.slice(2), "--url", process.env.SITE_URL ?? "http://localhost:4321"];
 
 const child = spawn(process.execPath, [CLI, ...args], {
 	stdio: "inherit",
