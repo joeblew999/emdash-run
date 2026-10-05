@@ -11,11 +11,30 @@
 	"repo": "https://github.com/joeblew999/emdash-run",
 
 	// Trust contract — what runtime APIs the plugin asks for.
-	// Empty arrays mean no extra privileges beyond logging,
-	// KV, and route/hook registration. Changing these between
-	// releases requires a version bump because installed
+	// Changing these between releases requires a version bump because installed
 	// users have consented to the old contract.
-	"capabilities": [],
+	//
+	// `content:read` is what populates `ctx.content` — the panel reads the saved
+	// part through it. Nothing here is a placeholder for "might need it later":
+	// every entry shows up in the operator's consent dialog, so it must be one
+	// this version actually uses.
+	"capabilities": ["content:read"],
 	"allowedHosts": [],
-	"storage": {}
+	"storage": {},
+
+	// Saved-entry panel. The route is private (all plugin routes are), and the
+	// host reloads + authorizes the entry before calling it, so `routeCtx.ui`
+	// carries an identity we can trust. `collections` is what limits the panel
+	// to Parts; without it the panel would be offered on every collection.
+	"admin": {
+		"editorPanels": [
+			{
+				"id": "plat-trunk-geometry",
+				"title": "Geometry",
+				"route": "editor/geometry",
+				"collections": ["parts"],
+				"order": 10
+			}
+		]
+	}
 }
