@@ -37,6 +37,10 @@ is orientation only.
 
 Paths and what is generated are mapped in `README.md` (§ "Where things are").
 
+`.src/emdash/` is an **optional** shallow clone of the emdash monorepo
+(`mise run src:clone:emdash`) — read EmDash's own source when the published types/docs are
+not enough. It is not part of the default flow and is not installed.
+
 The one rule that matters: **never edit anything under `.src/`** — it is generated from
 `config/` and the template, and gets overwritten by `config:apply` / `site:sync`. Change
 `config/` and re-run `mise run apply`.

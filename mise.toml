@@ -27,12 +27,14 @@ ROOT            = "{{config_root}}"
 SRC_DIR         = "{{config_root}}/.src"
 TEMPLATES_DIR   = "{{config_root}}/.src/templates"   # clone of emdash-cms/templates
 SITE_DIR        = "{{config_root}}/.src/site"        # copy of $TEMPLATE — the host site (:4321)
+EMDASH_DIR      = "{{config_root}}/.src/emdash"      # optional emdash monorepo clone (on demand)
 
 # Which official template to host. `blank` was retired upstream; starter-cloudflare
 # is the minimal Cloudflare (D1 + R2) base — the closest live equivalent.
 TEMPLATE        = "starter-cloudflare"
 
 TEMPLATES_REPO  = "https://github.com/emdash-cms/templates"
+EMDASH_REPO     = "https://github.com/emdash-cms/emdash"
 
 # EmDash version — single source of truth. `site:install` pins the site's `emdash`
 # and `@emdash-cms/cloudflare` to exactly this. To upgrade:
@@ -66,6 +68,10 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #   mise run server:reset    ← wipe local D1/miniflare state, then: mise run apply
 #   mise run server:clean    ← wipe .src/site, then: server:build → init → apply
 #   mise run server:regen    ← wipe .src entirely (templates + site), then: server:build → init → apply
+#
+# Optional (not on the default path):
+#   mise run src:clone:emdash  ← shallow clone of the emdash monorepo into .src/emdash
+#                                (read EmDash source; run the local registry aggregator)
 #
 # URLs (once running):
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
@@ -114,6 +120,22 @@ fi
 echo "  ✓ templates @ $(git -C "$TEMPLATES_DIR" rev-parse --short HEAD)"
 """
 
+[tasks."src:clone:emdash"]
+description = "Clone the emdash monorepo (shallow, tag emdash@$EMDASH_VERSION) into .src/emdash — on demand"
+# Not on the default path: the site runs on the *published* `emdash` package. This clone
+# is for reading EmDash source, and for running the local registry (apps/aggregator).
+run = """
+set -euo pipefail
+mkdir -p "$SRC_DIR"
+TAG="emdash@$EMDASH_VERSION"
+if [ -d "$EMDASH_DIR/.git" ]; then
+  git -C "$EMDASH_DIR" fetch --depth 1 origin "refs/tags/$TAG" && git -C "$EMDASH_DIR" checkout -q FETCH_HEAD
+else
+  git clone --depth 1 --branch "$TAG" "$EMDASH_REPO" "$EMDASH_DIR"
+fi
+echo "  ✓ emdash @ $TAG → $EMDASH_DIR"
+"""
+
 # -----------------------------------------------------------------------------
 # SITE (host site = official template copy, runs on :4321)
 # -----------------------------------------------------------------------------
@@ -151,6 +173,10 @@ node -e "const fs=require('fs');const p='package.json';const j=JSON.parse(fs.rea
 # First-party plugins the site config registers. Declared here (not hand-edited into
 # the template) so template updates stay clean.
 pnpm add @emdash-cms/plugin-forms @emdash-cms/plugin-webhook-notifier
+# The template's tsconfig declares `types: ["node"]` but never depends on @types/node, so
+# a strict (pnpm) install leaves the editor reporting "Cannot find type definition file
+# for 'node'". Declare it explicitly.
+pnpm add -D @types/node
 echo "  ✓ site deps installed (emdash@$EMDASH_VERSION)"
 """
 

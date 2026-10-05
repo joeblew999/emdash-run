@@ -93,6 +93,11 @@ it is **not** part of this harness at all: no emdash monorepo clone, no `:8787`
 worker, no `marketplace:*` tasks. Plugin work uses `plugins: []` / `sandboxed: []`
 with the site's own `emdash` CLI; discovery uses the hosted registry.
 
+> **Update (2026-10-05).** The clone is available again **on demand** via
+> `mise run src:clone:emdash` — shallow, tag-pinned, ~100 MB, *not* installed. It is for
+> reading EmDash's own source (its `dist` types are not always enough) and for running
+> the local registry aggregator (`apps/aggregator`). It remains off the default path.
+
 ## Consequences
 
 - Default setup no longer clones or builds the emdash monorepo → much faster, no kumo
