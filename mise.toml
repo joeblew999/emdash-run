@@ -72,6 +72,8 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # Optional (not on the default path):
 #   mise run src:clone:emdash  ← shallow clone of the emdash monorepo into .src/emdash
 #   mise run registry:up       ← run the local plugin registry (the "marketplace") on :8788
+#   mise run registry:backfill ← ingest publishers' records (Jetstream only streams new)
+#   mise run registry:project  ← build the public projection (else reads return nothing)
 #
 # URLs (once running):
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
@@ -275,9 +277,26 @@ depends = ["registry:install"]
 dir = "{{config_root}}/.src/emdash/apps/aggregator"
 run = "pnpm run db:migrate:local"
 
+[tasks."registry:env"]
+description = "Create the registry aggregator's local .env (LISTING_POLICY_MODE=open + dev admin token)"
+depends = ["src:clone:emdash"]
+# Without this the aggregator runs with the wrangler.jsonc default,
+# LISTING_POLICY_MODE=projection, which fails closed (needs positive labels from the
+# emdashcms labeller) — so every query returns empty. `.env.example` sets `open`.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+if [ -f "$ENV_FILE" ]; then
+  echo "  ✓ .env already present"
+  exit 0
+fi
+cp "$EMDASH_DIR/apps/aggregator/.env.example" "$ENV_FILE"
+echo "  ✓ wrote $ENV_FILE (LISTING_POLICY_MODE=open, dev ADMIN_TOKEN)"
+"""
+
 [tasks."registry:start"]
 description = "Start the local registry aggregator on :8788 — called by pitchfork"
-depends = ["registry:migrate"]
+depends = ["registry:migrate", "registry:env"]
 dir = "{{config_root}}/.src/emdash/apps/aggregator"
 # `wrangler dev`, NOT the package's `vite dev`. The Cloudflare vite plugin resolves
 # miniflare@4.20260507.1 + workerd@1.20260507.1, which crash on Durable Object SQLite
@@ -291,6 +310,38 @@ run = "pitchfork start registry"
 [tasks."registry:logs"]
 description = "Follow registry aggregator logs"
 run = "pitchfork logs registry --follow"
+
+[tasks."registry:project"]
+description = "Build the registry's public projection — without it every read returns empty"
+# Reads gate on an active row in public_projection_state (listing-policy.ts). The
+# generation is built by the LABEL ingest DO (rebuildPublicProjection ← label-ingest-do),
+# and locally there is no label stream — so POST /_admin/labels/replay is what builds it.
+# Run after registry:backfill.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
+[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
+echo "→ POST /_admin/labels/replay (builds the public projection generation)"
+curl -sS -X POST "http://localhost:8788/_admin/labels/replay" -H "Authorization: Bearer $TOKEN" | head -c 400
+echo
+"""
+
+[tasks."registry:backfill"]
+description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
+# Jetstream only streams NEW records, so a fresh registry is empty until backfill. This
+# calls com.atproto.sync.listReposByCollection on the relay, then fans out one job per
+# (DID × collection) onto the backfill queue. Takes a while and needs the daemon running.
+run = """
+set -euo pipefail
+ENV_FILE="$EMDASH_DIR/apps/aggregator/.env"
+TOKEN=$(grep -E '^ADMIN_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
+[ -n "$TOKEN" ] || { echo "✗ no ADMIN_TOKEN in $ENV_FILE — run: mise run registry:env"; exit 1; }
+echo "→ POST /_admin/backfill (relay discovery → backfill queue)"
+curl -sS -X POST "http://localhost:8788/_admin/backfill" \\
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' | head -c 600
+echo
+"""
 
 # -----------------------------------------------------------------------------
 # DEPLOY (Cloudflare)
