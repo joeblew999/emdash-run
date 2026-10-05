@@ -205,19 +205,45 @@ echo "✓ Wiped .src — run: mise run server:build → init → apply"
 
 [tasks."site:build"]
 description = "Production-build the site (astro build → .src/site/dist)"
+# A production build leaves .vite/.astro in a state `astro dev` cannot reuse (stale
+# deps_ssr URLs → 500s), so clean up afterwards and warn that dev must be restarted.
 depends = ["config:apply"]
-run = "cd \"$SITE_DIR\" && pnpm build"
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+pnpm build || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
 
 [tasks."site:deploy:dry"]
 description = "Validate the production build + Worker bundle without deploying"
 depends = ["config:apply"]
-run = "cd \"$SITE_DIR\" && pnpm build && pnpm exec wrangler deploy --dry-run --outdir dist"
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+{ pnpm build && pnpm exec wrangler deploy --dry-run --outdir dist; } || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
 
 [tasks."site:deploy"]
 description = "Build + deploy the site to Cloudflare (creds via fnox)"
 # Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
 depends = ["config:apply"]
-run = "cd \"$SITE_DIR\" && fnox exec -- pnpm run deploy"
+run = """
+set -uo pipefail
+cd "$SITE_DIR"
+rc=0
+fnox exec -- pnpm run deploy || rc=$?
+rm -rf node_modules/.vite .astro
+if [ "$rc" -eq 0 ]; then echo "→ dev server needs a restart: mise run apply"; fi
+exit $rc
+"""
 
 # -----------------------------------------------------------------------------
 # TOP-LEVEL WORKFLOW
@@ -230,15 +256,16 @@ run = "echo '✓ init done — run: mise run apply'"
 
 [tasks."apply"]
 description = "Apply config + restart daemons + refresh token — run after every change"
-# Full stop → cold start. Why stop first: a hot restart can leave @cloudflare/vite-plugin's
-# miniflare instance in a bad state. The old build also wiped node_modules/.vite on every
-# apply (a workaround for the @cloudflare/kumo bundling bug); that bug is gone now that the
-# site uses the published `emdash` package, so the wipe was removed — it forced a slow
-# dependency re-optimize on every apply.
+# Full stop → wipe the Vite dep cache → cold start. Why stop first: a hot restart can
+# leave @cloudflare/vite-plugin's miniflare instance in a bad state. Why wipe .vite: the
+# optimizer re-hashes chunks whenever the dependency graph changes — adding a plugin's
+# admin module, or running a production build in the same dir — which leaves the running
+# server serving stale `deps_ssr/*?v=…` URLs and returning 500s.
 depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
 run = """
 set -euo pipefail
 pitchfork stop -a || true
+rm -rf "$SITE_DIR/node_modules/.vite"
 # pitchfork waits for ready_http (declared in pitchfork.toml) before returning, so the
 # site is already serving by the time we get here. Readiness is an HTTP check because
 # Astro binds IPv6-only ([::1]:4321) — a 127.0.0.1 port probe would hang.

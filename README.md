@@ -101,6 +101,10 @@ Provisioned resources are recorded in `config/site.wrangler.jsonc`:
 
 D1 migrations and the seed run automatically on the first request.
 
+A production build invalidates the dev server's dependency cache (stale `deps_ssr`
+URLs → 500s). The build tasks clean up after themselves and print a reminder — run
+`mise run apply` to restart the dev server.
+
 ---
 
 ## Updating
