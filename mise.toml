@@ -200,7 +200,7 @@ run = "node \"$ROOT/scripts/repo.mjs\" init"
 
 [tasks."repo:apply"]
 description = "Apply config + restart the site + refresh token — run after every change"
-depends = ["config:apply", "plugin:link", "skills:sync", "mise:check"]
+depends = ["config:apply", "plugin:link", "plugin:typecheck", "skills:sync", "mise:check"]
 run = "node \"$ROOT/scripts/repo.mjs\" apply"
 
 [tasks."repo:urls"]
@@ -297,6 +297,10 @@ run = "node \"$ROOT/scripts/plugin.mjs\" install-all"
 [tasks."plugin:link"]
 description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
 run = "node \"$ROOT/scripts/plugin.mjs\" link"
+
+[tasks."plugin:typecheck"]
+description = "Typecheck every plugin that declares a typecheck script"
+run = "node \"$ROOT/scripts/plugin.mjs\" typecheck"
 
 # Sandboxed-plugin publishing (validate / bundle / publish / login) lives in the separate
 # `@emdash-cms/plugin-cli` package — binary `emdash-plugin` — and needs an

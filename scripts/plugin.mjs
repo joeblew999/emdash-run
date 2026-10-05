@@ -132,6 +132,17 @@ switch (sub) {
 		console.error(`${sub}: not applicable — sandboxed plugins only (see docs/plugin.md)`);
 		process.exit(1);
 
+	case "typecheck":
+		// Every plugin that declares a `typecheck` script. Runs the plugin's own tsc, so the
+		// plugin's tsconfig decides what is checked — not the site's.
+		for (const dir of pluginDirs()) {
+			const manifest = JSON.parse(readFileSync(`${PLUGINS_DIR}/${dir}/package.json`, "utf8"));
+			if (!manifest.scripts?.typecheck) continue;
+			console.log(`→ typecheck ${manifest.name}`);
+			run("pnpm", ["--dir", `${PLUGINS_DIR}/${dir}`, "run", "typecheck"]);
+		}
+		break;
+
 	case "catalog":
 		await catalog(false);
 		break;

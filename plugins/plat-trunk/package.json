@@ -3,14 +3,27 @@
 	"version": "0.1.0",
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts",
-		"./admin": "./src/admin/index.tsx"
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./admin": {
+			"types": "./src/admin/index.tsx",
+			"default": "./src/admin/index.tsx"
+		}
 	},
 	"files": [
 		"src"
 	],
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
 	"peerDependencies": {
 		"emdash": "^1.1.0",
 		"react": "^18.0.0 || ^19.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^19.0.0",
+		"typescript": "^5.9.0"
 	}
 }

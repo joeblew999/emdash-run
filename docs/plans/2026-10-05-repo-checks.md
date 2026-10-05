@@ -8,16 +8,17 @@ when something breaks at runtime. That is the biggest gap in the harness.
 
 ## Items
 
-### 1. Typecheck and test the plugin — via the plugin CLI
+### 1. Typecheck the plugin — **done 2026-10-05**
 
-Do not hand-roll this. The plugin toolchain provides it: `emdash-plugin validate`
-(manifest), `emdash-plugin build`, `tsc --noEmit`, and `vitest` through
-`@emdash-cms/plugin-test`, which runs the plugin inside EmDash's production sandbox
-wrapper. This item is that toolchain wired into a task — see
-`2026-10-05-plugin-sandbox-model.md`.
+`tsc --noEmit` passes, wired in as `plugin:typecheck` and run by `repo:apply`. The first
+run found three real faults — the plugin had never been checked:
 
-**Done means:** `mise run plugin:check` runs validate + typecheck + test and exits 0, and
-fails on a deliberately introduced type error.
+- `tsconfig.json` had **no `jsx`**, so the TSX panel could never have typechecked.
+- no **`skipLibCheck`** — `emdash`'s optional storage drivers (`unstorage` → mongodb,
+  ioredis, @vercel/kv, @deno/kv…) flooded the output.
+- no **`@types/react`** — `react/jsx-runtime` had no declarations.
+
+Remaining here: the repo-level lint (item 2) and wiring that into `repo:apply` (item 3).
 
 ### 2. `repo:check` — lint and format
 

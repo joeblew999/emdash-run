@@ -12,7 +12,9 @@ import webhookNotifier from "@emdash-cms/plugin-webhook-notifier";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 // local plugin — in plugins/, symlinked into the site's node_modules by: mise run plugin:link
-// Standard-format: "." exposes the descriptor factory, "./plugin" the implementation.
+// NATIVE: `.` is the descriptor factory and `./admin` the React panel. (The sandboxed
+// convention is different — `.` descriptor + `./sandbox` implementation — and is what
+// `sandboxed:` below uses. See docs/plugin.md.)
 import { platTrunkPlugin } from "@plat-trunk/emdash-plugin";
 
 export default defineConfig({
@@ -36,7 +38,8 @@ export default defineConfig({
 				platTrunkPlugin(),
 			],
 
-			// Sandboxed plugins (run in isolated Worker isolates via the LOADER binding)
+			// Sandboxed plugins (run in isolated Worker isolates via the LOADER binding).
+			// The harness is already a sandbox host — only our own plugin is native.
 			sandboxed: [webhookNotifier],
 			sandboxRunner: sandbox(),
 
