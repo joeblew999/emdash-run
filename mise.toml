@@ -387,17 +387,7 @@ run = "node \"$ROOT/scripts/plugin.mjs\" validate"
 description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- plat-trunk-sandboxed"
 run = "node \"$ROOT/scripts/plugin.mjs\" bundle"
 
-[tasks."plugin:publish"]
-description = "Publish a plugin to the registry — e.g: mise run plugin:publish -- plat-trunk-sandboxed"
-run = "node \"$ROOT/scripts/plugin.mjs\" publish"
 
-[tasks."plugin:login"]
-description = "Log in to the plugin registry (publisher identity)"
-run = "node \"$ROOT/scripts/plugin.mjs\" login"
-
-# -----------------------------------------------------------------------------
-# SKILLS (Claude Code agent skills)
-# -----------------------------------------------------------------------------
 
 [tasks."skills:find"]
 description = "Search skills.sh marketplace — e.g: mise run skills:find -- mise"
@@ -452,15 +442,10 @@ run = "node \"$ROOT/scripts/emdash.mjs\""
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
 run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
 
-[tasks."plugin:catalog-dry"]
-description = "Print the registry catalog to stdout (no files written)"
-run = "node \"$ROOT/scripts/plugin.mjs\" catalog-dry"
 
-# -----------------------------------------------------------------------------
-# REGISTRY (the plugin "marketplace" — emdash's aggregator, run locally)
-# Optional: not needed to run the site, which uses the hosted registry by default.
-# XRPC reads: com.emdashcms.experimental.aggregator.*  ·  http://localhost:8788
-# -----------------------------------------------------------------------------
+[tasks."plugin:search"]
+description = "Search the plugin registry (emdash-plugin search, defaulting to the local registry when running)"
+run = "node \"$ROOT/scripts/plugin.mjs\" search"
 
 [tasks."registry:install"]
 description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"

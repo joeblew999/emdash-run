@@ -239,9 +239,7 @@ switch (sub) {
 
 	case "validate":
 	case "bundle":
-	case "build":
-	case "publish":
-	case "login": {
+	case "build": {
 		// The sandboxed-plugin flow (`@emdash-cms/plugin-cli`, binary `emdash-plugin`), which
 		// needs an `emdash-plugin.jsonc`. Not every plugin is sandboxed, so this applies the
 		// same rule as `typecheck`: run the plugin's own script. A plugin that declares it opts
@@ -285,9 +283,34 @@ switch (sub) {
 	case "catalog":
 		await catalog(false);
 		break;
-	case "catalog-dry":
-		await catalog(true);
+
+	case "search": {
+		// The plugin CLI already has registry search: `emdash-plugin search <query>` with
+		// `--capability`, `--limit`, `--cursor`. Reimplementing the XRPC call would be pointless, so
+		// this only contributes the one thing the CLI gets wrong for us: it defaults to the HOSTED
+		// registry, while mise sets EMDASH_REGISTRY_URL to the local one when that is running.
+		const cli = pluginDirs().find((dir) =>
+			existsSync(`${PLUGINS_DIR}/${dir}/node_modules/.bin/emdash-plugin`),
+		);
+		if (!cli) {
+			console.error(
+				"no plugin has @emdash-cms/plugin-cli installed — run: mise run plugin:install-all",
+			);
+			process.exit(1);
+		}
+		const args = [
+			"--dir",
+			`${PLUGINS_DIR}/${cli}`,
+			"exec",
+			"emdash-plugin",
+			"search",
+			...process.argv.slice(3),
+		];
+		if (process.env.EMDASH_REGISTRY_URL)
+			args.push("--registry-url", process.env.EMDASH_REGISTRY_URL);
+		run("pnpm", args);
 		break;
+	}
 
 	default:
 		console.error(`plugins: unknown subcommand "${sub}"`);
