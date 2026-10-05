@@ -31,4 +31,14 @@ Archived here because every item is finished; the active plan is one level up.
       Vite cache (stale `deps_ssr` URLs → 500s), so the build tasks wipe `.vite` + `.astro`
       and tell you to re-run `apply`.
 - [x] **Docs have one source of truth.** `mise.toml`'s QUICK REFERENCE + `mise tasks ls`;
-      README is orientation only, CLAUDE.md is agent rules. Neither restates the commands.
+      the README is orientation only and `AGENTS.md` holds agent rules. Neither restates
+      the commands.
+- [x] **The local registry runs and is populated.** `registry:up` (`wrangler dev` — the
+      package's `vite dev` crashes on workerd) → `registry:backfill` → `registry:project`
+      → 39 packages; the admin Plugin Registry page lists them.
+- [x] **The plugin catalog is generated from the registry** — 38 live packages with authors
+      and licences — instead of a dead GitHub scrape.
+- [x] **`mise.toml` is one-liners** into `scripts/<noun>.mjs`, with strict `noun:verb` names
+      enforced by `mise:check`.
+- [x] **ADRs and TODO folded into this plans mechanism.** Closed plans keep their `000N-`
+      ids; `docs/adr/` and `TODO.md` are gone.
