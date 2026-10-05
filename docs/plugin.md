@@ -90,6 +90,13 @@ We run **both**, deliberately. The harness exists to evaluate EmDash, so impleme
 same panel two ways is the finding. `plugins/plat-trunk` is native;
 `plugins/plat-trunk-sandboxed` is the scaffolded sandboxed twin (`emdash-plugin init`).
 
+One constraint is worth stating before the table, because it is easy to design past:
+**sandboxed plugins are D1-only.** The sandbox plugin bridge talks to a D1 binding directly,
+independent of the configured database adapter, so a Node.js or PostgreSQL deployment cannot
+run them at all. Since this repo chose Cloudflare + D1, both models are available here — but
+the sandboxed one is not portable to the other deployment target, which is a real limitation
+of the model and not just of our setup.
+
 | | native (`plugins/plat-trunk`) | sandboxed (`plugins/plat-trunk-sandboxed`) |
 |---|---|---|
 | Registered as | `plugins: [platTrunkPlugin()]` | `sandboxed: [platTrunkSandboxed]` + `sandboxRunner` |
