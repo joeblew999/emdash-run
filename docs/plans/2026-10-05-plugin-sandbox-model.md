@@ -79,3 +79,35 @@ Native gives React panels and direct host access; sandboxed gives the trust cont
 registry release path and the dev loop. Record the decision and what it costs us.
 
 **Done means:** the choice is written down in `docs/plugin.md`, with its consequences.
+
+### 5. Public-site components (`./astro`)
+
+Sandboxed plugins cannot add markup to public pages, so they ship Astro components for the
+theme — LinguaDash exports `LanguageSwitcher` / `TranslationNotice`. Our CAD content has no
+public representation at all.
+
+**Done means:** at least one component renders part/assembly data on the public site.
+
+### 6. A custom admin page
+
+Beyond the editor panel, `admin.pages` adds a whole admin route (LinguaDash's
+`/translations`, with tabs). The natural one here is a geometry / validation queue.
+
+**Done means:** a page appears in the admin sidebar and lists something real.
+
+### 7. The release path
+
+LinguaDash publishes from GitHub Actions: build → sign provenance → publish to the registry,
+plus an npm publish with provenance. That needs a **publisher DID** in the manifest — and the
+discipline that changing `capabilities` / `allowedHosts` / `storage` forces a **version bump**,
+because installed users consented to the old contract.
+
+**Done means:** the plugin is publishable — `emdash-plugin bundle` plus a documented release
+— with the version-bump rule written down.
+
+### 8. Carry the plugin-authoring skill
+
+A plugin repo is expected to ship `skills/creating-plugins/SKILL.md` (LinguaDash does). We
+symlink the *site's* skills; a plugin author needs the authoring skill in-repo.
+
+**Done means:** the skill is in the repo, or the reason it is not is written down.

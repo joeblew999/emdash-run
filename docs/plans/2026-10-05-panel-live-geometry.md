@@ -14,10 +14,18 @@ without it.
 
 ## Items (once unblocked)
 
-1. Fetch stats for the entry's part and render them, replacing or augmenting the stored
-   `geometry_meta`.
-2. A validation badge driven by the worker's status.
-3. A deep link that opens the CAD viewport on that part.
+### 1. Fetch and render live stats
+
+Fetch the entry's part stats from the worker and render them, replacing or augmenting the
+stored `geometry_meta`.
+
+### 2. Validation badge
+
+A badge driven by the worker's status.
+
+### 3. Deep link
+
+A link that opens the CAD viewport on that part.
 
 **Done means:** the panel shows values that change when the geometry changes, and the link
 opens the right viewport — verified in the admin, not reasoned about.

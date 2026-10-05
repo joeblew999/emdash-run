@@ -33,3 +33,18 @@ explicitly silenced with a reason.
 Add them to `repo:apply`'s `depends`, so a broken type or a lint error cannot pass unnoticed.
 
 **Done means:** `repo:apply` fails when either check fails.
+
+### 4. Typecheck the site too
+
+`@astrojs/check` is already a dependency of the site, so `astro check` can typecheck the
+Astro project. The site itself is currently unchecked.
+
+**Done means:** `mise run site:check` runs `astro check` against `.src/site` and exits 0.
+
+### 5. Test the scripts
+
+There are no tests anywhere, and `scripts/*.mjs` is the largest untested surface: JSON
+parsing, `fetch`, symlinks, path handling. Even a few unit tests over the pure helpers
+(shaping the catalog, resolving plugin names, merging the seed) would catch real regressions.
+
+**Done means:** `mise run repo:test` runs a suite over `scripts/` and exits 0.

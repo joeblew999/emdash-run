@@ -33,3 +33,11 @@ site may have been created without it — and set it with `wrangler secret put` 
 
 **Done means:** either nothing is needed, or the secret is set on the live Worker and
 written down.
+
+### 4. Live logs
+
+`wrangler tail` streams the deployed Worker's logs. Without it we are blind to what
+production is doing.
+
+**Done means:** a documented way to tail the live Worker, used at least once to watch a
+real request.
