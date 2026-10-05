@@ -13,9 +13,7 @@
  */
 import { rmSync } from "node:fs";
 
-import { check, format } from "./lib/check.mjs";
 import { env, run, sh } from "./lib/exec.mjs";
-import { verify } from "./lib/verify.mjs";
 
 const SITE_DIR = env("SITE_DIR");
 const SITE_URL = env("SITE_URL");
@@ -68,10 +66,17 @@ Optional daemons — start with: mise run registry:up / mise run plugins-site:up
 
 Live         https://emdash-run.gedw99.workers.dev`);
 } else if (sub === "verify") {
+	// Helpers are imported lazily, on purpose. A static import means a syntax error in ANY
+	// helper stops EVERY subcommand at module load — so a typo in verify.mjs would make
+	// `repo:apply` refuse to restart the site, with a raw Node stack rather than a lint
+	// message. Loading them here keeps the blast radius to the one subcommand that uses it.
+	const { verify } = await import("./lib/verify.mjs");
 	await verify();
 } else if (sub === "check") {
+	const { check } = await import("./lib/check.mjs");
 	check();
 } else if (sub === "format") {
+	const { format } = await import("./lib/check.mjs");
 	format();
 } else {
 	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|check|format|urls)`);

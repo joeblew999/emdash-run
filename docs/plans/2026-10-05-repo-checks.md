@@ -1,7 +1,7 @@
 # 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active — **3 of 7 done** (and the proof in item 7 is partly done: the structural
-checks have been proven to block)
+**Status:** active — **5 of 7 done** (item 7 is partly done: the structural, live-state and
+lint checks have each been proven to block)
 
 Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
 plugin typecheck into `repo:apply` immediately found three real faults, so the rest of this
@@ -35,11 +35,16 @@ was a file describing a setup that did not exist.
   - [x] add `@types/react` — `react/jsx-runtime` had no declarations
   - [x] `typecheck` script plus `typescript` / `@types/react` devDeps
   - [x] `plugin:typecheck` task, added to `repo:apply`'s `depends`
-- [ ] **Lint and format**
-  - [ ] pick a tool — `oxlint`/`oxfmt` (what the emdash monorepo uses) or biome
-  - [ ] add it as a devDependency of the repo
-  - [ ] `repo:check` task covering `scripts/` and `plugins/`
-  - [ ] fix or explicitly silence the first run's findings, each with a reason
+- [x] **Lint and format** — the tools emdash uses: `oxlint --type-aware` + `oxfmt`
+  - [x] picked `oxlint`/`oxfmt` (what the emdash monorepo uses) rather than biome — we consume emdash's types and packages, so agreeing on style costs nothing
+  - [x] pinned in mise `[tools]`, not a devDependency: this repo has **no root package.json**, and mise `[tools]` is already how `npm:skills` is provided
+  - [x] versions matched to what emdash has **installed** (oxlint 1.74.0 / oxfmt 0.59.0 / oxlint-tsgolint 0.25.0), not to latest. The three are coupled and fail badly when mixed: oxlint 1.86.0 + tsgolint 0.25.0 dies with `panic: unknown rule: no-generated-empty-object-type` rather than failing cleanly.
+  - [x] configs mirror emdash's, including `no-await-in-loop: off` — several scripts poll sequentially on purpose and emdash already made that call
+  - [x] `repo:check` (lint + `oxfmt --check`) and `repo:format` (the fix), covering `scripts/` and the plugins
+  - [x] first run's findings fixed, not silenced: unused `ROOT` in site.mjs, a useless `?? {}` in a spread, two variable shadows, and four type assertions in the panels replaced with an `isRecord` **type predicate** — a real improvement, since `x as Record<string, unknown>` silently accepts an array or a primitive
+  - [x] formatting scoped to code, deliberately not `.`: oxfmt also formats TOML and Markdown, and `mise.toml` is this repo's declared source of truth (already broken once by an over-eager edit)
+  - [x] **why this earns its place beyond style:** nothing validated `scripts/` until it ran. An unclosed template literal introduced during this session stayed invisible until that exact code path executed. Lint parses every file, so that class dies at check time.
+  - [x] found while proving it: `repo.mjs` statically imported its helpers, so a syntax error in **any** helper aborted **every** subcommand at module load with a raw Node stack — a typo in `verify.mjs` made `repo:apply` refuse to restart the site. Helpers are now imported lazily, so the blast radius is one subcommand.
 - [ ] **Typecheck the site**
   - [ ] `site:check` task running `astro check` against `.src/site` (`@astrojs/check` is already installed)
   - [ ] wire it into `repo:apply`
@@ -65,5 +70,6 @@ was a file describing a setup that did not exist.
 - [ ] **Prove the checks actually block**
   - [x] prove the structural checks: reintroduced all three structural bugs at once and `plugin:audit` reported each by name, then passed again once restored (see the note below)
   - [x] prove the live-state check: drifted one stored field and `repo:verify` named the part, the model, the key, and both values
-  - [ ] prove a type error fails `repo:apply`
-  - [ ] prove a lint error fails `repo:apply`
+  - [x] prove the lint check: reintroduced the same unclosed template literal and `repo:check` reported `scripts/lib/verify.mjs:40:16: error: Expected a semicolon…` — file, line, column — while `repo:urls` kept working, confirming the lazy-import fix
+  - [ ] prove a **type** error (not a parse error) fails the checks — `tsc` is the candidate, not oxlint
+  - [ ] decide whether `repo:check` should gate `repo:apply`. It is ~30ms; the open question is whether a lint failure ought to block a site restart, or just be reported.
