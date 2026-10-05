@@ -7,10 +7,13 @@
  *   apply  the daily command: restart the site and refresh the MCP token
  *   verify assert the RUNNING site matches what this repo claims (content, the model_id
  *          join, and snapshot drift against the real objects in R2)
+ *   check  lint + formatting over scripts/ and the plugins
+ *   format apply formatting (the fix for a failing `check`)
  *   urls   print every URL this project serves
  */
 import { rmSync } from "node:fs";
 
+import { check, format } from "./lib/check.mjs";
 import { env, run, sh } from "./lib/exec.mjs";
 import { verify } from "./lib/verify.mjs";
 
@@ -40,7 +43,9 @@ if (sub === "init") {
 	// have to empty the D1 first (`mise run seed:apply`).
 	console.log("⏳ waiting for the site to be ready...");
 	for (let i = 0; i < 60; i++) {
-		const res = await fetch(`${SITE_URL}/_emdash/api/setup/dev-bypass`, { method: "POST" }).catch(() => null);
+		const res = await fetch(`${SITE_URL}/_emdash/api/setup/dev-bypass`, { method: "POST" }).catch(
+			() => null,
+		);
 		if (res?.status === 200) break;
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	}
@@ -64,7 +69,11 @@ Optional daemons — start with: mise run registry:up / mise run plugins-site:up
 Live         https://emdash-run.gedw99.workers.dev`);
 } else if (sub === "verify") {
 	await verify();
+} else if (sub === "check") {
+	check();
+} else if (sub === "format") {
+	format();
 } else {
-	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|urls)`);
+	console.error(`repo: unknown subcommand "${sub}" (init|apply|verify|check|format|urls)`);
 	process.exit(1);
 }

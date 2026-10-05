@@ -66,7 +66,11 @@ export async function verify() {
 		});
 		const body = res.ok ? await res.json() : null;
 		const parts = body?.data?.items ?? [];
-		record(res.ok && parts.length > 0, "content API returns parts", `${res.status}, ${parts.length} parts`);
+		record(
+			res.ok && parts.length > 0,
+			"content API returns parts",
+			`${res.status}, ${parts.length} parts`,
+		);
 
 		// ── 3 + 4. resolve every model_id, then compare the stored snapshot ──
 		if (parts.length > 0 && (!ACCOUNT || !TOKEN)) {
@@ -90,16 +94,16 @@ export async function verify() {
 				const id = part.data?.model_id;
 				if (!id) continue;
 
-				const res = await fetch(
+				const manifestRes = await fetch(
 					`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/r2/buckets/${BUCKET}/objects/models/${id}/manifest.json`,
 					{ headers: { Authorization: `Bearer ${TOKEN}` } },
 				);
-				if (!res.ok) {
-					unresolved.push(`${id} (${res.status})`);
+				if (!manifestRes.ok) {
+					unresolved.push(`${id} (${manifestRes.status})`);
 					continue;
 				}
 
-				const manifest = await res.json();
+				const manifest = await manifestRes.json();
 				const snap = part.data?.geometry_meta ?? {};
 
 				// The snapshot must equal the live manifest, field for field. Drift means the

@@ -1,5 +1,5 @@
-import type { SandboxedPlugin } from "emdash/plugin";
 import type { BlockResponse } from "@emdash-cms/blocks";
+import type { SandboxedPlugin } from "emdash/plugin";
 
 /**
  * Sandboxed twin of `plugins/plat-trunk`.
@@ -39,6 +39,13 @@ function format(value: unknown): string {
 }
 
 /**
+ * Narrow an unknown to a plain object. A type predicate, so callers never need an `as` —
+ * an assertion here would silently accept an array or a primitive.
+ */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
  * Build the label/value rows for a part. Deliberately equivalent to the native
  * panel's `asRows()` so the two trust models can be compared on the same entry.
  */
@@ -53,8 +60,8 @@ function geometryFields(data: Record<string, unknown>): Array<{ label: string; v
 	push("Material", data.material);
 
 	const meta = data.geometry_meta;
-	if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-		for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
+	if (isRecord(meta)) {
+		for (const [key, value] of Object.entries(meta)) {
 			if (!HIDDEN.has(key)) push(LABELS[key] ?? key, value);
 		}
 	}
@@ -96,7 +103,7 @@ const plugin: SandboxedPlugin = {
 					return { blocks: [{ type: "context", text: "Part not found." }] };
 				}
 
-				const fields = geometryFields((part.data ?? {}) as Record<string, unknown>);
+				const fields = geometryFields(isRecord(part.data) ? part.data : {});
 				if (fields.length === 0) {
 					return { blocks: [{ type: "context", text: "No geometry metadata on this part." }] };
 				}

@@ -18,6 +18,18 @@ node           = "22.22.2"
 pnpm           = "11.9.0"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
 pitchfork      = "2.29.0"      # process manager for the daemons
 "npm:skills"   = "1.4.7"       # Claude Code skills manager
+# Linters + formatter — the same ones the emdash monorepo uses, at the same versions it has
+# installed, so the ecosystem agrees on style AND the toolchain is known-good. Pinned here
+# rather than in a root package.json, because this repo has no root package: mise [tools] is
+# the toolchain.
+#
+# These three are version-coupled and must move together: oxlint --type-aware delegates to
+# oxlint-tsgolint, and a mismatch panics at run time rather than failing cleanly (oxlint
+# 1.86.0 + tsgolint 0.25.0 dies with `panic: unknown rule: no-generated-empty-object-type`).
+# Versions below are read from .src/emdash/node_modules — the pair that works there.
+"npm:oxlint"          = "1.74.0"
+"npm:oxfmt"           = "0.59.0"
+"npm:oxlint-tsgolint" = "0.25.0"
 
 [env]
 # Project root (where this mise.toml lives)
@@ -216,6 +228,14 @@ run = "node \"$ROOT/scripts/repo.mjs\" urls"
 [tasks."repo:verify"]
 description = "Assert the RUNNING site matches what the repo claims — content, the model_id join, and snapshot drift against real R2 objects"
 run = "node \"$ROOT/scripts/repo.mjs\" verify"
+
+[tasks."repo:check"]
+description = "Lint + formatting over scripts/ and the plugins (oxlint --type-aware, oxfmt)"
+run = "node \"$ROOT/scripts/repo.mjs\" check"
+
+[tasks."repo:format"]
+description = "Apply formatting to scripts/ and the plugins — the fix for a failing repo:check"
+run = "node \"$ROOT/scripts/repo.mjs\" format"
 
 [tasks."mise:reorder"]
 description = "Reorder mise.toml's sections (core first, optional extras last) — cosmetic only"

@@ -73,11 +73,9 @@ const out = {
 	$schema: base.$schema ?? cad.$schema,
 	version: base.version ?? cad.version ?? "1",
 	meta: {
-		...(base.meta ?? {}),
+		...base.meta,
 		name: `${base.meta?.name ?? "Site"} + CAD`,
-		description: [base.meta?.description, cad.meta?.description]
-			.filter(Boolean)
-			.join(" — "),
+		description: [base.meta?.description, cad.meta?.description].filter(Boolean).join(" — "),
 	},
 	settings: base.settings ?? cad.settings,
 	collections: union(cad.collections, base.collections, "slug"),

@@ -58,7 +58,9 @@ switch (sub) {
 		break;
 	case "up":
 		sh("pitchfork start registry");
-		console.log(`→ registry: ${REGISTRY_URL}/health  (JSON API under /xrpc/com.emdashcms.experimental.aggregator.*)`);
+		console.log(
+			`→ registry: ${REGISTRY_URL}/health  (JSON API under /xrpc/com.emdashcms.experimental.aggregator.*)`,
+		);
 		break;
 	case "logs":
 		run("pitchfork", ["logs", "registry", "--follow"]);

@@ -12,7 +12,15 @@
  * joins the flow by declaring the script and nothing in this file changes. That is why the
  * native and sandboxed plugins coexist here without a branch on which kind they are.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 import { env, run } from "./lib/exec.mjs";
@@ -25,7 +33,9 @@ const name = process.argv[3];
 
 const pluginDirs = () =>
 	readdirSync(PLUGINS_DIR, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory() && existsSync(`${PLUGINS_DIR}/${entry.name}/package.json`))
+		.filter(
+			(entry) => entry.isDirectory() && existsSync(`${PLUGINS_DIR}/${entry.name}/package.json`),
+		)
 		.map((entry) => entry.name);
 
 function readJson(path) {
@@ -52,7 +62,7 @@ function requireName() {
 async function catalog(dry) {
 	const base = process.env.CATALOG_REGISTRY_URL ?? "https://registry.emdashcms.com";
 	const packages = [];
-	for (let cursor = ""; ; ) {
+	for (let cursor = ""; ;) {
 		const url = new URL(`${base}/xrpc/com.emdashcms.experimental.aggregator.searchPackages`);
 		url.searchParams.set("limit", "100");
 		if (cursor) url.searchParams.set("cursor", cursor);
@@ -66,7 +76,10 @@ async function catalog(dry) {
 	packages.sort((a, b) => (a.profile?.name ?? a.slug).localeCompare(b.profile?.name ?? b.slug));
 
 	const rows = packages.map((pkg) => {
-		const authors = (pkg.profile?.authors ?? []).map((author) => author.name).filter(Boolean).join(", ");
+		const authors = (pkg.profile?.authors ?? [])
+			.map((author) => author.name)
+			.filter(Boolean)
+			.join(", ");
 		const description = (pkg.profile?.description ?? "").replace(/\s+/g, " ").trim();
 		return `| ${pkg.profile?.name ?? pkg.slug} | \`${pkg.slug}\` | ${authors || "—"} | ${pkg.profile?.license ?? "—"} | ${description.slice(0, 130)} |`;
 	});
@@ -104,7 +117,10 @@ ${rows.join("\n")}
 
 	mkdirSync(`${ROOT}/docs/plugin-catalog`, { recursive: true });
 	writeFileSync(`${ROOT}/docs/plugin-catalog/README.md`, markdown);
-	writeFileSync(`${ROOT}/docs/plugin-catalog/packages.json`, `${JSON.stringify(slim, null, "\t")}\n`);
+	writeFileSync(
+		`${ROOT}/docs/plugin-catalog/packages.json`,
+		`${JSON.stringify(slim, null, "\t")}\n`,
+	);
 	console.log(`  ✓ ${packages.length} packages → docs/plugin-catalog/`);
 }
 
@@ -143,10 +159,10 @@ function audit() {
 		const hasPluginManifest = existsSync(`${abs}/emdash-plugin.jsonc`);
 
 		// 1. a script the toolchain cannot run.
-		for (const [name, command] of Object.entries(manifest.scripts ?? {})) {
+		for (const [scriptName, command] of Object.entries(manifest.scripts ?? {})) {
 			if (/\bemdash-plugin\b/.test(command) && !hasPluginManifest) {
 				failures.push(
-					`${label}: script "${name}" runs emdash-plugin but the plugin has no emdash-plugin.jsonc — it can never succeed`,
+					`${label}: script "${scriptName}" runs emdash-plugin but the plugin has no emdash-plugin.jsonc — it can never succeed`,
 				);
 			}
 		}
@@ -173,9 +189,14 @@ function audit() {
 			const raw = readFileSync(`${abs}/emdash-plugin.jsonc`, "utf8");
 			const list = (key) => new RegExp(`"${key}"\\s*:\\s*\\[([^\\]]*)\\]`).exec(raw)?.[1] ?? "";
 			const capabilities = list("capabilities");
-			if (capabilities.includes("network:request") && !capabilities.includes("network:request:unrestricted")) {
+			if (
+				capabilities.includes("network:request") &&
+				!capabilities.includes("network:request:unrestricted")
+			) {
 				if (!list("allowedHosts").trim()) {
-					failures.push(`${label}: declares network:request but allowedHosts is empty — the bundle-time check will reject it`);
+					failures.push(
+						`${label}: declares network:request but allowedHosts is empty — the bundle-time check will reject it`,
+					);
 				}
 			}
 		}

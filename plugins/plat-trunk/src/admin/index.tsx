@@ -40,8 +40,15 @@ function format(value: unknown): string {
 	return JSON.stringify(value);
 }
 
+/**
+ * Narrow an unknown to a plain object. A type predicate, so callers never need an `as` —
+ * an assertion here would silently accept an array or a primitive.
+ */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
 function asRows(entry: PanelContext["entry"]): Array<[string, string]> {
-	const data = (entry?.data ?? {}) as Record<string, unknown>;
+	const data = isRecord(entry?.data) ? entry.data : {};
 	const rows: Array<[string, string]> = [];
 	const push = (label: string, value: unknown) => {
 		if (value === undefined || value === null || value === "") return;
@@ -50,8 +57,8 @@ function asRows(entry: PanelContext["entry"]): Array<[string, string]> {
 	push("Part number", data.part_number);
 	push("Material", data.material);
 	const meta = data.geometry_meta;
-	if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-		for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
+	if (isRecord(meta)) {
+		for (const [key, value] of Object.entries(meta)) {
 			if (!HIDDEN.has(key)) push(LABELS[key] ?? key, value);
 		}
 	}

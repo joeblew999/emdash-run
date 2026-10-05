@@ -63,7 +63,9 @@ function reorder() {
 		process.exit(1);
 	}
 
-	const out = [preamble.trimEnd(), ...order.map((title) => byTitle.get(title).trimEnd())].join("\n\n");
+	const out = [preamble.trimEnd(), ...order.map((title) => byTitle.get(title).trimEnd())].join(
+		"\n\n",
+	);
 	writeFileSync(MISE, `${out}\n`);
 	console.log(`reordered ${order.length} sections in mise.toml`);
 }
@@ -94,7 +96,9 @@ function check() {
 		for (const problem of problems) console.error(`  - ${problem}`);
 		process.exit(1);
 	}
-	console.log(`✓ ${namespaces.length} mise namespaces ↔ scripts/*.mjs (${NO_SCRIPT.size} exception)`);
+	console.log(
+		`✓ ${namespaces.length} mise namespaces ↔ scripts/*.mjs (${NO_SCRIPT.size} exception)`,
+	);
 }
 
 if (sub === "reorder") reorder();

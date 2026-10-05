@@ -7,11 +7,18 @@
  *
  * `site:sync` is destructive (rm -rf + copy) and only runs from site:setup / site:clean.
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 
 import { env, run, sh } from "./lib/exec.mjs";
 
-const ROOT = env("ROOT");
 const SITE_DIR = env("SITE_DIR");
 const sub = process.argv[2];
 
@@ -50,7 +57,9 @@ function install() {
 	writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 	// First-party plugins the site config registers — declared here rather than hand-edited
 	// into the template, so template updates stay clean.
-	run("pnpm", ["add", "@emdash-cms/plugin-forms", "@emdash-cms/plugin-webhook-notifier"], { cwd: SITE_DIR });
+	run("pnpm", ["add", "@emdash-cms/plugin-forms", "@emdash-cms/plugin-webhook-notifier"], {
+		cwd: SITE_DIR,
+	});
 	// The template's tsconfig declares `types: ["node"]` but never depends on @types/node,
 	// so a strict (pnpm) install leaves the editor reporting "Cannot find type definition
 	// file for 'node'".
@@ -68,7 +77,9 @@ function build(mode) {
 			run("pnpm", ["build"], { cwd: SITE_DIR });
 		} else if (mode === "deploy-dry") {
 			run("pnpm", ["build"], { cwd: SITE_DIR });
-			run("pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", "dist"], { cwd: SITE_DIR });
+			run("pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", "dist"], {
+				cwd: SITE_DIR,
+			});
 		} else {
 			// Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
 			run("fnox", ["exec", "--", "pnpm", "run", "deploy"], { cwd: SITE_DIR });
@@ -123,6 +134,8 @@ switch (sub) {
 		console.log("✓ Wiped .src — run: mise run site:setup → init → apply");
 		break;
 	default:
-		console.error(`site: unknown subcommand "${sub}" (sync|install|dev|logs|open|reset|clean|regen)`);
+		console.error(
+			`site: unknown subcommand "${sub}" (sync|install|dev|logs|open|reset|clean|regen)`,
+		);
 		process.exit(1);
 }
