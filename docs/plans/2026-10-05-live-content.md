@@ -1,6 +1,6 @@
-# 2026-10-05 — Live content: evolve the deployed site, keep the seed in sync
+# 2026-10-05 — Live content: get the deployed site onto the current seed
 
-**Status:** active — **3 of 5 done**, 1 blocked on authenticating to production
+**Status:** active — **3 of 5 done**, blocked on a destructive decision (wipe production's D1) and, if the API path is taken instead, on a hand-approved device code
 
 This plan was written as "export a seed, re-seed production". Reading the EmDash skills (which were
 not loaded when it was written — see the commit that vendored them) showed that framing was wrong.
@@ -27,9 +27,38 @@ not, and cannot be, how a deployed site is updated.
 
 Our production problem is the fourth row, and the fix is the API path — not a seed.
 
+## The real diagnosis — this plan's premise was WRONG, twice
+
+Both earlier readings were wrong, and the second one was found by trying to log in.
+
+**1. Production had never been set up at all.** Visiting `/_emdash/admin/device` redirected to
+`/_emdash/admin/setup`, and `/api/setup/status` returned `needsSetup: true` until the wizard was
+completed. So the earlier claim — "the deployed D1 was seeded before `geometry_meta` existed" — was
+false: nothing had ever been seeded, because setup had never run. The 404s on `/parts/…` were
+"no content", not "stale content". Every authenticated call failed for the same reason: there was
+no admin user to authenticate as, which also means no token to mint and no passkey to register.
+
+**2. The deployed build predates the seed fix.**
+
+| event | time (UTC) |
+| --- | --- |
+| `wrangler deployments list` — the two deploys | `03:58:33` and `04:08:56` |
+| the commit that added `model_id` and deleted the fabricated values | `08:33:01` |
+
+So the build production is running embeds the **old** seed — and the wizard, just completed, applied
+*that*. Production now has the fabricated schema and data: `brep_file` / `step_file`, no `model_id`,
+and `geometry_meta` full of invented vertices and volumes.
+
+**The root cause is therefore not a missing migration at all — it is that nothing redeployed after the
+seed was fixed.** `site:deploy` last ran 4.5 hours before the fix, and no amount of `emdash schema`
+work would have been the right first move.
+
 ## Confirmed: the deployed site is up but does not have our content
 
-`https://emdash-run.gedw99.workers.dev/` → **200**, but `/parts/mounting-plate` → **404**, and its content API returns `NOT_AUTHENTICATED`. So the plan's premise holds: the deployed D1 was seeded before `geometry_meta` and `model_id` existed, and a seed only applies to a fresh database. **EmDash as the content layer is currently proven locally only.**
+`https://emdash-run.gedw99.workers.dev/` → **200**, but `/parts/mounting-plate` → **404**, and its content API returns `NOT_AUTHENTICATED`.
+
+Note that parts are not publicly routable — the same path 404s locally — so a 404 there says nothing
+about content. That is what made this look like a staleness problem for so long.
 
 ## Items
 
@@ -67,6 +96,16 @@ Our production problem is the fourth row, and the fix is the API path — not a 
   - [ ] extend it to content once the schema is in sync, so the same command covers the `ec_*` tables
   - [ ] note also, from the database docs: *"Sample content from the seed is applied only when an administrator chooses it in the setup wizard"* — the schema applies at first boot, but demo content is opt-in, which is a nuance `seed:apply` papers over locally
   - [ ] commit the refreshed seed **with** the code that depends on the new schema, so a fresh environment bootstraps to a model the code understands
+- [ ] **Redeploy, then bootstrap production fresh** — the document's own recovery path
+  - [ ] `mise run site:deploy` — the build must embed the CURRENT seed; it currently embeds the 04:08 UTC one
+  - [ ] then point the deploy at an **empty** database and re-run setup, per *"Recover from a wrong turn: a fresh environment bootstrapped with the wrong model → update the seed, rebuild, and point the deploy at an empty database to bootstrap again"*
+  - [ ] production's D1 holds only the fabricated seed data, so emptying it costs nothing real — **but it is destructive, so it needs a deliberate decision**
+  - [ ] re-run setup in a browser after the reset; the wizard applies the embedded seed's schema and, if chosen, its sample content
+  - [ ] confirm from outside with `mise run seed:from-remote` — it should report **no drift**
+- [ ] **Authenticating to production needs a device code approved by hand**
+  - [ ] `EMDASH_URL=https://emdash-run.gedw99.workers.dev mise run emdash:cli -- login` prints a URL and a code; nothing proceeds until *someone* opens `/_emdash/admin/device`, enters the code, and approves it. It waits indefinitely otherwise — no error, no timeout, just `Waiting for authorization…`
+  - [ ] verified that it otherwise works: it connects and issues a code. It is not a broken command, it is a two-party flow.
+- [ ] **An alternative to a wipe exists, and is worse here** — `emdash schema add-field` / `remove-field` plus `content update` per part. It is the documented path for a *populated* site, and production is not meaningfully populated, so a clean bootstrap is simpler and leaves less residue.
 - [ ] **Rehearse destructive changes on a preview environment** — the docs' own procedure
   - [ ] `wrangler d1 create emdash-run-preview --binding DB --env preview --update-config` (bindings are not inherited from the top level)
   - [ ] `wrangler d1 export emdash-run --remote --output=./prod.sql`, then `wrangler d1 execute DB --env preview --remote --file=./prod.sql`
