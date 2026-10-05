@@ -91,6 +91,8 @@ export function check() {
 	run("oxlint", ["--type-aware", "--deny-warnings", ...CODE]);
 	console.log("→ oxfmt --check");
 	run("oxfmt", ["--check", ...CODE]);
+	console.log("→ skills:check (the committed EmDash skills match the site's)");
+	run("mise", ["run", "skills:check"]);
 }
 
 export function format() {

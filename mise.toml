@@ -416,8 +416,12 @@ description = "List installed skills"
 run = "node \"$ROOT/scripts/skills.mjs\" list"
 
 [tasks."skills:sync"]
-description = "Symlink the site's shipped EmDash skills into .claude/skills/emdash"
+description = "Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code"
 run = "node \"$ROOT/scripts/skills.mjs\" sync"
+
+[tasks."skills:check"]
+description = "Fail if the committed .github/skills/ copy has drifted from the skills the site ships"
+run = "node \"$ROOT/scripts/skills.mjs\" check"
 
 [tasks."skills:add-all"]
 description = "Install the standard skill set for this project (run once after init)"

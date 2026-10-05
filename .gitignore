@@ -9,9 +9,16 @@ node_modules/
 .env
 .playwright-mcp/
 .claude/settings.local.json
-# Skills are installed by `skills add` and reproducible from skills-lock.json — do not
-# vendor them. Whole dirs: the CLI writes a shared .agents/skills store plus per-agent
-# symlinks, and nothing in there is useful to commit.
+# Skills installed by `skills add` are reproducible from skills-lock.json — do not vendor
+# them. Whole dirs: the CLI writes a shared .agents/skills store plus per-agent symlinks,
+# and nothing in there is useful to commit.
+#
+# The EmDash skills are the exception, and they are NOT in skills-lock.json: they ship with
+# the site, and they are vendored into .github/skills/ (committed) so they exist on a fresh
+# clone. Skills are discovered when a session STARTS, so a gitignored copy means an agent
+# can begin work with no EmDash knowledge at all — which is exactly what happened. The
+# .claude/skills/emdash symlink below is still gitignored: it points into .src/, so it would
+# be broken on any other clone.
 /.agents/skills/
 /.claude/skills/
 .crush/
