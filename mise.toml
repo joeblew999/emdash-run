@@ -17,6 +17,14 @@ jobs = 1
 node           = "22.22.2"
 pnpm           = "11.9.0"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
 pitchfork      = "2.29.0"      # process manager for the daemons
+# Secrets. `fnox exec -- <cmd>` is how anything needing credentials runs: `site:deploy`,
+# and the `secret()` helper in scripts/lib/exec.mjs that `repo:verify` uses to reach R2.
+#
+# Declared here rather than left to the global mise config, where it was the only thing
+# providing it — so a fresh clone on another machine had no fnox, and both of those paths
+# would fail with a confusing error. Short form on purpose: mise maps `fnox` to
+# `github:jdx/fnox`, which is the same resolution the global config gets.
+fnox           = "1.36.0"
 "npm:skills"   = "1.4.7"       # Claude Code skills manager
 # Linters + formatter — the same ones the emdash monorepo uses, at the same versions it has
 # installed, so the ecosystem agrees on style AND the toolchain is known-good. Pinned here
