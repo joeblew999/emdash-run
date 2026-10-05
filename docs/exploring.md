@@ -14,11 +14,13 @@ Run `mise run mcp:token-admin` to generate the token.
 
 ### 2. Does the plugin field widget wire up?
 
-`plugin/src/admin.tsx` is the geometry preview widget.
-`config/site.astro.config.mjs` does not yet import or register it.
-The widget renders geometry metadata inline in the Parts editor.
+`plugins/plat-trunk/src/admin/index.tsx` provides a geometry panel
+(`contentEditorPanels`), rendered in the Parts editor sidebar.
+`config/site.astro.config.mjs` registers it via `platTrunkPlugin()`.
 
-Status: **not started**
+Status: **resolved** — native plugin + content editor panel verified in the admin
+(Part number / Material shown for a seeded part). `fieldWidgets` itself is
+undocumented in emdash 1.1.0, so the documented editor-panel surface is used.
 
 ### 3. Can the two MCP surfaces unify?
 
@@ -38,4 +40,4 @@ Status: **not started** — depends on question 2
 
 ## What is broken or messy
 
-- Plugin not wired into `config/site.astro.config.mjs` yet
+- Plugin registered — geometry panel renders in the Parts editor

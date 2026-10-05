@@ -14,17 +14,18 @@ Cannot talk to internal CF Workers — only declared external hostnames.
 
 **Admin React bundle (browser-side)**
 Plain React components. NOT sandboxed. No capability restrictions.
-Can fetch anything. Registered as field widgets.
+Can fetch anything. Registered as an editor panel on the `parts` collection.
 This is where our geometry preview lives.
 
 ## Our plugin
 
 ```
-plugin/
+plugins/plat-trunk/
   package.json      @plat-trunk/emdash-plugin
   src/
-    index.ts        plugin descriptor — registers the widget
-    admin.tsx       React geometry preview component
+    index.ts        descriptor factory (native) + createPlugin runtime
+    admin/
+      index.tsx     React geometry preview panel (contentEditorPanels)
 ```
 
 ### What the widget does
@@ -43,12 +44,14 @@ Read-only display + deep link. The actual geometry lives in plat-trunk.
 
 ## Status
 
-- `plugin/src/index.ts` — written, not tested
-- `plugin/src/admin.tsx` — written, not tested
-- `config/site.astro.config.mjs` — does NOT yet import or register the plugin
-- No build step set up yet
+- **Done.** `plugins/plat-trunk/src/index.ts` — native descriptor + `createPlugin`
+- **Done.** `plugins/plat-trunk/src/admin/index.tsx` — `contentEditorPanels` geometry panel
+- **Done.** Registered in `config/site.astro.config.mjs` as `platTrunkPlugin()`
+- **Verified.** Renders in the Parts editor: "Geometry" → Part number / Material (plus
+  any keys on `geometry_meta`)
 
 ## Next step
 
-Register the plugin in `config/site.astro.config.mjs` and verify it loads
-without errors when `mise run server:start` starts.
+Fetch live geometry stats from the plat-trunk worker (`cad.ubuntusoftware.net`) in the
+panel, and add a validation badge + deep link to the CAD viewport. The panel currently
+renders only what is stored on the entry.

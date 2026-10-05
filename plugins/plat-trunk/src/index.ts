@@ -1,21 +1,44 @@
+import { definePlugin } from "emdash";
 import type { PluginDescriptor } from "emdash";
 
+const ADMIN_ENTRY = "@plat-trunk/emdash-plugin/admin";
+
 /**
- * plat-trunk — the local CAD plugin.
+ * plat-trunk — the local CAD plugin (native format).
  *
- * emdash@1.1.0 contract: a descriptor must carry an `entrypoint` module specifier
- * so the integration can bundle it. `format: "standard"` lets the same entry run
- * in-process (`plugins: []`) or in an isolate (`sandboxed: []`).  The entrypoint
- * module default-exports `{ hooks, routes }` — it must NOT call `definePlugin()`.
+ * Native is required for trusted React admin extensions. The descriptor factory
+ * runs while Astro evaluates its config and carries only build-time metadata;
+ * `createPlugin` is the runtime entrypoint that emdash's native loader imports
+ * by name from `entrypoint`.
  *
- * See docs/big-picture.md — the geometry field widget is the next step.
+ * See docs/big-picture.md — the Parts editor geometry panel lives in ./admin.
  */
 export function platTrunkPlugin(): PluginDescriptor {
 	return {
 		id: "plat-trunk",
 		version: "0.1.0",
-		format: "standard",
-		entrypoint: "@plat-trunk/emdash-plugin/plugin",
-		capabilities: ["content:read"],
+		format: "native",
+		entrypoint: "@plat-trunk/emdash-plugin",
+		adminEntry: ADMIN_ENTRY,
+		options: {},
 	};
+}
+
+export function createPlugin() {
+	return definePlugin({
+		id: "plat-trunk",
+		version: "0.1.0",
+		capabilities: ["content:read"],
+		hooks: {
+			"content:afterSave": async (event, ctx) => {
+				ctx.log.info("plat-trunk: content saved", {
+					collection: event.collection,
+					id: event.content?.id,
+				});
+			},
+		},
+		admin: {
+			entry: ADMIN_ENTRY,
+		},
+	});
 }

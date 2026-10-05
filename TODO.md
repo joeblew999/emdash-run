@@ -1,7 +1,5 @@
 # TODO
 
-- [ ] Wire the geometry preview widget into `config/site.astro.config.mjs`
-      (still not registered — see `docs/exploring.md`, ADR-0003).
 - [ ] Local registry aggregator (`apps/aggregator` in the emdash monorepo) is
       **blocked upstream**: `miniflare@4.20260507.1` + its bundled `workerd` crash on
       Durable Object SQLite — `table _cf_ALARM has 3 columns but 2 values were
@@ -12,6 +10,8 @@
 
 ## Done
 
+- [x] Geometry preview in the Parts editor — native `@plat-trunk/emdash-plugin` with a
+      `contentEditorPanels` panel (ADR-0003), verified in the admin.
 - [x] First Cloudflare deploy → **https://emdash-run.gedw99.workers.dev** (D1 + KV + R2
       provisioned; ids recorded in `config/site.wrangler.jsonc`).
 - [x] Use a `.src/` folder and clone sources into it — templates + site + emdash

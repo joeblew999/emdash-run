@@ -1,15 +1,21 @@
 ---
 id: "0003"
 title: "Register the geometry preview plugin in astro.config.mjs"
-status: "proposed"
+status: "implemented"
 date: "2026-04-02"
 ---
 
 # ADR-0003 — Register the geometry preview plugin in astro.config.mjs
 
+> **Implemented (2026-10-05).** `@plat-trunk/emdash-plugin` is a **native** plugin
+> registered in `config/site.astro.config.mjs` via `platTrunkPlugin()`. The geometry
+> preview is a **content editor panel** (`contentEditorPanels`, `collections: ["parts"]`)
+> rendered in the Parts editor sidebar — verified in the admin. It uses the documented
+> editor-panel surface rather than `fieldWidgets`, which is undocumented in emdash 1.1.0.
+
 ## Status
 
-Proposed
+Implemented
 
 ## Context
 
