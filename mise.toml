@@ -239,12 +239,12 @@ depends = ["config:apply", "plugins:link", "skills:sync:emdash"]
 run = """
 set -euo pipefail
 pitchfork stop -a || true
-# No --port/--http readiness flag: Astro binds IPv6-only ([::1]:4321), so a
-# probe on 127.0.0.1:4321 never succeeds and pitchfork would wait forever.
-# Rely on pitchfork's default delay, then on our own dev-bypass poll below.
-# pitchfork waits for ready_http (declared in pitchfork.toml) before returning.
+# pitchfork waits for ready_http (declared in pitchfork.toml) before returning, so the
+# site is already serving by the time we get here. Readiness is an HTTP check because
+# Astro binds IPv6-only ([::1]:4321) — a 127.0.0.1 port probe would hang.
 pitchfork start emdash
-# Still poll dev-bypass: the first request runs migrations and applies the seed.
+# dev-bypass also runs migrations and applies the seed on the first request, so poll
+# until it returns 200 before minting the MCP token.
 echo "⏳ waiting for the site to be ready..."
 for i in $(seq 1 60); do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:4321/_emdash/api/setup/dev-bypass) || true
