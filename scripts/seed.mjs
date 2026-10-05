@@ -32,6 +32,12 @@ const SITE_DIR = env("SITE_DIR");
 const SITE_URL = env("SITE_URL");
 const sub = process.argv[2];
 
+/** Identifies a field across the repo's seed and the deployed database: `collection.field`. */
+const fieldKey = (collection, field) => `${collection}.${field}`;
+
+/** Alphabetical, explicitly — `Array#sort()` without a comparator is a lint error. */
+const byName = (a, b) => a.localeCompare(b);
+
 if (sub === "validate") {
 	run("mise", ["run", "emdash:cli", "--", "seed", "--validate", `${SITE_DIR}/seed/seed.json`]);
 } else if (sub === "apply") {
@@ -58,7 +64,6 @@ if (sub === "validate") {
 	// this reports drift, it does not write a seed. Writing one is only correct once the
 	// deployed site is AHEAD of the repo, and it is not (production has no model_id).
 	const { queryRemote } = await import("./lib/d1.mjs");
-	const { readFileSync } = await import("node:fs");
 
 	const remoteCollections = queryRemote(
 		"SELECT slug, label FROM _emdash_collections ORDER BY slug",
@@ -70,14 +75,14 @@ if (sub === "validate") {
 
 	const ours = JSON.parse(readFileSync(`${ROOT}/config/cad.seed.json`, "utf8"));
 
-	const key = (c, f) => `${c}.${f}`;
-	const remote = new Map(remoteFields.map((r) => [key(r.collection, r.field), r.type]));
+	const remote = new Map(remoteFields.map((r) => [fieldKey(r.collection, r.field), r.type]));
 	const local = new Map();
-	for (const c of ours.collections)
-		for (const f of c.fields ?? []) local.set(key(c.slug, f.slug), f.type);
+	for (const c of ours.collections) {
+		for (const f of c.fields ?? []) local.set(fieldKey(c.slug, f.slug), f.type);
+	}
 
-	const onlyLocal = [...local.keys()].filter((k) => !remote.has(k)).sort();
-	const onlyRemote = [...remote.keys()].filter((k) => !local.has(k)).sort();
+	const onlyLocal = [...local.keys()].filter((k) => !remote.has(k)).toSorted(byName);
+	const onlyRemote = [...remote.keys()].filter((k) => !local.has(k)).toSorted(byName);
 	const typeDiff = [...local.keys()]
 		.filter((k) => remote.has(k) && remote.get(k) !== local.get(k))
 		.map((k) => `${k}: repo=${local.get(k)} deployed=${remote.get(k)}`);
