@@ -102,10 +102,24 @@ about content. That is what made this look like a staleness problem for so long.
   - [ ] production's D1 holds only the fabricated seed data, so emptying it costs nothing real — **but it is destructive, so it needs a deliberate decision**
   - [ ] re-run setup in a browser after the reset; the wizard applies the embedded seed's schema and, if chosen, its sample content
   - [ ] confirm from outside with `mise run seed:from-remote` — it should report **no drift**
-- [ ] **Authenticating to production needs a device code approved by hand**
-  - [ ] `EMDASH_URL=https://emdash-run.gedw99.workers.dev mise run emdash:cli -- login` prints a URL and a code; nothing proceeds until *someone* opens `/_emdash/admin/device`, enters the code, and approves it. It waits indefinitely otherwise — no error, no timeout, just `Waiting for authorization…`
-  - [ ] verified that it otherwise works: it connects and issues a code. It is not a broken command, it is a two-party flow.
-- [ ] **An alternative to a wipe exists, and is worse here** — `emdash schema add-field` / `remove-field` plus `content update` per part. It is the documented path for a *populated* site, and production is not meaningfully populated, so a clean bootstrap is simpler and leaves less residue.
+- [x] **Authenticating to production needs a device code approved by hand**
+  - [x] `EMDASH_URL=https://emdash-run.gedw99.workers.dev mise run emdash:cli -- login` prints a URL and a code; nothing proceeds until *someone* opens `/_emdash/admin/device`, enters the code, and approves it. The wrapper appends `--url` for remote commands, so `EMDASH_URL` is the knob.
+  - [x] **it worked**: `✔ Logged in as gedw99@gmail.com (admin)`, `Token saved`
+- [ ] **BLOCKED: authenticated CLI access to production does not work at all**
+  - [x] the token is **persisted server-side and valid**, yet every command is rejected. `_emdash_oauth_tokens` after two logins:
+    ```
+    access   scopes=["admin"] client_type=cli created_at="2026-10-05 10:15:21" expires_at="2026-10-05T11:15:21.596Z"
+    refresh  scopes=["admin"] client_type=cli created_at="2026-10-05 10:15:21" expires_at="2027-01-03T10:15:21.596Z"
+    ```
+    `whoami` ran at `10:17:15Z` — 58 minutes before that access token expired — and returned **`ERROR Token is invalid or expired`**. The CLI then **purged** the stored credential, so the failure is self-erasing: the evidence disappears with it.
+  - [x] not the wrapper: `pnpm exec emdash whoami --url https://…` fails identically while `whoami` with no URL succeeds against localhost's dev bypass. So it is remote-token validation, not argument handling.
+  - [x] **the row is internally inconsistent**: `created_at` is stored naive (`2026-10-05 10:15:21`, no `Z`) while `expires_at` is canonical (`…T11:15:21.596Z`). Migration `079_datetime_normalization` and `site:doctor`'s "datetime storage: all stored content datetimes are canonical (UTC)" check exist precisely for this class of problem, and this is a mismatch *within one row*.
+  - [ ] report upstream — this blocks the whole `emdash schema` / `emdash content` surface against a Cloudflare deployment, which is the documented way to evolve a populated live site
+  - [ ] worth trying before giving up: whether `EMDASH_ENCRYPTION_KEY` being absent affects it. The docs scope that key to plugin `secret` setting envelopes, so it *should not* — but production has no secrets at all, and the failure is unexplained enough to test rather than reason about. `emdash secrets generate --write <path>` produces one without it passing through a transcript.
+- [ ] **So the viable path is the wipe, not the API**
+  - [ ] `emdash schema` is the documented way to evolve a *populated* site, and it is unavailable here — which removes the objection to a clean bootstrap
+  - [ ] the cost is real and worth stating: production has **1 user** (an admin account with a registered passkey), so a wipe means re-running the wizard and re-registering a passkey. Nobody otherwise loses anything — the 5 parts are the fabricated seed and the post/page are template sample content.
+  - [ ] a third option preserves the admin: apply the same change with direct D1 SQL taken from the local schema, the path set aside early on. More work, no auth needed, nothing lost.
 - [ ] **Rehearse destructive changes on a preview environment** — the docs' own procedure
   - [ ] `wrangler d1 create emdash-run-preview --binding DB --env preview --update-config` (bindings are not inherited from the top level)
   - [ ] `wrangler d1 export emdash-run --remote --output=./prod.sql`, then `wrangler d1 execute DB --env preview --remote --file=./prod.sql`
