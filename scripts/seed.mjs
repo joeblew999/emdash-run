@@ -2,6 +2,7 @@
 /**
  * `mise run seed:validate` — validate the merged site seed.
  * `mise run seed:apply`    — get the seed into the RUNNING dev site.
+ * `mise run seed:from-remote` — diff the DEPLOYED site's content model against ours.
  *
  * EmDash silently skips an invalid seed (no error, no collections), so `validate` fails
  * loudly instead. `config:apply` runs it after merging.
@@ -22,10 +23,11 @@
  * does that. It is destructive to local state — content edited through the admin, and the
  * admin session itself, are discarded.
  */
-import { rmSync } from "node:fs";
+import { rmSync, readFileSync } from "node:fs";
 
 import { env, run, sh } from "./lib/exec.mjs";
 
+const ROOT = env("ROOT");
 const SITE_DIR = env("SITE_DIR");
 const SITE_URL = env("SITE_URL");
 const sub = process.argv[2];
@@ -48,6 +50,59 @@ if (sub === "validate") {
 	console.log("  the D1 was replaced, so your admin session is gone. Sign in again at:");
 	console.log(`  ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);
 	console.log("  then: mise run repo:verify");
+} else if (sub === "from-remote") {
+	// Compare the DEPLOYED site's content model against ours.
+	//
+	// The docs' recipe for this (`wrangler d1 export --remote`) cannot run on EmDash — FTS5
+	// virtual tables — so the model is read back with targeted queries instead. Read-only:
+	// this reports drift, it does not write a seed. Writing one is only correct once the
+	// deployed site is AHEAD of the repo, and it is not (production has no model_id).
+	const { queryRemote } = await import("./lib/d1.mjs");
+	const { readFileSync } = await import("node:fs");
+
+	const remoteCollections = queryRemote(
+		"SELECT slug, label FROM _emdash_collections ORDER BY slug",
+	);
+	const remoteFields = queryRemote(
+		"SELECT c.slug AS collection, f.slug AS field, f.type AS type FROM _emdash_fields f " +
+			"JOIN _emdash_collections c ON c.id = f.collection_id ORDER BY c.slug, f.sort_order",
+	);
+
+	const ours = JSON.parse(readFileSync(`${ROOT}/config/cad.seed.json`, "utf8"));
+
+	const key = (c, f) => `${c}.${f}`;
+	const remote = new Map(remoteFields.map((r) => [key(r.collection, r.field), r.type]));
+	const local = new Map();
+	for (const c of ours.collections)
+		for (const f of c.fields ?? []) local.set(key(c.slug, f.slug), f.type);
+
+	const onlyLocal = [...local.keys()].filter((k) => !remote.has(k)).sort();
+	const onlyRemote = [...remote.keys()].filter((k) => !local.has(k)).sort();
+	const typeDiff = [...local.keys()]
+		.filter((k) => remote.has(k) && remote.get(k) !== local.get(k))
+		.map((k) => `${k}: repo=${local.get(k)} deployed=${remote.get(k)}`);
+
+	const remoteSlugs = new Set(remoteCollections.map((c) => c.slug));
+	const localSlugs = ours.collections.map((c) => c.slug);
+
+	console.log(`  deployed: ${remoteCollections.length} collections, ${remoteFields.length} fields`);
+	console.log(`  repo:     ${localSlugs.length} collections, ${local.size} fields`);
+	console.log(
+		`  collections only in the repo:     ${localSlugs.filter((s) => !remoteSlugs.has(s)).join(", ") || "none"}`,
+	);
+	console.log(
+		`  collections only deployed:        ${[...remoteSlugs].filter((s) => !localSlugs.includes(s)).join(", ") || "none"}`,
+	);
+
+	if (onlyLocal.length || onlyRemote.length || typeDiff.length) {
+		console.log("\n  drift:");
+		for (const k of onlyLocal) console.log(`    missing from the deployed site: ${k}`);
+		for (const k of onlyRemote) console.log(`    only on the deployed site:      ${k}`);
+		for (const d of typeDiff) console.log(`    type differs:                   ${d}`);
+		console.log("\n  the deployed site is behind. Evolve it with `emdash schema` — not a seed.");
+	} else {
+		console.log("\n  ✓ the deployed content model matches the repo's seed");
+	}
 } else {
 	console.error(`seed: unknown subcommand "${sub}" (validate|apply)`);
 	process.exit(1);

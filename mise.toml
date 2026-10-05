@@ -181,6 +181,10 @@ run = "node \"$ROOT/scripts/seed.mjs\" validate"
 description = "Get the seed into the RUNNING dev site — empties local D1 then reapplies (discards local content + admin session)"
 run = "node \"$ROOT/scripts/seed.mjs\" apply"
 
+[tasks."seed:from-remote"]
+description = "Diff the DEPLOYED site's content model against the repo's seed (read-only; Cloudflare creds via fnox)"
+run = "node \"$ROOT/scripts/seed.mjs\" from-remote"
+
 [tasks."site:setup"]
 description = "One-time: clone templates → copy site → install → apply config"
 depends = ["site:install", "config:apply"]

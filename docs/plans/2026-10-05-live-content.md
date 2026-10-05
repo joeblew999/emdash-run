@@ -1,6 +1,6 @@
 # 2026-10-05 — Live content: evolve the deployed site, keep the seed in sync
 
-**Status:** active — **2 of 4 done**, 1 blocked on authenticating to production
+**Status:** active — **3 of 5 done**, 1 blocked on authenticating to production
 
 This plan was written as "export a seed, re-seed production". Reading the EmDash skills (which were
 not loaded when it was written — see the commit that vendored them) showed that framing was wrong.
@@ -52,8 +52,19 @@ Our production problem is the fourth row, and the fix is the API path — not a 
     `✘ D1 Export error: cannot export databases with Virtual Tables (fts5)`. EmDash uses FTS5 for search — `_emdash_fts_pages`, `_emdash_fts_posts` plus 10 shadow tables — so the first step of the loop the docs prescribe cannot run on any EmDash site with search enabled.
   - [x] **the way around it is the other deployment target.** EmDash runs on **Node.js** (SQLite file, local/S3 storage) as well as **Cloudflare** (D1/Hyperdrive, R2). On Node.js the database is a plain SQLite file, so the loop becomes a file copy plus `emdash export-seed --database <file>` — no `wrangler` involved, and no FTS5 export limitation. That is also why the CLI's `./data.db` default exists at all: it is the Node.js default, not a bug.
   - [x] **but do not switch this repo to Node.js casually.** The docs state plainly: *"Sandboxed plugins are D1-only. The sandbox plugin bridge talks to a D1 binding directly, independent of the configured adapter"* — so moving to SQLite would break the sandboxed twin, which is half of the `plugin-sandbox-model` evaluation. The adapter is a real constraint on that comparison, not a preference.
-  - [x] the workable path on D1 is per-table extraction: `wrangler d1 execute --remote --json` works (used it for `_emdash_fields`, `ec_parts` and the migration status), so a seed can be reconstructed from targeted queries while skipping the FTS tables.
-  - [ ] implement it: reconstruct the seed's schema + content from `wrangler d1 execute --remote --json` rather than a dump
+  - [x] the workable path on D1 is per-table extraction: `wrangler d1 execute --remote --json` works (used it for `_emdash_fields`, `ec_parts` and the migration status), so the model can be read back with targeted queries while skipping the FTS tables.
+  - [x] **implemented: `mise run seed:from-remote`** — diffs the deployed content model against the repo's seed, read-only, no admin token. It reports the drift the plan had only described in prose:
+    ```
+    deployed: 5 collections, 20 fields
+    repo:     5 collections, 19 fields
+    drift:
+      missing from the deployed site: parts.model_id
+      only on the deployed site:      parts.brep_file
+      only on the deployed site:      parts.step_file
+    ```
+    That is the migration, computed rather than remembered — and it makes "how far behind is production?" a repeatable answer instead of a hand-check.
+  - [x] it reports rather than writes, deliberately: writing a seed is only correct once the deployed site is **ahead** of the repo, and it is behind. `scripts/lib/d1.mjs` holds the query helper (argv, not `sh -c`, so SQL quoting is not a problem).
+  - [ ] extend it to content once the schema is in sync, so the same command covers the `ec_*` tables
   - [ ] note also, from the database docs: *"Sample content from the seed is applied only when an administrator chooses it in the setup wizard"* — the schema applies at first boot, but demo content is opt-in, which is a nuance `seed:apply` papers over locally
   - [ ] commit the refreshed seed **with** the code that depends on the new schema, so a fresh environment bootstraps to a model the code understands
 - [ ] **Rehearse destructive changes on a preview environment** — the docs' own procedure
