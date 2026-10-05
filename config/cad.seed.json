@@ -222,7 +222,19 @@
 					"name": "Mounting Plate",
 					"part_number": "MP-002",
 					"assembly": "$ref:assemblies:motor-housing",
-					"material": "Steel"
+					"material": "Steel",
+					"geometry_meta": {
+						"vertices": 1842,
+						"faces": 964,
+						"edges": 2790,
+						"bbox_mm": "120 × 80 × 12",
+						"volume_cm3": 48.2,
+						"watertight": true,
+						"validation": "ok",
+						"source": "plat-trunk",
+						"format": "STEP",
+						"model": "cad/parts/mp-002.step"
+					}
 				}
 			},
 			{
@@ -233,7 +245,19 @@
 					"name": "Cooling Fin",
 					"part_number": "CF-001",
 					"assembly": "$ref:assemblies:motor-housing",
-					"material": "Aluminum"
+					"material": "Aluminum",
+					"geometry_meta": {
+						"vertices": 3260,
+						"faces": 1712,
+						"edges": 4980,
+						"bbox_mm": "90 × 60 × 24",
+						"volume_cm3": 12.6,
+						"watertight": true,
+						"validation": "ok",
+						"source": "plat-trunk",
+						"format": "STEP",
+						"model": "cad/parts/cf-001.step"
+					}
 				}
 			},
 			{
@@ -244,7 +268,19 @@
 					"name": "Housing Body",
 					"part_number": "HB-001",
 					"assembly": "$ref:assemblies:motor-housing",
-					"material": "Aluminum"
+					"material": "Aluminum",
+					"geometry_meta": {
+						"vertices": 5124,
+						"faces": 2688,
+						"edges": 7836,
+						"bbox_mm": "150 × 110 × 65",
+						"volume_cm3": 214.8,
+						"watertight": false,
+						"validation": "warn",
+						"source": "plat-trunk",
+						"format": "STEP",
+						"model": "cad/parts/hb-001.step"
+					}
 				}
 			},
 			{
@@ -255,7 +291,19 @@
 					"name": "Side Bracket",
 					"part_number": "SB-001",
 					"assembly": "$ref:assemblies:main-bracket",
-					"material": "Steel"
+					"material": "Steel",
+					"geometry_meta": {
+						"vertices": 2140,
+						"faces": 1120,
+						"edges": 3252,
+						"bbox_mm": "80 × 45 × 8",
+						"volume_cm3": 21.4,
+						"watertight": true,
+						"validation": "ok",
+						"source": "plat-trunk",
+						"format": "STEP",
+						"model": "cad/parts/sb-001.step"
+					}
 				}
 			},
 			{
@@ -266,7 +314,19 @@
 					"name": "Top Plate",
 					"part_number": "TP-001",
 					"assembly": "$ref:assemblies:main-bracket",
-					"material": "Aluminum"
+					"material": "Aluminum",
+					"geometry_meta": {
+						"vertices": 1180,
+						"faces": 604,
+						"edges": 1786,
+						"bbox_mm": "100 × 70 × 6",
+						"volume_cm3": 9.8,
+						"watertight": true,
+						"validation": "ok",
+						"source": "plat-trunk",
+						"format": "STEP",
+						"model": "cad/parts/tp-001.step"
+					}
 				}
 			}
 		],

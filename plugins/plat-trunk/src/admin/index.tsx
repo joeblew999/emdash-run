@@ -17,19 +17,39 @@ interface PanelContext {
 /** Reference fields aren't useful as inline text, so keep them out of the table. */
 const HIDDEN = new Set(["assembly", "brep_file", "step_file"]);
 
+/** Friendlier labels for the keys we seed into `geometry_meta`. */
+const LABELS: Record<string, string> = {
+	vertices: "Vertices",
+	faces: "Faces",
+	edges: "Edges",
+	bbox_mm: "Bounding box",
+	volume_cm3: "Volume (cm³)",
+	watertight: "Watertight",
+	validation: "Validation",
+	source: "Source",
+	format: "Format",
+	model: "Model",
+};
+
+function format(value: unknown): string {
+	if (typeof value === "boolean") return value ? "Yes" : "No";
+	if (typeof value === "string") return value;
+	return JSON.stringify(value);
+}
+
 function asRows(entry: PanelContext["entry"]): Array<[string, string]> {
 	const data = (entry?.data ?? {}) as Record<string, unknown>;
 	const rows: Array<[string, string]> = [];
 	const push = (label: string, value: unknown) => {
 		if (value === undefined || value === null || value === "") return;
-		rows.push([label, typeof value === "string" ? value : JSON.stringify(value)]);
+		rows.push([label, format(value)]);
 	};
 	push("Part number", data.part_number);
 	push("Material", data.material);
 	const meta = data.geometry_meta;
-	if (meta && typeof meta === "object") {
+	if (meta && typeof meta === "object" && !Array.isArray(meta)) {
 		for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
-			if (!HIDDEN.has(key)) push(key, value);
+			if (!HIDDEN.has(key)) push(LABELS[key] ?? key, value);
 		}
 	}
 	return rows;
