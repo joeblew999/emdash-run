@@ -116,11 +116,29 @@ The scaffold also gave us things we had nowhere: a passing test through the sand
 `vitest.config.ts`, and `skills/creating-plugins/SKILL.md` with `.claude/skills` +
 `.claude/CLAUDE.md` symlinks — the same AGENTS.md pattern we chose independently.
 
+## Known limitations of the panel
+
+Reading `creating-plugins/references/admin-ui.md` confirmed the saved-entry implementation is
+correct — private route, host-attested `routeCtx.ui.entry`, capability-gated `ctx.content`, and
+`createPluginRuntimeTestHost().admin` as the test boundary — but it also named two limits worth
+stating rather than discovering later:
+
+- **The panel shows SAVED values only, and cannot show unsaved edits.** `panel_load` never
+  carries draft data, by design. Reading unsaved fields needs `admin.editor-draft:read` plus an
+  explicit interaction (a button or form submit), because the host only attaches a draft
+  snapshot after the editor asks for one. So an editor who changes `geometry_meta` and has not
+  saved sees the panel's old values. That is the host's safety model, not a bug in our panel —
+  but it is a real UX consequence, and the fix would be an explicit "recompute from unsaved"
+  action rather than anything implicit.
+- **A `secret` settings field needs `EMDASH_ENCRYPTION_KEY`, and fails closed without it.** The
+  docs are explicit that missing, wrong, or tampered key material fails closed. This repo has no
+  encryption key in **either** environment (see [`plans/2026-10-05-live-content.md`](plans/2026-10-05-live-content.md)),
+  so nothing is broken today — but the first `secret` setting will not work until that is set.
+  `emdash secrets generate` is the documented way to create one.
+
 ## What actually bit us
 
-All four were files lying about the setup, not missing features:
-
-1. **The scaffolder targets EmDash 0.x.** It wrote `emdash: ">=0.12.0 <1.0.0"` and installed
+All four were files lying about the setup, not missing features:1. **The scaffolder targets EmDash 0.x.** It wrote `emdash: ">=0.12.0 <1.0.0"` and installed
    **0.42.0** while the site runs **1.1.0** — so its green test proved nothing about our stack.
    Pinned to `^1.1.0` before trusting anything it said.
 2. **The capability is `content:read`.** A stale comment inside emdash's own `plugin-types`
