@@ -67,7 +67,23 @@ plugin sweep became generic, at which point one of them broke `repo:apply`.
   - [x] **both panels appear on the same Part in the real admin** — the native `<dl>` expanded with the seeded values (Part number `HB-001`, Vertices `5124`, … Model `cad/parts/hb-001.step`) and the sandboxed panel present alongside it as a collapsed `Geometry` panel on the same entry. That matches the documented behaviour: sandboxed panels start collapsed and call their private route only when opened.
   - [ ] replace the placeholder publisher DID (`did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID`) with a real one before any release
   - [x] prove the route runs in the **real site** sandbox, not only the test host — `POST /_emdash/api/plugins/plat-trunk-sandboxed/editor/geometry` with the admin token returns `{"success":true,"data":{"blocks":[{"type":"context","text":"No saved entry in context."}]}}`. That confirms the route is mounted, that it returns **Block Kit**, and that it **refuses to be told which entry to read** — identity comes only from the host-attested `routeCtx.ui.entry`.
-  - [ ] **read the panel's rendered Block Kit in the browser** — still not done, and not for lack of trying. The admin does render the panel (so descriptor `editorPanels` → admin wiring works), but the integrated browser is pinned at roughly 1080×1800 and its captures never scroll, so the panels sit below the fold and every automated click is rejected "element is outside of the viewport" — plain clicks, `scrollIntoViewIfNeeded`, `setViewportSize`, a JS `.click()`, and a `dispatchEvent('click')` all failed to reach it, and the plugin route was never called. So this is undistinguished: either the click never landed, or the panel genuinely does not fetch on open. The route is proven; the rendered panel is not.
+  - [x] **read the panel's rendered Block Kit in the browser** — done. It required abandoning the
+    integrated browser for the **Playwright MCP** one, whose viewport is controllable via
+    `page.setViewportSize()`; a full-page screenshot then reaches the below-fold panels. Method
+    recorded in AGENTS.md, because the integrated browser genuinely cannot do this.
+  - [x] **and the earlier "the route was never called" conclusion was WRONG.** A saved-entry panel
+    fetches through the HOST — `POST /_emdash/api/content/<collection>/<entry-id>/plugin-extensions/<plugin-id>`
+    — not through `/_emdash/api/plugins/<slug>/editor/geometry`. Grepping the plugin path finds
+    nothing, and looks exactly like a panel that never loaded. The panel had worked all along; the
+    diagnostic was reading the wrong endpoint. Both exist: the direct plugin route is what a `curl`
+    hits, and it returns the same Block Kit the panel renders.
+  - [x] **verified visually**: on `top-plate`, both panels render the same data side by side — the
+    native `<dl>`, and the sandboxed Block Kit `fields` grid (`TP-001 | Aluminum`,
+    `Default Cube | 1`, `0.7.0 | 2026-02-28T11:24:…`, `automerge | cad-documents`,
+    `Synced 2026-10-05`). The two-model comparison is now something seen, not inferred.
+  - [ ] observed while verifying: the `fields` block **truncates long values** — `Model updated`
+    renders as `2026-02-28T11:24:…`. An ISO timestamp is a poor fit for a two-column grid; format
+    it before returning it.
   - [ ] compare them in `docs/plugin.md`: what the sandboxed one could not do, and what the native one cannot
 - [ ] **Public-site components** (`./astro`) — sandboxed plugins cannot add markup, so they ship components
   - [ ] one component that renders part/assembly data

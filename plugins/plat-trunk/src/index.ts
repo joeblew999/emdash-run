@@ -28,7 +28,11 @@ export function createPlugin() {
 	return definePlugin({
 		id: "plat-trunk",
 		version: "0.1.0",
-		capabilities: ["content:read"],
+		// No `capabilities`. This plugin is native, so capabilities gate nothing — it runs with
+		// the site's authority — and it declared `content:read` while never touching
+		// `ctx.content` (the one `content.` reference is the hook event's payload). An unused
+		// capability is still a false statement about what the plugin does, and the authoring
+		// guidance is to declare only what is used.
 		hooks: {
 			"content:afterSave": async (event, ctx) => {
 				ctx.log.info("plat-trunk: content saved", {

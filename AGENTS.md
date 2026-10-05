@@ -51,6 +51,32 @@ The one rule that matters: **never edit anything under `.src/`** — it is gener
 - `mise` — run tasks, inspect tools/env/config. Registered in `.claude/settings.json`.
 - `emdash` — read/write content, schema, media, taxonomy (see `.mcp.json`).
 - `playwright` — drive the admin UI in a real browser.
+  Use **`browser_run_code_unsafe`**, not the individual click tools. The integrated browser's
+  window is fixed (~1080×1800) and its viewport will not scroll, so anything below the fold is
+  unclickable — every click is rejected with "element is outside of the viewport", and
+  `scrollIntoViewIfNeeded`, `dispatchEvent`, `focus()`+`Enter` and JS `.click()` all do nothing.
+  The Playwright MCP browser launches its own browser, where `page.setViewportSize()` works:
+
+  ```js
+  await page.setViewportSize({ width: 1400, height: 4000 });  // tall enough for the whole form
+  await page.goto('http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin');
+  const btn = page.getByRole('button', { name: 'Geometry' });  // returns 3 — pick the one whose aria-expanded is not null
+  await btn.nth(1).click();
+  ```
+
+  `browser_take_screenshot({ fullPage: true })` then captures the below-fold panels, which is the
+  only way to see them.
+
+  **When checking whether a panel loaded, grep the right endpoint.** A saved-entry panel fetches
+  through the HOST, not the plugin's own route:
+
+  ```
+  POST /_emdash/api/content/<collection>/<entry-id>/plugin-extensions/<plugin-id>
+  ```
+
+  Grepping `/_emdash/api/plugins/…` finds nothing and looks exactly like a panel that never
+  loaded. That mistake produced a confident, wrong conclusion here — the panel had worked all
+  along.
 
 **Skills** — the EmDash ones are essential, and they are **vendored, committed files** at
 `.github/skills/` (`building-emdash-site`, `creating-plugins`, `emdash-cli`, each with a
