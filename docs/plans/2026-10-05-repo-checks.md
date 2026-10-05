@@ -1,50 +1,32 @@
-# 2026-10-05 — Repo checks: typecheck and lint
+# 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active
+**Status:** active — **1 of 5 done**
 
-Nothing in this repo is typechecked or linted. `plugins/plat-trunk` has a `tsconfig.json`
-that has never been run, and there is no formatter or linter — so mistakes surface only
-when something breaks at runtime. That is the biggest gap in the harness.
+Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
+plugin typecheck into `repo:apply` immediately found three real faults, so the rest of this
+is worth doing.
 
 ## Items
 
-### 1. Typecheck the plugin — **done 2026-10-05**
-
-`tsc --noEmit` passes, wired in as `plugin:typecheck` and run by `repo:apply`. The first
-run found three real faults — the plugin had never been checked:
-
-- `tsconfig.json` had **no `jsx`**, so the TSX panel could never have typechecked.
-- no **`skipLibCheck`** — `emdash`'s optional storage drivers (`unstorage` → mongodb,
-  ioredis, @vercel/kv, @deno/kv…) flooded the output.
-- no **`@types/react`** — `react/jsx-runtime` had no declarations.
-
-Remaining here: the repo-level lint (item 2) and wiring that into `repo:apply` (item 3).
-
-### 2. `repo:check` — lint and format
-
-Pick a tool (the emdash monorepo uses `oxlint`/`oxfmt`; biome is the alternative), add it
-as a devDependency, and add a task covering `scripts/` and `plugins/`.
-
-**Done means:** `mise run repo:check` exits 0; the first run's findings are either fixed or
-explicitly silenced with a reason.
-
-### 3. Wire both into the loop
-
-Add them to `repo:apply`'s `depends`, so a broken type or a lint error cannot pass unnoticed.
-
-**Done means:** `repo:apply` fails when either check fails.
-
-### 4. Typecheck the site too
-
-`@astrojs/check` is already a dependency of the site, so `astro check` can typecheck the
-Astro project. The site itself is currently unchecked.
-
-**Done means:** `mise run site:check` runs `astro check` against `.src/site` and exits 0.
-
-### 5. Test the scripts
-
-There are no tests anywhere, and `scripts/*.mjs` is the largest untested surface: JSON
-parsing, `fetch`, symlinks, path handling. Even a few unit tests over the pure helpers
-(shaping the catalog, resolving plugin names, merging the seed) would catch real regressions.
-
-**Done means:** `mise run repo:test` runs a suite over `scripts/` and exits 0.
+- [x] **Typecheck the plugin** — `tsc --noEmit` passes, wired in as `plugin:typecheck`.
+  - [x] add `jsx: "react-jsx"` to `plugins/plat-trunk/tsconfig.json` — the TSX panel could never have typechecked without it
+  - [x] add `skipLibCheck` — `emdash`'s optional `unstorage` drivers (mongodb, ioredis, @vercel/kv, @deno/kv…) flooded the output
+  - [x] add `@types/react` — `react/jsx-runtime` had no declarations
+  - [x] `typecheck` script plus `typescript` / `@types/react` devDeps
+  - [x] `plugin:typecheck` task, added to `repo:apply`'s `depends`
+- [ ] **Lint and format**
+  - [ ] pick a tool — `oxlint`/`oxfmt` (what the emdash monorepo uses) or biome
+  - [ ] add it as a devDependency of the repo
+  - [ ] `repo:check` task covering `scripts/` and `plugins/`
+  - [ ] fix or explicitly silence the first run's findings, each with a reason
+- [ ] **Typecheck the site**
+  - [ ] `site:check` task running `astro check` against `.src/site` (`@astrojs/check` is already installed)
+  - [ ] wire it into `repo:apply`
+- [ ] **Test the scripts** — 13 `scripts/*.mjs`, zero tests today: JSON parsing, `fetch`, symlinks, paths
+  - [ ] pick a runner (vitest, as the plugin ecosystem uses)
+  - [ ] unit tests for the pure helpers — catalog shaping, plugin-name resolution, seed merge
+  - [ ] `repo:test` task
+  - [ ] wire it into `repo:apply`
+- [ ] **Prove the checks actually block**
+  - [ ] break one deliberately (a type error, then a lint error) and confirm `repo:apply` fails
+  - [ ] record the result here

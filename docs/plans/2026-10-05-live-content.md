@@ -1,43 +1,25 @@
 # 2026-10-05 — Live content: export a seed, re-seed production
 
-**Status:** active
+**Status:** active — **0 of 4 done**
 
-The deployed D1 was seeded **before** `geometry_meta` was added to `config/cad.seed.json`,
-and a seed only applies to a fresh database. So the live part editor shows only Part number
-and Material, while local shows the full geometry block. The CLI has a command for exactly
-this that we have never run.
+The deployed D1 was seeded **before** `geometry_meta` was added to `config/cad.seed.json`, and
+a seed only applies to a fresh database. The live part editor shows only Part number and
+Material; local shows the full geometry block.
 
 ## Items
 
-### 1. Learn the `emdash export-seed` round trip
-
-`emdash export-seed --with-content` dumps the database's schema and content as a seed. Run
-it against the **local** site first and diff the result against `config/cad.seed.json` —
-that also tells us whether the local database has drifted from the seed it was built from.
-
-**Done means:** the exported seed is compared with ours and every difference is understood.
-
-### 2. Re-seed the live D1
-
-Either push a seed to the live database, or update the live entries through the admin.
-There is no dev-bypass in production, so a scripted path needs either an MCP token minted
-on the live site or `wrangler d1 execute --remote`.
-
-**Done means:** the live part editor shows Vertices / Faces / Bounding box / Validation.
-
-### 3. Check production secrets
-
-`emdash secrets generate` creates `EMDASH_ENCRYPTION_KEY`, which EmDash needs to store
-`type: "secret"` settings encrypted. Establish whether the live Worker has one — the local
-site may have been created without it — and set it with `wrangler secret put` if not.
-
-**Done means:** either nothing is needed, or the secret is set on the live Worker and
-written down.
-
-### 4. Live logs
-
-`wrangler tail` streams the deployed Worker's logs. Without it we are blind to what
-production is doing.
-
-**Done means:** a documented way to tail the live Worker, used at least once to watch a
-real request.
+- [ ] **Learn the `emdash export-seed` round trip**
+  - [ ] run `emdash export-seed --with-content` against the **local** site
+  - [ ] diff the result against `config/cad.seed.json`
+  - [ ] every difference understood — the drift either fixed or explained
+- [ ] **Re-seed the live D1**
+  - [ ] choose the path: push a seed, or edit through the live admin (there is no dev-bypass in production)
+  - [ ] if scripted: mint an MCP token on the live site, or use `wrangler d1 execute --remote`
+  - [ ] the live part editor shows Vertices / Faces / Bounding box / Validation
+- [ ] **Check production secrets**
+  - [ ] establish whether the live Worker has `EMDASH_ENCRYPTION_KEY` (`emdash secrets generate` creates one)
+  - [ ] set it with `wrangler secret put` if it is missing
+  - [ ] written down
+- [ ] **Live logs**
+  - [ ] a documented way to `wrangler tail` the live Worker
+  - [ ] used once to watch a real request

@@ -1,32 +1,18 @@
 # 2026-10-05 — Point the registry UI at the local registry
 
-**Status:** active
+**Status:** active — **0 of 2 done**
 
-`apps/plugins-site` — the registry's own web UI, `plugins.emdashcms.com` — calls
-`registryLoader()` with **no options**, so it is hardcoded to the hosted registry.
-`https://registry.emdashcms.com` is baked into `@emdash-cms/registry-loader`, and the
-client has no environment override.
-
-So we can run the UI, but it shows the hosted registry's packages, not ours.
+`apps/plugins-site` (the registry's own web UI) calls `registryLoader()` with **no options**,
+so it is hardcoded to the hosted registry — `https://registry.emdashcms.com` is baked into
+`@emdash-cms/registry-loader`, with no environment override. We can run the UI, but it shows
+*their* packages, not ours.
 
 ## Items
 
-### 1. Patch the loader
-
-`src/live.config.ts` in the clone needs:
-
-```ts
-registryLoader({ aggregatorUrl: process.env.EMDASH_REGISTRY_URL })
-```
-
-Editing `.src/` by hand is not allowed — it is regenerated. So this needs a **scripted,
-idempotent patch** applied by a task after `src:clone-emdash`, and it must **fail loudly**
-if the upstream line has changed shape.
-
-**Done means:** the UI on `:4330` lists packages from our local registry, proven by the
-registry's own log showing the `searchPackages` request at page-load time.
-
-### 2. Keep it honest
-
-If the patch cannot be applied, the task must say so — not silently serve the hosted
-registry while claiming to be local.
+- [ ] **Patch the loader**
+  - [ ] `src/live.config.ts` in the clone uses `registryLoader({ aggregatorUrl: process.env.EMDASH_REGISTRY_URL })`
+  - [ ] the patch is a scripted, idempotent step run after `src:clone-emdash` — never a hand-edit of `.src/`
+  - [ ] the step **fails loudly** if the upstream line has changed shape
+  - [ ] the UI on `:4330` lists our packages — proven by the registry's own log showing the `searchPackages` request at page-load time
+- [ ] **Keep it honest**
+  - [ ] if the patch cannot be applied, the task says so rather than silently serving the hosted registry

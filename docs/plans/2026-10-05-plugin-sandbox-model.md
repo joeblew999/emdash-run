@@ -1,113 +1,43 @@
 # 2026-10-05 — Adopt the sandboxed plugin model
 
-**Status:** active
+**Status:** active — **0 of 8 done**
 
-`plugins/plat-trunk` is a **native** plugin: the host imports it and it renders a React
-panel directly. That works — but it is not the model the ecosystem ships. Published plugins
-are **sandboxed**, with a manifest declaring what they may do, and a dev/release loop that
-proves it.
+`plugins/plat-trunk` is a **native** plugin: the host imports it and it renders a React panel
+directly. Published plugins are **sandboxed** — a manifest declaring what they may do, plus a
+dev and release loop. Reference:
+[`swissky/emdash-plugin-linguadash`](https://github.com/swissky/emdash-plugin-linguadash).
 
-Reference: [`swissky/emdash-plugin-linguadash`](https://github.com/swissky/emdash-plugin-linguadash)
-— a real, published sandboxed plugin (registry + npm), with a manifest, tests and a release
-pipeline.
-
-## What it has that we do not
-
-| | LinguaDash | us |
-|---|---|---|
-| Manifest | `emdash-plugin.jsonc`: `capabilities`, `allowedHosts`, `storage`, `admin.*`, `release.*` | none |
-| Admin surfaces | settings page (`settingsSchema`, incl. `type: "secret"`), a custom admin page (`admin.pages`), an editor panel | one editor panel |
-| Exports | `.` host · `./sandbox` bundle · `./astro` public-site components | `.` and `./admin` |
-| Dev loop | `validate` · `build` · `dev` · `typecheck` · `test` | none |
-| Release | GitHub Actions → registry publish + npm with provenance | none |
-
-## Why the manifest matters
-
-`capabilities`, `allowedHosts` and `storage` are a **trust contract**: a user consents to it
-when they install. Changing any of them requires a version bump, or new behaviour slips past
-that consent. A plugin with no manifest cannot make that promise at all.
-
-## What this implies elsewhere — it is not only about the plugin
-
-Studying a real sandboxed plugin exposes how this repo differs everywhere:
-
-- **We already run sandboxed plugins.** `config/site.astro.config.mjs` has
-  `sandboxed: [webhookNotifier]` and `sandboxRunner: sandbox()`. The harness *is* a sandbox
-  host — only our own plugin is native.
-- **Almost nothing we author is verified automatically.** There are no tests anywhere — not
-  for the plugin, not for the 13 `scripts/*.mjs`. The only automated guard is `mise:check`.
-  The ecosystem runs `@emdash-cms/plugin-test` (a sandbox harness) plus vitest. Wiring
-  `plugin:typecheck` into `repo:apply` already caught three real faults on its first run.
-- **We declare nothing machine-readable.** Capabilities / hosts / storage are a manifest
-  concept; we have no equivalent statement of what our code is allowed to touch.
-- **Our secrets are dev-only.** `run/token-admin.env` is injected by mise for local work.
-  The ecosystem's settings use `type: "secret"`, encrypted with `EMDASH_ENCRYPTION_KEY` —
-  which also gives production a path.
-- **We ship unbuilt source.** Our plugin exports `./src/*.ts(x)` straight from the repo;
-  published plugins ship a built `dist` with declarations.
-- **We only read the registry, never write to it.** `plugin:catalog` fetches; the other half
-  is publishing (`emdash-plugin login` + `publish`, with a publisher DID).
+The harness already runs a sandboxed plugin: `config/site.astro.config.mjs` has
+`sandboxed: [webhookNotifier]` and `sandboxRunner: sandbox()`. Only ours is native.
 
 ## Items
 
-### 1. Scaffold with the real tooling
-
-Add `@emdash-cms/plugin-cli` and `@emdash-cms/plugin-test` as devDependencies, plus the
-generated scripts: `validate`, `build`, `dev`, `typecheck`, `test`, `bundle`.
-
-**Done means:** `pnpm run validate && pnpm run typecheck && pnpm run test` all pass.
-
-### 2. Write the manifest
-
-`emdash-plugin.jsonc` declaring exactly what plat-trunk uses and nothing more: the
-capabilities it needs, the geometry worker host, any storage.
-
-**Done means:** `emdash-plugin validate` passes, and every capability and host the code
-actually uses is declared — with nothing extra.
-
-### 3. Add a settings page
-
-`admin.settingsSchema` with the geometry worker's URL as a setting, so it is configurable
-rather than baked into the code. Secrets use `type: "secret"` (encrypted — see
-`2026-10-05-live-content.md`).
-
-**Done means:** the setting appears in the admin, saves, and the panel reads it.
-
-### 4. Decide native vs sandboxed
-
-Native gives React panels and direct host access; sandboxed gives the trust contract, the
-registry release path and the dev loop. Record the decision and what it costs us.
-
-**Done means:** the choice is written down in `docs/plugin.md`, with its consequences.
-
-### 5. Public-site components (`./astro`)
-
-Sandboxed plugins cannot add markup to public pages, so they ship Astro components for the
-theme — LinguaDash exports `LanguageSwitcher` / `TranslationNotice`. Our CAD content has no
-public representation at all.
-
-**Done means:** at least one component renders part/assembly data on the public site.
-
-### 6. A custom admin page
-
-Beyond the editor panel, `admin.pages` adds a whole admin route (LinguaDash's
-`/translations`, with tabs). The natural one here is a geometry / validation queue.
-
-**Done means:** a page appears in the admin sidebar and lists something real.
-
-### 7. The release path
-
-LinguaDash publishes from GitHub Actions: build → sign provenance → publish to the registry,
-plus an npm publish with provenance. That needs a **publisher DID** in the manifest — and the
-discipline that changing `capabilities` / `allowedHosts` / `storage` forces a **version bump**,
-because installed users consented to the old contract.
-
-**Done means:** the plugin is publishable — `emdash-plugin bundle` plus a documented release
-— with the version-bump rule written down.
-
-### 8. Carry the plugin-authoring skill
-
-A plugin repo is expected to ship `skills/creating-plugins/SKILL.md` (LinguaDash does). We
-symlink the *site's* skills; a plugin author needs the authoring skill in-repo.
-
-**Done means:** the skill is in the repo, or the reason it is not is written down.
+- [ ] **Scaffold with the real tooling** — both packages are published (`plugin-cli` 0.13.2, `plugin-test` 0.2.7)
+  - [ ] add `@emdash-cms/plugin-cli` and `@emdash-cms/plugin-test` as devDependencies
+  - [ ] add the scripts: `validate`, `build`, `dev`, `typecheck`, `test`, `bundle`
+  - [ ] `pnpm run validate && pnpm run typecheck && pnpm run test` all pass
+- [ ] **Write the manifest** — `emdash-plugin.jsonc`
+  - [ ] `slug`, `publisher` (DID), `license`, `author`, `security`, `name`, `keywords`
+  - [ ] `capabilities` — only what the code uses (`network:request` if the panel fetches)
+  - [ ] `allowedHosts` — the geometry worker host and nothing else
+  - [ ] `storage` — only if we actually add tables
+  - [ ] `emdash-plugin validate` passes
+- [ ] **Add a settings page**
+  - [ ] `admin.settingsSchema` with the geometry worker URL as a setting
+  - [ ] the panel reads the setting instead of hardcoding it
+  - [ ] seen in the admin, saved, and used
+- [ ] **Decide native vs sandboxed**
+  - [ ] write the decision and its cost into `docs/plugin.md`
+  - [ ] if sandboxed: list exactly what we lose (React panels, direct host access)
+- [ ] **Public-site components** (`./astro`) — sandboxed plugins cannot add markup, so they ship components
+  - [ ] one component that renders part/assembly data
+  - [ ] rendered on the public site
+- [ ] **A custom admin page** (`admin.pages`)
+  - [ ] a geometry / validation page
+  - [ ] appears in the admin sidebar and lists something real
+- [ ] **The release path**
+  - [ ] `emdash-plugin bundle` produces a bundle
+  - [ ] a publisher DID obtained and recorded
+  - [ ] the version-bump rule written down: changing `capabilities` / `allowedHosts` / `storage` **requires** a version bump
+- [ ] **Carry the plugin-authoring skill**
+  - [ ] `skills/creating-plugins/SKILL.md` in the repo, or the reason it is not, written down
