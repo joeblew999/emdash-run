@@ -1,57 +1,53 @@
 # emdash-run
 
-Local runner for [emdash-cms/emdash](https://github.com/emdash-cms/emdash) with a CAD
-schema (projects → assemblies → parts).
+**A working EmDash instance for plat-trunk, plus a full local copy of the EmDash plugin
+registry.**
 
-The host site is an official EmDash template — **`starter-cloudflare`** — copied into
-`.src/site` and run against the published `emdash` npm package. There is no emdash
-monorepo clone. See [ADR-0007](docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
+plat-trunk is a browser-native B-Rep CAD platform (Truck kernel → WASM on Cloudflare
+Workers). Its geometry engine is done; the project, user, file and API layer around it is
+not — and that is months of work that is *not* CAD. This repo is the bet that
+[EmDash](https://github.com/emdash-cms/emdash), a Cloudflare-native CMS on the same stack,
+carries that layer so plat-trunk stays a geometry engine.
 
-Process manager: [pitchfork](https://pitchfork.jdx.dev/) · task runner: [mise](https://mise.jdx.dev/).
+It is not a mock-up: it runs the real published `emdash`, the real admin, the real
+registry, and it deploys to Cloudflare. See [`docs/why.md`](docs/why.md).
 
-## `mise.toml` is the source of truth
+## What it can do today
 
-The workflow — first-time setup, the daily loop, recovery, updating and deploy — lives in
-the **QUICK REFERENCE** block at the top of [`mise.toml`](mise.toml), and every task (with
-its description) is listed by:
+| | |
+|---|---|
+| **Host site** | An official EmDash template (`starter-cloudflare`) run against the published `emdash` package — admin UI, auth, revisions, media, schema builder. |
+| **CAD content model** | `projects → assemblies → parts` as collections, seeded from `config/cad.seed.json`, with `geometry_meta` (vertices, faces, bbox, validation) on each part. |
+| **Native plugin** | `plugins/plat-trunk` — `@plat-trunk/emdash-plugin` renders a **Geometry panel** in the Parts editor (`contentEditorPanels`). |
+| **Local plugin registry** | EmDash's aggregator runs on `:8788` — the plugin marketplace as a service. Backfilled from the ATProto network and projected, so reads return real packages. |
+| **Registry web UI** | The registry's own site (`apps/plugins-site`) runs on `:4330`. |
+| **Live plugin catalog** | `docs/plugin-catalog/` is generated from the registry — currently **38 published packages**, with authors and licences. |
+| **Agent access** | EmDash's MCP endpoint with scoped admin/user tokens, plus a mise MCP server for tasks. |
+| **Deploy** | Cloudflare Workers + D1 + KV + R2 → **https://emdash-run.gedw99.workers.dev** |
 
-```bash
-mise tasks ls
+## How it is put together
+
+```
+config/     our config (astro.config, wrangler.jsonc, cad.seed.json)
+            written into .src/site by config:apply
+plugins/    plat-trunk — the native plugin, symlinked into the site
+.src/       gitignored checkouts: templates/, site/, emdash/ (optional)
+scripts/    one script per mise noun; helpers in scripts/lib/
+docs/       why.md, plugin.md, auth.md, plans/, plugin-catalog/
 ```
 
-This README deliberately does **not** restate commands: duplicated command lists drift
-from the tasks they describe. If this file and `mise.toml` ever disagree, `mise.toml` wins.
+`mise.toml` is the interface and the **single source of truth**. Every task is one line
+calling `scripts/<noun>.mjs`, and every task is named `noun:verb` — so `mise run site:dev`
+maps mechanically to `scripts/site.mjs dev`. `mise tasks ls` lists them; `mise run repo:urls`
+prints every URL it serves. Nothing else restates the commands.
 
-## Where things are
+Daemons are managed by [pitchfork](https://pitchfork.jdx.dev/), tasks by
+[mise](https://mise.jdx.dev/).
 
-```
-config/   site.astro.config.mjs, site.wrangler.jsonc, cad.seed.json
-          ← source config, written into .src/site by config:apply
-logs/     pitchfork daemon logs              ← gitignored
-run/      token-admin.txt, token-admin.env,
-          token-user.txt                    ← gitignored
-.src/     templates/, site/                 ← gitignored working checkouts
-          emdash/                           ← optional, on-demand (src:clone-emdash)
-plugins/  plat-trunk/                       ← local plugin, symlinked into .src/site
-docs/     adr/, plugin.md, exploring.md, big-picture.md
-```
+## Where to look
 
-Never edit files under `.src/` — they are generated. Change `config/` instead and re-run `apply`.
-
-## Live
-
-**https://emdash-run.gedw99.workers.dev** — deployed to Cloudflare Workers.
-
-Provisioned resources (recorded in `config/site.wrangler.jsonc`):
-
-| Binding | Resource | Name / Id |
-|---------|----------|-----------|
-| `DB` | D1 | `emdash-run` — `115eb6d3-43df-4139-95bb-7900512ced12` |
-| `SESSION` | KV | `29c6fd5b70644857a4ffbcf359973841` |
-| `MEDIA` | R2 | `emdash-run-media` |
-
-## Docs
-
-- `docs/plans/` — active plans · `docs/plans/done/` — closed ones (incl. the former ADRs, `000N-`)
-- `docs/plugin.md` — the plat-trunk plugin and its geometry panel in the Parts editor
-- `docs/big-picture.md`, `docs/exploring.md` — why this exists, and what was explored
+- [`docs/why.md`](docs/why.md) — the problem, the bet, the architecture, and what is proven vs open
+- [`docs/plugin.md`](docs/plugin.md) — the plugin and its Geometry panel
+- [`docs/auth.md`](docs/auth.md) — EmDash's auth model and our token strategy
+- [`docs/plans/`](docs/plans/) — what is left · [`done/`](docs/plans/done/) — closed (incl. the former ADRs)
+- [`docs/plugin-catalog/`](docs/plugin-catalog/) — generated from the registry
