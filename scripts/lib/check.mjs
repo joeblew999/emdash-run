@@ -16,7 +16,7 @@
  * Prose (`docs/`) and generated files (`skills-lock.json`) gain nothing from reformatting and
  * cost reviewable diffs.
  */
-import { env, run } from "./exec.mjs";
+import { env, run, sh } from "./exec.mjs";
 
 /** The code we own. Not config, not prose, not generated output. */
 const CODE = [
@@ -42,34 +42,48 @@ const CODE = [
  * Both run against `.src/site`, the copy `config:apply` writes, because that is where the
  * imports resolve via pnpm. `--ignoreConfig` is required: the site has a tsconfig.json, and
  * tsc refuses to combine it with explicit file arguments.
+ *
+ * **The daemon is stopped first, and restarted afterwards.** `astro check` re-runs the Vite
+ * optimizer inside `.src/site`, re-hashing the `deps_ssr/*?v=…` URLs. A dev server already
+ * running in that directory keeps serving the OLD hashes and starts returning 500s — "The file
+ * does not exist at .../deps_ssr/emdash_n_croner.js?v=…". That is the same failure `repo:apply`
+ * guards against by clearing `.vite` and restarting, and it is easy to mistake for the site
+ * being down. Leaving a site that is up and broken is worse than a check that takes 30s.
  */
 export function siteCheck() {
 	const siteDir = env("SITE_DIR");
 
-	console.log("→ astro check (the site, and that its config loads)");
-	run("pnpm", ["exec", "astro", "check"], { cwd: siteDir });
+	sh("pitchfork stop emdash || true");
+	try {
+		console.log("→ astro check (the site, and that its config loads)");
+		run("pnpm", ["exec", "astro", "check"], { cwd: siteDir });
 
-	console.log("→ tsc --checkJs astro.config.mjs (the types astro check does not see)");
-	run(
-		"pnpm",
-		[
-			"exec",
-			"tsc",
-			"--noEmit",
-			"--ignoreConfig",
-			"--allowJs",
-			"--checkJs",
-			"--moduleResolution",
-			"bundler",
-			"--module",
-			"esnext",
-			"--target",
-			"es2022",
-			"--skipLibCheck",
-			"astro.config.mjs",
-		],
-		{ cwd: siteDir },
-	);
+		console.log("→ tsc --checkJs astro.config.mjs (the types astro check does not see)");
+		run(
+			"pnpm",
+			[
+				"exec",
+				"tsc",
+				"--noEmit",
+				"--ignoreConfig",
+				"--allowJs",
+				"--checkJs",
+				"--moduleResolution",
+				"bundler",
+				"--module",
+				"esnext",
+				"--target",
+				"es2022",
+				"--skipLibCheck",
+				"astro.config.mjs",
+			],
+			{ cwd: siteDir },
+		);
+	} finally {
+		// In a `finally`, so a failing check does not also cost you the site.
+		console.log("→ restarting the site");
+		run("pitchfork", ["start", "emdash"]);
+	}
 }
 
 export function check() {

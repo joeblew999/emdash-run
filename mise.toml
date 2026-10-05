@@ -199,7 +199,7 @@ description = "Open admin UI in browser via dev-bypass (runs migrations + seed; 
 run = "node \"$ROOT/scripts/site.mjs\" open"
 
 [tasks."site:check"]
-description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs"
+description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs. Stops and restarts the site"
 run = "node \"$ROOT/scripts/site.mjs\" check"
 
 [tasks."site:reset"]
