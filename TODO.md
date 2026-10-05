@@ -17,7 +17,7 @@
 - [x] Use a `.src/` folder and clone sources into it — templates + site + emdash
       monorepo. Done in ADR-0007.
 - [x] Where is the data stored? Local D1/miniflare state under
-      `.src/site/.wrangler/state` (wiped by `mise run server:reset`); production is a
+      `.src/site/.wrangler/state` (wiped by `mise run site:reset`); production is a
       D1 database + R2 bucket.
 - [x] Generated skills are no longer tracked: `/.agents/skills/` and `/.claude/skills/`
       are gitignored and untracked (`skills-lock.json` + `mise run skills:add:all`

@@ -3,7 +3,7 @@
 # Host site — an official EmDash template copied into .src/site (see ADR-0007).
 # Plugin discovery uses the hosted registry (registry.emdashcms.com).
 [daemons.emdash]
-run        = "mise run server:start"
+run        = "mise run site:dev"
 dir        = "."
 auto       = ["start", "stop"]
 retry      = 3

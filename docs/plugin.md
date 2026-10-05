@@ -43,7 +43,6 @@ No geometry processing. No WASM. No CRDT. No writes to plat-trunk.
 Read-only display + deep link. The actual geometry lives in plat-trunk.
 
 ## Status
-
 - **Done.** `plugins/plat-trunk/src/index.ts` — native descriptor + `createPlugin`
 - **Done.** `plugins/plat-trunk/src/admin/index.tsx` — `contentEditorPanels` geometry panel
 - **Done.** Registered in `config/site.astro.config.mjs` as `platTrunkPlugin()`
@@ -55,3 +54,20 @@ Read-only display + deep link. The actual geometry lives in plat-trunk.
 Fetch live geometry stats from the plat-trunk worker (`cad.ubuntusoftware.net`) in the
 panel, and add a validation badge + deep link to the CAD viewport. The panel currently
 renders only what is stored on the entry.
+
+## Publishing — native vs sandboxed
+
+This plugin is **native**: it ships as an npm package and is installed into the site
+(`plugins: []` in `astro.config`). There is no registry-publish step for it.
+
+Publishing to the registry is the **sandboxed** flow and lives in a *different* package:
+`@emdash-cms/plugin-cli` (binary `emdash-plugin`), which requires an `emdash-plugin.jsonc`
+manifest. The site's own `emdash` CLI has **no** `plugin` command.
+
+```bash
+pnpm dlx @emdash-cms/plugin-cli init my-plugin    # scaffold (one-off)
+pnpm add -D @emdash-cms/plugin-cli                # then use the pinned copy
+pnpm exec emdash-plugin validate | bundle | publish | login <handle>
+```
+
+See `.claude/skills/emdash/creating-plugins` (shipped with the site).

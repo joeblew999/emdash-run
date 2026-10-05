@@ -20,7 +20,7 @@ const CLI = join(SITE_DIR, "node_modules", "emdash", "dist", "cli", "index.mjs")
 
 if (!existsSync(CLI)) {
 	console.error(`emdash CLI not found at ${CLI}`);
-	console.error("Run: mise run server:build");
+	console.error("Run: mise run site:setup");
 	process.exit(1);
 }
 

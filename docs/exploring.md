@@ -31,7 +31,7 @@ Status: **not started** — depends on question 2
 
 ## What is working
 
-- EmDash runs locally via `mise run server:start` (or `mise run pitchfork:start` for daemon mode)
+- EmDash runs locally via `mise run site:dev` (or `mise run pitchfork:start` for daemon mode)
 - CAD collections seeded from `config/cad.seed.json` (merged into the site seed, auto-applied on first request)
 - Admin UI accessible at http://localhost:4321/_emdash/admin/
 - Schema builder works — collections visible in sidebar

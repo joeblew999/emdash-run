@@ -41,7 +41,7 @@ export default defineConfig({
 			sandboxRunner: sandbox(),
 
 			// The plugin registry — the current name for the plugin marketplace.
-			// Dev points at the LOCAL registry when EMDASH_REGISTRY_URL is set (server:start
+			// Dev points at the LOCAL registry when EMDASH_REGISTRY_URL is set (site:dev sets
 			// sets it); site:build / site:deploy leave it unset, so production uses the
 			// hosted registry.
 			registry: process.env.EMDASH_REGISTRY_URL ?? "https://registry.emdashcms.com",

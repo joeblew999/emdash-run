@@ -104,7 +104,7 @@ with the site's own `emdash` CLI; discovery uses the hosted registry.
   pin, no plugin symlink hacks.
 - The site is a real EmDash site, so the harness exercises the same path users take
   (and the same path the not-yet-done Cloudflare deploy will take).
-- `mise run server:reset` must wipe the D1/miniflare state (`.wrangler/state`), not
+- `mise run site:reset` must wipe the D1/miniflare state (`.wrangler/state`), not
   `data.db`.
 - The CAD seed is now merged rather than applied verbatim; reference ids in
   `config/cad.seed.json` still use the exported `$ref:<ulid>` form and are validated

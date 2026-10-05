@@ -11,7 +11,7 @@ is orientation only.
   (`mise run …`) instead of re-deriving the steps by hand. Raw commands are fine for what
   no task covers — `git`, ad-hoc inspection, one-off probes.
 - **Daemons are pitchfork's job** (`pitchfork.toml`). The task pitchfork runs is
-  `server:start`; keep it in sync with the daemon definition.
+  `site:dev`; keep it in sync with the daemon definition.
 - **Dogfood: run it and read the output.** Reasoning about a change is not validation.
   Never call something done without executing it and looking at the result.
 - **After a change, `mise run apply`.** It is the quick end-to-end check — re-applies

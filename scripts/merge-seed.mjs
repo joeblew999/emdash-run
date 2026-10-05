@@ -32,7 +32,7 @@ const outPath = join(SITE_DIR, "seed", "seed.json");
 
 for (const p of [basePath, cadPath]) {
 	if (!existsSync(p)) {
-		console.error(`merge-seed: missing ${p} (run: mise run server:build)`);
+		console.error(`merge-seed: missing ${p} (run: mise run site:setup)`);
 		process.exit(1);
 	}
 }
