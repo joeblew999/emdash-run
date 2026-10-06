@@ -49,8 +49,10 @@ export def sweep [script: string, only?: string] {
   }
 }
 
-# Copy every plugin into the site's node_modules, where the site resolves it. A copy, not a link:
-# this repo allows no symlinks. Build first — the descriptor points at the built bundle.
+# Copy every plugin into the site's node_modules, where the site resolves it. Build first — the
+# descriptor points at the built bundle. Not EmDash's documented `pnpm add file:<plugin>` (nor
+# `link:`): both write the plugin into site/package.json and its lockfile, which are committed, and
+# `file:` only shows a rebuild after another install. Tried 2026-10-06; docs/emdash.md W5.
 export def link [] {
   let node_modules = ($env.SITE_DIR | path join "node_modules")
   for dir in (dirs) {
