@@ -109,14 +109,12 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #   mise run registry:up       ← run the local plugin registry (the "marketplace") on :8788
 #   mise run registry:backfill ← ingest publishers' records (Jetstream only streams new)
 #   mise run registry:project  ← build the public projection (else reads return nothing)
-#   mise run plugins-site:up   ← run the registry's web UI on :4330
 #
 # URLs (once running):
 #   mise run repo:urls            ← prints every URL below
 #   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin  ← Admin UI (ALWAYS use this, not /login)
 #   http://localhost:4321/_emdash/api/mcp   ← MCP endpoint (enabled by default; Bearer token from run/token-admin.txt)
 #   http://localhost:8788/health   ← local registry (JSON API under /xrpc/…) — only if `mise run registry:up`
-#   http://localhost:4330/   ← plugins UI            — only if `mise run plugins-site:up`
 #
 # Why dev-bypass and NOT the login page:
 #   Passkeys are stored in the database. site:reset wipes it → old passkey credentials
@@ -184,6 +182,10 @@ run = "node \"$ROOT/scripts/seed.mjs\" apply"
 [tasks."seed:from-remote"]
 description = "Diff the DEPLOYED site's content model against the repo's seed (read-only; Cloudflare creds via fnox)"
 run = "node \"$ROOT/scripts/seed.mjs\" from-remote"
+
+[tasks."seed:export"]
+description = "Export the running dev site's model + content as a seed (official: emdash export-seed)"
+run = "node \"$ROOT/scripts/seed.mjs\" export"
 
 [tasks."site:setup"]
 description = "One-time: clone templates → copy site → install → apply config"
@@ -268,10 +270,6 @@ run = "node \"$ROOT/scripts/repo.mjs\" test"
 description = "Apply formatting to scripts/ and the plugins — the fix for a failing repo:check"
 run = "node \"$ROOT/scripts/repo.mjs\" format"
 
-[tasks."mise:reorder"]
-description = "Reorder mise.toml's sections (core first, optional extras last) — cosmetic only"
-run = "node \"$ROOT/scripts/mise.mjs\" reorder"
-
 [tasks."mise:check"]
 description = "Assert the 1:1 mapping between mise namespaces and scripts/<namespace>.mjs"
 run = "node \"$ROOT/scripts/mise.mjs\" check"
@@ -280,40 +278,9 @@ run = "node \"$ROOT/scripts/mise.mjs\" check"
 # PITCHFORK (daemon manager)
 # -----------------------------------------------------------------------------
 
-[tasks."pitchfork:start"]
-description = "Apply configs + link plugins + start the site daemon (without forcing restart)"
-depends = ["config:apply", "plugin:build", "plugin:link", "skills:sync"]
-run = "pitchfork start emdash"
-
-[tasks."pitchfork:stop"]
-description = "Stop all pitchfork daemons"
-run = "pitchfork stop -a"
-
-[tasks."pitchfork:status"]
-description = "Show the site daemon status"
-run = "pitchfork status emdash || true"
-
-[tasks."pitchfork:logs"]
-description = "Follow pitchfork site daemon logs"
-run = "pitchfork logs emdash --follow"
-
-[tasks."pitchfork:tui"]
-description = "Open pitchfork TUI"
-run = "pitchfork tui"
-
-# -----------------------------------------------------------------------------
-# MCP TOKENS
-# The MCP endpoint (/_emdash/api/mcp) is enabled by default and requires a Bearer
-# token. Tokens are written to run/ (gitignored) and auto-loaded via _.file above.
-# -----------------------------------------------------------------------------
-
 [tasks."mcp:token-admin"]
 description = "Create admin MCP token → run/token-admin.txt + run/token-admin.env"
 run = "node \"$ROOT/scripts/mcp.mjs\" token-admin"
-
-[tasks."mcp:token-user"]
-description = "Create content-only MCP token → run/token-user.txt"
-run = "node \"$ROOT/scripts/mcp.mjs\" token-user"
 
 [tasks."mcp:clean-tokens"]
 description = "Revoke all API tokens from the database"
@@ -389,34 +356,6 @@ run = "node \"$ROOT/scripts/plugin.mjs\" bundle"
 
 
 
-[tasks."skills:find"]
-description = "Search skills.sh marketplace — e.g: mise run skills:find -- mise"
-run = "node \"$ROOT/scripts/skills.mjs\" find"
-
-[tasks."skills:add"]
-description = "Install a skill — e.g: mise run skills:add -- kinoward/agent-skills/mise-guide"
-run = "node \"$ROOT/scripts/skills.mjs\" add"
-
-[tasks."skills:remove"]
-description = "Remove a skill — e.g: mise run skills:remove -- mise-guide"
-run = "node \"$ROOT/scripts/skills.mjs\" remove"
-
-[tasks."skills:remove-all"]
-description = "Remove all installed skills"
-run = "node \"$ROOT/scripts/skills.mjs\" remove-all"
-
-[tasks."skills:update"]
-description = "Update all skills to latest versions"
-run = "node \"$ROOT/scripts/skills.mjs\" update"
-
-[tasks."skills:restore"]
-description = "Restore skills from skills-lock.json (after fresh clone)"
-run = "node \"$ROOT/scripts/skills.mjs\" restore"
-
-[tasks."skills:list"]
-description = "List installed skills"
-run = "node \"$ROOT/scripts/skills.mjs\" list"
-
 [tasks."skills:sync"]
 description = "Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code"
 run = "node \"$ROOT/scripts/skills.mjs\" sync"
@@ -475,10 +414,6 @@ run = "node \"$ROOT/scripts/registry.mjs\" start"
 description = "Start the registry aggregator daemon via pitchfork"
 run = "node \"$ROOT/scripts/registry.mjs\" up"
 
-[tasks."registry:logs"]
-description = "Follow registry aggregator logs"
-run = "node \"$ROOT/scripts/registry.mjs\" logs"
-
 [tasks."registry:backfill"]
 description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
 run = "node \"$ROOT/scripts/registry.mjs\" backfill"
@@ -491,28 +426,3 @@ run = "node \"$ROOT/scripts/registry.mjs\" project"
 # PLUGINS SITE (the registry's web UI — plugins.emdashcms.com)
 # Optional, like the registry itself. Not needed to run the host site.
 # -----------------------------------------------------------------------------
-
-[tasks."plugins-site:install"]
-description = "Install + build the deps for the plugins site (registry UI)"
-depends = ["src:clone-emdash"]
-sources = [".src/emdash/pnpm-lock.yaml"]
-outputs = [".src/emdash/node_modules/.modules.yaml"]
-run = "node \"$ROOT/scripts/plugins-site.mjs\" install"
-
-[tasks."plugins-site:start"]
-description = "Start the plugins site (registry UI) on :4330 — called by pitchfork"
-depends = ["plugins-site:install"]
-run = "node \"$ROOT/scripts/plugins-site.mjs\" start"
-
-# Same Astro 7 auto-background trap as the host site: without this it detaches, the
-# parent exits, and pitchfork reports the daemon as stopped while an orphan holds :4330.
-[tasks."plugins-site:start".env]
-ASTRO_DEV_BACKGROUND = "1"
-
-[tasks."plugins-site:up"]
-description = "Start the plugins site daemon via pitchfork"
-run = "node \"$ROOT/scripts/plugins-site.mjs\" up"
-
-[tasks."plugins-site:logs"]
-description = "Follow plugins site logs"
-run = "node \"$ROOT/scripts/plugins-site.mjs\" logs"

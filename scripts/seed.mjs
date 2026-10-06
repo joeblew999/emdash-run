@@ -23,7 +23,7 @@
  * does that. It is destructive to local state — content edited through the admin, and the
  * admin session itself, are discarded.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 import { devDb, env, out, run } from "./lib/exec.mjs";
 
@@ -79,6 +79,25 @@ if (sub === "validate") {
 	]);
 	console.log("✓ seed applied");
 	console.log("  then: mise run repo:verify");
+} else if (sub === "export") {
+	// The official round trip: read the running site's model + content back out as a seed.
+	//
+	// `emdash export-seed` is a local command taking `--database`, and the dev server's database
+	// is a file, so this works without any Cloudflare involvement. It writes to a separate file
+	// rather than over config/cad.seed.json: that one is hand-maintained and is the source of
+	// truth, so overwriting it with an export would turn a review into a replacement.
+	const db = devDb();
+	if (!db) {
+		console.error("✗ no local D1 yet — run: mise run repo:apply");
+		process.exit(1);
+	}
+	const dest = `${ROOT}/config/seed.live.json`;
+	writeFileSync(
+		dest,
+		out("mise", ["run", "emdash:cli", "--", "export-seed", "--database", db, "--with-content=all"]),
+	);
+	console.log(`✓ exported the live model → ${dest.replace(`${ROOT}/`, "")}`);
+	console.log("  compare it with config/cad.seed.json — it is not written over it on purpose.");
 } else if (sub === "from-remote") {
 	// Compare the DEPLOYED content model against ours — through the official CLI.
 	//

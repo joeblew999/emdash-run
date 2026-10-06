@@ -17,7 +17,9 @@ const MISE = `${ROOT}/mise.toml`;
 const sub = process.argv[2];
 
 /** Sections with no script of their own — they call the tool directly. */
-const NO_SCRIPT = new Set(["pitchfork"]);
+// Empty: every namespace has a matching script. `pitchfork:*` used to be the
+// exception, but those were pure passthroughs to the pitchfork CLI and are gone.
+const NO_SCRIPT = new Set();
 
 const taskNames = () =>
 	[...readFileSync(MISE, "utf8").matchAll(/^\[tasks\."([^"]+)"/gm)].map((match) => match[1]);
