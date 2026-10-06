@@ -15,14 +15,8 @@ export def dir-of [name: string]: nothing -> string {
   $dir
 }
 
-# The EmDash a plugin has installed, or "" before its first install.
-def own-emdash [dir: string]: nothing -> string {
-  let pkg = ($dir | path join "node_modules" "emdash" "package.json")
-  if ($pkg | path exists) { open $pkg | get version } else { "" }
-}
-
 # The plugins not on the EmDash the site is pinned to, by name — after an upgrade, or half of one.
-export def behind []: nothing -> list<string> { dirs | where {|dir| (own-emdash $dir) != $env.EMDASH_VERSION } | each {|dir| $dir | path basename } }
+export def behind []: nothing -> list<string> { dirs | where {|dir| (emdash-in $dir) != $env.EMDASH_VERSION } | each {|dir| $dir | path basename } }
 
 def package-name [dir: string]: nothing -> string { open ($dir | path join "package.json") | get -o name | default ($dir | path basename) }
 
@@ -76,8 +70,7 @@ export def link [] {
 
 # Structural faults, each one found by hand first. Returns the list; empty means consistent.
 export def audit []: nothing -> list<string> {
-  let site_pkg = ($env.SITE_DIR | path join "node_modules" "emdash" "package.json")
-  let site_emdash = (if ($site_pkg | path exists) { open $site_pkg | get -o version } else { null })
+  let site_emdash = (emdash-in $env.SITE_DIR)
   dirs | each {|dir|
     let manifest = (open ($dir | path join "package.json"))
     let label = ($dir | path basename)
@@ -85,7 +78,7 @@ export def audit []: nothing -> list<string> {
     let scripts = ($manifest | get -o scripts | default {})
     let entry = ($manifest | get -o exports | default {} | get -o "./sandbox")
     let bundle = (if ($entry | describe) == "string" { $entry } else { null })
-    let own_emdash = (own-emdash $dir)
+    let own_emdash = (emdash-in $dir)
     let raw = (if $sandboxed { open --raw ($dir | path join "emdash-plugin.jsonc") } else { "" })
     let capabilities = ($raw | parse --regex '(?s)"capabilities"\s*:\s*\[(?<v>[^\]]*)\]' | get -o v.0 | default "")
     let hosts = ($raw | parse --regex '(?s)"allowedHosts"\s*:\s*\[(?<v>[^\]]*)\]' | get -o v.0 | default "")
@@ -94,7 +87,7 @@ export def audit []: nothing -> list<string> {
         $"($label): a script runs emdash-plugin but there is no emdash-plugin.jsonc — it can never succeed" })
       (if $sandboxed and $bundle != null and (not ($dir | path join $bundle | path exists)) {
         $"($label): exports ./sandbox to ($bundle), which is not built" })
-      (if $site_emdash != null and ($own_emdash | is-not-empty) and $own_emdash != $site_emdash {
+      (if ($site_emdash | is-not-empty) and ($own_emdash | is-not-empty) and $own_emdash != $site_emdash {
         $"($label): has emdash ($own_emdash) but the site runs ($site_emdash) — its tests say nothing about the site" })
       (if ($capabilities | str contains '"network:request"') and ($hosts | str trim | is-empty) {
         $"($label): declares network:request with no allowedHosts — the bundler rejects it" })

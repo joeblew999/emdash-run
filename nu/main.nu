@@ -67,13 +67,12 @@ def "main dev" [] {
 # What is running, and on what — read-only, safe to run any time.
 def "main status" [] {
   let site_up = (daemon-running $env.SITE_DAEMON)
-  let installed = ($env.SITE_DIR | path join "node_modules" "emdash" "package.json")
   let plugins = (plugin dirs | each {|p| $p | path basename })
   let live = (setting DEPLOY_URL)
   print $"  harness   ($env.HARNESS_VERSION)"
   let lag = (site template-lag)
   print $"  template  ($env.TEMPLATE)(if ($lag | is-empty) { '' } else { $' — ($lag)' })"
-  print $"  emdash    (if ($installed | path exists) { open $installed | get version } else { 'not installed — run: mise run setup' })"
+  print $"  emdash    (site installed-version | default --empty 'not installed — run: mise run setup')"
   print $"  site      (if $site_up { $'running at (site-url)' } else { 'stopped — run: mise run dev' })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
   print $"  sources   (site source-heads | str join ', ')"
@@ -333,7 +332,7 @@ def "main logs" [daemon?: string, --deployed] {
 }
 
 # Open the admin in a browser, signed in.
-def "main open" [] { site open-admin }
+def "main open" [] { start (site admin-url) }
 
 # Scaffold a plugin with the official CLI, fit it to this site, load it, and have the RUNNING site
 # call it. When this prints ✓ the plugin is live.
@@ -430,7 +429,7 @@ def "main registry up" [] {
 
 # Stop the local registry and point the site back at the hosted one.
 def "main registry down" [] {
-  daemon-stop "registry"
+  daemon-stop "registry" $env.REGISTRY_PORT
   site restart
   ok "registry stopped — the site uses the hosted registry"
 }

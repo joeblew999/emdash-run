@@ -271,7 +271,7 @@ Clone or update a reference checkout under .src/ for reading: emdash (the defaul
 
 ## `status`
 
-What is running, and on what: harness, template (and the EmDash it was synced from, when that differs), EmDash, site, plugins, deployment
+What is running, and on what: harness, template, EmDash, site, plugins, deployment
 
 
 - **Usage:** `status [args]…`

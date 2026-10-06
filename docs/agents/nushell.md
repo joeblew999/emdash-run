@@ -45,7 +45,6 @@ nu/tests.nu      unit tests for the pure functions
 | `devdb` | the dev server's real database file, on either platform |
 | `wipe-local-data` | stop the site and delete the local database and uploads |
 | `backup-local-data LABEL`, `restore-local-data DIR` | stop the site and copy its database and media into `run/backups/`, or back. The caller restarts |
-| `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `request` | one HTTP request: `{status, body, cookies}`, never throws |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
 | `daemon-running`, `daemon-stop`, `answers`, `port-taken` | daemons and "is anything listening". `daemon-stop` returns only when the daemon's port is free |

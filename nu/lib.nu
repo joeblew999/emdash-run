@@ -151,15 +151,6 @@ export def devdb []: nothing -> string {
   $found | first
 }
 
-# Is there a local database yet? False on a first start and after a wipe.
-export def has-devdb []: nothing -> bool {
-  if (on-cloudflare) {
-    $env.SITE_DIR | path join ".wrangler" "state" "v3" "d1" | path exists
-  } else {
-    $env.SITE_DIR | path join "data.db" | path exists
-  }
-}
-
 # Everything the local site stores: the database with its -wal and -shm, and the uploaded media. On
 # Cloudflare that is miniflare's state — D1 and R2 together; on Node, the SQLite file and uploads/.
 def local-data []: nothing -> list<string> {
@@ -168,9 +159,18 @@ def local-data []: nothing -> list<string> {
   }
 }
 
+# Is there any local data yet? False on a first start and after a wipe.
+export def has-devdb []: nothing -> bool { local-data | any {|path| $path | path exists } }
+
+# The EmDash installed in a package directory — the site's, or a plugin's — or "" before an install.
+export def emdash-in [dir: string]: nothing -> string {
+  let pkg = ($dir | path join "node_modules" "emdash" "package.json")
+  if ($pkg | path exists) { open $pkg | get version } else { "" }
+}
+
 # Stop the site and delete its database and uploads. It recreates them, seeded, when it next starts.
 export def wipe-local-data [] {
-  daemon-stop $env.SITE_DAEMON
+  daemon-stop $env.SITE_DAEMON $env.SITE_PORT
   rm -f ($env.RUN_DIR | path join "seed-applied.txt")
   for path in (local-data) { rm -rf $path }
 }
@@ -186,7 +186,7 @@ export def backup-dir [label: string]: nothing -> string {
 # a running site keeps committed changes in the -wal file and may be mid-write. The caller restarts.
 export def backup-local-data [label: string]: nothing -> string {
   if not (has-devdb) { fail "no local database yet" "run: mise run dev" }
-  daemon-stop $env.SITE_DAEMON
+  daemon-stop $env.SITE_DAEMON $env.SITE_PORT
   let dest = (backup-dir $label)
   for path in (local-data | where {|p| $p | path exists }) { cp -r $path $dest }
   $dest
@@ -198,7 +198,7 @@ export def restore-local-data [dir: string] {
   if ($saved | where {|s| $s.from | path exists } | is-empty) {
     fail $"($dir) holds no copy of this site's data" "a backup is a directory made by: mise run snapshot -- --database"
   }
-  daemon-stop $env.SITE_DAEMON
+  daemon-stop $env.SITE_DAEMON $env.SITE_PORT
   for item in $saved {
     rm -rf $item.to
     if ($item.from | path exists) { cp -r $item.from $item.to }
@@ -218,9 +218,9 @@ export def port-taken [number: int]: nothing -> bool { try { port $number $numbe
 # is not enough — on Linux `mise run` puts the server in a process group of its own, so pitchfork
 # reports the daemon stopped while the server is still shutting down, and a start that follows
 # comes up beside the old one instead of replacing it. Stopping one that is not running is fine.
-export def daemon-stop [name: string] {
+export def daemon-stop [name: string, port: string] {
   ^mise daemons stop $name | complete | ignore
-  let number = (if $name == $env.SITE_DAEMON { $env.SITE_PORT } else { $env.REGISTRY_PORT } | into int)
+  let number = ($port | into int)
   let deadline = ((date now) + 30sec)
   while (daemon-running $name) or (port-taken $number) {
     if (date now) > $deadline {
@@ -228,20 +228,6 @@ export def daemon-stop [name: string] {
     }
     sleep 250ms
   }
-}
-
-# Run a block with the dev server stopped, then put it back — whatever the block did. Anything that
-# re-runs the Vite optimizer in the site (a production build, astro check) breaks a running server.
-export def with-site-paused [block: closure]: nothing -> int {
-  let was_running = (daemon-running $env.SITE_DAEMON)
-  if $was_running { daemon-stop $env.SITE_DAEMON }
-  let rc = (code $block)
-  rm -rf ($env.SITE_DIR | path join "node_modules" ".vite") ($env.SITE_DIR | path join ".astro")
-  if $was_running {
-    ^mise daemons start $env.SITE_DAEMON
-    if not (wait-for (site-url) 90) { print "  ⚠ the site was restarted but is not answering yet — see: mise run logs" }
-  }
-  $rc
 }
 
 # One HTTP request, with nushell's own client (not curl: that is not on every OS). Returns

@@ -73,7 +73,7 @@ description = "Bring the site up on the current config, seed and plugins — run
 
 [tasks.status]
 extends = "harness"
-description = "What is running, and on what: harness, template (and the EmDash it was synced from, when that differs), EmDash, site, plugins, deployment"
+description = "What is running, and on what: harness, template, EmDash, site, plugins, deployment"
 
 [tasks.report]
 extends = "harness"
