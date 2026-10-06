@@ -1,95 +1,84 @@
 # emdash-run
 
-**A reusable EmDash harness. Clone it, point it at your project, and work on every part of EmDash
-from the command line.**
+**Develop and run [EmDash](https://docs.emdashcms.com) from any repo, with one set of mise tasks.**
 
-It runs the *real* published `emdash` — the real admin UI, the real plugin registry — and it deploys
-to Cloudflare. Nothing here is a mock-up. Everything EmDash exposes is reachable from `mise run`:
-schema, content, media, taxonomies, menus, search, seeds, migrations, whole-site export/import, and
-plugins. Each task is either one official CLI command, or a workflow composed from several.
+The real published `emdash`, an official template, the official CLIs — wired together so that each
+job is one command: bring a site up, model content, build a plugin, deploy and verify, back up and
+restore. You own about 40 lines of settings; the rest is the harness, and it updates itself.
 
-## What a developer can do with it
+## Get started — in your own repo
 
-| | |
-|---|---|
-| **Run EmDash locally** | An official template (`starter-cloudflare`) against the published `emdash` package — admin UI, passkey auth, revisions, media library, schema builder — on `:4321`. |
-| **Model content** | Collections, fields, taxonomies, menus. `mise run emdash -- schema …`, or the admin. `mise run schema:diff -- --url <url>` shows how a deployment differs from the repo. |
-| **Seed it** | `mise run dev` merges the template's seed with your project's and lands *edits* in the running database, in place. `seed:export` reads it back. |
-| **Write content** | `mise run content:set -- <collection> <entry> <json>`, or the whole `emdash content` surface. |
-| **Write plugins** | `mise run plugin:new -- <name>` scaffolds one with the official CLI, fits it to the site, loads it, and has the running site call it. `plugin:roundtrip` proves that whole path with a throwaway plugin. |
-| **Deploy, then verify** | `mise run deploy` refuses to ship if `check` fails, builds, ships to Cloudflare, and verifies what is live. `mise run rollback` puts the previous version back. |
-| **Back up and restore** | `mise run snapshot` — the whole site, schema **and** content, as a `.emdash` package. `mise run restore -- <package> --wipe --confirm` puts it back locally. |
-| **Drive it from an agent** | EmDash's MCP endpoint with scoped tokens, plus mise's MCP server for the tasks. |
-
-## Where to start
-
-```
-mise run setup       first time: template, install, config — then the site is up
-mise run dev         after any change: config, seed, plugins, restart, URLs
-mise run check       before a commit — the git hook runs it          --fix repairs
-mise run doctor      is the running site what the repo says?         --url <deployment>
-mise run deploy      check, build, ship to Cloudflare, verify        --dry
-mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
-mise run emdash -- <anything>     the official CLI
-```
-
-`mise tasks ls` lists all 26. Each is a **flow** — one command for one job — and
-[`docs/tasks.md`](docs/tasks.md) is the same list, generated.
-
-## How it is put together
-
-```
-mise.toml    your project's settings — 40 lines
-.config/mise/conf.d/harness.toml   the harness: tools, tasks, daemons
-nu/          the logic, in nushell: one command per task, shared helpers, unit tests
-config/      our site config and this project's seed, applied over the template by `dev`
-plugins/     local plugins — empty until you run plugin:new
-.src/        gitignored checkouts: the template, the site, the EmDash source
-docs/        agents/ (how to work here), tasks.md (generated), plugin.md, auth.md, plans/
-```
-
-Everything is built on the two official CLIs and the official template. The harness adds only
-what they leave to you: getting config and a seed into a template, loading a plugin into a running
-site, checking that what is live matches the repo.
-
-## Use it in your own repo
-
-Everyone here uses mise, so the harness arrives as mise config. In your repo:
+You need [mise](https://mise.jdx.dev). It installs everything else.
 
 ```sh
 curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
-cp nu/project.example.toml mise.toml      # then edit it: your template, your seed, your checks
+cp nu/project.example.toml mise.toml      # your settings — pick a template, the rest can wait
 mise trust --all
-mise run setup
+mise run setup                            # a few minutes the first time
 ```
 
-That gives you three things, with a hard line between what is yours and what is the harness's:
+When it finishes it prints the site and admin URLs. `mise run open` opens the admin, signed in.
+
+- **macOS** is proven. **Linux** works for everything except `doctor` (being fixed); minimal
+  Debian needs `apt install libatomic1` first. **Windows** has no known blocker but has not been run.
+- **Deploying** needs Cloudflare credentials in [fnox](https://fnox.jdx.dev)
+  (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
+  development needs neither.
+
+## Every day
+
+```
+mise run dev                      after any change: config, seed, plugins, restart — prints the URLs
+mise run check                    before a commit (the git hook runs it)        --fix repairs
+mise run doctor                   is the running site what the repo says?       --url <deployment>
+mise run deploy                   check, build, ship to Cloudflare, verify      --dry
+mise run rollback                 put the previous deployment back
+mise run snapshot                 the whole site as a package
+mise run restore -- <package>     …and back again                               --wipe --confirm
+mise run reset                    wipe the local database, back up on the seed
+mise run logs                     follow the site                               --deployed
+mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
+mise run emdash -- <anything>     the official CLI: schema, content, media, taxonomy, menu, search…
+mise run upgrade                  take a newer harness
+```
+
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 27;
+[`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
+
+## What is yours, and what is the harness's
 
 | | whose | what |
 |---|---|---|
-| `mise.toml` | **yours** | PROJECT SETTINGS — about 40 lines, the only place a project is named |
-| `config/` | **yours** | your site config and seed; `setup` starts you from the template's own |
-| `.config/mise/conf.d/harness.toml`, `nu/` | the harness's | tools, tasks, daemons and the logic |
+| `mise.toml` | **yours** | your settings: template, EmDash version, seed, deploy URL, what `doctor` checks |
+| `config/` | **yours** | your site config and seed. `setup` starts you from the template's own files |
+| `plugins/` | **yours** | your plugins, made by `plugin:new` |
+| `.config/mise/conf.d/harness.toml`, `nu/` | the harness's | tools, tasks, daemons, and the logic. Don't edit — `mise run upgrade` replaces them |
+| `.src/`, `run/` | generated | the template, the site, tokens, snapshots. Gitignored; never edit |
 
-`mise run upgrade` replaces the harness's half from this repo (`-- v0.2.0` for a tag) and leaves
-yours alone. Proven on a second project — a different template, no seed of its own.
+To change the site, edit `config/` and run `mise run dev`. Never edit `.src/site` — it is rebuilt.
 
-To develop plugins, your `config/site.astro.config.mjs` has to load them: import
-`{ sandboxed as localSandboxed }` from `"./local-plugins.mjs"`, pass
-`sandboxed: [...localSandboxed], sandboxRunner: sandbox()` to `emdash()`, and enable the
-`worker_loaders` binding in `config/site.wrangler.jsonc`. `plugin:new` tells you if it is missing.
+## Plugins
 
-## Where to look
+```
+mise run plugin:new -- my-plugin      scaffold (official CLI), install, test, build, load, call it
+mise run plugin:dev -- my-plugin      rebuild on change
+mise run plugin:probe -- my-plugin    ask the running site to call it
+mise run plugin:release               validate, typecheck, test, build, bundle
+mise run plugin:roundtrip             prove the whole toolchain with a throwaway plugin
+```
 
-- [`docs/agents/README.md`](docs/agents/README.md) — how to work here: the rules, the checks, the tools
-- [`docs/agents/nushell.md`](docs/agents/nushell.md) — working in `nu/`: the shape, the helpers, the traps
-- [`docs/tasks.md`](docs/tasks.md) — every task, with its dependencies (generated)
-- [`docs/plugin.md`](docs/plugin.md) — plugins: the scaffold-to-running round trip, and what the scaffold gets wrong
-- [`docs/auth.md`](docs/auth.md) — EmDash's auth model and our token strategy
-- [`docs/plans/`](docs/plans/) — what is left · [`done/`](docs/plans/done/) — closed
-- [`docs/plugin-catalog/`](docs/plugin-catalog/) — generated from the registry
+Your site config has to load local plugins. `plugin:new` tells you if it does not; the three edits
+are in [`docs/plugin.md`](docs/plugin.md), along with what the official scaffold gets wrong and how
+the harness fixes it.
 
-**What is still one project's.** The seed in `config/cad.seed.json` and the R2 cross-check in
-`doctor` come from the project this started on. They work, and they are the example of "your
-project's seed" — but they are the part to replace. [`docs/plans/`](docs/plans/) tracks making
-that clean.
+## More
+
+- [`CHANGELOG.md`](CHANGELOG.md) — what each release changed, and its known limits
+- [`docs/plugin.md`](docs/plugin.md) — the plugin round trip
+- [`docs/auth.md`](docs/auth.md) — EmDash's auth model and tokens
+- [`docs/agents/`](docs/agents/README.md) — working on the harness itself, for people and agents
+- [`docs/plans/`](docs/plans/) — what is left
+
+This repo is also a working project: its own `mise.toml` and `config/` are an example (a CAD parts
+catalogue whose `doctor` checks need its owner's Cloudflare bucket). Start from the release above,
+not from a clone, unless you are working on the harness.

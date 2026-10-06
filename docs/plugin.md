@@ -48,6 +48,29 @@ leaves to you, and they are where the time used to go.
 - **It creates three symlinks** (`.agents/skills`, `.claude/skills`, `.claude/CLAUDE.md`). This
   repo allows none — `check` fails on one — and the skills are vendored at the repo root.
 
+## Enabling plugins in your site config
+
+Three edits, once, in files you own:
+
+```js
+// config/site.astro.config.mjs
+import { d1, r2, sandbox } from "@emdash-cms/cloudflare";            // add `sandbox`
+import { sandboxed as localSandboxed } from "./local-plugins.mjs";   // add this line
+
+emdash({
+	// …your database and storage…
+	sandboxed: [...localSandboxed],                                   // add
+	sandboxRunner: sandbox(),                                         // add
+})
+```
+
+```jsonc
+// config/site.wrangler.jsonc — uncomment, or add:
+"worker_loaders": [{ "binding": "LOADER" }],
+```
+
+Then `mise run dev`. `plugin:new` refuses to start, and says so, if the import is missing.
+
 ## How the site finds a local plugin
 
 `mise run dev` generates `.src/site/local-plugins.mjs` from `plugins/`, and the site's
