@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-10-06
 
 - **Upgrading EmDash is one line and one command.** Change `EMDASH_VERSION`, run `mise run dev`:
   it copies the local database to `run/backups/`, re-pins and installs in place, re-pins your
@@ -24,7 +24,10 @@
   are merged from both seeds.
 - Leaner: the task shape is declared once; about 100 lines of repeats and dead branches removed.
 - A push runs only `mise run check` on three OSes; the full matrix runs on a release tag.
-- New docs: `docs/emdash.md` (EmDash, read from its source) and `docs/agents/lessons.md`.
+- `mise run source -- emdashcms.com` clones EmDash's own production site as a reference, beside the
+  templates and the EmDash source; `status` lists the reference checkouts.
+- New docs: `docs/emdash.md` (EmDash, read from its source), `docs/emdashcms-com.md` (what a
+  production EmDash site does that no template shows) and `docs/agents/lessons.md`.
 
 ## 0.4.2 — 2026-10-06
 
