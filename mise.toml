@@ -3,11 +3,23 @@
 # emdash-run — local EmDash harness. See docs/plans/done/0007-emdash-1.1-templates-src-rework.md.
 #
 # Model: the host site is an official EmDash template (starter-cloudflare) copied
-# into .src/site. It consumes the *published* `emdash` npm package.
+# into .src/site. It consumes the *published* `emdash` npm package, and the two official
+# CLIs are the way to work with it: `emdash` (site) and `emdash-plugin` (plugins).
 #
-# Tasks are the interface; scripts/*.mjs hold the implementation. Every task here is a
-# one-line call into scripts/ — put logic in a script, never inline in this file.
-# The one exception is `depends`, which is mise's job (orchestration).
+# Tasks are the interface, and they come in two kinds — the distinction is the point:
+#
+#   PRIMITIVES  one official command or script, nothing invented. Thin on purpose: the
+#               CLI already does this well, so these add only what makes it usable here
+#               (the instance URL, the stored credential, the dev database path).
+#
+#   WORKFLOWS   the jobs a developer actually does, composed from primitives. "The CLI
+#               provides one-shot commands; a dev wants to wrap many into one." This is
+#               where the value is, and it is what mise is for: `depends` to run parts
+#               in parallel, `usage` for typed arguments, `dir`/`env` for context.
+#
+# Logic still belongs in scripts/*.mjs — but a task that is genuinely a one-liner against
+# an official CLI belongs inline, and ten tasks that merely relay one CLI call each are
+# not coverage, they are noise. Every script in scripts/ is called by a task.
 
 [settings]
 # Serial task execution — avoids pnpm lockfile conflicts during install
@@ -516,6 +528,33 @@ run = "node \"$ROOT/scripts/emdash.mjs\" menu"
 description = "export/import a whole site as a .emdash package (official)"
 run = "node \"$ROOT/scripts/emdash.mjs\" site"
 
+[tasks."plugin:check"]
+description = "Validate, typecheck and audit every plugin — the plugin half of `mise run check`"
+depends = ["plugin:audit", "plugin:typecheck", "plugin:validate"]
+
+[tasks."plugin:dev"]
+description = "Watch a plugin's sources and rebuild on change (official emdash-plugin dev)"
+usage = """
+arg "<plugin>" help="Plugin directory name under plugins/"
+"""
+run = "node \"$ROOT/scripts/plugin.mjs\" dev \"$usage_plugin\""
+
+[tasks."plugin:new"]
+description = "Scaffold a new sandboxed plugin, then install and validate it"
+usage = """
+arg "<name>" help="New plugin name"
+"""
+run = """
+set -e
+echo "→ scaffold"
+mise run plugin:init -- "$usage_name"
+echo "→ dependencies"
+mise run plugin:install -- "$usage_name"
+echo "→ validate the generated manifest"
+mise run plugin:validate -- "$usage_name"
+echo "✓ $usage_name is ready — try: mise run plugin:dev -- $usage_name"
+"""
+
 [tasks."plugin:catalog"]
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
 run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
@@ -544,10 +583,6 @@ run = "node \"$ROOT/scripts/plugin.mjs\" switch"
 [tasks."plugin:info"]
 description = "show details about a single package (official) — e.g: mise run plugin:info -- <slug>"
 run = "node \"$ROOT/scripts/plugin.mjs\" info"
-
-[tasks."plugin:dev"]
-description = "watch a sandboxed plugin's sources and rebuild on change (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" dev"
 
 [tasks."plugin:init"]
 description = "scaffold a new sandboxed plugin (official) — e.g: mise run plugin:init -- my-plugin"

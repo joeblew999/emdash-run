@@ -59,6 +59,23 @@ function requireName() {
  * The registry is the source of truth for published plugins — a GitHub scrape (what this
  * used to do) goes stale and misses anything not hosted on GitHub.
  */
+/**
+ * The `emdash-plugin` binary, taken from whichever plugin has `@emdash-cms/plugin-cli` installed.
+ * The CLI is a devDependency of the plugins, not of the repo, so it has to be borrowed.
+ */
+function pluginCliBinary() {
+	const dir = pluginDirs().find((candidate) =>
+		existsSync(`${PLUGINS_DIR}/${candidate}/node_modules/.bin/emdash-plugin`),
+	);
+	if (!dir) {
+		console.error(
+			"no plugin has @emdash-cms/plugin-cli installed — run: mise run plugin:install-all",
+		);
+		process.exit(1);
+	}
+	return `${PLUGINS_DIR}/${dir}/node_modules/.bin/emdash-plugin`;
+}
+
 async function catalog(dry) {
 	const base = process.env.CATALOG_REGISTRY_URL ?? "https://registry.emdashcms.com";
 	const packages = [];
@@ -283,6 +300,37 @@ switch (sub) {
 	case "catalog":
 		await catalog(false);
 		break;
+
+	case "init": {
+		// Scaffolds a NEW plugin, so it must run in plugins/ itself. The shared passthrough runs
+		// in whichever plugin owns the CLI, which would nest the scaffold inside that plugin.
+		const pluginName = process.argv[3];
+		if (!pluginName) {
+			console.error("plugin:init needs a name — e.g: mise run plugin:new -- my-plugin");
+			process.exit(1);
+		}
+		run(pluginCliBinary(), ["init", pluginName], { cwd: PLUGINS_DIR });
+		break;
+	}
+
+	case "dev": {
+		// The official watch loop. It must run IN the plugin being watched, not in whichever
+		// plugin happens to own the CLI.
+		const pluginName = process.argv[3];
+		if (!pluginName) {
+			console.error(
+				"plugin:dev needs a plugin name — e.g: mise run plugin:dev -- plat-trunk-sandboxed",
+			);
+			process.exit(1);
+		}
+		const dir = `${PLUGINS_DIR}/${pluginName}`;
+		if (!existsSync(dir)) {
+			console.error(`no such plugin: ${pluginName}`);
+			process.exit(1);
+		}
+		run("pnpm", ["--dir", dir, "exec", "emdash-plugin", "dev"]);
+		break;
+	}
 
 	case "search": {
 		// The plugin CLI already has registry search: `emdash-plugin search <query>` with
