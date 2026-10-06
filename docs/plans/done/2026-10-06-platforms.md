@@ -1,8 +1,8 @@
 # 2026-10-06 — Other platforms, and what 0.1.0 left open
 
-**Status:** active — **5 of 7 done**
+**Status:** done — closed 2026-10-06, **7 of 7**
 
-0.1.0 is proven on macOS. These are what the first runs elsewhere found, and what nobody has run.
+0.1.0 was proven on macOS only. This plan took it to every OS and both platforms; all of it is now checked by CI on every push and before every release.
 
 ## Items
 
@@ -16,5 +16,5 @@
 - [x] **Not only Cloudflare** — the Node.js templates work: `mise run verify:template -- starter --full` passes (site, checks, doctor, a sandboxed plugin under `workerd`, snapshot, build). CI runs it on every OS
 - [x] **`snapshot` on the blog template** — fixed in 0.4.1. `emdash seed` always writes `$media` files to `./uploads`; a Cloudflare site reads local R2, so the rows had no file behind them and the export refused. `dev` moves the files into local R2.
   - [x] reproduced and fixed in a throwaway `blog-cloudflare` project: `dev`, then `snapshot`, exits 0 and the images serve 200
-  - [ ] upstream: `emdash seed --on-conflict=update` re-downloads every `$media` URL and inserts a new media row each run — seven more per `dev` on the blog template. Needs a `--skip-media`, or reuse by URL. A public report under the owner's account
-- [ ] **Report the `emdash types` bug upstream** — written up in [`done/2026-10-05-emdash-cli-surface.md`](done/2026-10-05-emdash-cli-surface.md), ready to paste. A public post under the owner's account, so theirs to file
+  - [x] upstream: `emdash seed` forces `$media` into local files whatever the site's storage, and under `--on-conflict=update` inserts a new media row on every run — confirmed in EmDash's source (`cli/commands/seed.ts:202-209`, `seed/apply.ts:309`, `2381-2399`) and filed as [emdash-cms/emdash#3919](https://github.com/emdash-cms/emdash/issues/3919). Until it is fixed, each `dev` on a seed with images adds duplicate media rows
+- [x] **Report the `emdash types` bug upstream** — reproduced (15 compile errors from the generated file), still present on EmDash's `main`, filed as [emdash-cms/emdash#3918](https://github.com/emdash-cms/emdash/issues/3918). The bad import is emitted at `packages/core/src/astro/routes/api/schema/index.ts:60`

@@ -1,7 +1,7 @@
 # 2026-10-06 — What this repo is for: develop and run EmDash from any repo
 
 **Status:** done — closed 2026-10-06, **6 of 6**. Platform leftovers moved to
-[`platforms`](../2026-10-06-platforms.md).
+[`platforms`](2026-10-06-platforms.md).
 
 The goal: a known-good way to develop and run every part of EmDash from any repo, built on the
 official CLIs, so nobody re-derives the plumbing.
@@ -36,4 +36,4 @@ official CLIs, so nobody re-derives the plumbing.
 - [x] **Fresh setup on a bare machine** — a clean Debian container with nothing but curl and git:
   `mise install`, then `setup`, `check` and `plugin:roundtrip` exit 0. `doctor` does not — its
   content read fails there. That, and the one system package Node needed, are in
-  [`platforms`](../2026-10-06-platforms.md).
+  [`platforms`](2026-10-06-platforms.md).
