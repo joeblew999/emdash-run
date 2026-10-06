@@ -29,6 +29,14 @@ Tokens carry explicit scopes. The `admin` scope bypasses all scope checks.
 - `media:write`
 - `schema:read`
 - `schema:write`
+- `taxonomies:manage`
+- `menus:manage`
+- `settings:read`
+- `settings:manage`
+- `mcp:tools`
+- `transfer:export`
+- `transfer:analyze`
+- `transfer:execute`
 - `admin`
 
 ### OAuth server
@@ -39,6 +47,7 @@ Used by the CLI and MCP server.
 `POST /_emdash/api/auth/dev-bypass`
 Creates a dev admin user (`dev@emdash.local`) and sets an Astro session.
 Only works when `import.meta.env.DEV` is true.
+The harness signs in through `POST /_emdash/api/setup/dev-bypass`, which also completes first-time setup.
 
 ## Our token strategy
 

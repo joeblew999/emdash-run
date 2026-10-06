@@ -5,7 +5,7 @@
 	"compatibility_date": "2026-02-24",
 	"compatibility_flags": ["nodejs_compat"],
 
-	// D1 database — provisioned by the first `mise run site:deploy`.
+	// D1 database — provisioned by the first `mise run deploy`.
 	// Local dev uses miniflare state under .wrangler/state; the id is only used remotely.
 	"d1_databases": [
 		{

@@ -14,7 +14,7 @@
 
 The real published `emdash`, an official template, the official CLIs — wired together so that each
 job is one command: bring a site up, model content, build a plugin, deploy and verify, back up and
-restore. You own about 40 lines of settings; the rest is the harness, and it updates itself.
+restore. You own about 30 lines of settings; the rest is the harness, and `mise run upgrade` updates it.
 
 ## Get started — in your own repo
 
@@ -45,6 +45,7 @@ toolchain, builds a site from an official template, starts it, checks it, and pr
 ✓ EmDash 1.1.0 is running — the starter-cloudflare template, on your settings
   site    http://localhost:4321
   admin   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+  mcp     http://localhost:4321/_emdash/api/mcp — bearer token in run/token-admin.txt
 ```
 
 From then on:
@@ -58,6 +59,7 @@ mise run dev         after you change anything — your settings, config/, a plu
 <details><summary>What the installer does, if you would rather run it by hand</summary>
 
 ```sh
+git init          # unless the folder is already a repo
 curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
 cp nu/project.example.toml mise.toml
 mise trust --all
@@ -98,11 +100,11 @@ development needs neither.
 **Something broke?** `mise run report` prints your versions, status and recent site log — paste it
 into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
 
-## Fully verified — on every push, and before every release
+## Fully verified — on every push to main, and before every release
 
 [![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
 
-Nothing here is "should work". Every claim is a job that runs the **same `mise run` command you
+Nothing here is "should work". Every row below is a job that runs the **same `mise run` command you
 run on your laptop** — no CI-only scripts — and a release is published **only if all of them pass**.
 
 | what is proven | macOS | Linux | Windows |
@@ -117,18 +119,21 @@ run on your laptop** — no CI-only scripts — and a release is published **onl
 | **Task arguments arrive intact** — spaces, JSON, quotes, flags | ✅ | ✅ | ✅ |
 | **The harness's own checks can fail** — known faults planted, each must be caught | ✅ | ✅ | ✅ |
 
-And against a live Cloudflare deployment: `deploy` (check, build, ship, verify), `rollback`, and a
-redeploy, each ending in a `doctor` pass on production.
+Deploying to a live Cloudflare account is not in CI — it needs credentials. `deploy` and `rollback`
+each end in a `doctor` pass on the deployment.
 
-- **On every push** ([`verify`](.github/workflows/verify.yml)): the fast lane answers in about
-  15 seconds per OS, with the site verifications in parallel beside it.
+- **On every push to main and every pull request** ([`verify`](.github/workflows/verify.yml)):
+  `check` answers in under a minute per OS, with the site verifications in parallel beside it.
+  Changes that touch only docs are skipped.
 - **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
-  above, 12 jobs. The release and its tarball are created by that workflow's last job — which only
-  runs if the other twelve pass.
-- **On your machine**: `mise run verify -- --full` runs the same thing.
+  above, 12 verification jobs, plus one that packages the tarball. The release is created by that
+  workflow's last job — which only runs if all of them pass.
+- **On your machine**: `mise run verify -- --full` runs the same flow on your project's template;
+  `mise run verify:template -- starter --full` runs it on a Node.js one.
 
-It is also **portable by construction**: the logic is nushell and runs only programs mise installs —
-no curl, no shell scripts, no symlinks — and `mise run check` fails if one creeps in.
+It is also **portable by construction**: the logic is nushell and runs only programs mise installs, plus
+git (and docker, for `verify:linux`) — no curl, no symlinks — and `mise run check` fails if one
+creeps in.
 
 ## Every day
 

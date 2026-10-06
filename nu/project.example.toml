@@ -7,7 +7,7 @@
 [env]
 TEMPLATE = "starter-cloudflare" # starter-cloudflare, blog-cloudflare… (Cloudflare) or starter, blog… (plain Node.js)
 EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
-DEPLOY_URL = ""                 # where `mise run deploy` ships; empty until you have one
+DEPLOY_URL = ""                 # your deployment's URL — `deploy` verifies it; empty until you have one
 
 # Packages your config/site.astro.config.mjs imports that the template does not ship.
 SITE_PACKAGES = ""

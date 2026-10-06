@@ -231,6 +231,25 @@ export def configure [registration: string] {
 # own first-request seeding skips anything that exists, so edits to the seed never land without this.
 export def apply-seed [] {
   emdash seed seed/seed.json --database (devdb) --on-conflict=update
+  if (on-cloudflare) { uploads-to-r2 }
+}
+
+# `emdash seed` always writes a seed's media files to ./uploads — right for Node, where the site
+# reads them from there. A Cloudflare site reads local R2, so its seeded images would be rows with
+# no file behind them: broken in the admin, and `snapshot` refuses to export them. Move them across.
+def uploads-to-r2 [] {
+  let uploads = (site-file "uploads")
+  if not ($uploads | path exists) { return }
+  let bucket = (open --raw (site-file "wrangler.jsonc") | parse --regex '"bucket_name"\s*:\s*"(?<name>[^"]+)"' | get -o name.0 | default "")
+  if ($bucket | is-empty) { return }
+  let types = {jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", avif: "image/avif", svg: "image/svg+xml", pdf: "application/pdf", mp4: "video/mp4"}
+  cd $env.SITE_DIR
+  for file in (ls $uploads | where type == file | get name) {
+    let kind = ($types | get -o ($file | path parse | get extension | str lowercase) | default "application/octet-stream")
+    let put = (^pnpm exec wrangler r2 object put $"($bucket)/($file | path basename)" --file $file --content-type $kind --local | complete)
+    if $put.exit_code != 0 { fail $"could not copy ($file | path basename) into local R2: ($put.stderr | str trim)" }
+    rm $file
+  }
 }
 
 # (Re)start the dev server and wait until it has migrated and answers.

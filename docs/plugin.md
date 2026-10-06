@@ -9,7 +9,7 @@ mise run plugin:new -- <name>      scaffold → fit → install → validate →
 mise run plugin:probe -- <name>    call a plugin's route on the RUNNING site (default: hello)
 mise run plugin:dev -- <name>      rebuild on change (official: emdash-plugin dev)
 mise run plugin:remove -- <name>   take it out: directory, the site's copy, the registration
-mise run plugin:roundtrip          all of the above with a throwaway plugin, leaving nothing behind
+mise run plugin:roundtrip          new, then remove, with a throwaway plugin — leaving nothing behind
 ```
 
 `plugin:roundtrip` is the answer to "does plugin development work against this EmDash, today?".
@@ -39,14 +39,14 @@ leaves to you, and they are where the time used to go.
 
 - **It will not run without a terminal.** It exits with "Non-interactive setup requires:
   --publisher, --author-name, --security-email or --security-url". The harness passes them from
-  `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR` and `PLUGIN_SECURITY_URL` in PROJECT SETTINGS.
+  `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR` and `PLUGIN_SECURITY_URL` in `mise.toml`.
 - **It asks for EmDash 0.x.** `emdash: ">=0.12.0 <1.0.0"` installs 0.x while the site runs 1.x, so
   the scaffold's green test is evidence about a different CMS. Pinned to `EMDASH_VERSION`;
   `check` fails on any drift afterwards.
 - **Its `@emdash-cms/plugin-test` range predates EmDash 1.x.** Set to the current release.
 - **It pins `packageManager`.** mise provides pnpm, so the pin is dropped.
 - **It creates three symlinks** (`.agents/skills`, `.claude/skills`, `.claude/CLAUDE.md`). This
-  repo allows none — `check` fails on one — and the skills are vendored at the repo root.
+  repo allows none — `check` fails on one — and the skills are vendored in `.github/skills/`.
 
 ## Enabling plugins in your site config
 

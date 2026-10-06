@@ -14,6 +14,7 @@
   - [x] `check` now fails on any of those, so it cannot regress unseen
 - [x] **The installers** — `install.sh` and `install.ps1` run in an empty folder on all three OSes, for the Cloudflare and the Node.js template, in the `full verification` workflow
 - [x] **Not only Cloudflare** — the Node.js templates work: `mise run verify:template -- starter --full` passes (site, checks, doctor, a sandboxed plugin under `workerd`, snapshot, build). CI runs it on every OS
-- [ ] **`snapshot` on the blog template** — fails locally with `TRANSFER_MEDIA_BLOB_MISSING`: the seed declares sample media whose files are not in local storage
-  - [ ] work out whether the seed should fetch them or the export should skip them, and report upstream if it is EmDash's
+- [x] **`snapshot` on the blog template** — fixed in 0.4.1. `emdash seed` always writes `$media` files to `./uploads`; a Cloudflare site reads local R2, so the rows had no file behind them and the export refused. `dev` moves the files into local R2.
+  - [x] reproduced and fixed in a throwaway `blog-cloudflare` project: `dev`, then `snapshot`, exits 0 and the images serve 200
+  - [ ] upstream: `emdash seed --on-conflict=update` re-downloads every `$media` URL and inserts a new media row each run — seven more per `dev` on the blog template. Needs a `--skip-media`, or reuse by URL. A public report under the owner's account
 - [ ] **Report the `emdash types` bug upstream** — written up in [`done/2026-10-05-emdash-cli-surface.md`](done/2026-10-05-emdash-cli-surface.md), ready to paste. A public post under the owner's account, so theirs to file

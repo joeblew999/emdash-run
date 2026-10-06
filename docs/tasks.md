@@ -280,7 +280,7 @@ What is running, and on what: harness, template, EmDash, site, plugins, deployme
 
 ## `upgrade`
 
-Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- <tag> picks a version
+Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml with the latest release, then runs check. -- <tag> or -- main picks another
 
 
 - **Usage:** `upgrade [args]…`

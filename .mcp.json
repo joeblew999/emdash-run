@@ -9,10 +9,13 @@
     },
     "playwright": {
       "type": "stdio",
-      "command": "/opt/homebrew/bin/mise",
+      "command": "mise",
       "args": [
-        "x", "--",
-        "bunx", "@playwright/mcp@latest"
+        "exec",
+        "--",
+        "pnpm",
+        "dlx",
+        "@playwright/mcp@latest"
       ]
     }
   }

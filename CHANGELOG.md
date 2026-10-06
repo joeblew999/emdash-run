@@ -1,8 +1,19 @@
 # Changelog
 
+## 0.4.1 — 2026-10-06
+
+- **Seeded images work on Cloudflare templates.** `emdash seed` writes a seed's media to `./uploads`,
+  which a Cloudflare site never reads, so on `blog-cloudflare` every seeded image was broken locally
+  and `snapshot` failed. `dev` now moves them into local R2. Known and upstream: each `dev` still
+  adds duplicate media rows for a seed that has images.
+- **`upgrade` takes the latest release** (not `main`) and runs `check` afterwards, as it claimed to.
+- **`rollback` refuses to run without a `DEPLOY_URL`** instead of verifying the local site.
+- The linters and the skills CLI run through `pnpm dlx`: mise installs five tools, not nine.
+- Docs audited line by line against the code and corrected.
+
 ## 0.4.0 — 2026-10-06
 
-- **Releases are gated by full verification.** Tagging a version runs 12 jobs — every OS, Cloudflare
+- **Releases are gated by full verification.** Tagging a version runs 12 verification jobs — every OS, Cloudflare
   and Node.js, the whole dev loop including a plugin round trip, a snapshot and a production build,
   plus the installers in an empty folder — and the release is published only if all pass.
 - **The installers are proven**, `install.ps1` on Windows included, for both the Cloudflare and the

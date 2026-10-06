@@ -180,6 +180,7 @@ def "main deploy" [--dry, --build-only, --no-check] {
 # Put the previous deployment back, then verify what is live.
 def "main rollback" [] {
   if not (on-cloudflare) { fail "rollback is for Cloudflare deployments" "on Node, redeploy the previous build the way your host does it" }
+  if (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
   step "rollback to the previous version"
   site wrangler rollback --yes --message "rollback via mise run rollback"
   main doctor --url $env.DEPLOY_URL
@@ -342,21 +343,27 @@ def "main registry down" [] {
 }
 
 # Take a newer harness from emdash-run: nu/ and the harness mise config are replaced wholesale —
-# they hold nothing of the project's — and check says whether the project still holds together.
+# they hold nothing of the project's — and then check says whether the project still holds together.
+# With no version it takes the latest release; `-- main` takes the development branch.
 def "main upgrade" [ref?: string, --from: string] {
+  let repo = ($from | default $env.HARNESS_REPO)
+  let latest = ((^git ls-remote --tags --refs --sort=-v:refname $repo "v*" | complete).stdout | lines | get -o 0 | default "" | split row "/" | last)
+  let target = ($ref | default (if ($latest | is-empty) { "main" } else { $latest }))
   let scratch = ($env.RUN_DIR | path join "upgrade")
   rm -rf $scratch
   mkdir $env.RUN_DIR
-  let target = ($ref | default "main")
-  let repo = ($from | default $env.HARNESS_REPO)
   step $"fetch ($repo) @ ($target)"
   ^git clone --quiet --depth 1 --branch $target $repo $scratch
   let incoming = (open ($scratch | path join ".config" "mise" "conf.d" "harness.toml") | get env.HARNESS_VERSION)
   rm -rf ($env.ROOT | path join "nu")
   cp -r ($scratch | path join "nu") ($env.ROOT | path join "nu")
   cp ($scratch | path join ".config" "mise" "conf.d" "harness.toml") (harness-file)
-  rm -rf $scratch
-  ok $"harness ($env.HARNESS_VERSION) → ($incoming) — review with git diff, then: mise run dev"
+  try { rm -rf $scratch }
+  ok $"harness ($env.HARNESS_VERSION) → ($incoming)"
+  # Through mise, not `main check`: this process is still the OLD harness.
+  step "check, on the new harness"
+  ^mise run check
+  print "✓ upgraded — review with git diff, then: mise run dev"
 }
 
 # Does this project work on THIS machine? The minimum that answers it: bring the site up, run the

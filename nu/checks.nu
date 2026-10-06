@@ -169,7 +169,7 @@ def report [passed: bool, label: string, detail: string]: nothing -> bool {
 }
 
 # Does the running site (or the deployment in EMDASH_URL) match what the repo says? Every check is
-# driven by PROJECT SETTINGS and is skipped, not failed, when its setting is empty.
+# driven by the project's settings and is skipped, not failed, when its setting is empty.
 export def verify []: nothing -> bool {
   let target = (if (setting EMDASH_URL | is-empty) { $env.SITE_URL } else { $env.EMDASH_URL })
   # Retried: a config change restarts the dev server, and one attempt reports a false alarm.

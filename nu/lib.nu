@@ -1,5 +1,5 @@
 # Shared helpers — everything here is used by more than one flow.
-# Paths and names come from PROJECT SETTINGS in mise.toml, as environment variables.
+# Paths and names come from the project's mise.toml, as environment variables.
 
 export def step [text: string] { print $"→ ($text)" }
 export def ok [text: string] { print $"  ✓ ($text)" }

@@ -22,8 +22,9 @@ nu/tests.nu      unit tests for the pure functions
   signature. They reach it through `task.nu`, not by mise appending them — on Windows mise does not
   append. So every task carries the same line, `usage = 'arg "[args]" var=#true'`, and `check`
   fails on a task without it. Never write a task whose `run` expects appended arguments.
-- **Settings are environment variables**, set by mise from PROJECT SETTINGS: `$env.SITE_DIR`,
-  `$env.EMDASH_VERSION`. Use `setting NAME` for an optional one — it returns `""` when unset.
+- **Settings are environment variables**, set by mise: the project's from `mise.toml`
+  (`$env.EMDASH_VERSION`), paths and defaults from `harness.toml` (`$env.SITE_DIR`). Use
+  `setting NAME` for an optional one — it returns `""` when unset.
 - **A function that can be pure, is** — records in, records out, no files — and gets a test in
   `tests.nu`. `merge-seeds` and `registration` are the models.
 
@@ -33,12 +34,19 @@ nu/tests.nu      unit tests for the pure functions
 |---|---|
 | `step`, `ok`, `fail` | output. `fail` prints, optionally says what to do, and exits non-zero |
 | `code { … }` | run a block and get its exit code instead of aborting |
+| `setting NAME` | an optional setting from the environment, `""` when unset |
+| `harness-file` | the path of `harness.toml` |
+| `split-args` | a shell-quoted string into its arguments — how `task.nu` reads a task's arguments |
 | `emdash …` | the CLI, run in the site directory, where it must run |
 | `emdash-json …` | the CLI's JSON, parsed. Errors when no JSON comes back |
 | `url-flag` | `--url <deployment>` when `EMDASH_URL` is set |
-| `devdb` | the dev server's real database file |
+| `on-cloudflare` | true when the template runs on Cloudflare (it ships a `wrangler.jsonc`), false on Node.js |
+| `devdb` | the dev server's real database file, on either platform |
+| `wipe-local-data` | delete the local database and uploads |
 | `secret NAME` | a credential from the environment, else fnox, else `""` |
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
+| `request` | one HTTP request: `{status, body, cookies}`, never throws |
+| `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
 | `daemon-running`, `daemon-stop`, `answers` | daemons and "is anything listening" |
 
 ## Portable, by construction
@@ -50,7 +58,7 @@ run, and anything else fails.
 | instead of | use |
 |---|---|
 | `curl` | `request GET|POST|DELETE url --headers {…} --body {…}` — returns `{status, body, cookies}`, never throws |
-| `find`, `cp`, `rm`, `mkdir`, `cat` | nushell's `glob`, `ls`, `cp`, `rm`, `mkdir`, `open` |
+| `find`, `cp`, `rm`, `mkdir`, `cat` | `files-in`, and nushell's `ls`, `cp`, `rm`, `mkdir`, `open` |
 | `open` / `xdg-open` / `start` | nushell's `start` |
 | `printenv`, `env` | `$env.NAME`, `setting NAME`, `secret NAME` |
 | `/dev/null` | `| ignore`, or `| complete` |
@@ -81,7 +89,7 @@ run, and anything else fails.
 
 ## Proving a change
 
-- Run the flow. `mise run check` is fast (about 4 seconds); use it constantly.
+- Run the flow. `mise run check` takes seconds; use it constantly.
 - For a new check, plant the fault it should catch and watch it fail, then add the fault to
   `selftest-problems` in `checks.nu` if it guards the harness itself.
 - When replacing working code, capture the old output first, delete it, run the new code, compare.
