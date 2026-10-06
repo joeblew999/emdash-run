@@ -29,7 +29,7 @@ assert equal ($alone.collections | get slug) ($template.collections | get slug) 
 assert equal ($alone.content.posts | length) 2 "no project seed keeps the template's content"
 
 # Plugin registration.
-assert equal (plugin registration []) "// GENERATED from plugins/ by the harness — do not edit.\nexport const sandboxed = [];\n" "no plugins is an empty list"
+assert equal (plugin registration []) "// GENERATED from plugins/ by the harness — do not edit.\n/** @type {any[]} */\nexport const sandboxed = [];\n" "no plugins is an empty list"
 let two = (plugin registration ["zeta" "@scope/alpha"])
 assert ($two | str contains 'import local0 from "@scope/alpha";') "plugins are imported in sorted order"
 assert ($two | str contains 'export const sandboxed = [local0, local1];') "every plugin is registered"

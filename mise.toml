@@ -115,7 +115,7 @@ description = "Save the whole site — schema and content — as a .emdash packa
 run = "nu --no-config-file {{config_root}}/nu/main.nu snapshot"
 
 [tasks.restore]
-description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it"
+description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first"
 run = "nu --no-config-file {{config_root}}/nu/main.nu restore"
 
 [tasks.reset]

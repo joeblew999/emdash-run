@@ -28,7 +28,9 @@ export def registration [names: list<string>]: nothing -> string {
   let sorted = ($names | sort)
   let imports = ($sorted | enumerate | each {|p| $"import local($p.index) from ($p.item | to json);" })
   let list = ($sorted | enumerate | each {|p| $"local($p.index)" } | str join ", ")
-  ["// GENERATED from plugins/ by the harness — do not edit."] | append $imports | append $"export const sandboxed = [($list)];" | append "" | str join (char nl)
+  # The JSDoc type is for the site's type-check: an empty array literal is an implicit any[].
+  (["// GENERATED from plugins/ by the harness — do not edit."] | append $imports
+    | append "/** @type {any[]} */" | append $"export const sandboxed = [($list)];" | append "" | str join (char nl))
 }
 
 # Registration for whatever is in plugins/ now: every directory with an emdash-plugin.jsonc.

@@ -135,14 +135,23 @@ def "main snapshot" [--url: string] {
 }
 
 # Restore a snapshot into an EMPTY site. Shows the plan; --confirm executes exactly that plan.
-def "main restore" [package: string, --confirm, --url: string] {
+# --wipe empties the LOCAL database first, so a local restore is one command.
+def "main restore" [package: string, --confirm, --wipe, --url: string] {
   if $url != null { $env.EMDASH_URL = $url }
   let pkg = ($package | path expand)
   if not ($pkg | path exists) { fail $"no such package: ($pkg)" }
+  if $wipe {
+    if (setting EMDASH_URL | is-not-empty) { fail "--wipe only empties the local site" }
+    if not $confirm { fail "--wipe destroys the local database — pass --confirm as well" }
+    step "wipe the local database"
+    daemon-stop $env.SITE_DAEMON
+    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
+    ^mise daemons start $env.SITE_DAEMON
+  }
   let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json ...(url-flag) | complete })
   let start = ($analysis.stdout | str index-of "{")
   if $analysis.exit_code != 0 or $start < 0 {
-    fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally: mise run reset"
+    fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
   }
   let planned = ($analysis.stdout | str substring $start.. | from json)
   if ($planned | get -o plan | is-empty) {
@@ -154,6 +163,7 @@ def "main restore" [package: string, --confirm, --url: string] {
   if ($blockers | is-not-empty) { fail $"the plan has blockers: ($blockers | to json --raw)" }
   if not $confirm { print "  nothing imported — add --confirm to execute this plan"; return }
   emdash site import $pkg --plan $planned.planDigest --confirm ...(url-flag)
+  if $wipe { site mint-token }
   ok "restored — check it: mise run doctor"
 }
 
@@ -222,6 +232,7 @@ def "main plugin roundtrip" [] {
 def "main plugin release" [name?: string] {
   let faults = (plugin audit)
   if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
+  if (plugin dirs | is-empty) { print "  no plugins to release — make one: mise run plugin:new -- <name>"; return }
   for script in [validate typecheck test build bundle] { plugin sweep $script $name }
   print "✓ bundled — publish with: mise run emdash-plugin -- publish"
 }

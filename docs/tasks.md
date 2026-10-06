@@ -110,7 +110,7 @@ Wipe the local database and bring the site back up on the seed. --site / --all w
 
 - **Usage:** `restore`
 
-Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it
+Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first
 
 ## `rollback`
 
