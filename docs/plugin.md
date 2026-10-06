@@ -50,9 +50,9 @@ leaves to you, and they are where the time used to go.
 
 ## Enabling plugins in your site config
 
-**You normally do nothing.** When the harness creates `config/` from a template it makes these
-edits for you, and `plugin:new` makes them if they are missing and your config still looks like a
-template's. They are shown here for a config you have reshaped by hand:
+**You normally do nothing.** The first `plugin:new` makes these edits if your config still looks
+like a template's. Until then a project keeps the template's defaults — on Cloudflare that matters:
+the Worker Loader binding needs the Workers Paid plan to deploy. They are shown here for a config you have reshaped by hand:
 
 ```js
 // config/site.astro.config.mjs

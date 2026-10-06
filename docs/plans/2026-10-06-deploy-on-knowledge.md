@@ -53,9 +53,9 @@ and A5–A9, A14, A15.
 
 - [ ] **The sandbox is a choice, made knowingly**
   - [ ] find out what a free-plan deploy does with the binding (a throwaway account, or Cloudflare's docs) and record it in `docs/emdash.md` § Unverified
-  - [ ] a fresh project keeps the template's default — Worker Loader off; `plugin:new` switches it on, as it already can, and says "this needs the Workers Paid plan to deploy"
+  - [x] a fresh project keeps the template's default — Worker Loader off; `plugin:new` switches it on and says deploying with it needs the Workers Paid plan
   - [ ] `deploy` prints one line when the binding is on: sandboxed plugins, paid plan
-  - [ ] proof: a fresh `starter-cloudflare` project's `config/site.wrangler.jsonc` equals the template's until the first `plugin:new`
+  - [x] proof: on a fresh `starter-cloudflare` project, `config/site.wrangler.jsonc` is byte-identical to the template's after `setup`, and differs after `plugin:new`
 - [ ] **An encryption key exists, and reaches the deployment**
   - [ ] `setup` generates one with `emdash secrets generate` into a gitignored file the project owns (not under `.src/`, which `setup` deletes), and `configure` puts it where the dev server reads it
   - [ ] `deploy` compares fingerprints: the local key's (`emdash secrets fingerprint`) against what the deployment has; it refuses a first deploy with no key and says the `wrangler secret put` command

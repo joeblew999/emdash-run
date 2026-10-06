@@ -187,6 +187,7 @@ export def enable-local-plugins []: nothing -> bool {
     | save --force $astro
   }
   ok "config/ now loads local plugins"
+  if (on-cloudflare) { print "    this switches on the Worker Loader binding — deploying with it needs the Workers Paid plan" }
   true
 }
 
@@ -216,7 +217,6 @@ export def configure [registration: string] {
   # Only the Cloudflare templates have a wrangler.jsonc.
   let pairs = ([["site.astro.config.mjs" "astro.config.mjs"] ["site.wrangler.jsonc" "wrangler.jsonc"]]
     | where {|pair| $env.TEMPLATES_DIR | path join $env.TEMPLATE ($pair | last) | path exists })
-  let fresh = (not ($env.ROOT | path join "config" "site.astro.config.mjs" | path exists))
   for pair in $pairs {
     let ours = ($env.ROOT | path join "config" ($pair | first))
     if not ($ours | path exists) {
@@ -224,11 +224,8 @@ export def configure [registration: string] {
       cp ($env.TEMPLATES_DIR | path join $env.TEMPLATE ($pair | last)) $ours
       ok $"config/($pair | first) ← the template's — it is yours to edit now"
     }
+    cp $ours (site-file ($pair | last))
   }
-  # A project starting from the template gets plugin loading switched on, so plugin:new just works.
-  # Only then: once config/ exists it is the project's, and plugin:new asks before it needs it.
-  if $fresh { enable-local-plugins | ignore }
-  for pair in $pairs { cp ($env.ROOT | path join "config" ($pair | first)) (site-file ($pair | last)) }
   $registration | save --force (site-file "local-plugins.mjs")
   build-seed
 }

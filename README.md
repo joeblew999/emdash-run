@@ -179,8 +179,9 @@ mise run plugin:release               validate, typecheck, test, build, bundle
 mise run plugin:roundtrip             prove the whole toolchain with a throwaway plugin
 ```
 
-It works on a new project with no setup: the harness switches on plugin loading in your site
-config when it creates it. [`docs/plugin.md`](docs/plugin.md) explains what happens at each step,
+It works on a new project with no setup: the first `plugin:new` switches on plugin loading in your
+site config. On Cloudflare that enables the Worker Loader binding, which needs the Workers Paid plan
+to deploy — a project with no plugins stays on the template's free-plan defaults. [`docs/plugin.md`](docs/plugin.md) explains what happens at each step,
 what the official scaffold gets wrong, and how the harness fixes it.
 
 ## More
