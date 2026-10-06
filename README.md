@@ -16,35 +16,6 @@ The real published `emdash`, an official template, the official CLIs — wired t
 job is one command: bring a site up, model content, build a plugin, deploy and verify, back up and
 restore. You own about 40 lines of settings; the rest is the harness, and it updates itself.
 
-## Fully verified — on every push, and before every release
-
-[![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
-
-Nothing here is "should work". Every claim is a job that runs the **same `mise run` command you
-run on your laptop** — no CI-only scripts — and a release is published **only if all of them pass**.
-
-| what is proven | macOS | Linux | Windows |
-|---|:-:|:-:|:-:|
-| **The installer** a new dev runs, in an empty folder — Cloudflare template | ✅ | ✅ | ✅ |
-| **The installer** — plain Node.js template, no Cloudflare | ✅ | ✅ | ✅ |
-| **Site up + `check` + `doctor`** — Cloudflare | ✅ | ✅ | ✅ |
-| **Site up + `check` + `doctor`** — Node.js | ✅ | ✅ | ✅ |
-| **A plugin scaffolded, loaded, and called by the running site** — Cloudflare | ✅ | ✅ | ✅ |
-| **A plugin scaffolded, loaded, and called by the running site** — Node.js | ✅ | ✅ | ✅ |
-| **Snapshot of the whole site + production build** — both platforms | ✅ | ✅ | ✅ |
-| **Task arguments arrive intact** — spaces, JSON, quotes, flags | ✅ | ✅ | ✅ |
-| **The harness's own checks can fail** — known faults planted, each must be caught | ✅ | ✅ | ✅ |
-
-And against a live Cloudflare deployment: `deploy` (check, build, ship, verify), `rollback`, and a
-redeploy, each ending in a `doctor` pass on production.
-
-- **On every push** ([`verify`](.github/workflows/verify.yml)): the fast lane answers in about
-  15 seconds per OS, with the site verifications in parallel beside it.
-- **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
-  above, 12 jobs. The release and its tarball are created by that workflow's last job — which only
-  runs if the other twelve pass.
-- **On your machine**: `mise run verify -- --full` runs the same thing.
-
 ## Get started — in your own repo
 
 You need [mise](https://mise.jdx.dev) and git. In your repo (or an empty folder):
@@ -57,8 +28,15 @@ curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.
 # Windows (PowerShell)
 irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex
 ```
-<sub>The harness is proven on Windows by CI. This PowerShell installer script is new — if it trips,
-the four manual commands below do the same thing, and [tell us](https://github.com/joeblew999/emdash-run/issues/3).</sub>
+
+No Cloudflare? Start on plain Node.js instead — same tasks, nothing to sign up for:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh -s -- starter
+```
+```powershell
+$env:EMDASH_TEMPLATE = "starter"; irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex
+```
 
 That is the whole install. It fetches the harness, gives you a `mise.toml` of settings, installs the
 toolchain, builds a site from an official template, starts it, checks it, and prints:
@@ -112,19 +90,6 @@ the capabilities its manifest declares — in Cloudflare's Worker Loader, or in 
 Node.js. One kind of plugin, the same security, either platform. You never have to fall back to
 trusted "native" plugins to leave Cloudflare.
 
-**Why you can trust it**
-
-- It is the real thing: the published `emdash` package, an official template, the official CLIs.
-  The harness only does what they leave to you.
-- `mise run check` (4 seconds) proves the harness itself holds together — including planting known
-  faults to make sure its own checks can fail.
-- `mise run doctor` proves the *running* site matches your repo; `doctor -- --url` does the same
-  for a deployment. `deploy` will not ship if `check` fails.
-- `mise run verify` answers "does it work on this machine". CI runs exactly that — nothing is
-  CI-only — on three operating systems and both platforms.
-- It is portable by construction: the logic is nushell and runs only programs mise installs. No
-  curl, no shell scripts, no symlinks — and `check` fails if one creeps in.
-
 **Minimal Debian** needs `apt install libatomic1` before the install.
 **Deploying to Cloudflare** needs credentials in [fnox](https://fnox.jdx.dev)
 (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
@@ -132,6 +97,38 @@ development needs neither.
 
 **Something broke?** `mise run report` prints your versions, status and recent site log — paste it
 into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
+
+## Fully verified — on every push, and before every release
+
+[![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
+
+Nothing here is "should work". Every claim is a job that runs the **same `mise run` command you
+run on your laptop** — no CI-only scripts — and a release is published **only if all of them pass**.
+
+| what is proven | macOS | Linux | Windows |
+|---|:-:|:-:|:-:|
+| **The installer** a new dev runs, in an empty folder — Cloudflare template | ✅ | ✅ | ✅ |
+| **The installer** — plain Node.js template, no Cloudflare | ✅ | ✅ | ✅ |
+| **Site up + `check` + `doctor`** — Cloudflare | ✅ | ✅ | ✅ |
+| **Site up + `check` + `doctor`** — Node.js | ✅ | ✅ | ✅ |
+| **A plugin scaffolded, loaded, and called by the running site** — Cloudflare | ✅ | ✅ | ✅ |
+| **A plugin scaffolded, loaded, and called by the running site** — Node.js | ✅ | ✅ | ✅ |
+| **Snapshot of the whole site + production build** — both platforms | ✅ | ✅ | ✅ |
+| **Task arguments arrive intact** — spaces, JSON, quotes, flags | ✅ | ✅ | ✅ |
+| **The harness's own checks can fail** — known faults planted, each must be caught | ✅ | ✅ | ✅ |
+
+And against a live Cloudflare deployment: `deploy` (check, build, ship, verify), `rollback`, and a
+redeploy, each ending in a `doctor` pass on production.
+
+- **On every push** ([`verify`](.github/workflows/verify.yml)): the fast lane answers in about
+  15 seconds per OS, with the site verifications in parallel beside it.
+- **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
+  above, 12 jobs. The release and its tarball are created by that workflow's last job — which only
+  runs if the other twelve pass.
+- **On your machine**: `mise run verify -- --full` runs the same thing.
+
+It is also **portable by construction**: the logic is nushell and runs only programs mise installs —
+no curl, no shell scripts, no symlinks — and `mise run check` fails if one creeps in.
 
 ## Every day
 
