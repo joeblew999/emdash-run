@@ -1,4 +1,15 @@
 # $schema = "https://pitchfork.jdx.dev/schema.json"
+#
+# -----------------------------------------------------------------------------
+# STAY IN SYNC WITH mise.toml.
+#
+# Every `run` below is `mise run <task>`, and mise.toml is the source of truth for what tasks
+# exist — this file only says WHEN a daemon runs and how to tell it is ready. Adding a daemon here
+# means adding its task there, and removing one means removing the other.
+#
+# `mise run repo:check` fails if a task named in this file does not exist, so the two cannot drift
+# apart silently.
+# -----------------------------------------------------------------------------
 
 # Host site — an official EmDash template copied into .src/site (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md).
 # Plugin discovery uses the hosted registry (registry.emdashcms.com).

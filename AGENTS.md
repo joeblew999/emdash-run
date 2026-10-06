@@ -5,6 +5,17 @@ block at the top, and use `mise tasks ls` for the full list. Never keep a second
 the task list anywhere — duplicated lists drift from the tasks they describe. README.md
 is orientation only.
 
+**Files that must agree** — `mise.toml` is the source of truth for all of them:
+
+- `pitchfork.toml` — every `run` in it is `mise run <task>`; the task must exist in `mise.toml`.
+  It says *when* the daemons run, `mise.toml` says *what* they are. `repo:check` fails if a task
+  named there is missing, so the two cannot drift apart silently.
+- `.mcp.json` — its `${EMDASH_MCP_TOKEN}` is the file `mcp:token-admin` writes and `[env]` loads.
+- this file — if a rule changes in `mise.toml`, change it here too.
+
+Never keep a second copy of the task list anywhere; duplicated lists drift from the tasks they
+describe.
+
 ## Rules
 
 - **Prefer mise tasks over raw commands.** If a task exists for what you are doing, use it

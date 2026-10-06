@@ -2,6 +2,20 @@
 #
 # emdash-run — local EmDash harness. See docs/plans/done/0007-emdash-1.1-templates-src-rework.md.
 #
+# -----------------------------------------------------------------------------
+# FILES THAT MUST AGREE — this one is the source of truth for all of them.
+#
+#   pitchfork.toml   every `run` in it is `mise run <task>`, and the task must exist HERE. This
+#                    file says what the tasks are; pitchfork says WHEN the daemons run. Adding a
+#                    daemon there means adding its task here — `repo:check` fails if a task named
+#                    in pitchfork.toml does not exist.
+#   .mcp.json        its `${EMDASH_MCP_TOKEN}` is written by `mcp:token-admin` into
+#                    run/token-admin.env, which [env] loads. Rename one, rename the other.
+#   AGENTS.md        how to work in this repo. If a rule here changes, it changes there.
+#
+# Never keep a second copy of the task list in any of them — duplicated lists drift.
+# -----------------------------------------------------------------------------
+#
 # Model: the host site is an official EmDash template (starter-cloudflare) copied
 # into .src/site. It consumes the *published* `emdash` npm package, and the two official
 # CLIs are the way to work with it: `emdash` (site) and `emdash-plugin` (plugins).
@@ -915,10 +929,28 @@ let fmt = $env.LAST_EXIT_CODE
 print "→ skills:check (the committed EmDash skills match the site's)"
 ^mise run skills:check
 let skills = $env.LAST_EXIT_CODE
+print "→ pitchfork.toml names tasks that exist"
+# Every daemon's `run` is `mise run <task>`, and mise.toml is the source of truth for what tasks
+# are — so a name that is not a task here is a daemon that cannot start. That is exactly how
+# plugins-site sat broken: pitchfork.toml ran a task nobody had written.
+let refs = (
+  (open --raw $"($env.ROOT)/pitchfork.toml")
+  | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
+  | get task
+  | uniq
+)
+mut missing = []
+for ref in $refs {
+  if (^mise tasks info $ref | complete).exit_code != 0 { $missing = ($missing | append $ref) }
+}
+if ($missing | is-not-empty) {
+  print $"  ✗ pitchfork.toml runs tasks that do not exist: ($missing | str join ', ')"
+}
+let pitchfork = (if ($missing | is-empty) { 0 } else { 1 })
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
-# one of them is collected and the task fails if any did. Running all three also shows you every
+# one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $pitchfork] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
@@ -1773,6 +1805,29 @@ description = "Build the registry's public projection — without it every read 
 # Reads gate on public_projection_state.active_generation, and the generation is built by the
 # LABEL ingest DO — locally there is no label stream, so a labels replay is what builds it.
 run = "mise run registry:_admin -- /_admin/labels/replay"
+
+# The registry's web UI (plugins.emdashcms.com), served locally on :4330. Optional, like the
+# registry itself — but pitchfork.toml declares the daemon, so these tasks are what it runs. They
+# were missing, which meant that daemon could never start and `repo:urls` told you to run a task
+# that did not exist.
+[tasks."plugins-site:start"]
+description = "Serve the registry's web UI on :4330 — called by pitchfork"
+depends = ["registry:install"]
+dir = "{{config_root}}/.src/emdash/apps/plugins-site"
+# `pnpm dev` runs the app's own `predev` first, which builds its workspace dependencies — without
+# that the UI would serve against unbuilt packages.
+run = "pnpm dev -- --port $env.PLUGINS_SITE_PORT"
+
+[tasks."plugins-site:up"]
+description = "Start the registry web UI daemon via pitchfork"
+run = """
+^pitchfork start plugins-site
+print $"→ plugins UI ($env.PLUGINS_SITE_URL)/"
+"""
+
+[tasks."plugins-site:logs"]
+description = "Follow the registry web UI's logs"
+run = "pitchfork logs plugins-site --follow"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
