@@ -31,6 +31,7 @@ machine.
 | `mise run repo:nu` | **nushell's own checker** over every task body |
 | `mise tasks validate` | mise's own checks on the task definitions (composed into `repo:check`) |
 | `mise fmt --check` | `mise.toml` is formatted by mise's own formatter (composed into `repo:check`) |
+| `repo:docs` | `docs/tasks.md` is exactly what the tasks are — generated, never hand-edited |
 | `mise run repo:sync` | a daemon in `pitchfork.toml` naming a task that does not exist |
 | `mise run doctor` | the live state: site database, plugin consistency, `repo:verify` |
 | `mise run site:check` | the site type-checks, including that `astro.config.mjs` loads |
@@ -100,6 +101,22 @@ mise daemons ls        # should list <label>-<hash>/<daemon> … available
 **And one thing mise does not check:** `mise tasks validate` passes with a daemon whose `run` names
 a task that does not exist (verified by planting one). `repo:sync` is the guard for that; it reads
 `[daemons]` out of `mise.toml` and checks each task resolves.
+
+### Generated artefacts, and hooks
+
+Two things mise generates, both composed into the checks so they cannot drift:
+
+- **`mise generate task-docs`** → `docs/tasks.md`, the task reference a newcomer reads. There is no
+  hand-written task list anywhere; `repo:docs` fails unless regenerating produces exactly what is
+  committed, and `repo:docs:write` is the fix.
+- **`mise generate git-pre-commit`** → a hook that exports the staged files as `STAGED` and runs
+  `mise run pre-commit`. It is committed in `.githooks/` (not `.git/hooks/`, which nobody else
+  has) and `repo:hooks` points git at it with `core.hooksPath`.
+
+**Inside a task, a `mise` command that reads the config needs `mise --cd $env.ROOT`.** Tasks run in
+`.src/site`, so `mise fmt` said "No config file found in current directory" and
+`mise generate task-docs --output docs/tasks.md` wrote to `.src/site/docs/`. Both are fixed that
+way, and it is the first thing to try when a mise command behaves oddly inside a task.
 
 ## mise facts that are not obvious
 

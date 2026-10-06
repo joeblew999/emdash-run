@@ -28,7 +28,8 @@ Full list with the reasoning behind each: **`mise-nushell.md`** (in this folder)
   variables, and does not resolve externals, so `^cmd` and a bare `pnpm` raise no false alarm.
   It has already caught a `&&` (not a nushell operator) and a command wrapped across two lines —
   both tasks had never been run and could not have worked.
-- `mise run repo:sync` — every `mise run <task>` in `pitchfork.toml` names a task that exists.
+- `mise run repo:docs` — `docs/tasks.md` is up to date (it is generated from the tasks).
+- `mise run repo:hooks` — point git at the committed hooks in `.githooks/` (once per clone).
 - `mise run doctor` — the live state: the site's database, plugin consistency, `repo:verify`.
 - `mise run site:check` — the site type-checks, including that `astro.config.mjs` loads.
 

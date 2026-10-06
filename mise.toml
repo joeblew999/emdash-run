@@ -1024,6 +1024,39 @@ if ($problems | is-not-empty) {
 print $"  ✓ ($checked) task bodies parse and type-check"
 """
 
+[tasks."pre-commit"]
+description = "What the git pre-commit hook runs. mise passes the staged files as STAGED"
+run = "mise run check"
+
+[tasks."repo:hooks"]
+description = "Point git at the committed hooks in .githooks — run once per clone"
+run = """
+# Committed hooks, not .git/hooks: a hook that only exists on one machine is a hook nobody else
+# has. `mise generate git-pre-commit` produces the file; this points git at it.
+^git -C $env.ROOT config core.hooksPath .githooks
+print "  ✓ core.hooksPath = .githooks — the checks now run on every commit"
+"""
+
+[tasks."repo:docs"]
+description = "Fail if docs/tasks.md has drifted from the tasks — it is generated, never hand-edited"
+run = """
+# Generated from this file by mise (`mise generate task-docs`), so it cannot become a second copy
+# that drifts: this fails unless regenerating produces exactly what is committed. It is the task
+# reference a newcomer reads, and it is the reason no hand-written task list exists anywhere.
+let generated = (^mise --cd $env.ROOT generate task-docs | complete).stdout
+let committed = (open --raw $"($env.ROOT)/docs/tasks.md")
+if ($generated | str trim) != ($committed | str trim) {
+  print "✗ docs/tasks.md is out of date — run: mise run repo:docs:write"
+  exit 1
+}
+print "  ✓ docs/tasks.md matches the tasks"
+"""
+
+[tasks."repo:docs:write"]
+description = "Regenerate docs/tasks.md from the tasks — the fix for a failing repo:docs"
+# `--cd` because tasks run in .src/site, where `--output docs/tasks.md` would write to the wrong tree.
+run = "^mise --cd $env.ROOT generate task-docs --output docs/tasks.md"
+
 [tasks."repo:sync"]
 description = "Fail if a daemon in [daemons] names a task that does not exist — mise does not check this"
 run = """
@@ -1081,10 +1114,13 @@ let tasks_ok = $env.LAST_EXIT_CODE
 print "→ mise fmt --check (mise.toml is formatted by mise's own formatter)"
 ^mise --cd $env.ROOT fmt --check
 let misefmt = $env.LAST_EXIT_CODE
+print "→ repo:docs (docs/tasks.md is what the tasks actually are)"
+^mise run repo:docs
+let docs_ok = $env.LAST_EXIT_CODE
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
