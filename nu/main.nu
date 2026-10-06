@@ -54,7 +54,7 @@ def "main check" [--fix, --site] {
   def passes [block: closure]: nothing -> list<string> { if (code $block) == 0 { [] } else { ["failed — see the output above"] } }
   let results = [
     {check: "nushell modules parse and type-check", problems: (checks nu-problems $nu_dir)}
-    {check: "tasks, commands and daemons agree", problems: (checks task-problems ($env.ROOT | path join "mise.toml") ($nu_dir | path join "main.nu"))}
+    {check: "tasks, commands and daemons agree", problems: (checks task-problems (harness-file) ($nu_dir | path join "main.nu"))}
     {check: "the checkers catch planted faults", problems: (checks selftest-problems)}
     {check: "unit tests", problems: (passes { ^nu --no-config-file ($nu_dir | path join "tests.nu") })}
     {check: "mise accepts the task definitions", problems: (passes { ^mise tasks validate | ignore })}
@@ -102,6 +102,7 @@ def "main doctor" [--url: string] {
 # without deploying; --build-only stops after the build; --no-check skips the gate.
 def "main deploy" [--dry, --build-only, --no-check] {
   let mode = (if $build_only { "build" } else if $dry { "dry" } else { "deploy" })
+  if $mode == "deploy" and (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
   if $mode == "deploy" and (not $no_check) {
     step "check — nothing ships that fails it"
     main check
@@ -194,6 +195,9 @@ def "main open" [] { site open-admin }
 # Scaffold a plugin with the official CLI, fit it to this site, load it, and have the RUNNING site
 # call it. When this prints ✓ the plugin is live.
 def "main plugin new" [name: string] {
+  if not (site loads-local-plugins) {
+    fail "config/site.astro.config.mjs does not load local plugins" 'add:  import { sandboxed as localSandboxed } from "./local-plugins.mjs";  and  sandboxed: [...localSandboxed], sandboxRunner: sandbox()  — see docs/plugin.md'
+  }
   step "scaffold"
   plugin scaffold $name
   plugin fit $name
@@ -275,6 +279,23 @@ def "main registry down" [] {
   daemon-stop "registry"
   site restart
   ok "registry stopped — the site uses the hosted registry"
+}
+
+# Take a newer harness from emdash-run: nu/ and the harness mise config are replaced wholesale —
+# they hold nothing of the project's — and check says whether the project still holds together.
+def "main upgrade" [ref?: string] {
+  let scratch = ($env.RUN_DIR | path join "upgrade")
+  rm -rf $scratch
+  mkdir $env.RUN_DIR
+  let target = ($ref | default "main")
+  step $"fetch ($env.HARNESS_REPO) @ ($target)"
+  ^git clone --quiet --depth 1 --branch $target $env.HARNESS_REPO $scratch
+  let incoming = (open ($scratch | path join ".config" "mise" "conf.d" "harness.toml") | get env.HARNESS_VERSION)
+  rm -rf ($env.ROOT | path join "nu")
+  cp -r ($scratch | path join "nu") ($env.ROOT | path join "nu")
+  cp ($scratch | path join ".config" "mise" "conf.d" "harness.toml") (harness-file)
+  rm -rf $scratch
+  ok $"harness ($env.HARNESS_VERSION) → ($incoming) — review with git diff, then: mise run dev"
 }
 
 # Clone the EmDash source at the version the site runs, into .src/emdash, for reading.

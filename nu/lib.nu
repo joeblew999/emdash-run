@@ -18,6 +18,9 @@ export def code [block: closure]: nothing -> int {
   try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 }
 }
 
+# The harness-owned mise config: tools, tasks, daemons.
+export def harness-file []: nothing -> string { $env.ROOT | path join ".config" "mise" "conf.d" "harness.toml" }
+
 # A value from the environment, or "" when it is unset. Settings are optional by design.
 export def setting [name: string]: nothing -> string {
   $env | get -o $name | default "" | into string

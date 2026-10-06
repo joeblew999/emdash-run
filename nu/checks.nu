@@ -55,7 +55,7 @@ export def task-problems [toml: string, main: string]: nothing -> list<string> {
 export def selftest-problems []: nothing -> list<string> {
   let scratch = ($env.RUN_DIR | path join "selftest")
   let nu_dir = ($env.ROOT | path join "nu")
-  let toml = ($env.ROOT | path join "mise.toml")
+  let toml = (harness-file)
   let cases = [
     {what: "a POSIX operator nushell does not have", line: "def planted [] { print 'a' && print 'b' }"}
     {what: "a variable that was never defined", line: "def planted [] { print $never_defined }"}
@@ -79,6 +79,8 @@ export def selftest-problems []: nothing -> list<string> {
 
 # docs/tasks.md is generated from the tasks; fail if what is committed is not what would be generated.
 export def docs-current []: nothing -> bool {
+  # Only a repo that keeps the generated list is held to it.
+  if not ($env.ROOT | path join "docs" "tasks.md" | path exists) { return true }
   let generated = (^mise generate task-docs | complete).stdout
   ($generated | str trim) == (open --raw ($env.ROOT | path join "docs" "tasks.md") | str trim)
 }

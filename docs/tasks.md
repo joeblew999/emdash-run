@@ -153,3 +153,9 @@ Save the whole site — schema and content — as a .emdash package. --url snaps
 - **Usage:** `source`
 
 Clone the EmDash source at the version the site runs into .src/emdash, for reading
+
+## `upgrade`
+
+- **Usage:** `upgrade`
+
+Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- &lt;tag> picks a version

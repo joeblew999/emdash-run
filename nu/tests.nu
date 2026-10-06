@@ -3,7 +3,7 @@ use std/assert
 use site.nu
 use plugin.nu
 
-let fixtures = ($env.FILE_PWD | path join ".." "tests" "seed")
+let fixtures = ($env.FILE_PWD | path join "fixtures")
 let template = (open ($fixtures | path join "template.json"))
 let project = (open ($fixtures | path join "project.json"))
 let order = ["projects" "assemblies" "parts"]

@@ -1,0 +1,186 @@
+# The harness: tools, tasks and daemons. Owned by emdash-run and replaced by `mise run upgrade` —
+# do not edit it in a project. Project settings live in mise.toml; the logic lives in nu/.
+
+[settings]
+experimental = true # `mise daemons`
+
+[tools]
+node = "26.10.0"
+pnpm = "12.9.1"
+pitchfork = "2.29.0"   # runs the daemons, through `mise daemons`
+nushell = "0.116.1"    # the language of nu/ — the same on every platform
+fnox = "1.36.0"        # secrets: Cloudflare credentials for deploy and the R2 check
+"npm:skills" = "1.7.0"
+# Lint and format for plugin code. These three are version-coupled: move them together.
+"npm:oxlint" = "1.86.0"
+"npm:oxfmt" = "0.71.0"
+"npm:oxlint-tsgolint" = "7.0.2003"
+"npm:@emdash-cms/plugin-cli" = "0.13.2" # `emdash-plugin`
+
+[task_config]
+shell = "nu --no-config-file -c"
+
+[env]
+HARNESS_VERSION = "0.1.0"
+HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
+ROOT = "{{config_root}}"
+SRC_DIR = "{{config_root}}/.src"                           # gitignored checkouts
+TEMPLATES_DIR = "{{config_root}}/.src/templates"
+SITE_DIR = "{{config_root}}/.src/site"                     # a pristine copy of $TEMPLATE — never edit it
+EMDASH_DIR = "{{config_root}}/.src/emdash"                 # the EmDash source, on demand
+PLUGINS_DIR = "{{config_root}}/plugins"
+RUN_DIR = "{{config_root}}/run"                            # gitignored output: token, snapshots
+TEMPLATES_REPO = "https://github.com/emdash-cms/templates"
+EMDASH_REPO = "https://github.com/emdash-cms/emdash"
+SITE_URL = "http://localhost:4321"
+SITE_DAEMON = "site"
+REGISTRY_URL = "http://localhost:8788"
+REGISTRY_PORT = "8788"
+# The site's own emdash CLI on PATH, so the CLI and the site cannot drift apart.
+_.path = ["{{config_root}}/.src/site/node_modules/.bin"]
+# The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.
+_.file = "{{config_root}}/run/token-admin.env"
+# Unset on purpose. Both are read by the CLIs, and a stale value inherited from an old shell
+# silently redirects them: a dead token, or a registry nothing is running.
+EMDASH_TOKEN = false
+EMDASH_REGISTRY_URL = false
+
+# ── flows ───────────────────────────────────────────────────────────────────────────────────
+
+[tasks.setup]
+description = "First time here: clone the template, install, apply config, then bring the site up"
+run = "nu --no-config-file {{config_root}}/nu/main.nu setup"
+
+[tasks.dev]
+description = "Bring the site up on the current config, seed and plugins — run it after any change"
+run = "nu --no-config-file {{config_root}}/nu/main.nu dev"
+
+[tasks.check]
+description = "Everything that must hold before a commit. --fix repairs formatting and generated docs; --site also type-checks the site"
+run = "nu --no-config-file {{config_root}}/nu/main.nu check"
+
+[tasks.doctor]
+description = "Is the running site what the repo says it is? --url <deployment> checks a deployed one"
+run = "nu --no-config-file {{config_root}}/nu/main.nu doctor"
+
+[tasks.deploy]
+description = "Check, build, deploy to Cloudflare, then verify what is live. --dry builds without deploying"
+run = "nu --no-config-file {{config_root}}/nu/main.nu deploy"
+
+[tasks.rollback]
+description = "Put the previous deployment back, then verify what is live"
+run = "nu --no-config-file {{config_root}}/nu/main.nu rollback"
+
+[tasks.snapshot]
+description = "Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment"
+run = "nu --no-config-file {{config_root}}/nu/main.nu snapshot"
+
+[tasks.restore]
+description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first"
+run = "nu --no-config-file {{config_root}}/nu/main.nu restore"
+
+[tasks.reset]
+description = "Wipe the local database and bring the site back up on the seed. --site / --all wipe more"
+run = "nu --no-config-file {{config_root}}/nu/main.nu reset"
+
+[tasks.logs]
+description = "Follow the site's logs. --deployed follows the live Worker"
+run = "nu --no-config-file {{config_root}}/nu/main.nu logs"
+
+[tasks.open]
+description = "Open the admin in a browser, signed in"
+run = "nu --no-config-file {{config_root}}/nu/main.nu open"
+
+[tasks."plugin:new"]
+description = "Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin new"
+
+[tasks."plugin:dev"]
+description = "Rebuild a plugin on change"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin dev"
+
+[tasks."plugin:probe"]
+description = "Ask the running site to call a plugin's route — proof it is loaded, not just built"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin probe"
+
+[tasks."plugin:remove"]
+description = "Remove a plugin and bring the site back up without it"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin remove"
+
+[tasks."plugin:roundtrip"]
+description = "Prove the plugin toolchain end to end with a throwaway plugin: scaffold, load, call, remove"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin roundtrip"
+
+[tasks."plugin:release"]
+description = "Validate, typecheck, test, build and bundle plugins — everything short of publishing"
+run = "nu --no-config-file {{config_root}}/nu/main.nu plugin release"
+
+[tasks."content:set"]
+description = "Set fields on a live entry — e.g: mise run content:set -- parts top-plate '{\"material\":\"Steel\"}'"
+run = "nu --no-config-file {{config_root}}/nu/main.nu content set"
+
+[tasks."schema:diff"]
+description = "Compare the repo's content model with the running site's, or a deployment's with --url"
+run = "nu --no-config-file {{config_root}}/nu/main.nu schema diff"
+
+[tasks."seed:export"]
+description = "Export the running site's model and content as a seed, to review against the project's"
+run = "nu --no-config-file {{config_root}}/nu/main.nu seed export"
+
+[tasks."registry:up"]
+description = "Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)"
+run = "nu --no-config-file {{config_root}}/nu/main.nu registry up"
+
+[tasks."registry:down"]
+description = "Stop the local registry — the site goes back to the hosted one"
+run = "nu --no-config-file {{config_root}}/nu/main.nu registry down"
+
+[tasks.upgrade]
+description = "Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- <tag> picks a version"
+run = "nu --no-config-file {{config_root}}/nu/main.nu upgrade"
+
+[tasks.source]
+description = "Clone the EmDash source at the version the site runs into .src/emdash, for reading"
+run = "nu --no-config-file {{config_root}}/nu/main.nu source"
+
+# ── the official CLIs, any arguments — `-- --help` documents them ────────────────────────────
+
+[tasks.emdash]
+description = "The official emdash CLI — e.g: mise run emdash -- schema list"
+dir = "{{config_root}}/.src/site"
+run = "emdash"
+
+[tasks.emdash-plugin]
+description = "The official plugin CLI — e.g: mise run emdash-plugin -- login"
+run = "emdash-plugin"
+
+[tasks.skills]
+description = "The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allows no symlinks"
+run = "skills"
+
+# ── not for typing: what the git hook and the daemons run ───────────────────────────────────
+
+[tasks.pre-commit]
+hide = true
+run = "nu --no-config-file {{config_root}}/nu/main.nu check"
+
+[tasks."daemon:site"]
+hide = true
+run = "nu --no-config-file {{config_root}}/nu/main.nu daemon site"
+
+[tasks."daemon:registry"]
+hide = true
+run = "nu --no-config-file {{config_root}}/nu/main.nu daemon registry"
+
+# Values here reach pitchfork verbatim — mise does not expand templates in [daemons].
+[daemons.site]
+run = "mise run daemon:site"
+dir = "."
+auto = ["start", "stop"]
+ready_http = "http://localhost:4321/"
+
+[daemons.registry]
+run = "mise run daemon:registry"
+dir = "."
+auto = ["stop"]
+ready_http = "http://localhost:8788/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"

@@ -118,6 +118,11 @@ export def merge-seeds [base: record, project: record, order: list<string>, labe
   | insert content $content
 }
 
+# Does the project's site config load local plugins? plugin:new needs it to.
+export def loads-local-plugins []: nothing -> bool {
+  open --raw ($env.ROOT | path join "config" "site.astro.config.mjs") | str contains "local-plugins.mjs"
+}
+
 # The project's own seed, or {} when the project has none and runs on the template's alone.
 export def project-seed []: nothing -> record {
   let file = (setting SEED_FILE)
@@ -140,8 +145,17 @@ export def build-seed [] {
 # Our config over the template's, then the seed. `registration` is the generated plugin module.
 export def configure [registration: string] {
   if not (site-file "package.json" | path exists) { fail ".src/site is missing" "run: mise run setup" }
-  cp ($env.ROOT | path join "config" "site.astro.config.mjs") (site-file "astro.config.mjs")
-  cp ($env.ROOT | path join "config" "site.wrangler.jsonc") (site-file "wrangler.jsonc")
+  # config/ is the project's. A project that has none yet starts from the template's own files.
+  for pair in [["site.astro.config.mjs" "astro.config.mjs"] ["site.wrangler.jsonc" "wrangler.jsonc"]] {
+    let ours = ($env.ROOT | path join "config" ($pair | first))
+    let theirs = ($env.TEMPLATES_DIR | path join $env.TEMPLATE ($pair | last))
+    if not ($ours | path exists) {
+      mkdir ($ours | path dirname)
+      cp $theirs $ours
+      ok $"config/($pair | first) ← the template's — it is yours to edit now"
+    }
+    cp $ours (site-file ($pair | last))
+  }
   $registration | save --force (site-file "local-plugins.mjs")
   build-seed
 }
@@ -193,7 +207,7 @@ export def urls [] {
   print $"  site    ($env.SITE_URL)"
   print $"  admin   (admin-url)"
   print $"  mcp     ($env.SITE_URL)/_emdash/api/mcp — bearer token in run/token-admin.txt"
-  print $"  live    ($env.DEPLOY_URL)"
+  if (setting DEPLOY_URL | is-not-empty) { print $"  live    ($env.DEPLOY_URL)" }
 }
 
 export def open-admin [] {
