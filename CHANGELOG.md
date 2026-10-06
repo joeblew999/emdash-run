@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-06
+
+- **Plugins work on a new project with no manual edits.** The harness switches on plugin loading
+  in your site config when it creates it from a template. Run on `starter-cloudflare` and
+  `blog-cloudflare`: `setup`, then `plugin:roundtrip`, both exit 0.
+- Proven in a clean Linux container, starting from the published one-line installer: install,
+  `status`, `check` and `doctor` all pass.
+
 ## 0.2.0 — 2026-10-06
 
 - **One command to start:** `curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh`

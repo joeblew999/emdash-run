@@ -101,9 +101,9 @@ mise run plugin:release               validate, typecheck, test, build, bundle
 mise run plugin:roundtrip             prove the whole toolchain with a throwaway plugin
 ```
 
-Your site config has to load local plugins. `plugin:new` tells you if it does not; the three edits
-are in [`docs/plugin.md`](docs/plugin.md), along with what the official scaffold gets wrong and how
-the harness fixes it.
+It works on a new project with no setup: the harness switches on plugin loading in your site
+config when it creates it. [`docs/plugin.md`](docs/plugin.md) explains what happens at each step,
+what the official scaffold gets wrong, and how the harness fixes it.
 
 ## More
 

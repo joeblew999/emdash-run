@@ -50,7 +50,9 @@ leaves to you, and they are where the time used to go.
 
 ## Enabling plugins in your site config
 
-Three edits, once, in files you own:
+**You normally do nothing.** When the harness creates `config/` from a template it makes these
+edits for you, and `plugin:new` makes them if they are missing and your config still looks like a
+template's. They are shown here for a config you have reshaped by hand:
 
 ```js
 // config/site.astro.config.mjs
@@ -69,7 +71,7 @@ emdash({
 "worker_loaders": [{ "binding": "LOADER" }],
 ```
 
-Then `mise run dev`. `plugin:new` refuses to start, and says so, if the import is missing.
+Then `mise run dev`.
 
 ## How the site finds a local plugin
 

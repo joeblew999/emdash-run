@@ -217,8 +217,8 @@ def "main open" [] { site open-admin }
 # Scaffold a plugin with the official CLI, fit it to this site, load it, and have the RUNNING site
 # call it. When this prints ✓ the plugin is live.
 def "main plugin new" [name: string] {
-  if not (site loads-local-plugins) {
-    fail "config/site.astro.config.mjs does not load local plugins" 'add:  import { sandboxed as localSandboxed } from "./local-plugins.mjs";  and  sandboxed: [...localSandboxed], sandboxRunner: sandbox()  — see docs/plugin.md'
+  if not (site enable-local-plugins) {
+    fail "config/site.astro.config.mjs does not load local plugins, and is not shaped like a template's" "three edits, shown in docs/plugin.md § Enabling plugins"
   }
   step "scaffold"
   plugin scaffold $name

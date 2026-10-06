@@ -21,7 +21,7 @@ fnox = "1.36.0"        # secrets: Cloudflare credentials for deploy and the R2 c
 shell = "nu --no-config-file -c"
 
 [env]
-HARNESS_VERSION = "0.2.0"
+HARNESS_VERSION = "0.2.1"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 # Defaults for every optional project setting. mise.toml wins over this file, so a project's values
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
