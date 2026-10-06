@@ -32,13 +32,34 @@ def "main setup" [] {
   site install
   if ($env.ROOT | path join ".githooks" | path exists) { ^git -C $env.ROOT config core.hooksPath .githooks }
   refresh
+  step "check the running site"
+  if not (checks verify) { fail "the site came up but does not match the repo" "see: mise run doctor" }
+  print ""
+  print $"✓ EmDash ($env.EMDASH_VERSION) is running — the ($env.TEMPLATE) template, on your settings"
   site urls
+  site next-steps
 }
 
 # Bring the site up on the current config, seed and plugins. Run it after any change.
 def "main dev" [] {
   refresh
   site urls
+}
+
+# What is running, and on what — read-only, safe to run any time.
+def "main status" [] {
+  let site_up = (daemon-running $env.SITE_DAEMON)
+  let installed = ($env.SITE_DIR | path join "node_modules" "emdash" "package.json")
+  let plugins = (plugin dirs | each {|p| $p | path basename })
+  let live = (setting DEPLOY_URL)
+  print $"  harness   ($env.HARNESS_VERSION)"
+  print $"  template  ($env.TEMPLATE)"
+  print $"  emdash    (if ($installed | path exists) { open $installed | get version } else { 'not installed — run: mise run setup' })"
+  print $"  site      (if $site_up { $'running at ($env.SITE_URL)' } else { 'stopped — run: mise run dev' })"
+  print $"  seed      (if (setting SEED_FILE | is-empty) { 'the template only' } else { setting SEED_FILE | path relative-to $env.ROOT })"
+  print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
+  print $"  registry  (if (answers $'($env.REGISTRY_URL)/health') { $'local, at ($env.REGISTRY_URL)' } else { 'hosted' })"
+  print $"  deployed  (if ($live | is-empty) { 'no DEPLOY_URL set' } else if (answers $live) { $'($live) answers' } else { $'($live) does not answer' })"
 }
 
 # Everything that must hold before a commit. --fix repairs what can be repaired; --site also

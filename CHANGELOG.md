@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-10-06
+
+- **One command to start:** `curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh`
+  fetches the harness, creates your settings, and runs `setup`.
+- **`setup` finishes by checking the site** and tells you it is running, on what, and what to do next.
+- **`mise run status`** — what is running, and on what, at a glance.
+- **Linux: `doctor`, `content:set`, `schema:diff` and every CLI call now work.** The dev server
+  listened on IPv6 only, and on Linux `localhost` resolves to IPv4 first, so the CLI was refused.
+  It binds 127.0.0.1 now.
+
 ## 0.1.1 — 2026-10-06
 
 - The no-symlinks check no longer calls the `find` program, which on Windows is a text search. It

@@ -8,26 +8,60 @@ restore. You own about 40 lines of settings; the rest is the harness, and it upd
 
 ## Get started — in your own repo
 
-You need [mise](https://mise.jdx.dev). It installs everything else.
+You need [mise](https://mise.jdx.dev) and git. In your repo (or an empty folder):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh
+```
+
+That is the whole install. It fetches the harness, gives you a `mise.toml` of settings, installs the
+toolchain, builds a site from the official starter template, starts it, checks it, and prints:
+
+```
+✓ EmDash 1.1.0 is running — the starter-cloudflare template, on your settings
+  site    http://localhost:4321
+  admin   http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+```
+
+From then on:
+
+```
+mise run open        the admin, signed in
+mise run status      what is running, and on what
+mise run dev         after you change anything — your settings, config/, a plugin
+```
+
+<details><summary>What the installer does, if you would rather run it by hand</summary>
 
 ```sh
 curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
-cp nu/project.example.toml mise.toml      # your settings — pick a template, the rest can wait
+cp nu/project.example.toml mise.toml
 mise trust --all
-mise run setup                            # a few minutes the first time
+mise run setup
 ```
+</details>
 
-When it finishes it prints the site and admin URLs. `mise run open` opens the admin, signed in.
+**Why you can trust it**
 
-- **macOS** is proven. **Linux** works for everything except `doctor` (being fixed); minimal
-  Debian needs `apt install libatomic1` first. **Windows** has no known blocker but has not been run.
-- **Deploying** needs Cloudflare credentials in [fnox](https://fnox.jdx.dev)
-  (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
-  development needs neither.
+- It is the real thing: the published `emdash` package, an official template, the official CLIs.
+  The harness only does what they leave to you.
+- `mise run check` (4 seconds) proves the harness itself holds together — including planting known
+  faults to make sure its own checks can fail.
+- `mise run doctor` proves the *running* site matches your repo; `doctor -- --url` does the same
+  for a deployment. `deploy` will not ship if `check` fails, and verifies what is live.
+- Every release is run end to end first: on macOS, in a clean Linux container, on a second project
+  with a different template, and against a live Cloudflare deployment.
+
+**Platforms.** macOS and Linux are proven (minimal Debian needs `apt install libatomic1`).
+Windows has no known blocker but has not been run — tell us what you find.
+**Deploying** needs Cloudflare credentials in [fnox](https://fnox.jdx.dev)
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
+development needs neither.
 
 ## Every day
 
 ```
+mise run status                   what is running, and on what
 mise run dev                      after any change: config, seed, plugins, restart — prints the URLs
 mise run check                    before a commit (the git hook runs it)        --fix repairs
 mise run doctor                   is the running site what the repo says?       --url <deployment>
@@ -42,7 +76,7 @@ mise run emdash -- <anything>     the official CLI: schema, content, media, taxo
 mise run upgrade                  take a newer harness
 ```
 
-Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 27;
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 28;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
 
 ## What is yours, and what is the harness's

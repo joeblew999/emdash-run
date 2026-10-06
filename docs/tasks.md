@@ -154,6 +154,12 @@ Save the whole site — schema and content — as a .emdash package. --url snaps
 
 Clone the EmDash source at the version the site runs into .src/emdash, for reading
 
+## `status`
+
+- **Usage:** `status`
+
+What is running, and on what: harness, template, EmDash, site, plugins, deployment
+
 ## `upgrade`
 
 - **Usage:** `upgrade`

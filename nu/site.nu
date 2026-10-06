@@ -221,6 +221,17 @@ export def mint-token [] {
 
 export def admin-url []: nothing -> string { $"($env.SITE_URL)/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin" }
 
+# What a dev can do next — printed when the site comes up.
+export def next-steps [] {
+  print ""
+  print "  mise run open                     the admin, signed in"
+  print "  mise run dev                      after you change config/, the seed, or a plugin"
+  print "  mise run plugin:new -- <name>     scaffold a plugin and load it"
+  print "  mise run emdash -- schema list    the official CLI, any command"
+  print "  mise run status                   what is running, at a glance"
+  print "  mise tasks ls                     everything else"
+}
+
 export def urls [] {
   print $"  site    ($env.SITE_URL)"
   print $"  admin   (admin-url)"
@@ -242,7 +253,9 @@ export def serve [] {
   $env.ASTRO_DEV_BACKGROUND = "1"
   # Plugin discovery uses the hosted registry unless the optional local one is really answering.
   if (answers $"($env.REGISTRY_URL)/health") { $env.EMDASH_REGISTRY_URL = $env.REGISTRY_URL }
-  ^pnpm --dir $env.SITE_DIR dev
+  # Bound to IPv4 on purpose. Astro's default listens on [::1] only, and on Linux `localhost`
+  # resolves to 127.0.0.1 first — so the emdash CLI was refused there while curl worked.
+  ^pnpm --dir $env.SITE_DIR dev --host 127.0.0.1
 }
 
 # Type-check the site: astro check loads the config, tsc checks the config's types. Both re-run
