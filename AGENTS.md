@@ -2,7 +2,9 @@
 
 **Read `docs/agents/` — that folder is the one copy, so it cannot drift.**
 
-- **`docs/agents/README.md`** — start here: the rules, the checks to run, the layout, the tools.
+- **`docs/agents/README.md`** — start here, with its first section, *EmDash first*: what EmDash
+  already ships (three CLIs, the agent skills in `.github/skills/`) and the rule that nothing is
+  built here before checking them. Then the rules, the checks to run, the layout, the tools.
 - **`docs/agents/nushell.md`** — working in `nu/`, where the logic lives: the shape, the shared
   helpers, the traps.
 
