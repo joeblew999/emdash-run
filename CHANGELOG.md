@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **An EmDash upgrade says what it did not do for you.** When `dev` moves the site to a new
+  `EMDASH_VERSION` it prints the compare link for the two releases, the lines EmDash's own updating
+  notes gained between them, and how to compare a file in `site/` with the current template (`mise run source -- templates`
+  refreshes it).
+- **`status` and `setup` say when the templates trail EmDash.** The templates repo has no tags; its
+  head names the release it was synced from, and the harness reads that.
+- **The vendored skills are the ones for the EmDash you run** — from EmDash's source at that tag,
+  not the template's older copy. `dev` fetches `.src/emdash` when it is not at that version.
+- `verify:template -- <template> --from <version>` now also scaffolds a plugin on the old version
+  and has the upgraded site call it.
+- `verify:template` runs its throwaway project on the checkout's own `SITE_PORT`, and no longer
+  deletes another checkout's throwaway project that is still running — both collided when several
+  checkouts verified at once.
+
 ## 0.6.1 — 2026-10-06
 
 The first published release of the 0.6 line; 0.6.0 was tagged and never published.

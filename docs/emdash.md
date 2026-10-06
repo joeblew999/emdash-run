@@ -277,10 +277,10 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | Preview environment | Not covered |
 | Roll back | `rollback` (the Worker only — see [A7](#assumptions)) |
 | Disaster-recovery backup | **Not covered.** `snapshot` is a site package |
-| Upgrade EmDash | **Not covered.** `upgrade` upgrades the harness |
+| Upgrade EmDash | Change `EMDASH_VERSION`, run `dev`: database copied, packages and plugins re-pinned in place, the updating notes that changed and the template comparison printed |
 | Registry (local aggregator) | `registry:up`, `registry:down` |
 | MCP | `dev` mints the token; `.mcp.json` reads it |
-| Skills | `dev` vendors the template's copy |
+| Skills | `dev` vendors them from `.src/emdash/skills` at the tag of `EMDASH_VERSION` |
 | Secrets, email, auth providers, i18n, object cache | Project config; no flow |
 
 ### Where the harness works around EmDash
@@ -300,7 +300,7 @@ numbers did not survive.
 | W7 | `enable-local-plugins` in `nu/site.nu` — string edits to the config | Templates ship without a sandbox runner | Only the `wrangler.jsonc` half: `create-emdash --sandboxed-plugins` (`pkg:create-emdash/src/utils.ts:126-162`) |
 | W8 | `emdash-json` in `nu/lib.nu` scans stdout for the line where JSON starts | It once saw progress lines before the payload | Not needed at 1.1.0: with `--json` or a pipe, everything but the result goes to stderr (`core:cli/output.ts:13-19`). Ran: stdout starts with `[` / `{`. Harmless |
 | W9 | ~~`url-flag` put `--url` last~~ | — | **Removed in 0.4.2.** Flows set `EMDASH_URL`, which the CLI reads (`core:cli/client-factory.ts:38-40`) |
-| W10 | `sync-skills` in `nu/checks.nu` copies the template's skills | Agents need them in git | `skills add emdash-cms/skills`, `skills update` (`docs:agent-skills.mdx:34,80`), or `.src/emdash/skills/` at the matching tag |
+| W10 | `sync-skills` in `nu/checks.nu` copies the skills from `.src/emdash/skills/` at the matching tag (the names are the ones the template ships) | Agents need them in git; `emdash-cms/skills` has no release tags, so `skills add` cannot pin a version | `skills add emdash-cms/skills`, `skills update` (`docs:agent-skills.mdx:34,80`), or `.src/emdash/skills/` at the matching tag |
 | W11 | `install` in `nu/site.nu` adds `@emdash-cms/sandbox-workerd` + `workerd` and allows its build on Node | Node templates do not ship the runner and set `workerd: false` (`tpl:starter/pnpm-workspace.yaml`) | This **is** the proper way (`docs:deployment/plugin-sandbox.mdx:82-88`) |
 | W12 | `schema-diff` in `nu/checks.nu` | — | EmDash has no diff command. Keep |
 
@@ -511,8 +511,8 @@ relation to the version they are moving to. Ask: tag the templates repo per rele
 - **Nothing here was proven by running a flow.** Only read-only commands were run. Every "predicted"
   above needs the flow run once — first of all A1 (`restore --wipe`).
 - What Cloudflare does when a free-plan account deploys a `worker_loaders` binding (A5).
-- Whether the `emdash-cms/templates` and `emdash-cms/skills` repos carry release tags. The local
-  checkout is shallow and shows none.
+- ~~Whether the `emdash-cms/templates` and `emdash-cms/skills` repos carry release tags.~~ Ran
+  `git ls-remote --tags --refs` on both, 2026-10-06: neither has any.
 - Whether `pnpm add file:` for a local plugin works on Windows and under the no-symlink rule (W5).
 - Whether `--url` must come last for `emdash site import` (A2).
 - Anything about Astro or Vite that `nu/` works around — `ASTRO_DEV_BACKGROUND`, clearing

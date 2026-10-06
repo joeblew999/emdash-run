@@ -126,9 +126,11 @@ export def docs-current []: nothing -> bool {
   ($generated | str trim) == (open --raw ($env.ROOT | path join "docs" "tasks.md") | str trim)
 }
 
-# Where the site ships its EmDash skills, or "" before setup.
-def shipped-skills []: nothing -> string {
-  [".claude" ".agents"] | each {|d| $env.SITE_DIR | path join $d "skills" } | where {|p| $p | path exists } | get -o 0 | default ""
+# The EmDash skills a site ships with, by name. Its own copies stay at the version the site was
+# created with, so only the names are taken from it.
+def shipped-skills []: nothing -> list<string> {
+  [".claude" ".agents"] | each {|d| $env.SITE_DIR | path join $d "skills" } | where {|p| $p | path exists }
+  | each {|p| ls $p | where type == dir | get name | each {|d| $d | path basename } } | flatten | uniq | sort
 }
 
 def tree-hashes [dir: string]: nothing -> record {
@@ -136,22 +138,27 @@ def tree-hashes [dir: string]: nothing -> record {
   | reduce --fold {} {|file, acc| $acc | upsert ($file | path relative-to $dir) (open --raw $file | hash sha256) }
 }
 
-# Vendor the site's EmDash skills: committed under .github/skills (skills are discovered when an
-# agent session STARTS, so a fresh clone needs them in git), copied to .claude/skills for Claude.
-export def sync-skills [] {
-  let shipped = (shipped-skills)
-  if ($shipped | is-empty) { return }
-  let names = (ls $shipped | where type == dir | get name | each {|p| $p | path basename })
+# Vendor the EmDash skills at the version the site runs, from EmDash's source at that tag (`from`):
+# committed under .github/skills (skills are discovered when an agent session STARTS, so a fresh
+# clone needs them in git), copied to .claude/skills for Claude.
+export def sync-skills [from: string] {
+  let names = (shipped-skills | where {|n| $from | path join "skills" $n | path exists })
+  if ($names | is-empty) { return }
   for target in [($env.ROOT | path join ".github" "skills") ($env.ROOT | path join ".claude" "skills" "emdash")] {
     rm -rf $target
     mkdir $target
-    for name in $names { cp -r ($shipped | path join $name) ($target | path join $name) }
+    for name in $names { cp -r ($from | path join "skills" $name) ($target | path join $name) }
   }
 }
 
+# Do the vendored skills match EmDash's at the version the site is pinned to? Answerable only where
+# the EmDash source is checked out at that version (`dev` does it); elsewhere there is nothing to
+# compare against, and it passes.
 export def skills-current []: nothing -> bool {
-  let shipped = (shipped-skills)
-  ($shipped | is-empty) or ((tree-hashes $shipped) == (tree-hashes ($env.ROOT | path join ".github" "skills")))
+  let pkg = ($env.EMDASH_DIR | path join "packages" "core" "package.json")
+  if not (($pkg | path exists) and (open $pkg | get version) == $env.EMDASH_VERSION) { return true }
+  shipped-skills | where {|n| $env.EMDASH_DIR | path join "skills" $n | path exists }
+  | all {|n| (tree-hashes ($env.EMDASH_DIR | path join "skills" $n)) == (tree-hashes ($env.ROOT | path join ".github" "skills" $n)) }
 }
 
 # git cannot make a symlink on Windows — it writes the target path into a file instead. None allowed.

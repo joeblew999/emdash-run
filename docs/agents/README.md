@@ -82,5 +82,7 @@ which of those lessons a check now enforces.
   `POST /_emdash/api/content/<collection>/<id>/plugin-extensions/<plugin-id>`.
 - **EmDash skills** are vendored at `.github/skills/` (`building-emdash-site`, `creating-plugins`,
   `emdash-cli`) so they exist on a fresh clone. Read them before working on EmDash itself. `dev`
-  refreshes them from the site; `check` fails if they drift.
+  refreshes them from EmDash's source at the version the site is pinned to (`.src/emdash/skills`) —
+  not from the template's copy in `site/`, which stays at whatever the template was synced from.
+  `check` fails if they drift, wherever that source is checked out.
 - **mise skills are machine-level** (`~/.claude/skills/`), not this repo's.

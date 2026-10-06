@@ -151,6 +151,7 @@ mise run logs                     follow the site                               
 mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
 mise run emdash -- <anything>     the official CLI: schema, content, media, taxonomy, menu, search…
 mise run upgrade                  take a newer harness
+                                  (a newer EmDash: change EMDASH_VERSION in mise.toml, then mise run dev)
 mise run verify                   does it all work on this machine? what CI runs      --full
 mise run report                   something broke? prints what to paste into an issue
 ```
