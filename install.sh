@@ -9,7 +9,13 @@ command -v mise >/dev/null 2>&1 || { echo "✗ mise is not installed — get it 
 command -v git >/dev/null 2>&1 || { echo "✗ git is not installed"; exit 1; }
 [ -d .git ] || git init -q
 echo "→ fetching the harness into $(pwd)"
-curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
+# EMDASH_HARNESS_TARBALL: install from a local tarball instead of the latest release (CI uses this
+# to test the harness that is about to be released).
+if [ -n "${EMDASH_HARNESS_TARBALL:-}" ]; then
+  tar xzf "$EMDASH_HARNESS_TARBALL"
+else
+  curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
+fi
 if [ -f mise.toml ]; then
   if ! grep -q '^TEMPLATE' mise.toml; then
     echo "✗ you already have a mise.toml, and it has no EmDash settings."
