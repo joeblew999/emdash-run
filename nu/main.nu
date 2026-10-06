@@ -271,9 +271,11 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
   if ($pkg | path type) == "dir" {
     if (setting EMDASH_URL | is-not-empty) { fail "a backup directory goes back into the local site" "for a deployment, follow the restore.txt beside its dump" }
     if not $confirm { print "  this REPLACES the local database and media with that copy — add --confirm"; return }
+    # Going back to another EmDash: its install comes first, because that step keeps a copy of the
+    # data about to be replaced, labelled with the version it is on.
+    site sync-version
     step "replace the local database and media"
     restore-local-data $pkg
-    # dev, not a bare restart: a copy taken on another EmDash needs that version installed with it.
     main dev
     ok "restored — users, tokens and plugin data are as they were then"
     return
