@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 /**
- *   mise run plugin:install -- <name>          (one plugin)
- *   mise run plugin:install-all | plugin:link (all plugins)
- *   mise run plugin:audit                      (structural checks across plugins/)
- *   mise run plugin:build | :validate | :bundle | :publish | :login
- *   mise run plugin:catalog | :catalog:dry | :catalog:full
+ * The plugin SWEEPS — the subcommands that iterate `plugins/` and run each plugin's OWN script,
+ * so a new plugin joins the flow by declaring the script and nothing here changes. That is why
+ * native and sandboxed plugins coexist without a branch on which kind they are.
  *
- * Singular = one plugin (takes a name); plural = all plugins.
+ *   mise run plugin:install -- <name>           (one plugin)
+ *   mise run plugin:install-all | plugin:link   (all plugins)
+ *   mise run plugin:build | :bundle | :validate | :typecheck | :audit
+ *   mise run plugin:catalog
  *
- * Every subcommand here sweeps `plugins/` and runs each plugin's OWN script, so a new plugin
- * joins the flow by declaring the script and nothing in this file changes. That is why the
- * native and sandboxed plugins coexist here without a branch on which kind they are.
+ * The one-shot commands that only call the official CLI — `login`, `logout`, `whoami`, `profile`,
+ * `switch`, `info`, `release`, `update-package`, `search` — are plain tasks in mise.toml now.
+ * They were advertised here as subcommands, but this file never had a `case` for any of them, so
+ * every one of them fell through to `default` and died with "unknown subcommand". A relay that
+ * does not relay is worse than no relay.
  */
 import {
 	existsSync,
@@ -60,21 +63,13 @@ function requireName() {
  * used to do) goes stale and misses anything not hosted on GitHub.
  */
 /**
- * The `emdash-plugin` binary, taken from whichever plugin has `@emdash-cms/plugin-cli` installed.
- * The CLI is a devDependency of the plugins, not of the repo, so it has to be borrowed.
+ * The `emdash-plugin` binary, from `@emdash-cms/plugin-cli`.
+ *
+ * Taken from the PATH rather than borrowed from a plugin's node_modules: the CLI is scheduled as
+ * a mise tool in its own right, so there is no longer a "which plugin happens to have it
+ * installed" question.
  */
-function pluginCliBinary() {
-	const dir = pluginDirs().find((candidate) =>
-		existsSync(`${PLUGINS_DIR}/${candidate}/node_modules/.bin/emdash-plugin`),
-	);
-	if (!dir) {
-		console.error(
-			"no plugin has @emdash-cms/plugin-cli installed — run: mise run plugin:install-all",
-		);
-		process.exit(1);
-	}
-	return `${PLUGINS_DIR}/${dir}/node_modules/.bin/emdash-plugin`;
-}
+const PLUGIN_CLI = "emdash-plugin";
 
 async function catalog(dry) {
 	const base = process.env.CATALOG_REGISTRY_URL ?? "https://registry.emdashcms.com";
@@ -309,7 +304,7 @@ switch (sub) {
 			console.error("plugin:init needs a name — e.g: mise run plugin:new -- my-plugin");
 			process.exit(1);
 		}
-		run(pluginCliBinary(), ["init", pluginName], { cwd: PLUGINS_DIR });
+		run(PLUGIN_CLI, ["init", pluginName], { cwd: PLUGINS_DIR });
 		break;
 	}
 
@@ -329,34 +324,6 @@ switch (sub) {
 			process.exit(1);
 		}
 		run("pnpm", ["--dir", dir, "exec", "emdash-plugin", "dev"]);
-		break;
-	}
-
-	case "search": {
-		// The plugin CLI already has registry search: `emdash-plugin search <query>` with
-		// `--capability`, `--limit`, `--cursor`. Reimplementing the XRPC call would be pointless, so
-		// this only contributes the one thing the CLI gets wrong for us: it defaults to the HOSTED
-		// registry, while mise sets EMDASH_REGISTRY_URL to the local one when that is running.
-		const cli = pluginDirs().find((dir) =>
-			existsSync(`${PLUGINS_DIR}/${dir}/node_modules/.bin/emdash-plugin`),
-		);
-		if (!cli) {
-			console.error(
-				"no plugin has @emdash-cms/plugin-cli installed — run: mise run plugin:install-all",
-			);
-			process.exit(1);
-		}
-		const args = [
-			"--dir",
-			`${PLUGINS_DIR}/${cli}`,
-			"exec",
-			"emdash-plugin",
-			"search",
-			...process.argv.slice(3),
-		];
-		if (process.env.EMDASH_REGISTRY_URL)
-			args.push("--registry-url", process.env.EMDASH_REGISTRY_URL);
-		run("pnpm", args);
 		break;
 	}
 

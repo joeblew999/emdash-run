@@ -57,8 +57,11 @@ fnox           = "1.36.0"
 "npm:oxlint-tsgolint" = "7.0.2003"
 # Test runner for the repo's own scripts (`tests/*.test.mjs`). Matches the version the
 # sandboxed plugin already uses, so there is one vitest in the story, not two.
-"npm:vitest"          = "5.0.3"
-
+"npm:vitest"          = "5.0.3"# The sandboxed-plugin CLI (binary `emdash-plugin`). Scheduled here rather than borrowed from
+# whichever plugin happens to have it in node_modules — that borrowing meant `plugin:login`,
+# `plugin:whoami` and friends could not be ordinary tasks. Version matches what the plugins
+# declare, so there is still exactly one CLI in the story.
+"npm:@emdash-cms/plugin-cli" = "0.13.2"
 # Every `run` body is nushell, not POSIX shell. mise's default is `sh -c`, which means a task
 # written on macOS silently depends on bashisms, BSD flags and `test -f` — none of which hold on
 # Windows. nushell is the same on every platform, gives structured data (`from json`, `where`,
@@ -126,6 +129,10 @@ _.file          = "{{config_root}}/run/token-admin.env"
 #
 # URLs (once running):  mise run repo:urls
 # Admin UI:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+#
+# Writing a task: bodies are NUSHELL, not POSIX sh — see the note in [tools]. `$env.VAR`, commas
+# between arguments, `^cmd` to force an external binary. There is no `set -e`; a failing external
+# command does not abort the script, so check the one you care about.
 #
 # dev-bypass and NOT /login: passkeys live in the database, so site:reset invalidates
 # every existing credential while the browser still caches it. dev-bypass skips passkey
@@ -598,11 +605,17 @@ run = "node \"{{config_root}}/scripts/plugin.mjs\" audit"
 
 [tasks."plugin:search"]
 description = "Search the plugin registry (emdash-plugin search, defaulting to the local registry when running)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" search"
+run = """
+# The CLI already implements registry search; the only thing it gets wrong for us is that it
+# defaults to the HOSTED registry while mise points EMDASH_REGISTRY_URL at the local one.
+mut extra = []
+if ($env.EMDASH_REGISTRY_URL? | is-not-empty) { $extra = ['--registry-url' $env.EMDASH_REGISTRY_URL] }
+^emdash-plugin search ...$extra
+"""
 
 [tasks."plugin:info"]
 description = "show details about a single package (official) — e.g: mise run plugin:info -- <slug>"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" info"
+run = "emdash-plugin info"
 
 [tasks."plugin:catalog"]
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
@@ -612,33 +625,36 @@ run = "node \"{{config_root}}/scripts/plugin.mjs\" catalog"
 description = "scaffold a new sandboxed plugin (official) — e.g: mise run plugin:init -- my-plugin"
 run = "node \"{{config_root}}/scripts/plugin.mjs\" init"
 
+# These were tasks that could never work: plugin.mjs documented them as subcommands but had no
+# `case` for any of them, so each one fell through to `default` and printed "unknown subcommand".
+# They are one-shot calls to the official CLI, so they are one-shot tasks.
 [tasks."plugin:login"]
 description = "log in to the plugin registry via your Atmosphere account (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" login"
+run = "emdash-plugin login"
 
 [tasks."plugin:logout"]
 description = "log out of the plugin registry, revoking the publisher session (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" logout"
+run = "emdash-plugin logout"
 
 [tasks."plugin:whoami"]
 description = "show the active publisher (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" whoami"
+run = "emdash-plugin whoami"
 
 [tasks."plugin:profile"]
 description = "manage the plugin package profile (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" profile"
+run = "emdash-plugin profile"
 
 [tasks."plugin:switch"]
 description = "switch the active publisher session to another DID (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" switch"
+run = "emdash-plugin switch"
 
 [tasks."plugin:release"]
 description = "manage delegated release intents (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" release"
+run = "emdash-plugin release"
 
 [tasks."plugin:update-package"]
 description = "update a published plugin's registry record without a release (official)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" update-package"
+run = "emdash-plugin update-package"
 
 # -----------------------------------------------------------------------------
 # SKILLS
