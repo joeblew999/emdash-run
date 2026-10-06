@@ -19,6 +19,8 @@ describe.
 
 ## Checks — run them, don't reason about them
 
+Full list with the reasoning behind each: **`docs/mise-nushell.md`**.
+
 - `mise run check` — everything before a commit; it composes the rest.
 - `mise run repo:nu` — **nushell's own checker** over every task body in `mise.toml`. Task bodies
   live inside TOML, so nothing parses them until they run: a typo stays invisible until someone
@@ -74,6 +76,10 @@ same on every machine.
   closure cannot capture a `mut` binding, so copy it into a `let` first;
 - there is no `set -e`: a failing external command does not abort the body, so check
   `$env.LAST_EXIT_CODE` for the ones you care about and exit non-zero yourself.
+- **Before writing a task body, read `docs/mise-nushell.md`.** It holds the mise facts that are not
+  obvious (`usage` is a validated signature, `[task_config] dir`, `mise tasks info` as an existence
+  test), the nushell traps above and more, how to edit this file without eating tasks, and how to
+  prove a port is equivalent.
 
 ## Layout
 
