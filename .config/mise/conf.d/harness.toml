@@ -23,6 +23,21 @@ shell = "nu --no-config-file -c"
 [env]
 HARNESS_VERSION = "0.1.0"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
+# Defaults for every optional project setting. mise.toml wins over this file, so a project's values
+# replace these — and a setting the project leaves out is EMPTY here rather than inherited from
+# whatever shell ran the task (another project's seed and checks, in the case that found this).
+DEPLOY_URL = ""
+SITE_PACKAGES = ""
+SEED_FILE = ""
+SEED_ORDER = ""
+SEED_LABEL = ""
+VERIFY_COLLECTION = ""
+VERIFY_JOIN_FIELD = ""
+VERIFY_BUCKET = ""
+VERIFY_OBJECT_KEY = ""
+VERIFY_SNAPSHOT_FIELD = ""
+VERIFY_SNAPSHOT_MAP = ""
+EMDASH_URL = ""
 ROOT = "{{config_root}}"
 SRC_DIR = "{{config_root}}/.src"                           # gitignored checkouts
 TEMPLATES_DIR = "{{config_root}}/.src/templates"
