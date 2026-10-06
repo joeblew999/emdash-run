@@ -4,7 +4,8 @@
 
 - **An EmDash upgrade says what it did not do for you.** When `dev` moves the site to a new
   `EMDASH_VERSION` it prints the compare link for the two releases, the lines EmDash's own updating
-  notes gained between them, and how to compare a file in `site/` with the current template.
+  notes gained between them, and how to compare a file in `site/` with the current template (`mise run source -- templates`
+  refreshes it).
 - **`status` and `setup` say when the templates trail EmDash.** The templates repo has no tags; its
   head names the release it was synced from, and the harness reads that.
 - **The vendored skills are the ones for the EmDash you run** — from EmDash's source at that tag,

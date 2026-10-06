@@ -176,6 +176,7 @@ def what-changed [from: string] {
   if ($lag | is-not-empty) { print $"    ⚠ ($lag)" }
   print "    site/ is yours and was not touched. To adopt a template change, compare a file with it:"
   print $"      git diff --no-index .src/templates/($env.TEMPLATE)/astro.config.mjs site/astro.config.mjs"
+  print "    .src/templates was just refreshed; later: mise run source -- templates"
 }
 
 # Does the project's site config load local plugins? plugin:new needs it to.
