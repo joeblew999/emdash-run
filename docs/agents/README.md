@@ -7,10 +7,10 @@ is orientation only.
 
 **Files that must agree** — `mise.toml` is the source of truth for all of them:
 
-- `pitchfork.toml` — every `run` in it is `mise run <task>`; the task must exist in `mise.toml`.
-  It says *when* the daemons run, `mise.toml` says *what* they are. `mise run repo:sync` fails if
-  a task named there is missing (and `repo:check` composes it), so the two cannot drift apart
-  silently.
+- `[daemons]` in `mise.toml` — the daemons are defined *in* `mise.toml` and run tasks from it, so
+  there is no second file to keep in step. mise drives them through pitchfork
+  (`mise daemons start|stop|status|logs`). `mise run repo:sync` fails if a daemon names a task that
+  does not exist — mise's own checks do not catch that, verified by planting one.
 - `.mcp.json` — its `${EMDASH_MCP_TOKEN}` is the file `mcp:token-admin` writes and `[env]` loads.
 - `docs/agents/` — if a rule changes in `mise.toml`, change it here too.
 
@@ -37,8 +37,10 @@ Full list with the reasoning behind each: **`mise-nushell.md`** (in this folder)
 - **Prefer mise tasks over raw commands.** If a task exists for what you are doing, use it
   (`mise run …`) instead of re-deriving the steps by hand. Raw commands are fine for what
   no task covers — `git`, ad-hoc inspection, one-off probes.
-- **Daemons are pitchfork's job** (`pitchfork.toml`). The task pitchfork runs is
-  `site:dev`; keep it in sync with the daemon definition.
+- **Daemons are mise's job** — `[daemons]` in `mise.toml`, driven through pitchfork by
+  `mise daemons start|stop|status|logs`. The site daemon runs the `site:dev` task; the name is the
+  `SITE_DAEMON` setting, and every task that touches it goes through `mise daemons` rather than
+  calling pitchfork directly.
 - **Dogfood: run it and read the output.** Reasoning about a change is not validation.
   Never call something done without executing it and looking at the result.
 - **After a change, `mise run repo:apply`.** It is the quick end-to-end check — re-applies

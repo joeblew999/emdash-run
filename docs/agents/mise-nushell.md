@@ -57,15 +57,14 @@ formatted. Run `mise run repo:format` to fix it; `repo:check` fails if it drifts
 
 **`mise watch`** reruns a task when files change. Unused: the plugin watch is `plugin:dev`.
 
-### `mise daemons` — attempted, and what stopped it
+### `mise daemons` — the daemons live in `mise.toml`
 
-This is worth finishing, because it deletes a whole file and the guard that exists only because of
-it. `pitchfork.toml` holds three daemons whose `run` lines are `mise run <task>` — the same
-duplication in a second file. mise can own them:
+There used to be a second file (`pitchfork.toml`) holding the same three daemons, whose `run` lines
+were `mise run <task>` — duplication that needed a guard to stop it drifting. mise owns them now:
 
 ```toml
 [settings]
-experimental = true          # put it in the repo config so it travels with the repo
+experimental = true          # in the repo's config, so it travels with the repo
 
 [daemons.emdash]
 run = "mise run site:dev"
@@ -74,30 +73,33 @@ auto = ["start", "stop"]
 ready_http = "http://localhost:4321/"
 ```
 
-`run`, `dir`, `auto` and `ready_http` are all accepted, and `mise daemons ls|start|stop|status|logs`
-replaces the hand-rolled `pitchfork start/stop/logs` calls in `site:_pause`, `site:_resume`,
-`site:clean`, `site:regen`, `repo:apply`, `registry:up` and `plugins-site:up`.
+`run`, `dir`, `auto` and `ready_http` are all accepted. `mise daemons start|stop|status|logs`
+replaces every hand-rolled `pitchfork` call, and **no task calls pitchfork directly any more**.
 
-**It was reverted because of this, and this is the thing to solve first:**
+**If you ever see this**, the state is stale, not the config:
 
 ```
-mise ERROR daemons for … are registered under namespace "emdash-run" but the configuration now
+mise ERROR daemons … are registered under namespace "emdash-run" but the configuration now
 asks for "emdash-run-3d00ac2258349554"; stop them before changing the namespace
 ```
 
-mise namespaces daemons as `<project>-<hash>`, while pitchfork had registered them under the bare
-project name. **Stopping them is not enough** — the registration persists, so every `mise daemons`
-call fails and the site cannot be started. `mise daemons prune` does not help (it only clears state
-for *deleted* project directories). The new namespace lives at
-`~/.local/state/mise/daemons/<hash>`; the old registration is in pitchfork's own state, which was
-not located before this had to be rolled back to keep the dev loop working.
+mise namespaces daemons `<label>-<hash>`, and pitchfork had them registered under the bare label.
+Stopping the daemons is not enough — the *registration* persists and every `mise daemons` call
+fails, so the site cannot start. Clear both sides:
 
-So: clear pitchfork's daemon state first (or do the migration on a machine where those daemons have
-never been started), then move the definitions across and delete `pitchfork.toml`.
+```
+pitchfork stop -a
+# remove [daemons."<label>/…"] blocks from ~/.local/state/pitchfork/state.toml
+# remove [namespaces.<label>] from ~/.config/pitchfork/config.toml
+rm -rf ~/.local/state/mise/daemons
+mise daemons ls        # should list <label>-<hash>/<daemon> … available
+```
+
+`mise daemons prune` does **not** help — it only clears state for *deleted* project directories.
 
 **And one thing mise does not check:** `mise tasks validate` passes with a daemon whose `run` names
-a task that does not exist (verified by planting one). `repo:sync` is the guard for that — it reads
-`[daemons]` out of `mise.toml` and checks each task resolves. Keep it if you migrate.
+a task that does not exist (verified by planting one). `repo:sync` is the guard for that; it reads
+`[daemons]` out of `mise.toml` and checks each task resolves.
 
 ## mise facts that are not obvious
 

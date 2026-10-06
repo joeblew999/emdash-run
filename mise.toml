@@ -5,10 +5,9 @@
 # -----------------------------------------------------------------------------
 # FILES THAT MUST AGREE — this one is the source of truth for all of them.
 #
-#   pitchfork.toml   every `run` in it is `mise run <task>`, and the task must exist HERE. This
-#                    file says what the tasks are; pitchfork says WHEN the daemons run. Adding a
-#                    daemon there means adding its task here — `repo:check` fails if a task named
-#                    in pitchfork.toml does not exist.
+#   [daemons]        the daemons live in THIS file and run tasks from THIS file. mise manages them
+#                    through pitchfork (`mise daemons start|stop|status|logs`). `repo:sync` fails if
+#                    a daemon names a task that does not exist — mise itself does not check that.
 #   .mcp.json        its `${EMDASH_MCP_TOKEN}` is written by `mcp:token-admin` into
 #                    run/token-admin.env, which [env] loads. Rename one, rename the other.
 #   AGENTS.md        how to work in this repo. If a rule here changes, it changes there.
@@ -28,7 +27,7 @@
 #                        It has already caught a `&&` — not a nushell operator — and a command
 #                        wrapped across two lines. Both tasks had never been run and could not
 #                        have worked.
-#   mise run repo:sync   every `mise run <task>` in pitchfork.toml names a task that exists.
+#   mise run repo:sync   every `mise run <task>` in [daemons] names a task that exists.
 #   mise run doctor      the LIVE state: the site's database, plugin consistency, repo:verify.
 #   mise run site:check  the site type-checks, including that astro.config.mjs loads.
 #
@@ -63,6 +62,9 @@
 #               not part of the interface.
 
 [settings]
+# `mise daemons` is experimental. Enabled in the repo's own config so it travels with the repo
+# rather than depending on anyone's global mise settings.
+experimental = true
 # Serial task execution — avoids pnpm lockfile conflicts during install
 jobs = 1
 
@@ -106,7 +108,7 @@ fnox = "1.36.0"
 # Windows. nushell is the same on every platform, gives structured data (`from json`, `where`,
 # `parse`) instead of grep/sed pipelines, and fails loudly rather than carrying on.
 #
-# Single-command tasks are unaffected (`run = "pitchfork logs emdash --follow"` is valid nu).
+# Single-command tasks are unaffected (`run = "mise daemons logs emdash --follow"` is valid nu).
 # Anything multi-line uses nu syntax: `if $x { } else { }`, `let x = (cmd)`, `^cmd` to force an
 # external binary. See the note on `run_windows` further down for the one platform-specific case.
 [task_config]
@@ -140,7 +142,7 @@ EMDASH_VERSION = "1.1.0"
 # Where `mise run deploy` ships, and what `deploy` then verifies.
 DEPLOY_URL = "https://emdash-run.gedw99.workers.dev"
 
-# The pitchfork daemon that runs the site — the name under [daemons.*] in pitchfork.toml.
+# The pitchfork daemon that runs the site — the name under [daemons.*] in this file.
 SITE_DAEMON = "emdash"
 
 # This project's hand-maintained seed: the source of truth for the content model. The template's
@@ -180,8 +182,8 @@ PLUGINS_DIR = "{{config_root}}/plugins"
 # check writes.
 RUN_DIR = "{{config_root}}/run"
 
-# Optional daemons — the single place these addresses are defined. Scripts read them;
-# pitchfork.toml's ready_http is static and repeats the port (it cannot read mise env).
+# Optional daemons — the single place these addresses are defined. The daemons' `ready_http`
+# reads them too, so a port is written down once.
 REGISTRY_URL = "http://localhost:8788"
 REGISTRY_PORT = "8788"
 PLUGINS_SITE_URL = "http://localhost:4330"
@@ -466,7 +468,7 @@ ASTRO_DEV_BACKGROUND = "1"
 
 [tasks."site:logs"]
 description = "Follow live site logs"
-run = "pitchfork logs emdash --follow"
+run = "mise daemons logs emdash --follow"
 
 [tasks."site:open"]
 description = "Open admin UI in browser via dev-bypass (runs migrations + seed; skips passkey auth)"
@@ -731,7 +733,7 @@ print "Done — run: mise run repo:apply"
 [tasks."site:clean"]
 description = "⚠ Wipe .src/site — then run: mise run site:setup → init → apply"
 run = """
-^pitchfork stop emdash | complete | ignore
+^mise daemons stop $env.SITE_DAEMON | complete | ignore
 rm -rf ($env.SITE_DIR)
 print "✓ Wiped .src/site — run: mise run site:setup"
 """
@@ -739,7 +741,7 @@ print "✓ Wiped .src/site — run: mise run site:setup"
 [tasks."site:regen"]
 description = "⚠ Wipe all of .src (templates + site) and re-clone templates"
 run = """
-^pitchfork stop -a | complete | ignore
+^mise daemons stop -a | complete | ignore
 rm -rf ($env.SRC_DIR)
 ^mise run src:clone-templates
 print "✓ Wiped .src — run: mise run site:setup → init → apply"
@@ -768,13 +770,13 @@ depends = [
 run = """
 # Stop ONLY the site: the optional daemons (registry, plugins-site) must survive, because the
 # site's plugin discovery points at the local registry while it is running.
-^pitchfork stop emdash | complete | ignore
+^mise daemons stop $env.SITE_DAEMON | complete | ignore
 # The Vite optimizer re-hashes chunks whenever the dependency graph changes (a plugin's admin
 # module, a production build in the same dir), leaving the server serving stale `deps_ssr/*?v=…`
 # URLs and returning 500s.
 rm -rf $"($env.SITE_DIR)/node_modules/.vite"
-# pitchfork waits for ready_http (pitchfork.toml) before returning.
-^pitchfork start emdash
+# pitchfork waits for the daemon's ready_http (see [daemons]) before returning.
+^mise daemons start $env.SITE_DAEMON
 # dev-bypass also runs migrations, so poll it until it answers before seeding or minting the
 # MCP token. It applies the seed itself, but with skip-on-conflict — an entry that already
 # exists is left alone — so it picks up NEW seed content and never EDITS existing content.
@@ -1023,16 +1025,20 @@ print $"  ✓ ($checked) task bodies parse and type-check"
 """
 
 [tasks."repo:sync"]
-description = "Fail if the files that must agree have drifted — every daemon in pitchfork.toml must name a task that exists"
+description = "Fail if a daemon in [daemons] names a task that does not exist — mise does not check this"
 run = """
-# mise.toml is the source of truth for what tasks ARE; pitchfork.toml only says WHEN the daemons
+# Every daemon's `run` is `mise run <task>`, and mise does NOT check the task exists — `mise tasks
 # run, and every one of its `run` lines is `mise run <task>`. A name there that is not a task here
 # is a daemon that cannot start — which is exactly how the registry's web UI sat broken, running a
 # task nobody had written. Both files carry a note about this at the top; this is the enforcement.
 let refs = (
-  (open --raw $"($env.ROOT)/pitchfork.toml")
-  | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
-  | get task
+  (open $"($env.ROOT)/mise.toml")
+  | get -o daemons
+  | default {}
+  | values
+  | each {|daemon| $daemon | get -o run | default "" }
+  | where {|cmd| $cmd | str starts-with "mise run " }
+  | each {|cmd| $cmd | str replace "mise run " "" | split row " " | first }
   | uniq
 )
 mut missing = []
@@ -1878,13 +1884,13 @@ run = "^pnpm exec wrangler dev --port $env.REGISTRY_PORT"
 [tasks."registry:up"]
 description = "Start the registry aggregator daemon via pitchfork"
 run = """
-^pitchfork start registry
+^mise daemons start registry
 print $"→ registry: ($env.REGISTRY_URL)/health — JSON API under /xrpc/com.emdashcms.experimental.aggregator.*"
 """
 
 [tasks."registry:logs"]
 description = "Follow the registry aggregator's logs"
-run = "pitchfork logs registry --follow"
+run = "mise daemons logs registry --follow"
 
 [tasks."registry:backfill"]
 description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
@@ -1913,13 +1919,13 @@ run = "pnpm dev -- --port $env.PLUGINS_SITE_PORT"
 [tasks."plugins-site:up"]
 description = "Start the registry web UI daemon via pitchfork"
 run = """
-^pitchfork start plugins-site
+^mise daemons start plugins-site
 print $"→ plugins UI ($env.PLUGINS_SITE_URL)/"
 """
 
 [tasks."plugins-site:logs"]
 description = "Follow the registry web UI's logs"
-run = "pitchfork logs plugins-site --follow"
+run = "mise daemons logs plugins-site --follow"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -2011,11 +2017,11 @@ if not ($"($env.PLUGINS_DIR)/($env.usage_plugin)" | path exists) {
 [tasks."site:_pause"]
 hide = true
 run = """
-let listed = (^pitchfork list | complete)
+let listed = (^mise daemons status | complete)
 let running = (($listed.stdout | lines) | any {|l|
   ($l | str contains $"/($env.SITE_DAEMON)") and ($l | str contains "running")
 })
-if $running { ^pitchfork stop emdash | complete | ignore }
+if $running { ^mise daemons stop $env.SITE_DAEMON | complete | ignore }
 print (if $running { "running" } else { "stopped" })
 """
 
@@ -2025,7 +2031,7 @@ usage = 'arg "<state>" help="what site:_pause printed: running | stopped"'
 run = """
 if ($env.usage_state == "running") {
   print "  → restarting the dev server (it holds a stale module graph)"
-  ^pitchfork start emdash
+  ^mise daemons start $env.SITE_DAEMON
 }
 """
 
@@ -2072,3 +2078,26 @@ if ($nu.os-info.name == "windows") {
   ^ln -sfn $env.usage_target $env.usage_link
 }
 """
+
+# -----------------------------------------------------------------------------
+# DAEMONS — managed through pitchfork by `mise daemons start|stop|status|logs`, so the definitions
+# live HERE rather than in a second file that had to be kept in step with the tasks.
+# -----------------------------------------------------------------------------
+
+[daemons.emdash]
+run = "mise run site:dev"
+dir = "."
+auto = ["start", "stop"]
+ready_http = "{{env.SITE_URL}}/"
+
+[daemons.registry]
+run = "mise run registry:start"
+dir = "."
+auto = ["stop"]
+ready_http = "{{env.REGISTRY_URL}}/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
+
+[daemons.plugins-site]
+run = "mise run plugins-site:start"
+dir = "."
+auto = ["stop"]
+ready_http = "{{env.PLUGINS_SITE_URL}}/"
