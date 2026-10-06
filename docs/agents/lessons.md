@@ -46,7 +46,11 @@ lesson is enforced by a check, it says so — those cannot regress quietly. The 
 - **Every optional setting has an empty default in `harness.toml`.** Otherwise a project inherits
   another project's value from the shell that ran the task — one built its site with the wrong seed.
 - **`EMDASH_TOKEN`, `EMDASH_REGISTRY_URL` are unset on purpose.** A stale value in an old shell
-  silently redirects every CLI call.
+  silently redirects every CLI call. `false` removes them even when the shell exports them, so a
+  deployment's token is `DEPLOY_TOKEN` — the one optional setting with no default, because a
+  default would replace the value a CI job exports.
+- **The emdash CLI assumes port 4321.** Run bare in a checkout on another `SITE_PORT`, it talks to
+  somebody else's site. Only the helpers in `lib.nu` run it. *Enforced: `check`.*
 - **`^cmd | ignore` swallows the exit code.** Use `| complete`. *Enforced: `check`.*
 - **Inside `$"…"`, `(word)` runs a command.** *Enforced: `check`.*
 - **A project is `mise.toml` and `site/`. The harness is `harness.toml` and `nu/`.** Nothing

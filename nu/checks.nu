@@ -48,9 +48,15 @@ export def nu-problems [dir: string]: nothing -> list<string> {
       $code_lines | parse --regex '(?m)(?<line>\^[^\n|]*\|\s*ignore)' | get line
       | each {|l| $"($name): an external piped into ignore can never fail — use `| complete` and test exit_code" }
     )
+    # The CLI run directly goes to port 4321 — another checkout's site when SITE_PORT is overridden.
+    let unaimed = (
+      $code_lines | parse --regex '(?<cmd>\^emdash)\s' | get cmd | uniq
+      | where {|_| $name != "lib.nu" }
+      | each {|_| $"($name): runs the emdash CLI directly — use emdash, emdash-result or emdash-json, which aim it at this checkout's site" }
+    )
     let null_device = (["/dev" "/null"] | str join)
     let unix_paths = (if ($text | str contains $null_device) { [$"($name): uses ($null_device), which does not exist on Windows"] } else { [] })
-    $diagnostics | append $traps | append $foreign | append $bare | append $swallowed | append $unix_paths | append $raw_glob
+    $diagnostics | append $traps | append $foreign | append $bare | append $swallowed | append $unix_paths | append $raw_glob | append $unaimed
   } | flatten
 }
 
@@ -100,6 +106,7 @@ export def selftest-problems []: nothing -> list<string> {
     {what: "an external whose failure is piped away", line: (["def planted [] { ^" "mise tasks validate | " "ignore }"] | str join)}
     {what: "a path that only exists on Unix", line: (["def planted [] { print '" "/dev" "/null' }"] | str join)}
     {what: "globbing a joined path", file: "site.nu", line: (["def planted [] { " "glob" " ($env.ROOT | path join '*.nu') }"] | str join)}
+    {what: "the emdash CLI run without being aimed at this checkout's site", file: "site.nu", line: (["def planted [] { ^" "emdash whoami }"] | str join)}
   ]
   let nu_missed = ($cases | each {|case|
     rm -rf $scratch
@@ -182,7 +189,7 @@ def report [passed: bool, label: string, detail: string]: nothing -> bool {
 # Is the running site (or the deployment in EMDASH_URL) alive and holding content? It answers, and
 # — when VERIFY_COLLECTION names one — that collection has entries and every one carries data.
 export def verify []: nothing -> bool {
-  let target = (if (setting EMDASH_URL | is-empty) { (site-url) } else { $env.EMDASH_URL })
+  let target = (cli-target)
   if not (wait-for $target 60) { return (report false $"($target) responds" "no answer") }
   let up = (report true $"($target) responds" "")
   let collection = (setting VERIFY_COLLECTION)

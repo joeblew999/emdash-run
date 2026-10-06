@@ -94,16 +94,21 @@ export def version-set [version?: string]: nothing -> record {
   $set
 }
 
-# What the emdash CLI talks to: the deployment in EMDASH_URL, else THIS checkout's site. Left to
-# itself the CLI asks port 4321 — with SITE_PORT moved, that is nobody, or somebody else's site.
-export def cli-target []: nothing -> record {
-  {EMDASH_URL: (if (setting EMDASH_URL | is-empty) { site-url } else { $env.EMDASH_URL })}
-}
+# The site the CLI talks to: the deployment a `--url` flow aimed at, otherwise the local site on
+# ITS port. Never left to the CLI: it assumes port 4321, which is another checkout's site whenever
+# this one overrides SITE_PORT. `check` fails on the CLI run anywhere but through these helpers.
+export def cli-target []: nothing -> string { if (setting EMDASH_URL | is-empty) { site-url } else { $env.EMDASH_URL } }
 
 # The emdash CLI, run where it must be run: in the site, which is its project root.
 export def --wrapped emdash [...args: string] {
   cd $env.SITE_DIR
-  with-env (cli-target) { ^emdash ...$args }
+  with-env {EMDASH_URL: (cli-target)} { ^emdash ...$args }
+}
+
+# The same, captured instead of printed: {stdout, stderr, exit_code}.
+export def --wrapped emdash-result [...args: string]: nothing -> record {
+  cd $env.SITE_DIR
+  with-env {EMDASH_URL: (cli-target)} { ^emdash ...$args | complete }
 }
 
 # Run an emdash command and return its JSON, parsed; an error when the command fails or prints
@@ -111,7 +116,7 @@ export def --wrapped emdash [...args: string] {
 # `--url` do exactly that.
 export def emdash-json [...args: string]: nothing -> any {
   let full = ($args | append "--json")
-  let result = (do { cd $env.SITE_DIR; with-env (cli-target) { ^emdash ...$full | complete } })
+  let result = (emdash-result ...$full)
   # With --json the CLI writes only JSON to stdout (progress goes to stderr) and exits non-zero on error.
   if $result.exit_code != 0 or ($result.stdout | str trim | is-empty) {
     error make {msg: $"emdash ($full | str join ' ') failed: ($result.stderr | str trim) ($result.stdout | str trim)"}
@@ -150,13 +155,47 @@ export def has-devdb []: nothing -> bool {
   }
 }
 
+# Everything the local site stores: the database with its -wal and -shm, and the uploaded media. On
+# Cloudflare that is miniflare's state — D1 and R2 together; on Node, the SQLite file and uploads/.
+def local-data []: nothing -> list<string> {
+  if (on-cloudflare) { [($env.SITE_DIR | path join ".wrangler" "state")] } else {
+    ["data.db" "data.db-shm" "data.db-wal" "uploads"] | each {|name| $env.SITE_DIR | path join $name }
+  }
+}
+
 # Delete the local database and uploads. The site recreates them, seeded, when it next starts.
 export def wipe-local-data [] {
   rm -f ($env.RUN_DIR | path join "seed-applied.txt")
-  if (on-cloudflare) {
-    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
-  } else {
-    for name in ["data.db" "data.db-shm" "data.db-wal" "uploads"] { rm -rf ($env.SITE_DIR | path join $name) }
+  for path in (local-data) { rm -rf $path }
+}
+
+# A new directory under run/backups/, named for what it holds and when.
+export def backup-dir [label: string]: nothing -> string {
+  let dir = ($env.RUN_DIR | path join "backups" $"($label)-(date now | format date '%Y%m%d-%H%M%S')")
+  mkdir $dir
+  $dir
+}
+
+# Stop the site and copy its data into a new backup directory, which is returned. Stopped, because
+# a running site keeps committed changes in the -wal file and may be mid-write. The caller restarts.
+export def backup-local-data [label: string]: nothing -> string {
+  if not (has-devdb) { fail "no local database yet" "run: mise run dev" }
+  daemon-stop $env.SITE_DAEMON
+  let dest = (backup-dir $label)
+  for path in (local-data | where {|p| $p | path exists }) { cp -r $path $dest }
+  $dest
+}
+
+# Stop the site and put such a copy back in place of its data. The caller restarts.
+export def restore-local-data [dir: string] {
+  let saved = (local-data | each {|path| {from: ($dir | path join ($path | path basename)), to: $path} })
+  if ($saved | where {|s| $s.from | path exists } | is-empty) {
+    fail $"($dir) holds no copy of this site's data" "a backup is a directory made by: mise run snapshot -- --database"
+  }
+  daemon-stop $env.SITE_DAEMON
+  for item in $saved {
+    rm -rf $item.to
+    if ($item.from | path exists) { cp -r $item.from $item.to }
   }
 }
 
@@ -240,5 +279,11 @@ export def daemon-log [name: string, lines: int = 30]: nothing -> string {
   (^mise daemons logs $name | complete).stdout | lines | last $lines | str join (char nl)
 }
 
-# Aim the emdash CLI at a deployment for the rest of the caller's flow: it reads EMDASH_URL itself.
-export def --env target [url?: string] { if $url != null { $env.EMDASH_URL = $url } }
+# Aim the emdash CLI at a deployment for the rest of the caller's flow: it reads EMDASH_URL itself,
+# and EMDASH_TOKEN. The deployment's token is its own setting, DEPLOY_TOKEN, and becomes EMDASH_TOKEN
+# only here — so it never reaches the local site, and no stale EMDASH_TOKEN reaches a deployment.
+export def --env target [url?: string] {
+  if $url == null { return }
+  $env.EMDASH_URL = $url
+  if (setting DEPLOY_TOKEN | is-not-empty) { $env.EMDASH_TOKEN = $env.DEPLOY_TOKEN }
+}

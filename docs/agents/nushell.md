@@ -37,12 +37,14 @@ nu/tests.nu      unit tests for the pure functions
 | `setting NAME` | an optional setting from the environment, `""` when unset |
 | `harness-file` | the path of `harness.toml` |
 | `split-args` | a shell-quoted string into its arguments — how `task.nu` reads a task's arguments |
-| `emdash …` | the CLI, run in the site directory, where it must run, aimed at this checkout's site (`cli-target`) — its own default is port 4321 |
+| `emdash …` | the CLI, run in the site directory and aimed at this checkout's site (or the `--url` deployment). `check` fails on `^emdash` anywhere else |
+| `emdash-result …` | the same, captured: `{stdout, stderr, exit_code}` |
 | `emdash-json …` | the CLI's JSON, parsed. Errors when no JSON comes back |
-| `url-flag` | `--url <deployment>` when `EMDASH_URL` is set |
+| `target $url` | aim the rest of a flow at a deployment: sets `EMDASH_URL`, and `EMDASH_TOKEN` from `DEPLOY_TOKEN` |
 | `on-cloudflare` | true when the template runs on Cloudflare (it ships a `wrangler.jsonc`), false on Node.js |
 | `devdb` | the dev server's real database file, on either platform |
 | `wipe-local-data` | delete the local database and uploads |
+| `backup-local-data LABEL`, `restore-local-data DIR` | stop the site and copy its database and media into `run/backups/`, or back. The caller restarts |
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `request` | one HTTP request: `{status, body, cookies}`, never throws |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
@@ -79,7 +81,8 @@ run, and anything else fails.
 - **EmDash's file commands default to `./data.db`**, which a Cloudflare site never uses. `doctor`,
   `seed` and `export-seed` must be given `devdb`, or they report on an empty file.
 - **`EMDASH_TOKEN` and `EMDASH_REGISTRY_URL` are unset in `harness.toml` on purpose.** The CLIs read
-  them, and a stale value from an old shell silently redirects every call.
+  them, and a stale value from an old shell silently redirects every call. A deployment's token is
+  `DEPLOY_TOKEN`; `target` hands it to the CLI, in `--url` flows only.
 - **A closure cannot capture a `mut`.** Copy it into a `let` first.
 - **`insert` errors on an existing column; `upsert` overwrites.**
 - **A regex goes in single quotes** — `'\s+'`. In double quotes `\s` is a parse error.

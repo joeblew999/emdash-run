@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A backup that is one: `mise run snapshot -- --database`.** Locally and on Node.js it stops the
+  site, copies the database with its `-wal` and `-shm` files and the uploads into `run/backups/`,
+  and starts the site again; `mise run restore -- <that directory> --confirm` puts it back — users,
+  tokens and plugin data included, which a site package never holds. For a Cloudflare deployment
+  (`--url`) it records the D1 Time Travel bookmark and writes a `wrangler d1 export` dump, with the
+  restore commands beside it; `deploy` prints the bookmark before it ships. The Cloudflare half is
+  written from EmDash's backup guide and has not yet been run against a deployment.
+- `dev` keeps the same full copy — database and media — before it moves the site to another EmDash
+  version, where it used to copy the database file alone.
+- **`restore` finishes an import that was cut off.** Run it again on the same package.
+- **The `--url` flows run without a person.** Set `DEPLOY_TOKEN` (in the CI job, or in
+  `mise.local.toml`) to an API token of the deployment; it is handed to the CLI only by a flow
+  given `--url`. `EMDASH_TOKEN` stays removed from every task, exported or not.
+- The README says how content reaches a new deployment: `snapshot`, then `restore -- <package>
+  --url <deployment> --confirm` into the freshly set-up site.
 - **An EmDash upgrade says what it did not do for you.** When `dev` moves the site to a new
   `EMDASH_VERSION` it prints the compare link for the two releases, the lines EmDash's own updating
   notes gained between them, and how to compare a file in `site/` with the current template (`mise run source -- templates`
@@ -22,9 +37,10 @@
 - **A restart restarts, on Linux too.** There `mise daemons stop` can report the site stopped while
   the server is still shutting down, and a start in that moment meets the old one. Stopping now
   waits, up to 30 seconds, until the port is free — and says so if something else holds it.
-- **The CLI follows `SITE_PORT`.** With the port moved, `doctor`, `snapshot`, `restore`,
-  `content:set` and `mise run emdash -- …` still asked port 4321 — nobody, or another checkout's
-  site. They ask this checkout's site now.
+- **A checkout on its own `SITE_PORT` talks to its own site.** The emdash CLI assumes port 4321, so
+  with the port moved `doctor`, `snapshot`, `restore`, `content:set` and `mise run emdash -- …` asked
+  nobody, or another checkout's site. Every flow now aims it at this checkout's port, and `check`
+  fails on the CLI run any other way.
 - `registry:up` gives the registry's label replay the minutes it takes; at 60 seconds it failed on a
   fresh registry.
 - `verify:template` gives its throwaway project a free port, so it runs beside your site instead of

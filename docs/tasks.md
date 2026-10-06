@@ -191,7 +191,7 @@ Wipe the local database and uploads, then bring the site back up on its seed. Yo
 
 ## `restore`
 
-Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first
+Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it (or finishes an interrupted one), --wipe empties the local site first. Given a backup directory, puts that database back
 
 
 - **Usage:** `restore [args]…`
@@ -251,7 +251,7 @@ The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allo
 
 ## `snapshot`
 
-Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --url snapshots a deployment
+Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --database backs up the database itself instead. --url does either for a deployment
 
 
 - **Usage:** `snapshot [args]…`
