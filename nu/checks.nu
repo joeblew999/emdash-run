@@ -2,6 +2,7 @@
 # or deployed site match what the repo says).
 use lib.nu *
 use plugin.nu
+use site.nu
 
 # ── the harness checks itself ────────────────────────────────────────────────────────────────
 
@@ -145,11 +146,16 @@ def tree-hashes [dir: string]: nothing -> record {
   | reduce --fold {} {|file, acc| $acc | upsert ($file | path relative-to $dir) (open --raw $file | hash sha256) }
 }
 
-# Vendor the EmDash skills at the version the site runs, from EmDash's source at that tag (`from`):
-# committed under .github/skills (skills are discovered when an agent session STARTS, so a fresh
-# clone needs them in git), copied to .claude/skills for Claude.
-export def sync-skills [from: string] {
-  let names = (shipped-skills | where {|n| $from | path join "skills" $n | path exists })
+# Vendor the EmDash skills at the version the site runs, from EmDash's source at that tag — fetched
+# only when the site ships skills, and left as they are when it cannot be: committed under
+# .github/skills (skills are discovered when an agent session STARTS, so a fresh clone needs them in
+# git), copied to .claude/skills for Claude.
+export def sync-skills [] {
+  let shipped = (shipped-skills)
+  if ($shipped | is-empty) { return }
+  let from = (try { site emdash-source } catch { "" })
+  if ($from | is-empty) { print "    ⚠ EmDash's source could not be fetched — the vendored skills stay as they are"; return }
+  let names = ($shipped | where {|n| $from | path join "skills" $n | path exists })
   if ($names | is-empty) { return }
   for target in [($env.ROOT | path join ".github" "skills") ($env.ROOT | path join ".claude" "skills" "emdash")] {
     rm -rf $target

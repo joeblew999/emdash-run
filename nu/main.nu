@@ -22,7 +22,7 @@ def refresh [] {
   plugin sweep build
   plugin link
   plugin require-consistent
-  checks sync-skills (site emdash-source)
+  checks sync-skills
   step "restart the site"
   site restart
   site apply-seed
