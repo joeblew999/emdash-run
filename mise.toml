@@ -912,8 +912,32 @@ if $failed > 0 {
 print $"✓ repo:verify passed — ($checks_final | length) checks"
 '''
 
+[tasks."repo:sync"]
+description = "Fail if the files that must agree have drifted — every daemon in pitchfork.toml must name a task that exists"
+run = """
+# mise.toml is the source of truth for what tasks ARE; pitchfork.toml only says WHEN the daemons
+# run, and every one of its `run` lines is `mise run <task>`. A name there that is not a task here
+# is a daemon that cannot start — which is exactly how the registry's web UI sat broken, running a
+# task nobody had written. Both files carry a note about this at the top; this is the enforcement.
+let refs = (
+  (open --raw $"($env.ROOT)/pitchfork.toml")
+  | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
+  | get task
+  | uniq
+)
+mut missing = []
+for ref in $refs {
+  if (^mise tasks info $ref | complete).exit_code != 0 { $missing = ($missing | append $ref) }
+}
+if ($missing | is-not-empty) {
+  print $"✗ pitchfork.toml runs tasks that do not exist: ($missing | str join ', ')"
+  exit 1
+}
+print $"  ✓ all ($refs | length) daemon tasks exist"
+"""
+
 [tasks."repo:check"]
-description = "Lint + formatting over the plugins (oxlint --type-aware, oxfmt), and that the committed skills match the site's"
+description = "Lint and formatting over the plugins, that the committed skills match the site's, and that the files which must agree have not drifted"
 run = """
 # The same tools and flags the emdash monorepo uses, taken from mise [tools] because this repo has
 # no root package.json. `--deny-warnings` is what makes a warning mean something rather than scroll
@@ -929,28 +953,13 @@ let fmt = $env.LAST_EXIT_CODE
 print "→ skills:check (the committed EmDash skills match the site's)"
 ^mise run skills:check
 let skills = $env.LAST_EXIT_CODE
-print "→ pitchfork.toml names tasks that exist"
-# Every daemon's `run` is `mise run <task>`, and mise.toml is the source of truth for what tasks
-# are — so a name that is not a task here is a daemon that cannot start. That is exactly how
-# plugins-site sat broken: pitchfork.toml ran a task nobody had written.
-let refs = (
-  (open --raw $"($env.ROOT)/pitchfork.toml")
-  | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
-  | get task
-  | uniq
-)
-mut missing = []
-for ref in $refs {
-  if (^mise tasks info $ref | complete).exit_code != 0 { $missing = ($missing | append $ref) }
-}
-if ($missing | is-not-empty) {
-  print $"  ✗ pitchfork.toml runs tasks that do not exist: ($missing | str join ', ')"
-}
-let pitchfork = (if ($missing | is-empty) { 0 } else { 1 })
+print "→ repo:sync (the files that must agree)"
+^mise run repo:sync
+let sync = $env.LAST_EXIT_CODE
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $pitchfork] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
