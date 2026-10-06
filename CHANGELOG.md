@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **A backup that is one: `mise run snapshot -- --database`.** Locally and on Node.js it stops the
+  site, copies the database with its `-wal` and `-shm` files and the uploads into `run/backups/`,
+  and starts the site again; `mise run restore -- <that directory> --confirm` puts it back — users,
+  tokens and plugin data included, which a site package never holds. For a Cloudflare deployment
+  (`--url`) it records the D1 Time Travel bookmark and writes a `wrangler d1 export` dump, with the
+  restore commands beside it; `deploy` prints the bookmark before it ships. The Cloudflare half is
+  written from EmDash's backup guide and has not yet been run against a deployment.
+- `dev` keeps the same full copy — database and media — before it moves the site to another EmDash
+  version, where it used to copy the database file alone.
+- **`restore` finishes an import that was cut off.** Run it again on the same package.
+- **The `--url` flows run without a person.** Set `DEPLOY_TOKEN` (in the CI job, or in
+  `mise.local.toml`) to an API token of the deployment; it is handed to the CLI only by a flow
+  given `--url`. `EMDASH_TOKEN` stays removed from every task, exported or not.
+- **A checkout on its own `SITE_PORT` talks to its own site.** The emdash CLI assumes port 4321;
+  every flow, and `mise run emdash -- …`, now aims it at this checkout's port. `verify:template`
+  gives its throwaway project this checkout's port too.
+- The README says how content reaches a new deployment: `snapshot`, then `restore -- <package>
+  --url <deployment> --confirm` into the freshly set-up site.
+
 ## 0.6.1 — 2026-10-06
 
 The first published release of the 0.6 line; 0.6.0 was tagged and never published.

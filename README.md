@@ -144,8 +144,8 @@ mise run check                    before a commit (the git hook runs it)        
 mise run doctor                   is the running site what the repo says?       --url <deployment>
 mise run deploy                   check, build, ship to Cloudflare, verify      --dry
 mise run rollback                 put the previous deployment back
-mise run snapshot                 the whole site as a package
-mise run restore -- <package>     …and back again                               --wipe --confirm
+mise run snapshot                 the site's content as a package               --database: a real backup
+mise run restore -- <package>     …and back again — or a backup directory       --wipe --confirm
 mise run reset                    wipe the local database, back up on the seed
 mise run logs                     follow the site                               --deployed
 mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
@@ -157,6 +157,44 @@ mise run report                   something broke? prints what to paste into an 
 
 Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 32;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
+
+## Back up, and move content
+
+Two different things, and the difference matters on the day you need one:
+
+| | `mise run snapshot` | `mise run snapshot -- --database` |
+|---|---|---|
+| what it is | EmDash's site package (`.emdash`): schema, content, media | the database itself, and locally the media beside it |
+| users, API tokens, plugin data | **no** | yes |
+| goes back with | `restore -- <package>` into an **empty** site | `restore -- <directory> --confirm`, in place |
+| for | moving content to another site | disaster recovery |
+
+Neither holds `EMDASH_ENCRYPTION_KEY` (`site/.env`) — keep a copy of that somewhere else.
+
+- **Locally and on Node.js**, `--database` stops the site, copies the database with its `-wal` and
+  `-shm` files and the uploads into `run/backups/`, and starts the site again. `dev` makes the same
+  copy by itself before it moves the site to another EmDash version.
+- **For a Cloudflare deployment** (`-- --database --url <deployment>`) it records the D1 Time Travel
+  bookmark and writes a SQL dump to `run/backups/`, with the commands that restore from either in
+  `restore.txt` beside it. `deploy` prints the bookmark before it ships. The media bucket is not
+  included; the file says how to copy it.
+
+**Getting your content onto a new deployment.** A production site's first boot applies your seed's
+model, not its content. So: finish the setup wizard on the deployment (no sample content), then
+
+```
+mise run snapshot
+mise run restore -- run/snapshots/<file>.emdash --url <deployment>             # shows the plan
+mise run restore -- run/snapshots/<file>.emdash --url <deployment> --confirm
+```
+
+If that is cut off, run the last line again: it finishes the import it started.
+
+**Without a person.** Every `--url` flow signs in with `DEPLOY_TOKEN` when it is set — an API token
+made in the deployment's admin. It is a secret: export it in the CI job, or put it in the gitignored
+`mise.local.toml`. Without one, the flows use what `mise run emdash -- login --url <deployment>`
+stored. (`EMDASH_TOKEN` is deliberately removed from every task, even when your shell exports it,
+so a token for one site can never be sent to another.)
 
 ## What is yours, and what is the harness's
 

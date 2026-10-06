@@ -241,7 +241,7 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | `migrate`, `--check`, `--release-lock` | Passthrough only |
 | `types` | Passthrough only |
 | `secrets generate`, `fingerprint` | Passthrough only |
-| `login`, `logout`, `whoami` | Passthrough only — yet every `--url` flow depends on `login` (see [A14](#assumptions)) |
+| `login`, `logout`, `whoami` | Passthrough only. The `--url` flows use `DEPLOY_TOKEN`, or what `login` stored (see [A14](#assumptions)) |
 | `content list`, `get` | `doctor` (the `VERIFY_*` checks) |
 | `content update` | `content:set` |
 | `content create`, `delete`, `publish`, `unpublish`, `schedule`, `restore`, `translations` | Passthrough only |
@@ -250,7 +250,8 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | `media *`, `search`, `taxonomy *`, `menu *` | Passthrough only |
 | `site export` | `snapshot` |
 | `site import --analyze`, `--plan --confirm` | `restore` |
-| `site import status`, `resume`, `receipt`, `cancel`, `abandon` | Passthrough only. An interrupted `restore` has no flow to finish it |
+| `site import resume` | `restore`, run again on the same package, finishes an import that was cut off while executing |
+| `site import status`, `receipt`, `cancel`, `abandon` | Passthrough only |
 
 ### Every `emdash-plugin` command
 
@@ -276,7 +277,7 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | Core migrations before traffic | Not covered (runtime `auto` is relied on) |
 | Preview environment | Not covered |
 | Roll back | `rollback` (the Worker only — see [A7](#assumptions)) |
-| Disaster-recovery backup | **Not covered.** `snapshot` is a site package |
+| Disaster-recovery backup | `snapshot -- --database`. Locally and on Node: a copy of the database and media, restored by `restore -- <directory>` — run. For a Cloudflare deployment: Time Travel bookmark and `wrangler d1 export` — written from the docs, **not yet run against a deployment** |
 | Upgrade EmDash | **Not covered.** `upgrade` upgrades the harness |
 | Registry (local aggregator) | `registry:up`, `registry:down` |
 | MCP | `dev` mints the token; `.mcp.json` reads it |
@@ -344,9 +345,9 @@ numbers did not survive.
   `templates/starter-cloudflare` at `emdash@1.1.0` differs in four page files. The vendored skills
   are the template's, so they are 1.0.1 too: 11 files differ from `.src/emdash/skills/`.
   (`git -C .src/templates log -1`; `diff -rq`.)
-- **A9 — `snapshot` is a backup** ("treat it like a database backup", `main snapshot`;
-  "Backup that restores", `CHANGELOG.md`). It is a site package: no users, API tokens, plugin data
-  or secrets, and it restores only into an empty site (`docs:guides/backups.mdx:155-158`).
+- **A9 — ~~`snapshot` is a backup.~~ Fixed.** It is a site package and says so; the backup is
+  `snapshot -- --database` (`docs:guides/backups.mdx:102-158`). Run locally: backed up, deleted an
+  entry, `restore -- <directory> --confirm`, the entry was back under the same id.
 
 **Not guaranteed**
 
@@ -368,11 +369,13 @@ numbers did not survive.
   `merge-seeds`). They are lists of independent items in the seed format
   (`docs:themes/seed-files.mdx:35-74`). A project's redirects vanish on a template that has any.
 - **A13 — `devdb` takes the first `.sqlite` it finds.** Right for one D1 binding.
-- **A14 — `EMDASH_TOKEN` is unset on purpose** (`EMDASH_TOKEN = false` in `harness.toml`). Then the
-  `--url` flows can only authenticate from `emdash login`, an interactive device flow
-  (`core:cli/client-factory.ts:56-61`). EmDash's answer for CI is a token in `EMDASH_TOKEN`
-  (`docs:deployment/schema-evolution.mdx:52`). That mise's `false` unsets it is this repo's claim,
-  not checked here.
+- **A14 — ~~The `--url` flows need a person.~~ Fixed.** `EMDASH_TOKEN = false` in `harness.toml`
+  does remove the variable, even one the calling shell exported (run: `EMDASH_TOKEN=x mise exec`
+  shows it unset) — so EmDash's CI answer, a token in `EMDASH_TOKEN`
+  (`docs:deployment/schema-evolution.mdx:52`), cannot work here. The deployment's token is
+  `DEPLOY_TOKEN` instead: `target` (`nu/lib.nu`) turns it into `EMDASH_TOKEN` only inside a flow
+  given `--url`. Run against the local site with no stored credentials: a wrong `DEPLOY_TOKEN` is
+  refused with `--url` and ignored without it. Not run against a deployment.
 - **A15 — No `EMDASH_ENCRYPTION_KEY`, anywhere.** `create-emdash` writes one to `.env`
   (`pkg:create-emdash/src/index.ts:413-421`); the harness copies the template instead, so none
   exists locally and `deploy` sets none. Without it, operations on encrypted plugin settings fail
