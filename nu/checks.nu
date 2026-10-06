@@ -16,7 +16,7 @@ const PORTABLE = [git pnpm mise nu fnox emdash emdash-plugin oxlint oxfmt skills
 # bracketed bare word is a subexpression, so `problem(s)` RUNS a command called `s` — accepted by
 # the checker (it might be an external) and failing only when that line executes.
 export def nu-problems [dir: string]: nothing -> list<string> {
-  glob ($dir | path join "*.nu") | sort | par-each {|file|
+  files-in $dir "*.nu" | sort | par-each {|file|
     let name = ($file | path basename)
     let diagnostics = (
       (^nu --ide-check 200 $file | complete).stdout | lines | where {|l| $l | str starts-with "{" } | each {|l| $l | from json }
@@ -34,9 +34,15 @@ export def nu-problems [dir: string]: nothing -> list<string> {
       | where {|cmd| not ($cmd in $PORTABLE) }
       | each {|cmd| $"($name): runs the program ($cmd), which is not on every OS — use nushell's own command" }
     )
+    # `glob` on a joined path breaks on Windows, where the separator is the pattern's escape character.
+    let raw_glob = (
+      $text | parse --regex '(?m)(?:^|[\s({|;])(?<cmd>glob) ' | get cmd | uniq
+      | where {|_| $name != "lib.nu" }
+      | each {|_| $"($name): calls `glob` directly — use files-in, which is safe on Windows paths" }
+    )
     let null_device = (["/dev" "/null"] | str join)
     let unix_paths = (if ($text | str contains $null_device) { [$"($name): uses ($null_device), which does not exist on Windows"] } else { [] })
-    $diagnostics | append $traps | append $foreign | append $unix_paths
+    $diagnostics | append $traps | append $foreign | append $unix_paths | append $raw_glob
   } | flatten
 }
 
@@ -77,12 +83,14 @@ export def selftest-problems []: nothing -> list<string> {
     {what: "brackets inside an interpolated string", line: (['def planted [n: int] { print $' '"found ($n) problem' '(s)' '" }'] | str join)}
     {what: "a program that is not on every OS", line: (["def planted [] { " "^" "curl http://localhost }"] | str join)}
     {what: "a path that only exists on Unix", line: (["def planted [] { print '" "/dev" "/null' }"] | str join)}
+    {what: "globbing a joined path", file: "site.nu", line: (["def planted [] { " "glob" " ($env.ROOT | path join '*.nu') }"] | str join)}
   ]
   let nu_missed = ($cases | each {|case|
     rm -rf $scratch
     mkdir $scratch
-    cp ($nu_dir | path join "*.nu" | into glob) $scratch
-    $"(char nl)($case.line)(char nl)" | save --append ($scratch | path join "lib.nu")
+    for file in (files-in $nu_dir "*.nu") { cp $file $scratch }
+    # Planted in lib.nu unless the case names another module (lib.nu is where `glob` is allowed).
+    $"(char nl)($case.line)(char nl)" | save --append ($scratch | path join ($case | get -o file | default "lib.nu"))
     if (nu-problems $scratch | is-empty) { $"the nushell check passed a module with ($case.what)" } else { null }
   } | compact)
   rm -rf $scratch
@@ -108,7 +116,7 @@ def shipped-skills []: nothing -> string {
 }
 
 def tree-hashes [dir: string]: nothing -> record {
-  glob ($dir | path join "**" "*") | where {|f| ($f | path type) == "file" }
+  files-in $dir "**/*" | where {|f| ($f | path type) == "file" }
   | reduce --fold {} {|file, acc| $acc | upsert ($file | path relative-to $dir) (open --raw $file | hash sha256) }
 }
 
@@ -135,7 +143,7 @@ export def symlinks []: nothing -> list<string> {
   let committed = ((^git -C $env.ROOT ls-files -s | complete).stdout | lines | where {|l| $l | str starts-with "120000" })
   # nushell's own glob, not the `find` program: on Windows `find` is a text search.
   let on_disk = (
-    glob ($env.ROOT | path join "**" "*") --exclude ["**/node_modules/**" "**/.src/**" "**/.git/**"]
+    files-in $env.ROOT "**/*" --exclude ["**/node_modules/**" "**/.src/**" "**/.git/**"]
     | where {|path| ($path | path type) == "symlink" }
   )
   $committed | append $on_disk

@@ -114,6 +114,12 @@ export def request [
   } catch { {status: 0, body: null, cookies: ""} }
 }
 
+# Files under a directory matching a pattern, e.g. `files-in $dir "**/*"`. Use this, never `glob`
+# on a joined path: a glob pattern treats `\` as an escape, and `path join` produces `\` on Windows.
+export def files-in [dir: string, pattern: string, --exclude: list<string> = []]: nothing -> list<string> {
+  glob $"($dir | str replace --all '\' '/')/($pattern)" --exclude $exclude
+}
+
 # True when something answers at the URL without an error status.
 export def answers [url: string]: nothing -> bool {
   let status = (request GET $url --timeout 2sec).status
