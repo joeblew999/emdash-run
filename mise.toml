@@ -255,7 +255,7 @@ description = "Print every URL this project serves"
 run = "node \"$ROOT/scripts/repo.mjs\" urls"
 
 [tasks."repo:verify"]
-description = "Assert the RUNNING site matches what the repo claims — content, the model_id join, and snapshot drift against real R2 objects"
+description = "Assert the running site matches what the repo claims (set EMDASH_URL to check a deployment instead) — content, the model_id join, and snapshot drift against real R2 objects"
 run = "node \"$ROOT/scripts/repo.mjs\" verify"
 
 [tasks."repo:check"]
@@ -377,10 +377,122 @@ run = "node \"$ROOT/scripts/skills.mjs\" add-all"
 description = "Run the site's emdash CLI against the local server — e.g: mise run emdash:cli -- content list posts"
 run = "node \"$ROOT/scripts/emdash.mjs\""
 
+[tasks."emdash:help"]
+description = "the official emdash help, or `-- <cmd> --help` for one command"
+run = "node \"$ROOT/scripts/emdash.mjs\" help"
+
+[tasks."emdash:init"]
+description = "initialize a database from the template config (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" init"
+
+[tasks."emdash:types"]
+description = "generate TypeScript types from the schema (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" types"
+
+[tasks."emdash:doctor"]
+description = "check database health and scheduler wiring (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" doctor"
+
+[tasks."emdash:seed"]
+description = "apply a seed file to a database (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" seed"
+
+[tasks."emdash:export-seed"]
+description = "export a database's schema + content as a seed (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" export-seed"
+
+[tasks."emdash:migrate"]
+description = "check or apply deployment-managed migrations (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" migrate"
+
+[tasks."emdash:secrets"]
+description = "generate or fingerprint an EmDash encryption key (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" secrets"
+
+[tasks."emdash:login"]
+description = "log in to an instance — prints a URL and a code you approve by hand"
+run = "node \"$ROOT/scripts/emdash.mjs\" login"
+
+[tasks."emdash:logout"]
+description = "log out of an instance"
+run = "node \"$ROOT/scripts/emdash.mjs\" logout"
+
+[tasks."emdash:whoami"]
+description = "show the current user and auth method"
+run = "node \"$ROOT/scripts/emdash.mjs\" whoami"
+
+[tasks."emdash:content"]
+description = "list/get/create/update/delete/publish/schedule content (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" content"
+
+[tasks."emdash:schema"]
+description = "list/get/create/delete collections and add/remove fields (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" schema"
+
+[tasks."emdash:media"]
+description = "list/upload/get/delete media, or repair-usage (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" media"
+
+[tasks."emdash:search"]
+description = "full-text search across content (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" search"
+
+[tasks."emdash:taxonomy"]
+description = "list taxonomies and terms, add a term (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" taxonomy"
+
+[tasks."emdash:menu"]
+description = "list menus, or get one with its items (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" menu"
+
+[tasks."emdash:site"]
+description = "export/import a whole site as a .emdash package (official)"
+run = "node \"$ROOT/scripts/emdash.mjs\" site"
+
 [tasks."plugin:catalog"]
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
 run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
 
+
+[tasks."plugin:login"]
+description = "log in to the plugin registry via your Atmosphere account (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" login"
+
+[tasks."plugin:logout"]
+description = "log out of the plugin registry, revoking the publisher session (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" logout"
+
+[tasks."plugin:whoami"]
+description = "show the active publisher (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" whoami"
+
+[tasks."plugin:profile"]
+description = "manage the plugin package profile (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" profile"
+
+[tasks."plugin:switch"]
+description = "switch the active publisher session to another DID (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" switch"
+
+[tasks."plugin:info"]
+description = "show details about a single package (official) — e.g: mise run plugin:info -- <slug>"
+run = "node \"$ROOT/scripts/plugin.mjs\" info"
+
+[tasks."plugin:dev"]
+description = "watch a sandboxed plugin's sources and rebuild on change (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" dev"
+
+[tasks."plugin:init"]
+description = "scaffold a new sandboxed plugin (official) — e.g: mise run plugin:init -- my-plugin"
+run = "node \"$ROOT/scripts/plugin.mjs\" init"
+
+[tasks."plugin:release"]
+description = "manage delegated release intents (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" release"
+
+[tasks."plugin:update-package"]
+description = "update a published plugin's registry record without a release (official)"
+run = "node \"$ROOT/scripts/plugin.mjs\" update-package"
 
 [tasks."plugin:search"]
 description = "Search the plugin registry (emdash-plugin search, defaulting to the local registry when running)"
