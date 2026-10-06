@@ -24,9 +24,8 @@ def refresh [] {
   plugin require-consistent
   checks sync-skills (site emdash-source)
   step "restart the site"
-  let fresh = (not (has-devdb))
   site restart
-  site apply-seed --fresh=$fresh
+  site apply-seed
   ok "admin token → run/token-admin.txt"
 }
 

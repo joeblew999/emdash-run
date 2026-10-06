@@ -239,27 +239,19 @@ export def prepare [registration: string] {
   if (site-file "seed" "seed.json" | path exists) { emdash seed --validate seed/seed.json }
 }
 
-# Get the seed into the RUNNING site's database, updating entries that already exist. The site's
-# own first-request seeding skips anything that exists, so edits to the seed never land without this.
-# Carry seed EDITS into an existing database, and only when the seed has changed since it was last
-# applied: re-applying overwrites admin edits and (until emdash#3919) duplicates every image. A
-# fresh database needs nothing — the site has just seeded itself.
-export def apply-seed [--fresh] {
-  let seed = (site-file "seed" "seed.json")
+# Carry seed EDITS into the running site's database — its own first-request seeding skips anything
+# that exists. Only when the seed has changed since it was last applied: re-applying overwrites
+# admin edits and (until emdash#3919) duplicates every image. A database with no record of a seed —
+# new, wiped, or just restored — owns its content: the seed is recorded, not applied.
+export def apply-seed [] {
   let mark = ($env.RUN_DIR | path join "seed-applied.txt")
   let db = (devdb)
-  let now = $"(open --raw $seed | hash sha256) ($db)"
+  let now = $"(open --raw (site-file "seed" "seed.json") | hash sha256) ($db)"
+  if ($mark | path exists) and (open --raw $mark | str trim) != $now {
+    emdash seed seed/seed.json --database $db --on-conflict=update
+    if (on-cloudflare) { uploads-to-r2 }
+  }
   mkdir $env.RUN_DIR
-  if $fresh {
-    $now | save --force $mark
-    return
-  }
-  if ($mark | path exists) and (open --raw $mark | str trim) == $now {
-    ok "seed unchanged since it was last applied"
-    return
-  }
-  emdash seed seed/seed.json --database $db --on-conflict=update
-  if (on-cloudflare) { uploads-to-r2 }
   $now | save --force $mark
 }
 
