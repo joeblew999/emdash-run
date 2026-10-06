@@ -6,7 +6,7 @@ def aggregator []: nothing -> string { $env.EMDASH_DIR | path join "apps" "aggre
 
 # Clone, install and build the EmDash monorepo once, then migrate the registry's local database.
 export def prepare [] {
-  site clone-emdash
+  site clone-source emdash
   if not ($env.EMDASH_DIR | path join "node_modules" ".modules.yaml" | path exists) {
     do { cd $env.EMDASH_DIR; ^pnpm install --frozen-lockfile; ^pnpm --filter @emdash-cms/aggregator run prebuild }
   }

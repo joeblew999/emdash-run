@@ -11,7 +11,7 @@ Everything that must hold before a commit. --fix repairs formatting and generate
 
 ## `content:set`
 
-Set fields on a live entry — e.g: mise run content:set -- parts top-plate '{"material":"Steel"}'
+Set fields on a live entry — e.g: mise run content:set -- pages about '{"title":"About us"}'
 
 
 - **Usage:** `content:set [args]…`
@@ -261,7 +261,7 @@ Save the site — schema, content and media — as a .emdash package (not users,
 
 ## `source`
 
-Clone the EmDash source at the version the site runs into .src/emdash, for reading
+Clone or update a reference checkout under .src/ for reading: emdash (the default — EmDash's source at the version the site runs), templates, or emdashcms.com (EmDash's own production site)
 
 
 - **Usage:** `source [args]…`

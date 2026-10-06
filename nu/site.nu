@@ -25,16 +25,30 @@ export def ensure-ignored [] {
   }
 }
 
-export def clone-templates [] {
-  checkout $env.TEMPLATES_REPO $env.TEMPLATES_DIR "main"
-  ok $"templates @ (^git -C $env.TEMPLATES_DIR rev-parse --short HEAD | str trim)"
+# The reference checkouts under .src/: the official templates, the EmDash source at the version the
+# site runs, and EmDash's own production site — the one real EmDash site whose source we can read.
+def sources []: nothing -> table {
+  [
+    [name repo ref];
+    [templates $env.TEMPLATES_REPO "main"]
+    [emdash $env.EMDASH_REPO $"emdash@($env.EMDASH_VERSION)"]
+    ["emdashcms.com" $env.SITE_EXAMPLE_REPO "main"]
+  ]
 }
 
-# The EmDash monorepo at the version the site runs — for reading its source, and for the registry.
-export def clone-emdash [] {
-  let tag = $"emdash@($env.EMDASH_VERSION)"
-  checkout $env.EMDASH_REPO $env.EMDASH_DIR $tag
-  ok $"emdash source @ ($tag) → .src/emdash"
+# Clone or update one of them by name.
+export def clone-source [name: string] {
+  let source = (sources | where name == $name | get -o 0)
+  if $source == null { fail $"no reference checkout called ($name)" $"known: (sources | get name | str join ', ')" }
+  let dir = ($env.SRC_DIR | path join $name)
+  checkout $source.repo $dir $source.ref
+  ok $"($name) @ (^git -C $dir rev-parse --short HEAD | str trim) → .src/($name)"
+}
+
+# The reference checkouts that exist, each with its short head.
+export def source-heads []: nothing -> list<string> {
+  sources | where {|s| $env.SRC_DIR | path join $s.name ".git" | path exists }
+  | each {|s| $"($s.name)@(^git -C ($env.SRC_DIR | path join $s.name) rev-parse --short HEAD | str trim)" }
 }
 
 # A pristine copy of the template. Never edited by hand: config comes from config/, by `configure`.

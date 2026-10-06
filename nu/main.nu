@@ -33,7 +33,7 @@ def refresh [] {
 def "main setup" [] {
   site ensure-ignored
   step "template"
-  site clone-templates
+  site clone-source templates
   site copy-template
   step "install"
   site install
@@ -65,6 +65,7 @@ def "main status" [] {
   print $"  site      (if $site_up { $'running at ($env.SITE_URL)' } else { 'stopped — run: mise run dev' })"
   print $"  seed      (if (setting SEED_FILE | is-empty) { 'the template only' } else { setting SEED_FILE | path relative-to $env.ROOT })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
+  print $"  sources   (site source-heads | str join ', ')"
   print $"  registry  (if (answers $'($env.REGISTRY_URL)/health') { $'local, at ($env.REGISTRY_URL)' } else { 'hosted' })"
   print $"  deployed  (if ($live | is-empty) { 'no DEPLOY_URL set' } else if (answers $live) { $'($live) answers' } else { $'($live) does not answer' })"
 }
@@ -477,7 +478,7 @@ def "main verify linux" [] {
 }
 
 # Clone the EmDash source at the version the site runs, into .src/emdash, for reading.
-def "main source" [] { site clone-emdash }
+def "main source" [name: string = "emdash"] { site clone-source $name }
 
 # The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
 def --wrapped "main emdash" [...args: string] { emdash ...$args }
