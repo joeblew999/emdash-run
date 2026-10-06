@@ -1,6 +1,6 @@
 # 2026-10-06 — Lean on EmDash: delete what it already does
 
-**Status:** active — **7 of 10 done**, three more partly
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`../2026-10-06-open.md`](../2026-10-06-open.md).
 
 Reading EmDash's source turned up things the harness does by hand that EmDash does itself, a
 workaround for a problem that no longer exists, and one flow that the source says cannot work.

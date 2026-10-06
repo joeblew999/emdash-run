@@ -1,6 +1,6 @@
 # 2026-10-06 — Upgrading EmDash is one flow
 
-**Status:** active — **5 of 8 done**; the other three each wait on something outside this repo: an upstream issue, a deployment, a CI run
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`../2026-10-06-open.md`](../2026-10-06-open.md).
 
 `mise run upgrade` upgrades the harness. Nothing upgrades EmDash. Today the only way to move
 `EMDASH_VERSION` is to edit it and run `setup`, and `setup` deletes the site copy — which is where

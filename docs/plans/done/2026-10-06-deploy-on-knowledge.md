@@ -1,6 +1,6 @@
 # 2026-10-06 — Deploy and recover the way EmDash documents
 
-**Status:** active — **2 of 8 done** (`rollback`, and the CLI's port). Everything left needs a deployment, which this repo does not have; each open box names the command that would close it.
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`../2026-10-06-open.md`](../2026-10-06-open.md).
 
 `deploy` builds, ships and checks that the URL answers. EmDash's own deployment docs ask for more
 than that, and in four places the harness currently says something that is not so: a migration

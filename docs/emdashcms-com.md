@@ -337,7 +337,7 @@ to 1.x is mostly the Worker entry and, optionally, the blocks field.
 <a id="harness"></a>
 ## What this means for the harness
 
-The plan that acts on this is [`plans/2026-10-06-our-site.md`](plans/2026-10-06-our-site.md). In
+The plan that acts on this is the Remy-Sport site's own repo, [`remy-sport-emdash`](https://github.com/joeblew999/remy-sport-emdash) (`docs/plans/`). In
 short:
 
 1. **A project needs a place for its own `src/`.** Today `configure` (`nu/site.nu`) copies two

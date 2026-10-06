@@ -395,11 +395,11 @@ numbers did not survive.
 
 Three plans, each stating what it verified and what it guesses:
 
-- [`plans/2026-10-06-lean-on-emdash.md`](plans/2026-10-06-lean-on-emdash.md) — delete what EmDash
+- [`plans/done/2026-10-06-lean-on-emdash.md`](plans/done/2026-10-06-lean-on-emdash.md) — delete what EmDash
   already does; make `restore` true (W1, W2, W5, W8, A1, A4, A10, A12, A16).
-- [`plans/2026-10-06-emdash-upgrade.md`](plans/2026-10-06-emdash-upgrade.md) — upgrading EmDash as
+- [`plans/done/2026-10-06-emdash-upgrade.md`](plans/done/2026-10-06-emdash-upgrade.md) — upgrading EmDash as
   one flow (A8, A17, W10).
-- [`plans/2026-10-06-deploy-on-knowledge.md`](plans/2026-10-06-deploy-on-knowledge.md) — the
+- [`plans/done/2026-10-06-deploy-on-knowledge.md`](plans/done/2026-10-06-deploy-on-knowledge.md) — the
   sandbox default, the encryption key, a migration check that can fail, honest rollback and backup
   (A5–A7, A9, A14, A15).
 
