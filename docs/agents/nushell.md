@@ -67,13 +67,15 @@ run, and anything else fails.
 
 ## Traps — each one cost a session here
 
+- **`^cmd | ignore` can never fail.** The pipe swallows the exit code, so a check written that way
+  always passes — one of ours did. Use `| complete` and test `exit_code`. `check` rejects it now.
 - **A failing external command aborts the script.** Nothing after it runs — not cleanup, not the
   next check. Wrap it in `code { … }` to keep going, or `| complete` to capture it.
 - **Inside `$"…"`, `(word)` runs a command called `word`.** `problem(s)` fails at run time as
   "command `s` not found", and nushell's checker accepts it. `check` has its own rule for it.
   Phrase messages without brackets.
-- **The emdash CLI prints an error and exits 0.** Never parse its output directly; use
-  `emdash-json`.
+- **Read the emdash CLI's JSON through `emdash-json`.** It fails loudly when the command fails or
+  returns no JSON, so a broken call can never read as "0 entries".
 - **EmDash's file commands default to `./data.db`**, which a Cloudflare site never uses. `doctor`,
   `seed` and `export-seed` must be given `devdb`, or they report on an empty file.
 - **`EMDASH_TOKEN` and `EMDASH_REGISTRY_URL` are unset in `harness.toml` on purpose.** The CLIs read
@@ -84,8 +86,8 @@ run, and anything else fails.
 - **Read structured output, do not scrape it:** `mise daemons ls --json | from json`.
 - **`cd` inside a `def` is scoped to it.** That is how `emdash` and `wrangler` run in the site
   without moving the caller.
-- **Values in `[daemons]` reach pitchfork verbatim** — no `{{templates}}`. That is why the ports
-  appear there as literals.
+- **mise does not expand its `{{templates}}` in `[daemons]`** — pitchfork gets the text and has
+  its own, different variables. That is why the ports appear there as literals.
 
 ## Proving a change
 

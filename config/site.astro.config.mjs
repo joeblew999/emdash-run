@@ -1,6 +1,6 @@
 // This file lives in config/ but is COPIED into .src/site/ by `mise run dev`, so its imports
 // resolve from that location via pnpm (published packages, no monorepo). That is why
-// `mise run site:check` runs against the copy rather than this path.
+// `mise run check -- --site` type-checks the copy rather than this path.
 //
 // It used to carry `// @ts-nocheck` for "TS errors for missing modules are false positives".
 // That went stale: with the suppression removed the file typechecks clean (`tsc --checkJs`
@@ -43,9 +43,8 @@ export default defineConfig({
 			sandboxRunner: sandbox(),
 
 			// The plugin registry — the current name for the plugin marketplace.
-			// Dev points at the LOCAL registry when EMDASH_REGISTRY_URL is set (site:dev sets
-			// sets it); site:build / site:deploy leave it unset, so production uses the
-			// hosted registry.
+			// The hosted registry, unless `mise run registry:up` has a local one answering — then the
+			// dev server is started with EMDASH_REGISTRY_URL pointing at it.
 			registry: process.env.EMDASH_REGISTRY_URL ?? "https://registry.emdashcms.com",
 
 			// MCP is enabled by default at /_emdash/api/mcp (Bearer token required).

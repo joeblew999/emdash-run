@@ -310,8 +310,9 @@ export def urls [] {
 # nushell's own `start` opens a URL with the default browser on every OS.
 export def open-admin [] { start (admin-url) }
 
-# The dev server itself — what the site daemon runs. Astro backgrounds itself when it detects a
-# non-TTY parent, which orphans it from the daemon manager; ASTRO_DEV_BACKGROUND keeps it in front.
+# The dev server itself — what the site daemon runs. Astro detaches into the background when it
+# detects an AI-agent environment, which orphans it from the daemon manager; ASTRO_DEV_BACKGROUND
+# keeps it in the foreground.
 export def serve [] {
   $env.ASTRO_DEV_BACKGROUND = "1"
   # Plugin discovery uses the hosted registry unless the optional local one is really answering.

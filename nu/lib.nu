@@ -74,16 +74,11 @@ export def --wrapped emdash [...args: string] {
   ^emdash ...$args
 }
 
-# `--url <deployment>` when EMDASH_URL targets one. The CLI only accepts it as the LAST argument.
-export def url-flag []: nothing -> list<string> {
-  let url = (setting EMDASH_URL)
-  if ($url | is-empty) { [] } else { ["--url" $url] }
-}
-
-# Run an emdash command and return its JSON, parsed. The CLI prints progress lines before the
-# payload, and reports errors as text while still exiting 0 — so "no JSON came back" is the failure.
+# Run an emdash command and return its JSON, parsed; an error when the command fails or prints
+# none. To target a deployment, set $env.EMDASH_URL — the CLI reads it itself, and flows that take
+# `--url` do exactly that.
 export def emdash-json [...args: string]: nothing -> any {
-  let full = ($args | append "--json" | append (url-flag))
+  let full = ($args | append "--json")
   let result = (do { cd $env.SITE_DIR; ^emdash ...$full | complete })
   let lines = ($result.stdout | lines)
   let starts = ($lines | enumerate | where {|l| ($l.item | str starts-with "{") or ($l.item | str starts-with "[") } | get index)

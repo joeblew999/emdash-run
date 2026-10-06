@@ -40,9 +40,21 @@ export def nu-problems [dir: string]: nothing -> list<string> {
       | where {|_| $name != "lib.nu" }
       | each {|_| $"($name): calls `glob` directly — use files-in, which is safe on Windows paths" }
     )
+    # A program called WITHOUT `^` is just as non-portable, and so is `run-external`. Checked on
+    # code lines only, at the start of a command.
+    let code_lines = ($text | lines | where {|l| not ($l | str trim | str starts-with "#") } | str join (char nl))
+    let bare = (
+      $code_lines | parse --regex '(?m)(?:^|[({|;])\s*(?<cmd>curl|wget|grep|sed|awk|printenv|xdg-open|bash|sh|chmod|tar|unzip|which|run-external)\s' | get cmd | uniq
+      | each {|cmd| $"($name): runs ($cmd) — not on every OS; use nushell's own command" }
+    )
+    # An external piped into `ignore` cannot fail: the pipe swallows its exit code.
+    let swallowed = (
+      $code_lines | parse --regex '(?m)(?<line>\^[^\n|]*\|\s*ignore)' | get line
+      | each {|l| $"($name): an external piped into ignore can never fail — use `| complete` and test exit_code" }
+    )
     let null_device = (["/dev" "/null"] | str join)
     let unix_paths = (if ($text | str contains $null_device) { [$"($name): uses ($null_device), which does not exist on Windows"] } else { [] })
-    $diagnostics | append $traps | append $foreign | append $unix_paths | append $raw_glob
+    $diagnostics | append $traps | append $foreign | append $bare | append $swallowed | append $unix_paths | append $raw_glob
   } | flatten
 }
 
@@ -94,6 +106,8 @@ export def selftest-problems []: nothing -> list<string> {
     {what: "a variable that was never defined", line: "def planted [] { print $never_defined }"}
     {what: "brackets inside an interpolated string", line: (['def planted [n: int] { print $' '"found ($n) problem' '(s)' '" }'] | str join)}
     {what: "a program that is not on every OS", line: (["def planted [] { " "^" "curl http://localhost }"] | str join)}
+    {what: "a program called without a caret", line: (["def planted [] { " "cu" "rl http://localhost }"] | str join)}
+    {what: "an external whose failure is piped away", line: (["def planted [] { ^" "mise tasks validate | " "ignore }"] | str join)}
     {what: "a path that only exists on Unix", line: (["def planted [] { print '" "/dev" "/null' }"] | str join)}
     {what: "globbing a joined path", file: "site.nu", line: (["def planted [] { " "glob" " ($env.ROOT | path join '*.nu') }"] | str join)}
   ]

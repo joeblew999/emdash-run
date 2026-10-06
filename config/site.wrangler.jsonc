@@ -31,8 +31,8 @@
 		},
 	],
 
-	// KV for session storage (@astrojs/cloudflare sessions). Real namespace id —
-	// the local placeholder ("SESSION") is rejected by a real deploy.
+	// KV for session storage (@astrojs/cloudflare sessions), pinned to this project's namespace.
+	// Optional: @astrojs/cloudflare adds a SESSION binding itself when none is declared.
 	"kv_namespaces": [
 		{
 			"binding": "SESSION",

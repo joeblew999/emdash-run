@@ -108,7 +108,7 @@ def "main check" [--fix, --site] {
     {check: "the checkers catch planted faults", problems: (checks selftest-problems)}
     {check: "task arguments reach commands", problems: (checks argument-problems)}
     {check: "unit tests", problems: (passes { ^nu --no-config-file ($nu_dir | path join "tests.nu") })}
-    {check: "mise accepts the task definitions", problems: (passes { ^mise tasks validate | ignore })}
+    {check: "mise accepts the task definitions", problems: ((if (^mise tasks validate | complete).exit_code == 0 { [] } else { ["mise rejects a task definition — run: mise tasks validate"] }))}
     {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
     {check: "docs/tasks.md matches the tasks", problems: (if (checks docs-current) { [] } else { ["out of date — run: mise run check -- --fix"] })}
     {check: "vendored EmDash skills match the site's", problems: (if (checks skills-current) { [] } else { ["drifted — run: mise run dev"] })}
@@ -191,7 +191,7 @@ def "main snapshot" [--url: string] {
   if $url != null { $env.EMDASH_URL = $url }
   let dest = ($env.RUN_DIR | path join "snapshots" $"(date now | format date '%Y%m%d-%H%M%S').emdash")
   mkdir ($dest | path dirname)
-  emdash site export --output $dest ...(url-flag)
+  emdash site export --output $dest
   ok $"saved → ($dest) — it holds every entry and authors' emails; treat it like a database backup"
 }
 
@@ -209,7 +209,7 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     wipe-local-data
     site restart
   }
-  let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json ...(url-flag) | complete })
+  let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json | complete })
   let start = ($analysis.stdout | str index-of "{")
   if $analysis.exit_code != 0 or $start < 0 {
     fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
@@ -223,7 +223,7 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
   let blockers = ($planned.plan | get -o blockers | default [])
   if ($blockers | is-not-empty) { fail $"the plan has blockers: ($blockers | to json --raw)" }
   if not $confirm { print "  nothing imported — add --confirm to execute this plan"; return }
-  emdash site import $pkg --plan $planned.planDigest --confirm ...(url-flag)
+  emdash site import $pkg --plan $planned.planDigest --confirm
   if $wipe { site mint-token }
   ok "restored — check it: mise run doctor"
 }
@@ -307,7 +307,7 @@ def "main content set" [collection: string, entry: string, json: string, --url: 
   if $url != null { $env.EMDASH_URL = $url }
   let rev = (emdash-json content get $collection $entry | get -o _rev | default "")
   if ($rev | is-empty) { fail $"no revision for ($collection)/($entry)" }
-  emdash content update $collection $entry $"--rev=($rev)" --data $json ...(url-flag)
+  emdash content update $collection $entry $"--rev=($rev)" --data $json
 }
 
 # Compare the repo's content model with the running site's, or with a deployment's (--url).
@@ -423,7 +423,7 @@ def "main verify linux" [] {
   let script = ([
     "export DEBIAN_FRONTEND=noninteractive"
     "apt-get update -qq >/tmp/apt.log && apt-get install -y -qq curl git ca-certificates xz-utils unzip procps libatomic1 >>/tmp/apt.log"
-    "curl -fsSL https://mise.run | sh >/tmp/mise.log 2>&1"
+    "curl -fsSL https://mise.run -o /tmp/install-mise.sh && sh /tmp/install-mise.sh >/tmp/mise.log 2>&1"
     "export PATH=$HOME/.local/bin:$PATH"
     "git config --global --add safe.directory '*'"
     "git clone -q /src /work && cd /work && mise trust --all -q && mise run verify -- --full"
