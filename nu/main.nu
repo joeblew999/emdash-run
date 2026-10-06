@@ -14,6 +14,8 @@ def --wrapped format [...args: string] { dlx [$"oxfmt@($env.OXFMT_VERSION)"] oxf
 # Everything between "something changed" and "the site is up on it": config, seed, plugins, skills,
 # a restart, the seed applied to the running database, a fresh admin token.
 def refresh [] {
+  # Plugins move with EmDash: re-pin each to the new version before they are built against it.
+  if (site sync-version) { for dir in (plugin dirs) { plugin fit ($dir | path basename); plugin install ($dir | path basename) } }
   step "config, seed and plugin registration"
   site configure (plugin current-registration)
   plugin sweep build
@@ -401,7 +403,7 @@ def "main verify" [--full, --restore] {
 # Does the harness work for a project on ANOTHER template? Builds a throwaway project from this
 # checkout's harness with that template and runs `verify` in it. This is how the Node.js path is
 # proven from a repo whose own project is on Cloudflare — CI runs it with `starter`.
-def "main verify template" [template: string, --full] {
+def "main verify template" [template: string, --full, --from: string] {
   # A fresh directory every time: on Windows a just-stopped site can still hold its files open,
   # so neither reusing nor deleting a previous run's directory is safe.
   let scratch = ($nu.temp-dir | path join "emdash-run-verify")
@@ -422,13 +424,33 @@ def "main verify template" [template: string, --full] {
     cd $dir
     ^mise trust --all --quiet
     ^mise fmt
-    if $full { ^mise run verify -- --full --restore } else { ^mise run verify }
+    if $from != null {
+      # An upgrade: come up on the older EmDash, mark an entry, move to this version, find the mark.
+      ^mise set $"EMDASH_VERSION=($from)"
+      ^mise run setup
+      ^mise run upgrade-probe -- mark
+      ^mise set $"EMDASH_VERSION=($env.EMDASH_VERSION)"
+      ^mise run dev
+      ^mise run upgrade-probe -- find
+      ^mise run doctor
+    } else if $full { ^mise run verify -- --full --restore } else { ^mise run verify }
   })
   do { cd $dir; ^mise daemons stop --all | complete | ignore }
   if $was_running { ^mise daemons start $env.SITE_DAEMON }
   if $rc != 0 { fail $"the harness does not verify on the ($template) template" $"the project is left in ($dir)" }
   try { rm -rf $dir }
   print $"✓ the harness works on the ($template) template"
+}
+
+# The two halves of an upgrade proof: `mark` writes a recognisable title into the first page,
+# `find` fails unless it is still there. Run by verify:template --from, around the upgrade.
+def "main upgrade-probe" [step: string] {
+  let page = (emdash-json content list pages | get items.0)
+  if $step == "mark" {
+    emdash content update pages $page.slug $"--rev=(emdash-json content get pages $page.slug | get _rev)" --data '{"title":"survived the upgrade"}'
+  } else if (emdash-json content get pages $page.slug | get data.title) != "survived the upgrade" {
+    fail "the entry edited before the upgrade is not there after it"
+  } else { ok "the entry edited before the upgrade is still there" }
 }
 
 # The same verification on a clean Linux machine: a container with only git and mise, and a fresh

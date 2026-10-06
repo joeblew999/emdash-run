@@ -311,7 +311,7 @@ The same verification in a clean Linux container with only git and mise. Needs d
 
 ## `verify:template`
 
-Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter (plain Node.js)
+Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data
 
 
 - **Usage:** `verify:template [args]…`

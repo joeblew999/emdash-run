@@ -1,6 +1,6 @@
 # 2026-10-06 — Upgrading EmDash is one flow
 
-**Status:** active — **0 of 8 done**
+**Status:** active — **2 of 8 done**, two more partly
 
 `mise run upgrade` upgrades the harness. Nothing upgrades EmDash. Today the only way to move
 `EMDASH_VERSION` is to edit it and run `setup`, and `setup` deletes the site copy — which is where
@@ -53,37 +53,33 @@ Background and sources: [`../emdash.md`](../emdash.md) § Upgrading EmDash, and 
 
 ## Items
 
-- [ ] **Settle what "version X" means** — one function returns the whole set for an EmDash version
-  - [ ] `git ls-remote --tags $EMDASH_REPO` lists the tags; write down, for `emdash@1.0.1` and `emdash@1.1.0`, which `plugin-cli`, `sandbox-workerd` and `plugin-test` tags point at the same commit
-  - [ ] if that holds for both, the set is derived from `EMDASH_VERSION`; if not, record here what the rule really is
-  - [ ] decide where `PLUGIN_CLI_VERSION` lives so that it cannot disagree with `EMDASH_VERSION`, and make `check` fail when the two are not a set
-  - [ ] `install` pins `@emdash-cms/sandbox-workerd` to the set's version on Node (it is `latest` today, in `install`)
+- [x] **Settle what "version X" means** — EmDash tags every package it releases on one commit, so `EMDASH_VERSION` alone decides the set. `version-set` (`nu/lib.nu`) reads it from the tags once and remembers it in `run/`.
+  - [x] checked for both releases: `emdash@1.0.1` goes with plugin-cli 0.13.1, plugin-test 0.2.6, sandbox-workerd 0.9.1; `emdash@1.1.0` with 0.13.2, 0.2.7, 0.9.2
+  - [x] `PLUGIN_CLI_VERSION` is deleted — it is derived, so it cannot disagree. The plugin CLI, plugin-test and (on Node) sandbox-workerd all come from the set
 - [ ] **Settle where a version-matched template comes from**
-  - [ ] `git ls-remote --tags $TEMPLATES_REPO`: are there release tags? Record the answer in `docs/emdash.md` § Unverified
-  - [ ] if yes: `clone-templates` checks out the tag for `EMDASH_VERSION`
-  - [ ] if no: `clone-templates` records the head's "sync templates from emdash vX" in `status`, and the upgrade flow says plainly when the template is older than EmDash; file upstream item 6
-  - [ ] the same question and answer for skills (`emdash-cms/skills`, or `.src/emdash/skills/` at the tag): `check`'s "vendored skills" compares against the version the site runs, not the template's copy
+  - [x] `git ls-remote --tags emdash-cms/templates`: **no tags.** The head says "sync templates from emdash v1.0.1" while EmDash is at 1.1.0
+  - [ ] `status` shows the template's sync version, and `dev` says plainly when the template is older than EmDash; file upstream item 6
+  - [ ] the same for skills: `check`'s "vendored skills" compares against the version the site runs, not the template's copy
 - [ ] **A lockfile the project owns** — so that only this flow changes what is installed
   - [ ] `install` restores `config/site.pnpm-lock.yaml` into the site before installing and saves it back after
   - [ ] proof: `setup` twice a day apart, `git diff config/site.pnpm-lock.yaml` is empty
-- [ ] **Upgrade in place — the local database survives**
-  - [ ] a new command (name it in this step) that: stops the site, copies the local database to `run/backups/<old>-<timestamp>/`, re-pins and installs **without** deleting the site, refreshes template files, runs `refresh`
-  - [ ] proof on a throwaway project: start on 1.0.1, add an entry in the admin, upgrade to 1.1.0 — the entry is still there and `emdash doctor` reports migrations "none pending"
-  - [ ] when the new version fails to start, the command says how to go back: the old version **and** the copied database, together (`updating.mdx:123`)
-  - [ ] `dev` refuses, with that command's name, when the installed EmDash is not `EMDASH_VERSION` — today it carries on silently
+- [x] **Upgrade in place — the local database survives.** No new command: change `EMDASH_VERSION`, run `mise run dev`. When the installed version differs, `dev` copies the local database to `run/backups/emdash-<old>-<time>/`, re-pins and installs without deleting the site, and carries on (`sync-version`, `nu/site.nu`).
+  - [x] proof: `mise run verify:template -- starter-cloudflare --from 1.0.1` — a throwaway project comes up on 1.0.1, an entry is edited, `dev` moves it to 1.1.0, the edit is still there, and `emdash doctor` reports "90 applied, none pending". Exit 0, macOS
+  - [x] it prints how to go back: the old version **and** the copied database, together
+  - [x] `dev` no longer carries on silently on the wrong version — it upgrades. (The plan said "refuse"; doing the upgrade is the same information with one fewer step)
 - [ ] **Show what changed, before it bites**
   - [ ] print the template's diff, old ref to new, for the two files `config/` was copied from (`astro.config.mjs`, `wrangler.jsonc`) and for `seed/seed.json` — these are the project's now and nothing else will update them
   - [ ] print the diff of `docs/src/content/docs/deployment/updating.mdx` between the two EmDash tags: its "Notes for specific releases" section is where EmDash says what needs action
   - [ ] print the releases URL for the range
 - [ ] **Plugins move with it**
-  - [ ] every plugin under `plugins/`: set its `emdash` to the new version, install, then `validate`, `typecheck`, `test`, `build` — `audit` in `nu/plugin.nu` already detects the mismatch
+  - [x] every plugin under `plugins/` is re-pinned to the new version and installed before `dev` builds it; `audit` still fails on any mismatch
   - [ ] `SITE_PACKAGES`: after install, list any whose `peerDependencies.emdash` the new version does not satisfy
-  - [ ] `plugin:roundtrip` runs as the last step of the flow
+  - [ ] proof: the upgrade run above with a plugin present, ending in `plugin:probe`
 - [ ] **The deployed side: migrate knowingly**
   - [ ] before `deploy` ships a build whose EmDash differs from the last deployed one: record the D1 Time Travel bookmark and print the restore command (`backups.mdx:102-116`); on Node, say which file to copy
   - [ ] `emdash migrate --status` runs before the deploy and its pending list is shown
   - [ ] after the deploy and one request to the site, `emdash migrate --check` must exit 0 — see the deploy plan for making `doctor --url` use it
   - [ ] proof: deploy 1.0.1 to a throwaway Worker, upgrade, deploy 1.1.0; the flow shows the pending migrations before and "none pending" after
 - [ ] **Prove it in CI**
-  - [ ] a `verify:upgrade -- <from> <to>` in the shape of `verify:template`: throwaway project, `setup` on `<from>`, create an entry, upgrade to `<to>`, assert the entry and a clean `doctor`
+  - [x] not a new task: `verify:template -- <template> --from <version>` does it — throwaway project, `setup` on the old version, edit an entry, `dev` on the new one, assert the entry and a clean `doctor`
   - [ ] the full-verification workflow runs it for the last two EmDash releases, on every OS

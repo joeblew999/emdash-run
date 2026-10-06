@@ -95,7 +95,7 @@ export def audit []: nothing -> list<string> {
 # The official plugin CLI, through `pnpm dlx` at a pinned version (EmDash's docs use dlx for `init`).
 # Installed as a mise npm tool it cannot find its own dependencies on Windows. Inside a plugin, its
 # own scripts use the copy the scaffold installs.
-export def --wrapped cli [...args: string] { dlx [$"@emdash-cms/plugin-cli@($env.PLUGIN_CLI_VERSION)"] emdash-plugin ...$args }
+export def --wrapped cli [...args: string] { dlx [$"@emdash-cms/plugin-cli@(version-set | get '@emdash-cms/plugin-cli')"] emdash-plugin ...$args }
 
 # Stop the flow when a plugin is structurally broken.
 export def require-consistent [] {
@@ -117,7 +117,7 @@ export def scaffold [name: string] {
 # packageManager, and creates three symlinks.
 export def fit [name: string] {
   let dir = (dir-of $name)
-  let test_version = (^pnpm view @emdash-cms/plugin-test version | str trim)
+  let test_version = (version-set | get "@emdash-cms/plugin-test")
   open ($dir | path join "package.json")
   | reject -o packageManager
   | upsert peerDependencies {|p| $p | get -o peerDependencies | default {} | upsert emdash $"^($env.EMDASH_VERSION)" }

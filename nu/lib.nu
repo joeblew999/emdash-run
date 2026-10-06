@@ -68,6 +68,25 @@ export def --wrapped dlx [packages: list<string>, bin: string, ...args: string] 
   ^pnpm dlx ...($packages | each {|p| ["--package" $p] } | flatten) $bin ...$args
 }
 
+# The packages released together with an EmDash version, e.g. {"@emdash-cms/plugin-cli": "0.13.2"}.
+# EmDash tags them all on one commit, so EMDASH_VERSION alone decides the set — nothing to keep in
+# step by hand. Read from the tags once per version and remembered in run/.
+export def version-set [version?: string]: nothing -> record {
+  let want = ($version | default $env.EMDASH_VERSION)
+  let cache = ($env.RUN_DIR | path join $"emdash-($want).json")
+  if ($cache | path exists) { return (open $cache) }
+  let tags = ((^git ls-remote --tags --refs $env.EMDASH_REPO | complete).stdout | lines | parse "{commit}\trefs/tags/{tag}")
+  let commit = ($tags | where tag == $"emdash@($want)" | get -o commit.0 | default "")
+  if ($commit | is-empty) { fail $"there is no EmDash release ($want)" $"check EMDASH_VERSION in mise.toml against ($env.EMDASH_REPO)/releases" }
+  let set = ($tags | where commit == $commit | reduce --fold {} {|t, acc|
+    let at = ($t.tag | str index-of --end "@")
+    $acc | upsert ($t.tag | str substring 0..<$at) ($t.tag | str substring ($at + 1)..)
+  })
+  mkdir $env.RUN_DIR
+  $set | save --force $cache
+  $set
+}
+
 # The emdash CLI, run where it must be run: in the site, which is its project root.
 export def --wrapped emdash [...args: string] {
   cd $env.SITE_DIR

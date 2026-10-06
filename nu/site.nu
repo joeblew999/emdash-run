@@ -62,7 +62,7 @@ export def install [] {
   let runner = (if (on-cloudflare) { [] } else {
     let workspace = (site-file "pnpm-workspace.yaml")
     open $workspace | upsert allowBuilds {|w| $w | get -o allowBuilds | default {} | upsert workerd true } | to yaml | save -f $workspace
-    ["@emdash-cms/sandbox-workerd" "workerd"]
+    [$"@emdash-cms/sandbox-workerd@(version-set | get '@emdash-cms/sandbox-workerd')" "workerd"]
   })
   # Packages our site config imports, declared in settings rather than edited into the template.
   let extra = (setting SITE_PACKAGES | split row " " | where {|p| $p | is-not-empty } | append $runner)
@@ -70,6 +70,31 @@ export def install [] {
   # The template's tsconfig asks for node types it never depends on.
   ^pnpm --dir $env.SITE_DIR add -D @types/node
   ok $"site installed — emdash@($env.EMDASH_VERSION)"
+}
+
+# The EmDash the site has installed, or "" before the first install.
+export def installed-version []: nothing -> string {
+  let pkg = (site-file "node_modules" "emdash" "package.json")
+  if ($pkg | path exists) { open $pkg | get version } else { "" }
+}
+
+# Upgrading EmDash is changing EMDASH_VERSION and running `dev`. When the installed version differs,
+# keep a copy of the local database first — EmDash's migrations only go forward — then re-pin and
+# install in place. The site, and its data, stay.
+export def sync-version []: nothing -> bool {
+  let have = (installed-version)
+  if ($have | is-empty) or $have == $env.EMDASH_VERSION { return false }
+  step $"EmDash ($have) → ($env.EMDASH_VERSION)"
+  version-set | ignore
+  if (has-devdb) {
+    let backup = ($env.RUN_DIR | path join "backups" $"emdash-($have)-(date now | format date '%Y%m%d-%H%M%S')")
+    mkdir $backup
+    cp (devdb) $backup
+    ok $"database as it was on ($have) → ($backup | path relative-to $env.ROOT)"
+    print $"    to go back: set EMDASH_VERSION to ($have), put that file back, run mise run dev — both, together"
+  }
+  install
+  true
 }
 
 # Merge the template's seed with the project's. Pure — see tests.nu. Keyed lists are unioned and a

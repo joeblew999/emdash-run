@@ -19,7 +19,6 @@ HARNESS_VERSION = "0.4.2"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 # npm command-line tools the harness runs through `pnpm dlx`, pinned here. The two oxlint packages
 # are version-coupled: move them together.
-PLUGIN_CLI_VERSION = "0.13.2"
 OXLINT_VERSION = "1.86.0"
 TSGOLINT_VERSION = "7.0.2003"
 OXFMT_VERSION = "0.71.0"
@@ -175,7 +174,11 @@ description = "Does this project work on THIS machine? Site up, check, doctor. -
 
 [tasks."verify:template"]
 extends = "harness"
-description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter (plain Node.js)"
+description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data"
+
+[tasks.upgrade-probe]
+extends = "harness"
+hide = true
 
 [tasks."verify:linux"]
 extends = "harness"
