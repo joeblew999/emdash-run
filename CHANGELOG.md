@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-10-06
+
+- **`mise run report`** — when something breaks, it prints your OS, versions, status and the recent
+  site log, ready to paste into an issue. There is an issue template for it.
+- A Windows installer (`install.ps1`). It has not been run on Windows yet.
+
 ## 0.2.1 — 2026-10-06
 
 - **Plugins work on a new project with no manual edits.** The harness switches on plugin loading

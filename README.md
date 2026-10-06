@@ -53,7 +53,11 @@ mise run setup
   with a different template, and against a live Cloudflare deployment.
 
 **Platforms.** macOS and Linux are proven (minimal Debian needs `apt install libatomic1`).
-Windows has no known blocker but has not been run — tell us what you find.
+Windows has an installer that has **not been run yet** — try it and tell us:
+`irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex`
+
+**Something broke?** `mise run report` prints your versions, status and recent site log — paste it
+into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
 **Deploying** needs Cloudflare credentials in [fnox](https://fnox.jdx.dev)
 (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
 development needs neither.
@@ -74,9 +78,10 @@ mise run logs                     follow the site                               
 mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
 mise run emdash -- <anything>     the official CLI: schema, content, media, taxonomy, menu, search…
 mise run upgrade                  take a newer harness
+mise run report                   something broke? prints what to paste into an issue
 ```
 
-Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 28;
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 29;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
 
 ## What is yours, and what is the harness's

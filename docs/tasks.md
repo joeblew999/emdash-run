@@ -100,6 +100,12 @@ Stop the local registry — the site goes back to the hosted one
 
 Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)
 
+## `report`
+
+- **Usage:** `report`
+
+Something broke? Prints your versions, status and recent site log, ready to paste into an issue
+
 ## `reset`
 
 - **Usage:** `reset`

@@ -62,6 +62,29 @@ def "main status" [] {
   print $"  deployed  (if ($live | is-empty) { 'no DEPLOY_URL set' } else if (answers $live) { $'($live) answers' } else { $'($live) does not answer' })"
 }
 
+# Something broke? This prints everything we need to help — paste it into an issue.
+def "main report" [] {
+  let logs = (^mise daemons logs $env.SITE_DAEMON | complete).stdout | lines | last 25 | str join (char nl)
+  let nu_version = (version | get version)
+  let tick = (char -u "0060" | fill --character (char -u "0060") --width 3)
+  print "Copy everything between the lines into a new issue:"
+  print $"  ($env.HARNESS_REPO)/issues/new"
+  print "────────────────────────────────────────"
+  print "**What I ran, and what happened:**"
+  print ""
+  print ""
+  print $tick
+  print $"os        ($nu.os-info.name) ($nu.os-info.arch) ($nu.os-info.kernel_version)"
+  print $"mise      (^mise --version | str trim)"
+  print $"nushell   ($nu_version)"
+  main status
+  print ""
+  print "last lines of the site log:"
+  print $logs
+  print $tick
+  print "────────────────────────────────────────"
+}
+
 # Everything that must hold before a commit. --fix repairs what can be repaired; --site also
 # type-checks the site, which restarts it.
 def "main check" [--fix, --site] {

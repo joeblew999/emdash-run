@@ -21,7 +21,7 @@ fnox = "1.36.0"        # secrets: Cloudflare credentials for deploy and the R2 c
 shell = "nu --no-config-file -c"
 
 [env]
-HARNESS_VERSION = "0.2.1"
+HARNESS_VERSION = "0.2.2"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 # Defaults for every optional project setting. mise.toml wins over this file, so a project's values
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
@@ -73,6 +73,10 @@ run = "nu --no-config-file {{config_root}}/nu/main.nu dev"
 [tasks.status]
 description = "What is running, and on what: harness, template, EmDash, site, plugins, deployment"
 run = "nu --no-config-file {{config_root}}/nu/main.nu status"
+
+[tasks.report]
+description = "Something broke? Prints your versions, status and recent site log, ready to paste into an issue"
+run = "nu --no-config-file {{config_root}}/nu/main.nu report"
 
 [tasks.check]
 description = "Everything that must hold before a commit. --fix repairs formatting and generated docs; --site also type-checks the site"

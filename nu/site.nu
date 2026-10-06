@@ -259,6 +259,7 @@ export def next-steps [] {
   print "  mise run emdash -- schema list    the official CLI, any command"
   print "  mise run status                   what is running, at a glance"
   print "  mise tasks ls                     everything else"
+  print "  mise run report                   something broke? this prints what to paste into an issue"
 }
 
 export def urls [] {
