@@ -170,7 +170,7 @@ export formats, the database layout, and the plugin model.
 - **The mise skills are machine-level, not this repo's.** `mise-tasks` and `mise-configuration` live
   in `~/.claude/skills/` and load in every repo, because every repo uses mise. A repo adds only what
   is specific to it — here, the EmDash skills above. Nothing is installed from `skills-lock.json`
-  today; `mise run skills:add -- owner/repo/skill` is there if the project ever needs one, and it
-  copies rather than links.
+  today; `mise run skills -- add --copy owner/repo/skill` is there if the project ever needs one
+  (`--copy`, because this repo allows no symlinks).
 
 **Schema references:** https://mise.jdx.dev/schema/mise.json · https://pitchfork.jdx.dev/schema.json

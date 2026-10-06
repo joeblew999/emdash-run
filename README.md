@@ -13,7 +13,7 @@ plugins. Each task is either one official CLI command, or a workflow composed fr
 | | |
 |---|---|
 | **Run EmDash locally** | An official template (`starter-cloudflare`) against the published `emdash` package — admin UI, passkey auth, revisions, media library, schema builder — on `:4321`. |
-| **Model content** | Collections, fields, taxonomies, menus. `mise run emdash:schema`, or the admin. `mise run schema:diff` shows how a deployment differs from the repo. |
+| **Model content** | Collections, fields, taxonomies, menus. `mise run emdash -- schema …`, or the admin. `mise run schema:diff` shows how a deployment differs from the repo. |
 | **Seed it** | `seed:build` merges the template's demo seed with your project's seed. `seed:apply` lands *edits* into the running site's D1, in place. |
 | **Write content** | `mise run content:set -- <collection> <entry> <json>`, or the whole `emdash content` surface. |
 | **Write plugins** | `mise run plugin:new -- <name>` scaffolds one with the official CLI, fits it to the site, loads it, and has the running site call it. `plugin:roundtrip` proves that whole path with a throwaway plugin. |

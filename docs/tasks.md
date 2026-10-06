@@ -10,7 +10,7 @@ Everything that must pass before a commit — lint, formatting, the repo's own c
 
 - **Usage:** `check:deployed`
 
-The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)
+The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first, and log in once: mise run emdash -- login --url https://…
 
 ## `config:apply`
 
@@ -52,119 +52,17 @@ Start working — bring the site up on the current config, seed and plugins, the
 
 Diagnose the lot — the site's database, the plugins' consistency, and whether the running site matches the repo
 
-## `emdash:cli`
+## `emdash`
 
-- **Usage:** `emdash:cli`
+- **Usage:** `emdash`
 
-Run the official emdash CLI with any arguments — e.g: mise run emdash:cli -- schema get parts
+The official emdash CLI, any arguments — e.g: mise run emdash -- schema list   (help: -- --help)
 
-## `emdash:content`
+## `emdash-plugin`
 
-- **Usage:** `emdash:content`
+- **Usage:** `emdash-plugin`
 
-list/get/create/update/delete/publish/schedule content (official)
-
-## `emdash:doctor`
-
-- **Usage:** `emdash:doctor`
-
-check database health and scheduler wiring (official)
-
-## `emdash:export-seed`
-
-- **Usage:** `emdash:export-seed`
-
-export a database's schema + content as a seed (official)
-
-## `emdash:help`
-
-- **Usage:** `emdash:help`
-
-the official emdash help — for one command: mise run emdash:cli -- &lt;cmd> --help
-
-## `emdash:init`
-
-- **Usage:** `emdash:init`
-
-initialize a database from the template config (official)
-
-## `emdash:login`
-
-- **Usage:** `emdash:login`
-
-log in to an instance — prints a URL and a code you approve by hand
-
-## `emdash:logout`
-
-- **Usage:** `emdash:logout`
-
-log out of an instance
-
-## `emdash:media`
-
-- **Usage:** `emdash:media`
-
-list/upload/get/delete media, or repair-usage (official)
-
-## `emdash:menu`
-
-- **Usage:** `emdash:menu`
-
-list menus, or get one with its items (official)
-
-## `emdash:migrate`
-
-- **Usage:** `emdash:migrate`
-
-check or apply deployment-managed migrations (official)
-
-## `emdash:schema`
-
-- **Usage:** `emdash:schema`
-
-list/get/create/delete collections and add/remove fields (official)
-
-## `emdash:search`
-
-- **Usage:** `emdash:search`
-
-full-text search across content (official)
-
-## `emdash:secrets`
-
-- **Usage:** `emdash:secrets`
-
-generate or fingerprint an EmDash encryption key (official)
-
-## `emdash:seed`
-
-- **Usage:** `emdash:seed`
-
-apply a seed file to a database (official)
-
-## `emdash:site`
-
-- **Usage:** `emdash:site`
-
-export/import a whole site as a .emdash package (official)
-
-## `emdash:taxonomy`
-
-- **Usage:** `emdash:taxonomy`
-
-list taxonomies and terms, add a term (official)
-
-## `emdash:types`
-
-- **Usage:** `emdash:types`
-
-generate TypeScript types from the schema (official)
-
-## `emdash:whoami`
-
-- **Usage:** `emdash:whoami`
-
-show the current user and auth method
+The official plugin CLI, any arguments — e.g: mise run emdash-plugin -- login   (help: -- --help)
 
 ## `mcp:clean-tokens`
 
@@ -220,12 +118,6 @@ Watch a plugin's sources and rebuild on change (official emdash-plugin dev)
 ### Arguments
 - **`<plugin>`** — Plugin directory name under plugins/
 
-## `plugin:info`
-
-- **Usage:** `plugin:info`
-
-show details about a single package (official) — e.g: mise run plugin:info -- &lt;slug>
-
 ## `plugin:init`
 
 Scaffold a new sandboxed plugin (official: emdash-plugin init) — the first step of plugin:new, which is what you want
@@ -258,18 +150,6 @@ Install deps for all plugins in plugins/
 
 Copy all local plugins into the site's node_modules so the dev server can load them
 
-## `plugin:login`
-
-- **Usage:** `plugin:login`
-
-log in to the plugin registry via your Atmosphere account (official)
-
-## `plugin:logout`
-
-- **Usage:** `plugin:logout`
-
-log out of the plugin registry, revoking the publisher session (official)
-
 ## `plugin:new`
 
 Scaffold a plugin with the official CLI, fit it to this site, load it into the running site, and prove the site can call it
@@ -293,18 +173,6 @@ Ask the RUNNING site to call a plugin's route — proof it is loaded, not just b
 
   **Default:** `hello`
 
-## `plugin:profile`
-
-- **Usage:** `plugin:profile`
-
-manage the plugin package profile (official)
-
-## `plugin:release`
-
-- **Usage:** `plugin:release`
-
-manage delegated release intents (official)
-
 ## `plugin:remove`
 
 Remove a local plugin — its directory, its copy in the site, and its registration — then bring the site back up
@@ -327,12 +195,6 @@ Prove the plugin toolchain end to end with a throwaway plugin: scaffold → load
 
 Search the plugin registry (emdash-plugin search, defaulting to the local registry when running)
 
-## `plugin:switch`
-
-- **Usage:** `plugin:switch`
-
-switch the active publisher session to another DID (official)
-
 ## `plugin:test`
 
 - **Usage:** `plugin:test`
@@ -345,23 +207,11 @@ Run each plugin's own tests — every plugin that declares a test script
 
 Typecheck every plugin that declares a typecheck script
 
-## `plugin:update-package`
-
-- **Usage:** `plugin:update-package`
-
-update a published plugin's registry record without a release (official)
-
 ## `plugin:validate`
 
 - **Usage:** `plugin:validate`
 
 Validate plugin manifests (sandboxed plugins only)
-
-## `plugin:whoami`
-
-- **Usage:** `plugin:whoami`
-
-show the active publisher (official)
 
 ## `plugins-site:logs`
 
@@ -690,11 +540,11 @@ One-time: clone templates → copy site → install → apply config
 
 Copy $TEMPLATE into .src/site (pristine copy; drops the template's packageManager pin)
 
-## `skills:add`
+## `skills`
 
-- **Usage:** `skills:add`
+- **Usage:** `skills`
 
-install a skill — e.g: mise run skills:add -- owner/repo/skill
+The skills CLI, any arguments, run at the repo root — e.g: mise run skills -- list. Add with --copy: this repo allows no symlinks
 
 ## `skills:check`
 
@@ -702,47 +552,11 @@ install a skill — e.g: mise run skills:add -- owner/repo/skill
 
 Fail if the committed .github/skills/ copy has drifted from the skills the site ships
 
-## `skills:find`
-
-- **Usage:** `skills:find`
-
-search for skills (official)
-
-## `skills:list`
-
-- **Usage:** `skills:list`
-
-list installed skills (official)
-
-## `skills:remove`
-
-- **Usage:** `skills:remove`
-
-remove a skill (official)
-
-## `skills:remove-all`
-
-- **Usage:** `skills:remove-all`
-
-remove every installed skill (official)
-
-## `skills:restore`
-
-- **Usage:** `skills:restore`
-
-reinstall skills from skills-lock.json (official: skills experimental_install)
-
 ## `skills:sync`
 
 - **Usage:** `skills:sync`
 
 Vendor the site's EmDash skills into .github/skills/ (committed) + copy them for Claude Code
-
-## `skills:update`
-
-- **Usage:** `skills:update`
-
-update installed skills (official)
 
 ## `snapshot`
 

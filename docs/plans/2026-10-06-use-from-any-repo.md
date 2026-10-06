@@ -25,7 +25,7 @@ have to *work*, and the checks on the tasks have to be able to *fail*.
   but on this machine, with tools and pnpm's store cached and Cloudflare credentials in fnox.
   - [ ] run `mise run setup` in a clean container or VM and record what was missing
   - [ ] `doctor` without Cloudflare credentials reports the R2 check as unavailable, not as a failure of the site
-- [ ] **Decide how another repo gets the harness**
+- [ ] **Decide how another repo gets the harness** — much easier once the logic is a nushell module rather than 2400 lines of TOML: see [`lean-mise`](2026-10-06-lean-mise.md), which comes first
   - [ ] pick one and write down why: copy `mise.toml` (simple, drifts), include the tasks from this repo through mise, or a template repo
   - [ ] a second repo can take a harness update without hand-merging 2000 lines
 - [ ] **Prove it on a second project** — a different template and a different seed

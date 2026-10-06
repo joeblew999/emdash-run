@@ -75,10 +75,10 @@ Two details that cost a session each to learn:
 - **An editor panel sees saved values only.** Unsaved edits need `admin.editor-draft:read` and an
   explicit interaction.
 - **A `secret` setting needs `EMDASH_ENCRYPTION_KEY`** and fails closed without it
-  (`mise run emdash:secrets`).
+  (`mise run emdash -- secrets generate`).
 - **Native plugins** — trusted React code the host imports — are not scaffolded by the CLI and are
   not auto-registered here. Add one to `config/site.astro.config.mjs` by hand.
 - **Publishing needs your own publisher identity.** Replace `PLUGIN_PUBLISHER` and run
-  `mise run plugin:login` before `plugin:release`.
+  `mise run emdash-plugin -- login` before publishing.
 
 The authoritative reference is the vendored skill: `.github/skills/creating-plugins/`.
