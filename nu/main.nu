@@ -32,9 +32,12 @@ def refresh [] {
 # First time on a machine: template, install, config, hooks — then bring the site up.
 def "main setup" [] {
   site ensure-ignored
-  step "template"
-  site clone-source templates
-  site create
+  # The templates are fetched only to make site/ — a checkout that already has one needs no clone.
+  if not ($env.SITE_DIR | path join "package.json" | path exists) {
+    step "template"
+    site clone-source templates
+    site create
+  }
   step "install"
   site install
   if ($env.ROOT | path join ".githooks" | path exists) { ^git -C $env.ROOT config core.hooksPath .githooks }
