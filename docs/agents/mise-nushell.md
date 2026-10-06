@@ -47,10 +47,9 @@ It has already caught, in tasks that had never been run:
 - a command wrapped across two lines — **a parse error**;
 - `let nu = …` — `nu` is not a usable variable name.
 
-**What none of them check: `usage` specs.** mise validates a usage spec only when the task is
-invoked, so a malformed one fails at *use*, not at check time — `mise tasks ls`, `mise tasks info`
-and `mise tasks validate` all accept a broken spec (verified). Keep usage specs simple, and treat
-the first invocation of a task you just wrote as the check.
+**`usage` specs are checked by `mise tasks validate`.** A malformed one is reported there, naming
+the task (verified on mise 2026.10.2 by planting one: `mise tasks validate` and `mise tasks info`
+both exit non-zero, `mise tasks ls` does not). This file used to say nothing checked them.
 
 **`mise fmt` formats `mise.toml`** — it sorts keys and normalises whitespace. oxfmt does not touch
 TOML, so before this was wired in, the file the whole repo depends on was the one file nothing

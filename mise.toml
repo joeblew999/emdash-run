@@ -968,19 +968,21 @@ if ($parts_final | is-not-empty) {
     for part in $samples {
       let id = ($part | get -o data | default {} | get -o $env.VERIFY_JOIN_FIELD)
       if ($id | is-empty) { continue }
-      let body = (mktemp)
       let url = $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/models/($id)/manifest.json"
-      let code = (
-        ^curl -sS -o $body -w "%{http_code}" -H $"Authorization: Bearer ($token)" $url
-        | complete
-        | get stdout
-        | str trim
-      )
+      # The status code is written on a line of its own after the body, so nothing touches disk.
+      # `complete`, so a curl that cannot connect is a finding to report rather than an abort.
+      let fetched = (^curl -sS -w '\n%{http_code}' -H $"Authorization: Bearer ($token)" $url | complete)
+      let out = ($fetched.stdout | lines)
+      if $fetched.exit_code != 0 or ($out | is-empty) {
+        $unresolved = ($unresolved | append $"($id) unreachable")
+        continue
+      }
+      let code = ($out | last | str trim)
       if (($code | into int) >= 400) {
         $unresolved = ($unresolved | append $"($id) ($code)")
         continue
       }
-      let manifest = (open $body | from json)
+      let manifest = ($out | drop 1 | str join (char nl) | from json)
       let snapshot = ($part | get -o data | default {} | get -o $env.VERIFY_SNAPSHOT_FIELD | default {})
       # The snapshot must equal the live manifest, field for field. Drift means the entry describes
       # a model that has since changed — or never matched at all.
@@ -1157,7 +1159,7 @@ print "→ repo:sync (every task this file names exists)"
 let sync = (code { ^mise run repo:sync })
 print "→ repo:nu (every task body parses and type-checks)"
 let nucheck = (code { ^mise run repo:nu })
-print "→ mise tasks validate (mise's own checks on the task definitions)"
+print "→ mise tasks validate (mise's own checks on the task definitions, usage specs included)"
 let tasks_ok = (code { ^mise tasks validate })
 print "→ mise fmt --check (mise.toml is formatted by mise's own formatter)"
 let misefmt = (code { ^mise --cd $env.ROOT fmt --check })
