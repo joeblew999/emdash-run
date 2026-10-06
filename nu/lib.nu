@@ -68,7 +68,7 @@ export def devdb []: nothing -> string {
 export def secret [name: string]: nothing -> string {
   let ambient = (setting $name)
   if ($ambient | is-not-empty) { return $ambient }
-  let result = (^fnox exec -- printenv $name | complete)
+  let result = (^fnox get $name | complete)
   if $result.exit_code == 0 { $result.stdout | str trim } else { "" }
 }
 
@@ -91,7 +91,31 @@ export def with-site-paused [block: closure]: nothing -> int {
   $rc
 }
 
-# True when something answers at the URL.
+# One HTTP request, with nushell's own client rather than curl — so it is the same on every OS.
+# Returns {status, body, cookies}. status 0 means nothing answered; it never throws.
+export def request [
+  method: string         # GET, POST or DELETE
+  url: string
+  --headers: record = {}
+  --body: any            # sent as JSON
+  --timeout: duration = 10sec
+]: nothing -> record {
+  try {
+    let response = (match $method {
+      "POST" => { http post --full --allow-errors --max-time $timeout --headers $headers --content-type application/json $url ($body | default {}) }
+      "DELETE" => { http delete --full --allow-errors --max-time $timeout --headers $headers $url }
+      _ => { http get --full --allow-errors --max-time $timeout --headers $headers $url }
+    })
+    let cookies = (
+      $response.headers.response | where {|h| ($h.name | str lowercase) == "set-cookie" }
+      | get value | each {|v| $v | split row ";" | first } | str join "; "
+    )
+    {status: $response.status, body: $response.body, cookies: $cookies}
+  } catch { {status: 0, body: null, cookies: ""} }
+}
+
+# True when something answers at the URL without an error status.
 export def answers [url: string]: nothing -> bool {
-  (^curl -fsS -o /dev/null --max-time 2 $url | complete).exit_code == 0
+  let status = (request GET $url --timeout 2sec).status
+  $status >= 200 and $status < 400
 }

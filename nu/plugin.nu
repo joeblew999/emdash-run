@@ -128,15 +128,13 @@ export def probe [name: string, route: string] {
   let token_file = ($env.RUN_DIR | path join "token-admin.txt")
   if not ($token_file | path exists) { fail "no admin token" "run: mise run dev" }
   let res = (
-    ^curl -sS -X POST -H $"Authorization: Bearer (open --raw $token_file | str trim)" -H "content-type: application/json"
-      -H "X-EmDash-Request: 1" -d "{}" $"($env.SITE_URL)/_emdash/api/plugins/($slug)/($route)"
-    | complete
+    request POST $"($env.SITE_URL)/_emdash/api/plugins/($slug)/($route)"
+      --headers {Authorization: $"Bearer (open --raw $token_file | str trim)", "X-EmDash-Request": "1"}
   )
-  let body = (try { $res.stdout | from json } catch { {} })
-  if ($body | describe | str starts-with "record") and ($body | get -o success) == true {
-    ok $"the site ran ($slug)/($route) → ($body | get -o data | to json --raw)"
+  if ($res.body | describe | str starts-with "record") and ($res.body | get -o success) == true {
+    ok $"the site ran ($slug)/($route) → ($res.body | get -o data | to json --raw)"
   } else {
-    fail $"the site did not run ($slug)/($route): ($res.stdout | str trim) ($res.stderr | str trim)"
+    fail $"the site did not run ($slug)/($route): status ($res.status) ($res.body | to json --raw)"
   }
 }
 

@@ -27,5 +27,6 @@ export def admin [route: string] {
     | get -o 0 | default "" | str replace "ADMIN_TOKEN=" ""
   )
   if ($token | is-empty) { fail "the registry has no ADMIN_TOKEN in its .env" }
-  ^curl -fsS -X POST -H $"authorization: Bearer ($token)" -H "content-type: application/json" -d "{}" $"($env.REGISTRY_URL)($route)" | ignore
+  let res = (request POST $"($env.REGISTRY_URL)($route)" --headers {authorization: $"Bearer ($token)"} --timeout 60sec)
+  if not ($res.status in 200..299) { fail $"the registry refused ($route): status ($res.status)" }
 }

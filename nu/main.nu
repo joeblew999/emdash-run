@@ -344,6 +344,26 @@ def "main upgrade" [ref?: string, --from: string] {
   ok $"harness ($env.HARNESS_VERSION) → ($incoming) — review with git diff, then: mise run dev"
 }
 
+# Prove this project on a clean Linux machine: a container with only git and mise, a fresh clone
+# of this checkout, then the flows a dev runs. Needs docker; the host can be any OS.
+def "main verify linux" [] {
+  let flows = ["setup" "status" "check" "doctor" "plugin:roundtrip" "snapshot" "deploy -- --dry"]
+  let script = ([
+    "export DEBIAN_FRONTEND=noninteractive"
+    "apt-get update -qq >/tmp/apt.log && apt-get install -y -qq curl git ca-certificates xz-utils unzip procps libatomic1 >>/tmp/apt.log"
+    "curl -fsSL https://mise.run | sh >/tmp/mise.log 2>&1"
+    "export PATH=$HOME/.local/bin:$PATH"
+    "git config --global --add safe.directory '*'"
+    "git clone -q /src /work && cd /work && mise trust --all -q"
+    "failed=0"
+    ($flows | each {|flow| $"if mise run ($flow) >/tmp/flow.log 2>&1; then echo '  ✓ ($flow)'; else echo '  ✗ ($flow)'; tail -15 /tmp/flow.log; failed=1; fi" } | str join (char nl))
+    "exit $failed"
+  ] | str join (char nl))
+  step "a clean Debian container — this takes about five minutes"
+  ^docker run --rm -v $"($env.ROOT):/src:ro" debian:stable-slim bash -c $script
+  print "✓ this project sets up and runs on a clean Linux machine"
+}
+
 # Clone the EmDash source at the version the site runs, into .src/emdash, for reading.
 def "main source" [] { site clone-emdash }
 

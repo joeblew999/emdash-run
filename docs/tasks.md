@@ -171,3 +171,9 @@ What is running, and on what: harness, template, EmDash, site, plugins, deployme
 - **Usage:** `upgrade`
 
 Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- &lt;tag> picks a version
+
+## `verify:linux`
+
+- **Usage:** `verify:linux`
+
+Prove this project on a clean Linux machine: a container with only git and mise, then the flows a dev runs. Needs docker

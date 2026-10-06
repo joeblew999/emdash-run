@@ -21,7 +21,7 @@ fnox = "1.36.0"        # secrets: Cloudflare credentials for deploy and the R2 c
 shell = "nu --no-config-file -c"
 
 [env]
-HARNESS_VERSION = "0.2.2"
+HARNESS_VERSION = "0.3.0"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 # Defaults for every optional project setting. mise.toml wins over this file, so a project's values
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
@@ -161,6 +161,10 @@ run = "nu --no-config-file {{config_root}}/nu/main.nu registry down"
 [tasks.upgrade]
 description = "Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- <tag> picks a version"
 run = "nu --no-config-file {{config_root}}/nu/main.nu upgrade"
+
+[tasks."verify:linux"]
+description = "Prove this project on a clean Linux machine: a container with only git and mise, then the flows a dev runs. Needs docker"
+run = "nu --no-config-file {{config_root}}/nu/main.nu verify linux"
 
 [tasks.source]
 description = "Clone the EmDash source at the version the site runs into .src/emdash, for reading"

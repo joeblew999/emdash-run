@@ -5,7 +5,14 @@ use plugin.nu
 
 # ── the harness checks itself ────────────────────────────────────────────────────────────────
 
-# nushell's own checker over every module, plus the one trap it cannot see: inside `$"..."` a
+# The only programs the harness may run. Every task has to work on macOS, Linux and Windows, and
+# the way to keep that true is to not call anything that is not on all three: HTTP is nushell's
+# `http`, files are nushell's `glob`/`ls`/`cp`/`rm`, opening a browser is nushell's `start`. What is
+# left is what mise installs, plus git and docker.
+const PORTABLE = [git pnpm mise nu fnox emdash emdash-plugin oxlint oxfmt skills docker]
+
+# nushell's own checker over every module, plus two things it cannot see: programs that are not
+# on every OS, and the interpolation trap: inside `$"..."` a
 # bracketed bare word is a subexpression, so `problem(s)` RUNS a command called `s` — accepted by
 # the checker (it might be an external) and failing only when that line executes.
 export def nu-problems [dir: string]: nothing -> list<string> {
@@ -21,7 +28,15 @@ export def nu-problems [dir: string]: nothing -> list<string> {
       | each {|text| $text | parse --regex '\((?<word>[a-z]+)\)' | get word } | flatten | uniq
       | each {|word| $"($name): a bracketed bare word inside an interpolated string runs a command named ($word)" }
     )
-    $diagnostics | append $traps
+    let text = (open --raw $file)
+    let foreign = (
+      $text | parse --regex '(?m)(?:^|[\s({|;])\^(?<cmd>[a-zA-Z][a-zA-Z0-9_-]*)' | get cmd | uniq
+      | where {|cmd| not ($cmd in $PORTABLE) }
+      | each {|cmd| $"($name): runs the program ($cmd), which is not on every OS — use nushell's own command" }
+    )
+    let null_device = (["/dev" "/null"] | str join)
+    let unix_paths = (if ($text | str contains $null_device) { [$"($name): uses ($null_device), which does not exist on Windows"] } else { [] })
+    $diagnostics | append $traps | append $foreign | append $unix_paths
   } | flatten
 }
 
@@ -60,6 +75,8 @@ export def selftest-problems []: nothing -> list<string> {
     {what: "a POSIX operator nushell does not have", line: "def planted [] { print 'a' && print 'b' }"}
     {what: "a variable that was never defined", line: "def planted [] { print $never_defined }"}
     {what: "brackets inside an interpolated string", line: (['def planted [n: int] { print $' '"found ($n) problem' '(s)' '" }'] | str join)}
+    {what: "a program that is not on every OS", line: (["def planted [] { " "^" "curl http://localhost }"] | str join)}
+    {what: "a path that only exists on Unix", line: (["def planted [] { print '" "/dev" "/null' }"] | str join)}
   ]
   let nu_missed = ($cases | each {|case|
     rm -rf $scratch
@@ -136,16 +153,16 @@ def report [passed: bool, label: string, detail: string]: nothing -> bool {
 export def verify []: nothing -> bool {
   let target = (if (setting EMDASH_URL | is-empty) { $env.SITE_URL } else { $env.EMDASH_URL })
   # Retried: a config change restarts the dev server, and one attempt reports a false alarm.
-  mut status = ""
+  mut status = 0
   for _ in 0..40 {
-    let probe = (^curl -sS -o /dev/null -w "%{http_code}" --max-time 2 $target | complete)
-    if $probe.exit_code == 0 { $status = ($probe.stdout | str trim); break }
+    $status = (request GET $target --timeout 2sec).status
+    if $status != 0 { break }
     sleep 500ms
   }
-  if ($status | is-empty) or (($status | into int) >= 500) {
-    return (report false $"($target) responds" (if ($status | is-empty) { "no response after 20s" } else { $status }))
+  if $status == 0 or $status >= 500 {
+    return (report false $"($target) responds" (if $status == 0 { "no response after 20s" } else { $status | into string }))
   }
-  mut results = [(report true $"($target) responds" $status)]
+  mut results = [(report true $"($target) responds" ($status | into string))]
 
   let collection = (setting VERIFY_COLLECTION)
   if ($collection | is-empty) { return true }
@@ -177,14 +194,17 @@ export def verify []: nothing -> bool {
     let id = ($entry.data | get $join)
     let key = (setting VERIFY_OBJECT_KEY | str replace "{id}" $id)
     let fetched = (
-      ^curl -sS -w '\n%{http_code}' -H $"Authorization: Bearer ($token)"
-        $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/($key)"
-      | complete
+      request GET $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/($key)"
+        --headers {Authorization: $"Bearer ($token)"}
     )
-    let out = ($fetched.stdout | lines)
-    if $fetched.exit_code != 0 or ($out | is-empty) { return {missing: $"($id) unreachable", drift: []} }
-    if (($out | last | str trim | into int) >= 400) { return {missing: $"($id) ($out | last | str trim)", drift: []} }
-    let object = ($out | drop 1 | str join (char nl) | from json)
+    if $fetched.status == 0 { return {missing: $"($id) unreachable", drift: []} }
+    if $fetched.status >= 400 { return {missing: $"($id) ($fetched.status)", drift: []} }
+    # R2 serves the object with its own content type, so the body may arrive as text or bytes.
+    let object = (match ($fetched.body | describe) {
+      "string" => { $fetched.body | from json }
+      "binary" => { $fetched.body | decode utf-8 | from json }
+      _ => { $fetched.body }
+    })
     let stored = ($entry.data | get -o $snapshot_field | default {})
     let drift = ($pairs | where {|p| ($stored | get -o ($p | first)) != ($object | get -o ($p | last)) } | each {|p|
       $"($entry.slug): ($p | first) is ($stored | get -o ($p | first)), live is ($object | get -o ($p | last))"

@@ -219,7 +219,7 @@ export def restart [] {
   rm -rf (site-file "node_modules" ".vite")
   ^mise daemons start $env.SITE_DAEMON
   for _ in 1..60 {
-    if (^curl -fsS -o /dev/null -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass" | complete).exit_code == 0 { return }
+    if (request POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass").status in 200..399 { return }
     sleep 1sec
   }
   fail "the site did not answer within 60s" "see: mise run logs"
@@ -229,17 +229,16 @@ export def restart [] {
 # revoked, because EmDash shows a token's secret only once.
 export def mint-token [] {
   mkdir $env.RUN_DIR
-  let jar = ($env.RUN_DIR | path join ".mcp-cookies")
   let base = $"($env.SITE_URL)/_emdash/api"
-  if (^curl -fsS -o /dev/null -c $jar -X POST $"($base)/setup/dev-bypass" | complete).exit_code != 0 {
-    fail "could not reach the site" "run: mise run dev"
-  }
-  let api = ["-b" $jar "-H" "X-EmDash-Request: 1" "-H" "content-type: application/json"]
-  let listed = (^curl -sS ...$api $"($base)/admin/api-tokens" | from json)
+  # dev-bypass signs us in on localhost; its session cookie authenticates the admin API.
+  let session = (request POST $"($base)/setup/dev-bypass")
+  if $session.status == 0 or ($session.cookies | is-empty) { fail "could not sign in to the site" "run: mise run dev" }
+  let headers = {Cookie: $session.cookies, "X-EmDash-Request": "1"}
+  let listed = (request GET $"($base)/admin/api-tokens" --headers $headers).body
   for old in ($listed | get -o data.items | default [] | where name == "token-admin") {
-    ^curl -sS -o /dev/null -X DELETE ...$api $"($base)/admin/api-tokens/($old.id)"
+    request DELETE $"($base)/admin/api-tokens/($old.id)" --headers $headers | ignore
   }
-  let created = (^curl -sS -X POST ...$api -d '{"name":"token-admin","scopes":["admin"]}' $"($base)/admin/api-tokens" | from json)
+  let created = (request POST $"($base)/admin/api-tokens" --headers $headers --body {name: "token-admin", scopes: ["admin"]}).body
   let token = ($created | get -o data.token | default "")
   if ($token | is-empty) { fail $"token creation failed: ($created | to json --raw)" }
   $"($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.txt")
@@ -269,13 +268,8 @@ export def urls [] {
   if (setting DEPLOY_URL | is-not-empty) { print $"  live    ($env.DEPLOY_URL)" }
 }
 
-export def open-admin [] {
-  match $nu.os-info.name {
-    "macos" => { ^open (admin-url) }
-    "windows" => { ^cmd /c start "" (admin-url) }
-    _ => { ^xdg-open (admin-url) }
-  }
-}
+# nushell's own `start` opens a URL with the default browser on every OS.
+export def open-admin [] { start (admin-url) }
 
 # The dev server itself — what the site daemon runs. Astro backgrounds itself when it detects a
 # non-TTY parent, which orphans it from the daemon manager; ASTRO_DEV_BACKGROUND keeps it in front.
