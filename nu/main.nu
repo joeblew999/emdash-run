@@ -12,7 +12,8 @@ def --wrapped lint [...args: string] { dlx [$"oxlint@($env.OXLINT_VERSION)" $"ox
 def --wrapped format [...args: string] { dlx [$"oxfmt@($env.OXFMT_VERSION)"] oxfmt ...$args }
 
 # Everything between "something changed" and "the site is up on it": config, seed, plugins, skills,
-# a restart, the seed applied to the running database, a fresh admin token.
+# the seed applied to the running database — and a restart, with a fresh admin token, only when
+# something changed that a running server cannot pick up by itself.
 def refresh [] {
   site sync-version
   # Plugins move with EmDash: re-pin each that is not on its version — a re-run finishes an upgrade.
@@ -20,11 +21,18 @@ def refresh [] {
   step "key, plugin registration, seed"
   site prepare (plugin current-registration)
   plugin sweep build
-  plugin link
   plugin require-consistent
   checks sync-skills
-  step "restart the site"
-  site restart
+  let mark = ($env.RUN_DIR | path join "site-started.txt")
+  let inputs = (site restart-inputs)
+  if (holds $mark $inputs) and (daemon-running $env.SITE_DAEMON) and (answers (site-url) --timeout 30sec) {
+    ok "the site is running on these settings, dependencies and plugins already — left alone"
+  } else {
+    step "restart the site"
+    plugin link
+    site restart
+    $inputs | save --force $mark
+  }
   site apply-seed
   ok "admin token → run/token-admin.txt"
 }

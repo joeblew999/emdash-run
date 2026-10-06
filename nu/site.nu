@@ -235,7 +235,8 @@ export def enable-local-registry []: nothing -> bool {
 export def prepare [registration: string] {
   if not (site-file "package.json" | path exists) { fail "there is no site/ yet" "run: mise run setup" }
   ensure-key
-  $registration | save --force (site-file "local-plugins.mjs")
+  # Written only when it differs: the config imports it, and a touched file reloads the server.
+  if not (holds (site-file "local-plugins.mjs") $registration) { $registration | save --force (site-file "local-plugins.mjs") }
   if (site-file "seed" "seed.json" | path exists) { emdash seed --validate seed/seed.json }
 }
 
@@ -247,7 +248,7 @@ export def apply-seed [] {
   let mark = ($env.RUN_DIR | path join "seed-applied.txt")
   let db = (devdb)
   let now = $"(open --raw (site-file "seed" "seed.json") | hash sha256) ($db)"
-  if ($mark | path exists) and (open --raw $mark | str trim) != $now {
+  if ($mark | path exists) and (not (holds $mark $now)) {
     emdash seed seed/seed.json --database $db --on-conflict=update
     if (on-cloudflare) { uploads-to-r2 }
   }
@@ -271,6 +272,16 @@ def uploads-to-r2 [] {
     if $put.exit_code != 0 { fail $"could not copy ($file | path basename) into local R2: ($put.stderr | str trim)" }
     rm $file
   }
+}
+
+# What a running dev server cannot pick up by itself, as one hash: the settings, the site's
+# dependencies and config, and every plugin's files. Pages and content are not in it — they reload.
+export def restart-inputs []: nothing -> string {
+  [($env.ROOT | path join "mise.toml") ($env.ROOT | path join "mise.local.toml") (harness-file)]
+  | append (["package.json" "pnpm-lock.yaml" "astro.config.mjs" "wrangler.jsonc" ".env" ".dev.vars" "local-plugins.mjs"] | each {|f| site-file $f })
+  | append (files-in $env.PLUGINS_DIR "**/*" --exclude ["**/node_modules/**"] | sort)
+  | where {|f| ($f | path type) == "file" }
+  | each {|f| $"($f) (open --raw $f | hash sha256)" } | append $env.SITE_PORT | str join (char nl) | hash sha256
 }
 
 # (Re)start the dev server and make ONE call to EmDash's dev-bypass: it migrates, completes setup,

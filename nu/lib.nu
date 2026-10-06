@@ -68,6 +68,11 @@ export def setting [name: string]: nothing -> string {
   $env | get -o $name | default "" | into string
 }
 
+# Does the file hold exactly this text? How run/ remembers what something was last done on.
+export def holds [file: string, text: string]: nothing -> bool {
+  ($file | path exists) and (open --raw $file | str trim) == ($text | str trim)
+}
+
 # Run an npm command-line tool at a pinned version, through `pnpm dlx`. Not installed as a mise
 # npm tool: those cannot find their own dependencies on Windows. `packages` are name@version; the
 # first one's binary is what runs unless `--bin` names another.
