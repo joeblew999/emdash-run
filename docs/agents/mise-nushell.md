@@ -32,7 +32,7 @@ machine.
 | `mise tasks validate` | mise's own checks on the task definitions (composed into `repo:check`) |
 | `mise fmt --check` | `mise.toml` is formatted by mise's own formatter (composed into `repo:check`) |
 | `repo:docs` | `docs/tasks.md` is exactly what the tasks are — generated, never hand-edited |
-| `mise run repo:sync` | a daemon in `pitchfork.toml` naming a task that does not exist |
+| `mise run repo:sync` | any `mise run <task>` in `mise.toml` naming a task that does not exist |
 | `mise run doctor` | the live state: site database, plugin consistency, `repo:verify` |
 | `mise run site:check` | the site type-checks, including that `astro.config.mjs` loads |
 
@@ -130,7 +130,7 @@ way, and it is the first thing to try when a mise command behaves oddly inside a
   return a value: `let db = (^mise run site:_devdb | str trim)`. On failure, have the helper
   `print --stderr "…"` and `exit 1`, and let the caller test for empty.
 - **`mise tasks info <name>` is the existence test** — it exits non-zero for an unknown task. That
-  is how `repo:sync` checks `pitchfork.toml`, and it is more reliable than parsing `mise tasks ls`,
+  is how `repo:sync` resolves task references, and it is more reliable than parsing `mise tasks ls`,
   whose descriptions wrap.
 - **`{{config_root}}` resolves when the config loads**, so use it for script paths instead of a
   shell variable — no quoting, absolute on every platform.

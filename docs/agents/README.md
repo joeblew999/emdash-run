@@ -1,5 +1,10 @@
 # Agent guide — emdash-run
 
+**This repo is a reusable EmDash harness.** Any developer should be able to work on every part of
+EmDash — schema, content, media, taxonomies, menus, seeds, migrations, plugins, deploy — from
+`mise run`. Keep it that way: a task is either one official CLI command or a workflow composed from
+several, and nothing that names this particular site belongs outside the PROJECT SETTINGS block.
+
 **`mise.toml` is the source of truth** for tasks and workflow: read its QUICK REFERENCE
 block at the top, and use `mise tasks ls` for the full list. Never keep a second copy of
 the task list anywhere — duplicated lists drift from the tasks they describe. README.md
