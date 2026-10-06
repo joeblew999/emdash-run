@@ -5,17 +5,17 @@
 #   mise run check     before a commit   mise run doctor   is the running site right?
 
 [env]
-TEMPLATE = "starter-cloudflare"   # any *-cloudflare directory in github.com/emdash-cms/templates
-EMDASH_VERSION = "1.1.0"          # the site is pinned to exactly this
-DEPLOY_URL = ""                   # where `mise run deploy` ships; empty until you have one
+TEMPLATE = "starter-cloudflare" # any *-cloudflare directory in github.com/emdash-cms/templates
+EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
+DEPLOY_URL = ""                 # where `mise run deploy` ships; empty until you have one
 
 # Packages your config/site.astro.config.mjs imports that the template does not ship.
 SITE_PACKAGES = ""
 
 # Your own seed, merged over the template's. Empty: run on the template's seed alone.
-SEED_FILE = ""                    # e.g. "{{config_root}}/config/seed.json"
-SEED_ORDER = ""                   # its collections, dependency-first, `:`-separated
-SEED_LABEL = ""                   # appended to the template's site name
+SEED_FILE = ""  # e.g. "{{config_root}}/config/seed.json"
+SEED_ORDER = "" # its collections, dependency-first, `:`-separated
+SEED_LABEL = "" # appended to the template's site name
 
 # Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
 PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
@@ -23,9 +23,9 @@ PLUGIN_AUTHOR = "your-name"
 PLUGIN_SECURITY_URL = "https://example.com/security"
 
 # What `doctor` asserts about live content. Each is optional — empty skips that check.
-VERIFY_COLLECTION = ""            # its entries must carry data
-VERIFY_JOIN_FIELD = ""            # each entry must have this field…
-VERIFY_BUCKET = ""                # …naming an object in this R2 bucket…
-VERIFY_OBJECT_KEY = ""            # …at this key, e.g. "models/{id}/manifest.json"
-VERIFY_SNAPSHOT_FIELD = ""        # …whose fields this stored snapshot must match
-VERIFY_SNAPSHOT_MAP = ""          # stored=object pairs, e.g. "name=title,version=version"
+VERIFY_COLLECTION = ""     # its entries must carry data
+VERIFY_JOIN_FIELD = ""     # each entry must have this field…
+VERIFY_BUCKET = ""         # …naming an object in this R2 bucket…
+VERIFY_OBJECT_KEY = ""     # …at this key, e.g. "models/{id}/manifest.json"
+VERIFY_SNAPSHOT_FIELD = "" # …whose fields this stored snapshot must match
+VERIFY_SNAPSHOT_MAP = ""   # stored=object pairs, e.g. "name=title,version=version"
