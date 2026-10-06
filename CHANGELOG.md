@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-10-06
+
+- The no-symlinks check no longer calls the `find` program, which on Windows is a text search. It
+  uses nushell's own file matching. No Unix-only program is called anywhere in the harness now.
+
 ## 0.1.0 — 2026-10-06
 
 The first release meant for other repos. Everything below was run, not reasoned about.
