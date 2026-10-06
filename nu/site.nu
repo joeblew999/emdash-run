@@ -135,10 +135,10 @@ export def installed-version []: nothing -> string {
 # Upgrading EmDash is changing EMDASH_VERSION and running `dev`. When the installed version differs,
 # keep a copy of the local database first — EmDash's migrations only go forward — then re-pin and
 # install in place. The site, and its data, stay.
-export def sync-version []: nothing -> bool {
+export def sync-version [] {
   let have = (installed-version)
   if ($have | is-empty) { fail "site/ is not installed" "run: mise run setup" }
-  if $have == $env.EMDASH_VERSION { return false }
+  if $have == $env.EMDASH_VERSION { return }
   step $"EmDash ($have) → ($env.EMDASH_VERSION)"
   version-set | ignore
   if (has-devdb) {
@@ -147,8 +147,8 @@ export def sync-version []: nothing -> bool {
     print $"    to go back: set EMDASH_VERSION to ($have), then: mise run restore -- ($backup) --confirm"
   }
   install
-  what-changed $have
-  true
+  # Advice only: it reads the network, and must never stop an upgrade that has already installed.
+  try { what-changed $have } catch { print $"    could not say what changed — compare: ($env.EMDASH_REPO)/compare/emdash@($have)...emdash@($env.EMDASH_VERSION)" }
 }
 
 # What an upgrade does not do for you, said before it bites: EmDash's own notes on the releases
@@ -169,12 +169,8 @@ def what-changed [from: string] {
     print $"    EmDash's updating notes gained ($added | length) lines — in full: .src/emdash/($notes)"
     for line in ($added | first 30) { print $"      │ ($line)" }
   }
-  clone-source templates
-  let lag = (template-lag)
-  if ($lag | is-not-empty) { print $"    ⚠ ($lag)" }
-  print "    site/ is yours and was not touched. To adopt a template change, compare a file with it:"
+  print "    site/ is yours and was not touched. To adopt a template change: mise run source -- templates, then"
   print $"      git diff --no-index .src/templates/($env.TEMPLATE)/astro.config.mjs site/astro.config.mjs"
-  print "    .src/templates was just refreshed; later: mise run source -- templates"
 }
 
 # Does the project's site config load local plugins? plugin:new needs it to.

@@ -14,8 +14,9 @@ def --wrapped format [...args: string] { dlx [$"oxfmt@($env.OXFMT_VERSION)"] oxf
 # Everything between "something changed" and "the site is up on it": config, seed, plugins, skills,
 # a restart, the seed applied to the running database, a fresh admin token.
 def refresh [] {
-  # Plugins move with EmDash: re-pin each to the new version before they are built against it.
-  if (site sync-version) { for dir in (plugin dirs) { plugin fit ($dir | path basename); plugin install ($dir | path basename) } }
+  site sync-version
+  # Plugins move with EmDash: re-pin each that is not on its version — a re-run finishes an upgrade.
+  for name in (plugin behind) { plugin fit $name; plugin install $name }
   step "key, plugin registration, seed"
   site prepare (plugin current-registration)
   plugin sweep build
