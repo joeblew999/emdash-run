@@ -1046,7 +1046,7 @@ for ref in $refs {
   if (^mise tasks info $ref | complete).exit_code != 0 { $missing = ($missing | append $ref) }
 }
 if ($missing | is-not-empty) {
-  print $"✗ pitchfork.toml runs tasks that do not exist: ($missing | str join ', ')"
+  print $"✗ [daemons] names tasks that do not exist: ($missing | str join ', ')"
   exit 1
 }
 print $"  ✓ all ($refs | length) daemon tasks exist"
@@ -1905,7 +1905,7 @@ description = "Build the registry's public projection — without it every read 
 run = "mise run registry:_admin -- /_admin/labels/replay"
 
 # The registry's web UI (plugins.emdashcms.com), served locally on :4330. Optional, like the
-# registry itself — but pitchfork.toml declares the daemon, so these tasks are what it runs. They
+# registry itself — but [daemons] declares it, so these tasks are what it runs. They
 # were missing, which meant that daemon could never start and `repo:urls` told you to run a task
 # that did not exist.
 [tasks."plugins-site:start"]
@@ -2084,20 +2084,24 @@ if ($nu.os-info.name == "windows") {
 # live HERE rather than in a second file that had to be kept in step with the tasks.
 # -----------------------------------------------------------------------------
 
+# NOTE: values here are passed to pitchfork VERBATIM — mise does not expand templates in
+# [daemons], so `{{env.SITE_URL}}` reaches pitchfork as those literal characters and the daemon
+# never becomes ready. These URLs are duplicated from [env] on purpose, and that is the reason.
+
 [daemons.emdash]
 run = "mise run site:dev"
 dir = "."
 auto = ["start", "stop"]
-ready_http = "{{env.SITE_URL}}/"
+ready_http = "http://localhost:4321/"
 
 [daemons.registry]
 run = "mise run registry:start"
 dir = "."
 auto = ["stop"]
-ready_http = "{{env.REGISTRY_URL}}/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
+ready_http = "http://localhost:8788/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
 
 [daemons.plugins-site]
 run = "mise run plugins-site:start"
 dir = "."
 auto = ["stop"]
-ready_http = "{{env.PLUGINS_SITE_URL}}/"
+ready_http = "http://localhost:4330/"
