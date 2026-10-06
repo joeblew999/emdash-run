@@ -18,8 +18,7 @@ def refresh [] {
   site configure (plugin current-registration)
   plugin sweep build
   plugin link
-  let faults = (plugin audit)
-  if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
+  plugin require-consistent
   checks sync-skills
   step "restart the site"
   let fresh = (not (has-devdb))
@@ -70,7 +69,7 @@ def "main status" [] {
 
 # Something broke? This prints everything we need to help — paste it into an issue.
 def "main report" [] {
-  let logs = (^mise daemons logs $env.SITE_DAEMON | complete).stdout | lines | last 25 | str join (char nl)
+  let logs = (daemon-log $env.SITE_DAEMON 25)
   let nu_version = (version | get version)
   let tick = (char -u "0060" | fill --character (char -u "0060") --width 3)
   print "Copy everything between the lines into a new issue:"
@@ -133,19 +132,18 @@ def "main check" [--fix, --site] {
 
 # Is the running site what the repo says it is? With --url, a deployment instead.
 def "main doctor" [--url: string] {
-  if $url != null { $env.EMDASH_URL = $url }
+  target $url
   if (setting EMDASH_URL | is-empty) {
     step "local database"
     emdash doctor -d (devdb)
-    let faults = (plugin audit)
-    if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
+    plugin require-consistent
   } else {
     if (on-cloudflare) {
       step "core migrations on the deployed database"
       do { cd $env.SITE_DIR; ^fnox exec -- emdash migrate --status --d1 (site d1-name) }
     }
     step "content model"
-    if not (checks schema-diff (open ($env.SITE_DIR | path join "seed" "seed.json"))) { exit 1 }
+    main schema diff
   }
   step "live state"
   if not (checks verify) { fail "the site does not match the repo" }
@@ -189,7 +187,7 @@ def "main rollback" [] {
 
 # Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment.
 def "main snapshot" [--url: string] {
-  if $url != null { $env.EMDASH_URL = $url }
+  target $url
   let dest = ($env.RUN_DIR | path join "snapshots" $"(date now | format date '%Y%m%d-%H%M%S').emdash")
   mkdir ($dest | path dirname)
   emdash site export --output $dest
@@ -201,7 +199,7 @@ def "main snapshot" [--url: string] {
 # Restore a snapshot into an EMPTY site. Shows the plan; --confirm executes exactly that plan.
 # --wipe empties the LOCAL database first, so a local restore is one command.
 def "main restore" [package: string, --confirm, --wipe, --url: string] {
-  if $url != null { $env.EMDASH_URL = $url }
+  target $url
   let pkg = ($package | path expand)
   if not ($pkg | path exists) { fail $"no such package: ($pkg)" }
   if $wipe {
@@ -297,8 +295,7 @@ def "main plugin roundtrip" [] {
 
 # Everything a plugin release needs short of publishing: validate, typecheck, test, build, bundle.
 def "main plugin release" [name?: string] {
-  let faults = (plugin audit)
-  if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
+  plugin require-consistent
   if (plugin dirs | is-empty) { print "  no plugins to release — make one: mise run plugin:new -- <name>"; return }
   for script in [validate typecheck test build bundle] { plugin sweep $script $name }
   print "✓ bundled — publish with: mise run emdash-plugin -- publish --manifest plugins/<name>"
@@ -306,7 +303,7 @@ def "main plugin release" [name?: string] {
 
 # Set fields on a live entry: reads its revision, updates, publishes. --url targets a deployment.
 def "main content set" [collection: string, entry: string, json: string, --url: string] {
-  if $url != null { $env.EMDASH_URL = $url }
+  target $url
   let rev = (emdash-json content get $collection $entry | get -o _rev | default "")
   if ($rev | is-empty) { fail $"no revision for ($collection)/($entry)" }
   emdash content update $collection $entry $"--rev=($rev)" --data $json
@@ -314,8 +311,8 @@ def "main content set" [collection: string, entry: string, json: string, --url: 
 
 # Compare the repo's content model with the running site's, or with a deployment's (--url).
 def "main schema diff" [--url: string] {
-  if $url != null { $env.EMDASH_URL = $url }
-  if not (checks schema-diff (open ($env.SITE_DIR | path join "seed" "seed.json"))) { exit 1 }
+  target $url
+  if not (checks schema-diff) { exit 1 }
 }
 
 # Export the running site's model and content as a seed, to compare with the project's.
@@ -331,7 +328,7 @@ def "main registry up" [] {
   registry prepare
   ^mise daemons start registry
   if not (wait-for $"($env.REGISTRY_URL)/health" 120) {
-    print --stderr ((^mise daemons logs registry | complete).stdout | lines | last 30 | str join (char nl))
+    print --stderr (daemon-log registry)
     fail "the registry did not answer within 120s" "its last log lines are above"
   }
   # A fresh registry is empty: ingest published plugins, then build the projection reads go through.

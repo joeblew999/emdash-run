@@ -72,85 +72,55 @@ export def install [] {
   ok $"site installed — emdash@($env.EMDASH_VERSION)"
 }
 
-# Merge the template's seed with the project's. Pure: records in, record out — see tests.nu.
-#
-# The rules are deliberately not uniform:
-#   collections, taxonomies       a collision goes to the TEMPLATE
-#   content                       a collision goes to the PROJECT (its ids are namespaced)
-#   menus, widgetAreas, redirects, sections, blockTypes, relations, bylines
-#                                 unioned by their key; a collision goes to the TEMPLATE
-#   settings                      the template's, falling back to the project's
-# Content is ordered dependency-first, because entries carry `$ref:` values that must already exist.
+# Merge the template's seed with the project's. Pure — see tests.nu. Keyed lists are unioned and a
+# collision goes to the TEMPLATE. Content is the exception: the PROJECT wins, and it is ordered
+# dependency-first, because entries carry `$ref:` values that must already exist.
 export def merge-seeds [base: record, project: record, order: list<string>, label: string]: nothing -> record {
-  def union [project_items: list, base_items: list, key: string] {
-    # An item without the key cannot collide, so it is kept as it is.
-    def identity [item: any] { $item | get -o $key | default ($item | to json --raw) | into string }
-    mut acc = {}
-    for item in $project_items { $acc = ($acc | upsert (identity $item) $item) }
-    for item in $base_items { $acc = ($acc | upsert (identity $item) $item) }
-    $acc | values
+  def items [seed: record, key: string] { $seed | get -o $key | default [] }
+  def pick [key: string, fallback: any] { $base | get -o $key | default ($project | get -o $key | default $fallback) }
+  # The later item wins, so the template goes last. An item without the id cannot collide.
+  def union [key: string, id: string] {
+    items $project $key | append (items $base $key)
+    | reduce --fold {} {|item, acc| $acc | upsert ($item | get -o $id | default ($item | to json --raw) | into string) $item }
+    | values
   }
-  def pick [key: string, fallback: any] {
-    $base | get -o $key | default ($project | get -o $key | default $fallback)
-  }
-
-  let project_content = ($project | get -o content | default {})
-  let base_content = ($base | get -o content | default {})
-  let keys = (
-    $order
-    | append ($project_content | columns | where {|k| not ($k in $order) })
-    | append ($base_content | columns)
-    | uniq
-  )
-  mut content = {}
-  mut seen = []
-  for key in $keys {
-    let entries = (($project_content | get -o $key | default []) | append ($base_content | get -o $key | default []))
-    mut kept = []
-    for entry in $entries {
+  let ours = ($project | get -o content | default {})
+  let theirs = ($base | get -o content | default {})
+  # The first entry with an id wins, across all collections; the project's are read first.
+  let content = ($order | append ($ours | columns) | append ($theirs | columns) | uniq | reduce --fold {seen: [], out: {}} {|key, acc|
+    let kept = (items $ours $key | append (items $theirs $key) | reduce --fold {seen: $acc.seen, rows: []} {|entry, got|
       let id = ($entry | get -o id)
-      if ($id | is-empty) {
-        $kept = ($kept | append $entry)
-      } else if not ($id in $seen) {
-        $seen = ($seen | append $id)
-        $kept = ($kept | append $entry)
+      if ($id | is-not-empty) and ($id in $got.seen) { $got } else {
+        {seen: (if ($id | is-empty) { $got.seen } else { $got.seen | append $id }), rows: ($got.rows | append $entry)}
       }
-    }
-    $content = ($content | upsert $key $kept)
-  }
+    })
+    {seen: $kept.seen, out: ($acc.out | upsert $key $kept.rows)}
+  } | get out)
 
-  let base_meta = ($base | get -o meta | default {})
-  let site_name = ($base_meta | get -o name | default "Site")
+  let meta = ($base | get -o meta | default {})
+  let name = ($meta | get -o name | default "Site")
   let description = (
-    [($base_meta | get -o description | default "") ($project | get -o meta | default {} | get -o description | default "")]
-    | where {|part| $part | is-not-empty }
-    | str join " — "
+    [($meta | get -o description | default "") ($project | get -o meta | default {} | get -o description | default "")]
+    | where {|part| $part | is-not-empty } | str join " — "
   )
-  let name = (if ($label | is-empty) { $site_name } else { $"($site_name) + ($label)" })
-
-  let merged = (
-    {}
-    | insert '$schema' (pick '$schema' "")
-    | insert version (pick version "1")
-    | insert meta ($base_meta | upsert name $name | upsert description $description)
+  let always = {collections: "slug", taxonomies: "name", menus: "name", widgetAreas: "name"}
+  let if_present = {redirects: "source", sections: "slug", blockTypes: "slug", relations: "slug", bylines: "id"}
+  let head = (
+    {} | insert '$schema' (pick '$schema' "") | insert version (pick version "1")
+    | insert meta ($meta | upsert name (if ($label | is-empty) { $name } else { $"($name) + ($label)" }) | upsert description $description)
     | insert settings (pick settings {})
-    | insert collections (union ($project | get -o collections | default []) ($base | get -o collections | default []) "slug")
-    | insert taxonomies (union ($project | get -o taxonomies | default []) ($base | get -o taxonomies | default []) "name")
-    | insert menus (union ($project | get -o menus | default []) ($base | get -o menus | default []) "name")
-    | insert widgetAreas (union ($project | get -o widgetAreas | default []) ($base | get -o widgetAreas | default []) "name")
+  )
+  let merged = (
+    $always | transpose key id | reduce --fold $head {|l, acc| $acc | insert $l.key (union $l.key $l.id) }
     | insert content $content
   )
-  # The other keyed lists a seed can carry are unioned the same way, the template winning a clash.
-  let keyed = {redirects: "source", sections: "slug", blockTypes: "slug", relations: "slug", bylines: "id"}
-  let merged = ($keyed | transpose list key | reduce --fold $merged {|k, acc|
-    let ours = ($project | get -o $k.list | default [])
-    let theirs = ($base | get -o $k.list | default [])
-    if ($ours | is-empty) and ($theirs | is-empty) { $acc } else { $acc | insert $k.list (union $ours $theirs $k.key) }
-  })
-  # Every other top-level key a seed carries — bylines, redirects, whatever a template adds next —
-  # passes through: the template's, falling back to the project's. Dropping an unknown key silently
-  # broke the blog template, whose posts reference bylines.
-  ($base | columns) | append ($project | columns) | uniq | where {|key| not ($key in ($merged | columns)) }
+  let merged = (
+    $if_present | transpose key id | where {|l| (items $base $l.key | append (items $project $l.key)) | is-not-empty }
+    | reduce --fold $merged {|l, acc| $acc | insert $l.key (union $l.key $l.id) }
+  )
+  # Anything else a seed carries passes through: the template's, falling back to the project's.
+  let known = ($merged | columns)
+  ($base | columns) | append ($project | columns) | uniq | where {|key| not ($key in $known) }
   | reduce --fold $merged {|key, acc| $acc | insert $key (pick $key null) }
 }
 
@@ -240,10 +210,9 @@ export def configure [registration: string] {
 
 # Get the seed into the RUNNING site's database, updating entries that already exist. The site's
 # own first-request seeding skips anything that exists, so edits to the seed never land without this.
-# Carry seed EDITS into an existing database. A fresh database needs nothing: the site has just
-# seeded itself, into the right storage. Otherwise apply only when the seed has changed since it was
-# last applied — re-applying an unchanged seed overwrites admin edits and (until emdash#3919)
-# duplicates every image in it.
+# Carry seed EDITS into an existing database, and only when the seed has changed since it was last
+# applied: re-applying overwrites admin edits and (until emdash#3919) duplicates every image. A
+# fresh database needs nothing — the site has just seeded itself.
 export def apply-seed [--fresh] {
   let seed = (site-file "seed" "seed.json")
   let mark = ($env.RUN_DIR | path join "seed-applied.txt")
@@ -281,21 +250,17 @@ def uploads-to-r2 [] {
   }
 }
 
-# (Re)start the dev server, wait — for a bounded time — until it answers, then make ONE call to
-# EmDash's dev-bypass: it runs migrations, completes setup, applies the seed through the site's own
-# storage, signs in, and with `?token=1` hands back an admin API token. `--empty` leaves the seed's
-# content out (`?content=0`), which a site must be to receive a restore.
-#
-# The daemon has no readiness check of its own on purpose: `mise daemons start` waits on one forever.
+# (Re)start the dev server and make ONE call to EmDash's dev-bypass: it migrates, completes setup,
+# seeds through the site's own storage, and with `?token=1` returns an admin token. `--empty` leaves
+# the seed's content out, which a site must be to receive a restore. Bounded: two starts, then fail.
 export def restart [--empty] {
   let query = (if $empty { "?token=1&content=0" } else { "?token=1" })
   for attempt in 1..2 {
     daemon-stop $env.SITE_DAEMON
     rm -rf (site-file "node_modules" ".vite")
     ^mise daemons start $env.SITE_DAEMON
-    # ONE patient call. Until the server is listening it is refused at once (status 0), so that is
-    # retried; once it is accepted it gets five minutes — the first request compiles the site, and a
-    # seed with images downloads them. Never many short calls: they starve a cold server.
+    # Refused at once until the server listens (retried for 90s); once accepted, the call gets five
+    # minutes — the first request compiles the site. Never many short calls: they starve it.
     let deadline = ((date now) + 90sec)
     mut setup: any = {status: 0, body: null}
     loop {
@@ -303,19 +268,18 @@ export def restart [--empty] {
       if $setup.status != 0 or (date now) > $deadline { break }
       sleep 1sec
     }
-    let answered = $setup
-    let token = ($answered.body | get -o data.token | default "")
-    if $answered.status in 200..299 and ($token | is-not-empty) {
+    let token = ($setup.body | get -o data.token | default "")
+    if $setup.status in 200..299 and ($token | is-not-empty) {
       mkdir $env.RUN_DIR
       $"($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.txt")
       # mise loads this file into the environment; .mcp.json reads EMDASH_MCP_TOKEN from there.
       $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.env")
       return
     }
-    print --stderr $"  setup answered ($answered.status): ($answered.body | to json --raw)"
+    print --stderr $"  setup answered ($setup.status): ($setup.body | to json --raw)"
     if $attempt == 1 { print "  the site is not ready — restarting it once more" }
   }
-  print --stderr ((^mise daemons logs $env.SITE_DAEMON | complete).stdout | lines | last 30 | str join (char nl))
+  print --stderr (daemon-log $env.SITE_DAEMON)
   fail "the site did not come up after two starts" "the last lines of its log are above; more: mise run logs"
 }
 

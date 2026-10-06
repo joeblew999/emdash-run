@@ -97,6 +97,12 @@ export def audit []: nothing -> list<string> {
 # own scripts use the copy the scaffold installs.
 export def --wrapped cli [...args: string] { dlx [$"@emdash-cms/plugin-cli@($env.PLUGIN_CLI_VERSION)"] emdash-plugin ...$args }
 
+# Stop the flow when a plugin is structurally broken.
+export def require-consistent [] {
+  let faults = (audit)
+  if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
+}
+
 # Scaffold with the official CLI. It refuses to run without a terminal unless told who the plugin
 # is from, so those come from settings.
 export def scaffold [name: string] {

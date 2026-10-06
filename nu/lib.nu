@@ -158,27 +158,17 @@ export def with-site-paused [block: closure]: nothing -> int {
   $rc
 }
 
-# One HTTP request, with nushell's own client rather than curl — so it is the same on every OS.
-# Returns {status, body, cookies}. status 0 means nothing answered; it never throws.
-export def request [
-  method: string         # GET, POST or DELETE
-  url: string
-  --headers: record = {}
-  --body: any            # sent as JSON
-  --timeout: duration = 10sec
-]: nothing -> record {
+# One HTTP request, with nushell's own client (not curl: that is not on every OS). Returns
+# {status, body}; status 0 means nothing answered. It never throws.
+export def request [method: string, url: string, --headers: record = {}, --timeout: duration = 10sec]: nothing -> record {
   try {
-    let response = (match $method {
-      "POST" => { http post --full --allow-errors --max-time $timeout --headers $headers --content-type application/json $url ($body | default {}) }
-      "DELETE" => { http delete --full --allow-errors --max-time $timeout --headers $headers $url }
-      _ => { http get --full --allow-errors --max-time $timeout --headers $headers $url }
+    let response = (if $method == "POST" {
+      http post --full --allow-errors --max-time $timeout --headers $headers --content-type application/json $url {}
+    } else {
+      http get --full --allow-errors --max-time $timeout --headers $headers $url
     })
-    let cookies = (
-      $response.headers.response | where {|h| ($h.name | str lowercase) == "set-cookie" }
-      | get value | each {|v| $v | split row ";" | first } | str join "; "
-    )
-    {status: $response.status, body: $response.body, cookies: $cookies}
-  } catch { {status: 0, body: null, cookies: ""} }
+    {status: $response.status, body: $response.body}
+  } catch { {status: 0, body: null} }
 }
 
 # Files under a directory matching a pattern, e.g. `files-in $dir "**/*"`. Use this, never `glob`
@@ -187,26 +177,27 @@ export def files-in [dir: string, pattern: string, --exclude: list<string> = []]
   glob $"($dir | str replace --all '\' '/')/($pattern)" --exclude $exclude
 }
 
-# Wait, for a bounded time, until something answers at the URL. Every wait in the harness goes
-# through this: nothing may wait without a limit.
-#
-# Each probe is PATIENT (30 seconds) and they never overlap. A cold dev server takes many seconds to
-# answer its first request; probing it every second with a short timeout abandons each request
-# while the server is still working on it and piles the next one on top — the server never catches
-# up. That is how a release run "hung": the site was up, and we were starving it.
+# True when something answers at the URL without an error status.
+export def answers [url: string, --timeout: duration = 2sec]: nothing -> bool {
+  (request GET $url --timeout $timeout).status in 200..399
+}
+
+# Wait, bounded, until something answers. One PATIENT probe at a time: a cold dev server needs many
+# seconds for its first answer, and short overlapping probes starve it. Nothing waits without a limit.
 export def wait-for [url: string, seconds: int]: nothing -> bool {
   let deadline = ((date now) + ($seconds * 1sec))
   mut up = false
   while (not $up) and ((date now) <= $deadline) {
-    let status = (request GET $url --timeout 30sec).status
-    $up = ($status >= 200 and $status < 400)
+    $up = (answers $url --timeout 30sec)
     if not $up { sleep 1sec }
   }
   $up
 }
 
-# True when something answers at the URL without an error status.
-export def answers [url: string]: nothing -> bool {
-  let status = (request GET $url --timeout 2sec).status
-  $status >= 200 and $status < 400
+# The last lines of a daemon's log — what to show when it would not come up.
+export def daemon-log [name: string, lines: int = 30]: nothing -> string {
+  (^mise daemons logs $name | complete).stdout | lines | last $lines | str join (char nl)
 }
+
+# Aim the emdash CLI at a deployment for the rest of the caller's flow: it reads EMDASH_URL itself.
+export def --env target [url?: string] { if $url != null { $env.EMDASH_URL = $url } }

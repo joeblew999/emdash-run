@@ -4,6 +4,7 @@ Everything that must hold before a commit. --fix repairs formatting and generate
 
 
 - **Usage:** `check [args]…`
+- **Aliases:** `pre-commit`
 
 ### Arguments
 - **`[args]…`**

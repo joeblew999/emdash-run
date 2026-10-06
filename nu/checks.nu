@@ -5,16 +5,12 @@ use plugin.nu
 
 # ── the harness checks itself ────────────────────────────────────────────────────────────────
 
-# The only programs the harness may run. Every task has to work on macOS, Linux and Windows, and
-# the way to keep that true is to not call anything that is not on all three: HTTP is nushell's
-# `http`, files are nushell's `glob`/`ls`/`cp`/`rm`, opening a browser is nushell's `start`. What is
-# left is what mise installs, plus git and docker. npm command-line tools go through `dlx` (lib.nu).
+# The only programs the harness may run: what mise installs, plus git and docker. Everything else
+# has a nushell command that exists on every OS, and npm tools go through `dlx` (lib.nu).
 const PORTABLE = [git pnpm mise nu fnox emdash docker]
 
-# nushell's own checker over every module, plus two things it cannot see: programs that are not
-# on every OS, and the interpolation trap: inside `$"..."` a
-# bracketed bare word is a subexpression, so `problem(s)` RUNS a command called `s` — accepted by
-# the checker (it might be an external) and failing only when that line executes.
+# nushell's own checker over every module, plus the rules it cannot see: programs that are not on
+# every OS, a bracketed word in an interpolated string, a swallowed exit code, Unix paths, a raw glob.
 export def nu-problems [dir: string]: nothing -> list<string> {
   files-in $dir "*.nu" | sort | par-each {|file|
     let name = ($file | path basename)
@@ -68,21 +64,15 @@ def commands [main: string]: nothing -> list<string> {
 export def task-problems [toml: string, main: string]: nothing -> list<string> {
   let cfg = (open $toml)
   let defined = (commands $main)
-  let tasks = ($cfg.tasks | transpose name def)
-  let called = ($tasks | each {|t|
-    let hits = ($t.def | get -o run | default "" | parse --regex 'task\.nu (?<cmd>[a-z][a-z -]*[a-z])$')
-    if ($hits | is-empty) { null } else { {task: $t.name, cmd: ($hits | first | get cmd)} }
-  } | compact)
-  let missing = ($called | where {|c| not ($c.cmd in $defined) } | each {|c| $"task ($c.task) runs `($c.cmd)`, which main.nu does not define" })
-  let orphans = ($defined | where {|d| not ($d in ($called | get cmd)) } | each {|d| $"main.nu defines `($d)` but no task runs it" })
-  let names = ($tasks | get name)
+  let tasks = ($cfg.tasks | transpose name def | insert cmd {|t| $t.name | str replace --all ":" " " })
+  let missing = ($tasks | where {|t| not ($t.cmd in $defined) } | each {|t| $"task ($t.name) has no command `($t.cmd)` in main.nu" })
+  let orphans = ($defined | where {|d| not ($d in ($tasks | get cmd)) } | each {|d| $"main.nu defines `($d)` but no task runs it" })
+  let untemplated = ($tasks | where {|t| ($t.def | get -o extends) != "harness" } | each {|t| $"task ($t.name) does not extend the harness template — its arguments would be dropped on Windows" })
   let daemons = ($cfg | get -o daemons | default {} | transpose name def | each {|d|
     let ref = ($d.def.run | parse --regex 'mise run (?<task>\S+)' | get -o task.0 | default "")
-    if ($ref in $names) { null } else { $"daemon ($d.name) runs `mise run ($ref)`, which is not a task" }
+    if ($ref in ($tasks | get name)) { null } else { $"daemon ($d.name) runs `mise run ($ref)`, which is not a task" }
   } | compact)
-  # Without a usage spec mise appends the arguments itself — and on Windows, drops them.
-  let no_usage = ($tasks | where {|t| ($t.def | get -o usage | default "") != 'arg "[args]" var=#true' } | each {|t| $"task ($t.name) has no usage spec — its arguments would be dropped on Windows" })
-  $missing | append $orphans | append $daemons | append $no_usage
+  $missing | append $orphans | append $untemplated | append $daemons
 }
 
 # Do a task's arguments arrive, intact? Asked through mise itself, because that is where they were
@@ -122,7 +112,7 @@ export def selftest-problems []: nothing -> list<string> {
   rm -rf $scratch
   mkdir $scratch
   let planted = ($scratch | path join "mise.toml")
-  $"(open --raw $toml)(char nl)[tasks.planted](char nl)run = \"nu task.nu no such command\"(char nl)" | save $planted
+  $"(open --raw $toml)(char nl)[tasks.planted](char nl)extends = \"harness\"(char nl)" | save $planted
   let task_missed = (if (task-problems $planted ($nu_dir | path join "main.nu") | is-empty) { ["the task check passed a task that runs a missing command"] } else { [] })
   rm -rf $scratch
   $nu_missed | append $task_missed
@@ -251,7 +241,8 @@ export def verify []: nothing -> bool {
 }
 
 # The content model: the repo's seed against a live instance. Returns true when they agree.
-export def schema-diff [seed: record]: nothing -> bool {
+export def schema-diff []: nothing -> bool {
+  let seed = (open ($env.SITE_DIR | path join "seed" "seed.json"))
   let listed = (emdash-json schema list)
   let remote_collections = (if ($listed | describe | str starts-with "record") { $listed | get -o items | default ($listed | get -o collections | default []) } else { $listed })
   let remote = ($remote_collections | each {|c|
