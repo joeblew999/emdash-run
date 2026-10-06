@@ -62,12 +62,12 @@ and A5–A9, A14, A15.
   - [ ] on Node, `deploy`'s closing message says the built server does not read `.env` (`docs/deployment/nodejs.mdx:60-63`)
   - [ ] proof: save a secret setting in a plugin locally, restart, read it back
 - [ ] **A migration check that can fail**
-  - [ ] `doctor --url` requests the site once, then runs `emdash migrate --check`; exit 2 or 3 fails `doctor` with the list
+  - [x] `doctor --url` runs `emdash migrate --check` and fails on a non-zero exit, printing the pending and unknown lines. Run against production: "Pending: none", exit 0. (It does not request the site first — `doctor` only runs after a deploy has been verified reachable)
   - [ ] proof it blocks: point it at a database one migration behind (a throwaway D1 seeded from an older build) and see it fail
   - [ ] decide, and write down, whether `deploy` should offer EmDash's pre-traffic order (build → `migrate` → deploy → `--check`) or stay on runtime `auto`; `auto` is supported and is the default
 - [ ] **`rollback` tells the truth**
   - [ ] before rolling back, compare the migrations the deployed database has with the ones the previous build knew; if the database is ahead, stop and print EmDash's rule: restore the database and the build together (`docs/deployment/updating.mdx:123`)
-  - [ ] the closing message never says more than "the previous Worker is live"
+  - [x] the message says "the previous Worker is live" and that a rollback does not undo database migrations
   - [ ] proof: roll back across a build with no migration — passes; across one with a migration — stops with the rule
 - [ ] **A backup that is one**
   - [ ] `backup` for a Cloudflare deployment: the D1 Time Travel bookmark, a `wrangler d1 export` into `run/backups/`, and the exact restore commands printed (`docs/guides/backups.mdx:102-138`)

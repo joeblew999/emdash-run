@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- **Upgrading EmDash is one line and one command.** Change `EMDASH_VERSION`, run `mise run dev`:
+  it copies the local database to `run/backups/`, re-pins and installs in place, re-pins your
+  plugins, and carries on. The plugin CLI, plugin-test and the Node sandbox runner versions are
+  derived from the EmDash release — there is nothing else to keep in step.
+- **One setup call instead of five requests.** EmDash's own `dev-bypass` migrates, seeds through the
+  site's storage and returns the admin token; the harness now just makes that call.
+- **`restore -- <package> --wipe --confirm` works** — the wiped site comes up empty, as an import
+  requires. `verify -- --restore` proves the round trip.
+- **Seeded images work on every template**, and an unchanged seed is no longer re-applied on each
+  `dev` (which overwrote admin edits and duplicated media).
+- **A cold dev server is no longer starved.** Readiness probes are patient and never overlap; that
+  was the "hang" that blocked 0.4.0 and 0.4.2.
+- **`doctor --url` fails on a pending migration** (`emdash migrate --check`); `rollback` says that it
+  does not undo migrations.
+- A seed's `redirects`, `sections`, `blockTypes`, `relations`, `bylines`, `menus` and `widgetAreas`
+  are merged from both seeds.
+- Leaner: the task shape is declared once; about 100 lines of repeats and dead branches removed.
+- A push runs only `mise run check` on three OSes; the full matrix runs on a release tag.
+- New docs: `docs/emdash.md` (EmDash, read from its source) and `docs/agents/lessons.md`.
+
 ## 0.4.2 — 2026-10-06
 
 - **A site that will not answer can no longer hang a flow.** Starting the dev server waited on its

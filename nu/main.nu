@@ -141,8 +141,11 @@ def "main doctor" [--url: string] {
     plugin require-consistent
   } else {
     if (on-cloudflare) {
+      # `--check` exits non-zero on a pending or unknown migration; `--status` always exits 0.
       step "core migrations on the deployed database"
-      do { cd $env.SITE_DIR; ^fnox exec -- emdash migrate --status --d1 (site d1-name) }
+      let migrations = (do { cd $env.SITE_DIR; ^fnox exec -- emdash migrate --check --d1 (site d1-name) | complete })
+      print ($migrations.stdout | lines | where {|l| $l =~ '^(Pending|Unknown applied)' } | each {|l| $"  ($l)" } | str join (char nl))
+      if $migrations.exit_code != 0 { fail "the deployed database's migrations do not match this build" ($migrations.stderr | str trim) }
     }
     step "content model"
     main schema diff
@@ -184,6 +187,8 @@ def "main rollback" [] {
   if (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
   step "rollback to the previous version"
   site wrangler rollback --yes --message "rollback via mise run rollback"
+  print "  the previous Worker is live. A rollback does NOT undo database migrations: if the build you"
+  print "  just left ran one, the database is ahead of this code — restore the database with it."
   main doctor --url $env.DEPLOY_URL
 }
 
