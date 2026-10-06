@@ -91,10 +91,21 @@ export def version-set [version?: string]: nothing -> record {
   $set
 }
 
+# The site the CLI talks to: the deployment a `--url` flow aimed at, otherwise the local site on
+# ITS port. Never left to the CLI: it assumes port 4321, which is another checkout's site whenever
+# this one overrides SITE_PORT. `check` fails on the CLI run anywhere but through these helpers.
+export def cli-target []: nothing -> string { if (setting EMDASH_URL | is-empty) { site-url } else { $env.EMDASH_URL } }
+
 # The emdash CLI, run where it must be run: in the site, which is its project root.
 export def --wrapped emdash [...args: string] {
   cd $env.SITE_DIR
-  ^emdash ...$args
+  with-env {EMDASH_URL: (cli-target)} { ^emdash ...$args }
+}
+
+# The same, captured instead of printed: {stdout, stderr, exit_code}.
+export def --wrapped emdash-result [...args: string]: nothing -> record {
+  cd $env.SITE_DIR
+  with-env {EMDASH_URL: (cli-target)} { ^emdash ...$args | complete }
 }
 
 # Run an emdash command and return its JSON, parsed; an error when the command fails or prints
@@ -102,7 +113,7 @@ export def --wrapped emdash [...args: string] {
 # `--url` do exactly that.
 export def emdash-json [...args: string]: nothing -> any {
   let full = ($args | append "--json")
-  let result = (do { cd $env.SITE_DIR; ^emdash ...$full | complete })
+  let result = (emdash-result ...$full)
   # With --json the CLI writes only JSON to stdout (progress goes to stderr) and exits non-zero on error.
   if $result.exit_code != 0 or ($result.stdout | str trim | is-empty) {
     error make {msg: $"emdash ($full | str join ' ') failed: ($result.stderr | str trim) ($result.stdout | str trim)"}

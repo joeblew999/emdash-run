@@ -221,7 +221,7 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     # Empty: a site that already has entries cannot receive a package.
     site restart --empty
   }
-  let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json | complete })
+  let analysis = (emdash-result site import $pkg --analyze --json)
   if $analysis.exit_code != 0 {
     fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
   }
@@ -418,11 +418,13 @@ def "main verify template" [template: string, --full, --from: string] {
     | str replace --regex 'TEMPLATE = "[^"]*"' $"TEMPLATE = \"($template)\""
     | save ($dir | path join "mise.toml"))
   ^git init --quiet $dir
-  # Both sites want the same port, so ours steps aside for the duration.
+  # The throwaway site takes this checkout's port — which may not be the default — so ours steps
+  # aside for the duration.
   if $was_running { daemon-stop $env.SITE_DAEMON }
   let rc = (code {
     cd $dir
     ^mise trust --all --quiet
+    ^mise set $"SITE_PORT=($env.SITE_PORT)"
     ^mise fmt
     if $from != null {
       # An upgrade: come up on the older EmDash, mark an entry, move to this version, find the mark.
