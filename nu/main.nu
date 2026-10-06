@@ -22,9 +22,10 @@ def refresh [] {
   if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
   checks sync-skills
   step "restart the site"
+  let fresh = (not (has-devdb))
   site restart
-  site apply-seed
-  site mint-token
+  site apply-seed --fresh=$fresh
+  ok "admin token → run/token-admin.txt"
 }
 
 # First time on a machine: template, install, config, hooks — then bring the site up.
@@ -192,7 +193,9 @@ def "main snapshot" [--url: string] {
   let dest = ($env.RUN_DIR | path join "snapshots" $"(date now | format date '%Y%m%d-%H%M%S').emdash")
   mkdir ($dest | path dirname)
   emdash site export --output $dest
-  ok $"saved → ($dest) — it holds every entry and authors' emails; treat it like a database backup"
+  ok $"saved → ($dest)"
+  print "    a site package: schema, content and media. NOT users, tokens, plugin data or secrets —"
+  print "    for those, back up the database itself. It does carry authors' emails: keep it private."
 }
 
 # Restore a snapshot into an EMPTY site. Shows the plan; --confirm executes exactly that plan.
@@ -207,14 +210,14 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     step "wipe the local database"
     daemon-stop $env.SITE_DAEMON
     wipe-local-data
-    site restart
+    # Empty: a site that already has entries cannot receive a package.
+    site restart --empty
   }
   let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json | complete })
-  let start = ($analysis.stdout | str index-of "{")
-  if $analysis.exit_code != 0 or $start < 0 {
+  if $analysis.exit_code != 0 {
     fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
   }
-  let planned = ($analysis.stdout | str substring $start.. | from json)
+  let planned = ($analysis.stdout | from json)
   if ($planned | get -o plan | is-empty) {
     if ($planned | get -o state) == "complete" { ok "this package is already imported here"; return }
     fail $"no import plan came back: ($planned | to json --raw)"
@@ -224,7 +227,6 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
   if ($blockers | is-not-empty) { fail $"the plan has blockers: ($blockers | to json --raw)" }
   if not $confirm { print "  nothing imported — add --confirm to execute this plan"; return }
   emdash site import $pkg --plan $planned.planDigest --confirm
-  if $wipe { site mint-token }
   ok "restored — check it: mise run doctor"
 }
 
@@ -299,7 +301,7 @@ def "main plugin release" [name?: string] {
   if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
   if (plugin dirs | is-empty) { print "  no plugins to release — make one: mise run plugin:new -- <name>"; return }
   for script in [validate typecheck test build bundle] { plugin sweep $script $name }
-  print "✓ bundled — publish with: mise run emdash-plugin -- publish"
+  print "✓ bundled — publish with: mise run emdash-plugin -- publish --manifest plugins/<name>"
 }
 
 # Set fields on a live entry: reads its revision, updates, publishes. --url targets a deployment.
@@ -373,7 +375,7 @@ def "main upgrade" [ref?: string, --from: string] {
 # Does this project work on THIS machine? The minimum that answers it: bring the site up, run the
 # checks, ask doctor. It is what CI runs on every OS. --full adds the slower flows: a plugin round
 # trip, a snapshot, and a production build.
-def "main verify" [--full] {
+def "main verify" [--full, --restore] {
   step "bring the site up"
   if ($env.SITE_DIR | path join "package.json" | path exists) { main dev } else { main setup }
   step "check"
@@ -387,6 +389,14 @@ def "main verify" [--full] {
     main snapshot
     step "deploy --dry"
     main deploy --dry
+  }
+  # Wipes the local database and restores it from the snapshot just taken. Local users, tokens and
+  # plugin data are not in a package, so this is opt-in: CI and throwaway projects use it.
+  if $restore {
+    step "snapshot, wipe, restore"
+    main snapshot
+    main restore (ls ($env.RUN_DIR | path join "snapshots") | sort-by modified | last | get name) --wipe --confirm
+    main doctor
   }
   print $"✓ verified on ($nu.os-info.name) ($nu.os-info.arch)(if $full { ' — site, checks, doctor, plugins, snapshot, build' } else { ' — site, checks, doctor' })"
 }
@@ -415,7 +425,7 @@ def "main verify template" [template: string, --full] {
     cd $dir
     ^mise trust --all --quiet
     ^mise fmt
-    if $full { ^mise run verify -- --full } else { ^mise run verify }
+    if $full { ^mise run verify -- --full --restore } else { ^mise run verify }
   })
   do { cd $dir; ^mise daemons stop --all | complete | ignore }
   if $was_running { ^mise daemons start $env.SITE_DAEMON }

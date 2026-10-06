@@ -187,14 +187,10 @@ def report [passed: bool, label: string, detail: string]: nothing -> bool {
 export def verify []: nothing -> bool {
   let target = (if (setting EMDASH_URL | is-empty) { $env.SITE_URL } else { $env.EMDASH_URL })
   # Retried: a config change restarts the dev server, and one attempt reports a false alarm.
-  mut status = 0
-  for _ in 0..40 {
-    $status = (request GET $target --timeout 2sec).status
-    if $status != 0 { break }
-    sleep 500ms
-  }
+  # Patient, not frequent: see wait-for.
+  let status = (if (wait-for $target 60) { 200 } else { (request GET $target --timeout 30sec).status })
   if $status == 0 or $status >= 500 {
-    return (report false $"($target) responds" (if $status == 0 { "no response after 20s" } else { $status | into string }))
+    return (report false $"($target) responds" (if $status == 0 { "no response" } else { $status | into string }))
   }
   mut results = [(report true $"($target) responds" ($status | into string))]
 

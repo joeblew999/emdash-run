@@ -189,6 +189,8 @@ what the official scaffold gets wrong, and how the harness fixes it.
 - [`docs/plugin.md`](docs/plugin.md) — the plugin round trip
 - [`docs/auth.md`](docs/auth.md) — EmDash's auth model and tokens
 - [`docs/agents/`](docs/agents/README.md) — working on the harness itself, for people and agents
+- [`docs/agents/lessons.md`](docs/agents/lessons.md) — what building this taught us, and what is now enforced
+- [`docs/emdash.md`](docs/emdash.md) — EmDash itself, read from its source: the pieces, the platforms, and how the harness maps onto them
 - [`docs/plans/`](docs/plans/) — what is left
 
 This repo is also a working project: its own `mise.toml` and `config/` are an example (a CAD parts

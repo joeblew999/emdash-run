@@ -108,7 +108,7 @@ run = "nu --no-config-file {{config_root}}/nu/task.nu rollback"
 
 [tasks.snapshot]
 usage = 'arg "[args]" var=#true'
-description = "Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment"
+description = "Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --url snapshots a deployment"
 run = "nu --no-config-file {{config_root}}/nu/task.nu snapshot"
 
 [tasks.restore]
@@ -193,7 +193,7 @@ run = "nu --no-config-file {{config_root}}/nu/task.nu upgrade"
 
 [tasks.verify]
 usage = 'arg "[args]" var=#true'
-description = "Does this project work on THIS machine? Site up, check, doctor — what CI runs on every OS. --full adds a plugin round trip, a snapshot and a build"
+description = "Does this project work on THIS machine? Site up, check, doctor. --full adds a plugin round trip, a snapshot and a build; --restore also wipes the local database and restores it"
 run = "nu --no-config-file {{config_root}}/nu/task.nu verify"
 
 [tasks."verify:template"]

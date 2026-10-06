@@ -285,9 +285,9 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 
 ### Where the harness works around EmDash
 
-The harness described here is 0.4.2 plus the seed-hash change that was in the working tree on
-2026-10-06. Its code is cited by **function name**: `nu/` changed twice while this was written and
-line numbers did not survive.
+The harness described here is 0.4.2 plus commit `c9efc63` (an unchanged seed is not re-applied).
+Its code is cited by **function name**: `nu/` changed three times while this was written and line
+numbers did not survive.
 
 | # | workaround | why it exists | does EmDash offer a proper way? |
 |---|---|---|---|

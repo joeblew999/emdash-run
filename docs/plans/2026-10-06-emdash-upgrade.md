@@ -34,10 +34,11 @@ Background and sources: [`../emdash.md`](../emdash.md) § Upgrading EmDash, and 
 
 **Verified by reading this repo:**
 
-- `copy-template` runs `rm -rf $env.SITE_DIR` (`nu/site.nu:46`); the local database is inside it
-  (`nu/lib.nu:106,111`).
+- `copy-template` (`nu/site.nu`) deletes the whole site directory; the local database is inside it
+  (`devdb`, `nu/lib.nu`).
+- Harness code is cited by function name: line numbers in `nu/` moved while this was written.
 - `dev` does not reinstall when `EMDASH_VERSION` changes; only `install` (in `setup`) pins it.
-- `clone-templates` takes `main` (`nu/site.nu:29`). Its head today is "sync templates from emdash
+- `clone-templates` takes `main`. Its head today is "sync templates from emdash
   v1.0.1" while the site runs 1.1.0.
 - `PLUGIN_CLI_VERSION` is in the harness-owned `harness.toml`; `EMDASH_VERSION` is in the project's
   `mise.toml`. Nothing ties them.
@@ -56,7 +57,7 @@ Background and sources: [`../emdash.md`](../emdash.md) § Upgrading EmDash, and 
   - [ ] `git ls-remote --tags $EMDASH_REPO` lists the tags; write down, for `emdash@1.0.1` and `emdash@1.1.0`, which `plugin-cli`, `sandbox-workerd` and `plugin-test` tags point at the same commit
   - [ ] if that holds for both, the set is derived from `EMDASH_VERSION`; if not, record here what the rule really is
   - [ ] decide where `PLUGIN_CLI_VERSION` lives so that it cannot disagree with `EMDASH_VERSION`, and make `check` fail when the two are not a set
-  - [ ] `install` pins `@emdash-cms/sandbox-workerd` to the set's version on Node (it is `latest` today, `nu/site.nu:65`)
+  - [ ] `install` pins `@emdash-cms/sandbox-workerd` to the set's version on Node (it is `latest` today, in `install`)
 - [ ] **Settle where a version-matched template comes from**
   - [ ] `git ls-remote --tags $TEMPLATES_REPO`: are there release tags? Record the answer in `docs/emdash.md` § Unverified
   - [ ] if yes: `clone-templates` checks out the tag for `EMDASH_VERSION`
@@ -75,7 +76,7 @@ Background and sources: [`../emdash.md`](../emdash.md) § Upgrading EmDash, and 
   - [ ] print the diff of `docs/src/content/docs/deployment/updating.mdx` between the two EmDash tags: its "Notes for specific releases" section is where EmDash says what needs action
   - [ ] print the releases URL for the range
 - [ ] **Plugins move with it**
-  - [ ] every plugin under `plugins/`: set its `emdash` to the new version, install, then `validate`, `typecheck`, `test`, `build` — `plugin audit` already detects the mismatch (`nu/plugin.nu:87-88`)
+  - [ ] every plugin under `plugins/`: set its `emdash` to the new version, install, then `validate`, `typecheck`, `test`, `build` — `audit` in `nu/plugin.nu` already detects the mismatch
   - [ ] `SITE_PACKAGES`: after install, list any whose `peerDependencies.emdash` the new version does not satisfy
   - [ ] `plugin:roundtrip` runs as the last step of the flow
 - [ ] **The deployed side: migrate knowingly**

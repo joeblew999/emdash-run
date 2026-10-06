@@ -4,6 +4,9 @@
 official CLIs (`emdash`, `emdash-plugin`). It is a harness, not a product. Judge any change by
 whether it makes the harness more reusable or more trustworthy.
 
+**Read [`lessons.md`](lessons.md) first.** It is what a day of getting this wrong taught us, and
+which of those lessons a check now enforces.
+
 ## How it is built
 
 - **`mise.toml`** — the project's settings, and nothing else. It is the only file that names a

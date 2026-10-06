@@ -30,9 +30,10 @@ assert equal ($alone.collections | get slug) ($template.collections | get slug) 
 assert equal ($alone.content.posts | length) 2 "no project seed keeps the template's content"
 
 # Keys the merge does not know about pass through instead of being dropped.
-let extra = (site merge-seeds ($template | insert bylines [{id: "byline-editorial"}]) ($project | insert redirects [{from: "/a"}]) $order "CAD")
-assert equal $extra.bylines [{id: "byline-editorial"}] "an unknown key in the template's seed survives"
-assert equal $extra.redirects [{from: "/a"}] "an unknown key in the project's seed survives"
+let extra = (site merge-seeds ($template | insert somethingNew [{id: "t"}]) ($project | insert alsoNew {on: true}) $order "CAD")
+assert equal $extra.somethingNew [{id: "t"}] "an unknown key in the template's seed survives"
+assert equal $extra.alsoNew {on: true} "an unknown key in the project's seed survives"
+assert equal (site merge-seeds ($template | insert bylines [{id: "editorial"}]) $project $order "CAD").bylines [{id: "editorial"}] "the template's bylines survive"
 
 # Task arguments, as mise hands them over: one shell-quoted string.
 assert equal (split-args "") [] "no arguments"
@@ -43,8 +44,13 @@ assert equal (split-args "a   b") ["a" "b"] "runs of spaces"
 # Waits are bounded, and a request to nothing reports status 0 rather than throwing.
 let before = (date now)
 assert equal (wait-for "http://127.0.0.1:9/" 2) false "waiting on a dead port gives up"
-assert (((date now) - $before) < 15sec) "…within its limit"
+assert (((date now) - $before) < 40sec) "…within its limit"
 assert equal (request GET "http://127.0.0.1:9/" --timeout 1sec).status 0 "a dead port is status 0, not an exception"
+
+# Keyed lists are unioned, so a project's redirect survives a template that has redirects.
+let lists = (site merge-seeds ($template | insert redirects [{source: "/a", destination: "/t"} {source: "/b", destination: "/t"}]) ($project | insert redirects [{source: "/a", destination: "/p"} {source: "/c", destination: "/p"}]) $order "CAD")
+assert equal ($lists.redirects | get source | sort) ["/a" "/b" "/c"] "redirects from both seeds are kept"
+assert equal ($lists.redirects | where source == "/a" | first | get destination) "/t" "a redirect collision goes to the template"
 
 # Plugin registration.
 assert equal (plugin registration []) "// GENERATED from plugins/ by the harness — do not edit.\n/** @type {any[]} */\nexport const sandboxed = [];\n" "no plugins is an empty list"
@@ -52,4 +58,4 @@ let two = (plugin registration ["zeta" "@scope/alpha"])
 assert ($two | str contains 'import local0 from "@scope/alpha";') "plugins are imported in sorted order"
 assert ($two | str contains 'export const sandboxed = [local0, local1];') "every plugin is registered"
 
-print "  ✓ 24 unit tests"
+print "  ✓ 27 unit tests"

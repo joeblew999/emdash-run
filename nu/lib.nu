@@ -80,12 +80,11 @@ export def --wrapped emdash [...args: string] {
 export def emdash-json [...args: string]: nothing -> any {
   let full = ($args | append "--json")
   let result = (do { cd $env.SITE_DIR; ^emdash ...$full | complete })
-  let lines = ($result.stdout | lines)
-  let starts = ($lines | enumerate | where {|l| ($l.item | str starts-with "{") or ($l.item | str starts-with "[") } | get index)
-  if $result.exit_code != 0 or ($starts | is-empty) {
-    error make {msg: $"emdash ($full | str join ' ') returned no JSON: ($result.stdout | str trim) ($result.stderr | str trim)"}
+  # With --json the CLI writes only JSON to stdout (progress goes to stderr) and exits non-zero on error.
+  if $result.exit_code != 0 or ($result.stdout | str trim | is-empty) {
+    error make {msg: $"emdash ($full | str join ' ') failed: ($result.stderr | str trim) ($result.stdout | str trim)"}
   }
-  $lines | skip ($starts | first) | str join (char nl) | from json
+  $result.stdout | from json
 }
 
 # EmDash runs on Cloudflare (D1, R2, Workers) or on plain Node.js (a SQLite file, local uploads).
@@ -108,6 +107,15 @@ export def devdb []: nothing -> string {
   )
   if ($found | is-empty) { fail "no local database yet" "run: mise run dev" }
   $found | first
+}
+
+# Is there a local database yet? False on a first start and after a wipe.
+export def has-devdb []: nothing -> bool {
+  if (on-cloudflare) {
+    $env.SITE_DIR | path join ".wrangler" "state" "v3" "d1" | path exists
+  } else {
+    $env.SITE_DIR | path join "data.db" | path exists
+  }
 }
 
 # Delete the local database and uploads. The site recreates them, seeded, when it next starts.
@@ -181,12 +189,20 @@ export def files-in [dir: string, pattern: string, --exclude: list<string> = []]
 
 # Wait, for a bounded time, until something answers at the URL. Every wait in the harness goes
 # through this: nothing may wait without a limit.
+#
+# Each probe is PATIENT (30 seconds) and they never overlap. A cold dev server takes many seconds to
+# answer its first request; probing it every second with a short timeout abandons each request
+# while the server is still working on it and piles the next one on top — the server never catches
+# up. That is how a release run "hung": the site was up, and we were starving it.
 export def wait-for [url: string, seconds: int]: nothing -> bool {
-  for _ in 1..$seconds {
-    if (answers $url) { return true }
-    sleep 1sec
+  let deadline = ((date now) + ($seconds * 1sec))
+  mut up = false
+  while (not $up) and ((date now) <= $deadline) {
+    let status = (request GET $url --timeout 30sec).status
+    $up = ($status >= 200 and $status < 400)
+    if not $up { sleep 1sec }
   }
-  false
+  $up
 }
 
 # True when something answers at the URL without an error status.

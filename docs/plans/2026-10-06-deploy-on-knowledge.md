@@ -35,10 +35,10 @@ and A5–A9, A14, A15.
 **Verified by reading this repo:**
 
 - A fresh project gets `worker_loaders` uncommented and `sandboxRunner: sandbox()` added
-  (`nu/site.nu:173,224`).
-- `doctor --url` runs `emdash migrate --status` and ignores the result (`nu/main.nu:144`).
+  (`configure` → `enable-local-plugins`, `nu/site.nu`).
+- `doctor --url` runs `emdash migrate --status` and ignores the result (`main doctor`).
 - Nothing in `nu/` generates, stores or deploys an encryption key.
-- `harness.toml:61` sets `EMDASH_TOKEN = false`.
+- `harness.toml` sets `EMDASH_TOKEN = false`.
 
 **Guesses — each has a step below that settles it:**
 

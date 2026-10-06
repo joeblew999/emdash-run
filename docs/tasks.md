@@ -250,7 +250,7 @@ The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allo
 
 ## `snapshot`
 
-Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment
+Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --url snapshots a deployment
 
 
 - **Usage:** `snapshot [args]…`
@@ -290,7 +290,7 @@ Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml with the
 
 ## `verify`
 
-Does this project work on THIS machine? Site up, check, doctor — what CI runs on every OS. --full adds a plugin round trip, a snapshot and a build
+Does this project work on THIS machine? Site up, check, doctor. --full adds a plugin round trip, a snapshot and a build; --restore also wipes the local database and restores it
 
 
 - **Usage:** `verify [args]…`

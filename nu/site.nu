@@ -77,13 +77,17 @@ export def install [] {
 # The rules are deliberately not uniform:
 #   collections, taxonomies       a collision goes to the TEMPLATE
 #   content                       a collision goes to the PROJECT (its ids are namespaced)
-#   menus, widgetAreas, settings  the template's, falling back to the project's
+#   menus, widgetAreas, redirects, sections, blockTypes, relations, bylines
+#                                 unioned by their key; a collision goes to the TEMPLATE
+#   settings                      the template's, falling back to the project's
 # Content is ordered dependency-first, because entries carry `$ref:` values that must already exist.
 export def merge-seeds [base: record, project: record, order: list<string>, label: string]: nothing -> record {
   def union [project_items: list, base_items: list, key: string] {
+    # An item without the key cannot collide, so it is kept as it is.
+    def identity [item: any] { $item | get -o $key | default ($item | to json --raw) | into string }
     mut acc = {}
-    for item in $project_items { $acc = ($acc | upsert ($item | get $key) $item) }
-    for item in $base_items { $acc = ($acc | upsert ($item | get $key) $item) }
+    for item in $project_items { $acc = ($acc | upsert (identity $item) $item) }
+    for item in $base_items { $acc = ($acc | upsert (identity $item) $item) }
     $acc | values
   }
   def pick [key: string, fallback: any] {
@@ -132,10 +136,17 @@ export def merge-seeds [base: record, project: record, order: list<string>, labe
     | insert settings (pick settings {})
     | insert collections (union ($project | get -o collections | default []) ($base | get -o collections | default []) "slug")
     | insert taxonomies (union ($project | get -o taxonomies | default []) ($base | get -o taxonomies | default []) "name")
-    | insert menus (pick menus [])
-    | insert widgetAreas (pick widgetAreas [])
+    | insert menus (union ($project | get -o menus | default []) ($base | get -o menus | default []) "name")
+    | insert widgetAreas (union ($project | get -o widgetAreas | default []) ($base | get -o widgetAreas | default []) "name")
     | insert content $content
   )
+  # The other keyed lists a seed can carry are unioned the same way, the template winning a clash.
+  let keyed = {redirects: "source", sections: "slug", blockTypes: "slug", relations: "slug", bylines: "id"}
+  let merged = ($keyed | transpose list key | reduce --fold $merged {|k, acc|
+    let ours = ($project | get -o $k.list | default [])
+    let theirs = ($base | get -o $k.list | default [])
+    if ($ours | is-empty) and ($theirs | is-empty) { $acc } else { $acc | insert $k.list (union $ours $theirs $k.key) }
+  })
   # Every other top-level key a seed carries — bylines, redirects, whatever a template adds next —
   # passes through: the template's, falling back to the project's. Dropping an unknown key silently
   # broke the blog template, whose posts reference bylines.
@@ -229,21 +240,26 @@ export def configure [registration: string] {
 
 # Get the seed into the RUNNING site's database, updating entries that already exist. The site's
 # own first-request seeding skips anything that exists, so edits to the seed never land without this.
-# Only when the seed has CHANGED since it was last applied to this database. Re-applying an
-# unchanged seed would overwrite edits made in the admin with the seed's values, and — until
-# emdash#3919 is fixed — insert a duplicate media row for every image in it, every time.
-export def apply-seed [] {
+# Carry seed EDITS into an existing database. A fresh database needs nothing: the site has just
+# seeded itself, into the right storage. Otherwise apply only when the seed has changed since it was
+# last applied — re-applying an unchanged seed overwrites admin edits and (until emdash#3919)
+# duplicates every image in it.
+export def apply-seed [--fresh] {
   let seed = (site-file "seed" "seed.json")
   let mark = ($env.RUN_DIR | path join "seed-applied.txt")
   let db = (devdb)
   let now = $"(open --raw $seed | hash sha256) ($db)"
+  mkdir $env.RUN_DIR
+  if $fresh {
+    $now | save --force $mark
+    return
+  }
   if ($mark | path exists) and (open --raw $mark | str trim) == $now {
     ok "seed unchanged since it was last applied"
     return
   }
   emdash seed seed/seed.json --database $db --on-conflict=update
   if (on-cloudflare) { uploads-to-r2 }
-  mkdir $env.RUN_DIR
   $now | save --force $mark
 }
 
@@ -265,45 +281,42 @@ def uploads-to-r2 [] {
   }
 }
 
-# (Re)start the dev server and wait until it has migrated and answers — for a bounded time. The
-# daemon has no readiness check of its own on purpose: `mise daemons start` waits on one forever,
-# and a dev server that came up but never answered once hung a release run for fifteen minutes.
-# So the start returns at once and THIS loop decides, tries once more, then fails with the log.
-export def restart [] {
+# (Re)start the dev server, wait — for a bounded time — until it answers, then make ONE call to
+# EmDash's dev-bypass: it runs migrations, completes setup, applies the seed through the site's own
+# storage, signs in, and with `?token=1` hands back an admin API token. `--empty` leaves the seed's
+# content out (`?content=0`), which a site must be to receive a restore.
+#
+# The daemon has no readiness check of its own on purpose: `mise daemons start` waits on one forever.
+export def restart [--empty] {
+  let query = (if $empty { "?token=1&content=0" } else { "?token=1" })
   for attempt in 1..2 {
     daemon-stop $env.SITE_DAEMON
     rm -rf (site-file "node_modules" ".vite")
     ^mise daemons start $env.SITE_DAEMON
-    for _ in 1..90 {
-      if (request POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass" --timeout 5sec).status in 200..399 { return }
+    # ONE patient call. Until the server is listening it is refused at once (status 0), so that is
+    # retried; once it is accepted it gets five minutes — the first request compiles the site, and a
+    # seed with images downloads them. Never many short calls: they starve a cold server.
+    let deadline = ((date now) + 90sec)
+    mut setup: any = {status: 0, body: null}
+    loop {
+      $setup = (request POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass($query)" --timeout 5min)
+      if $setup.status != 0 or (date now) > $deadline { break }
       sleep 1sec
     }
-    if $attempt == 1 { print "  the site did not answer in 90s — restarting it once more" }
+    let answered = $setup
+    let token = ($answered.body | get -o data.token | default "")
+    if $answered.status in 200..299 and ($token | is-not-empty) {
+      mkdir $env.RUN_DIR
+      $"($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.txt")
+      # mise loads this file into the environment; .mcp.json reads EMDASH_MCP_TOKEN from there.
+      $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.env")
+      return
+    }
+    print --stderr $"  setup answered ($answered.status): ($answered.body | to json --raw)"
+    if $attempt == 1 { print "  the site is not ready — restarting it once more" }
   }
   print --stderr ((^mise daemons logs $env.SITE_DAEMON | complete).stdout | lines | last 30 | str join (char nl))
-  fail "the site did not answer after two starts" "the last lines of its log are above; more: mise run logs"
-}
-
-# Mint the admin API token the MCP server and `plugin:probe` use. Idempotent: the previous one is
-# revoked, because EmDash shows a token's secret only once.
-export def mint-token [] {
-  mkdir $env.RUN_DIR
-  let base = $"($env.SITE_URL)/_emdash/api"
-  # dev-bypass signs us in on localhost; its session cookie authenticates the admin API.
-  let session = (request POST $"($base)/setup/dev-bypass")
-  if $session.status == 0 or ($session.cookies | is-empty) { fail "could not sign in to the site" "run: mise run dev" }
-  let headers = {Cookie: $session.cookies, "X-EmDash-Request": "1"}
-  let listed = (request GET $"($base)/admin/api-tokens" --headers $headers).body
-  for old in ($listed | get -o data.items | default [] | where name == "token-admin") {
-    request DELETE $"($base)/admin/api-tokens/($old.id)" --headers $headers | ignore
-  }
-  let created = (request POST $"($base)/admin/api-tokens" --headers $headers --body {name: "token-admin", scopes: ["admin"]}).body
-  let token = ($created | get -o data.token | default "")
-  if ($token | is-empty) { fail $"token creation failed: ($created | to json --raw)" }
-  $"($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.txt")
-  # mise loads this file into the environment; .mcp.json reads EMDASH_MCP_TOKEN from there.
-  $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.env")
-  ok "admin token → run/token-admin.txt"
+  fail "the site did not come up after two starts" "the last lines of its log are above; more: mise run logs"
 }
 
 export def admin-url []: nothing -> string { $"($env.SITE_URL)/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin" }
