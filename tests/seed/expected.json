@@ -1,0 +1,116 @@
+{
+    "$schema": "https://emdashcms.com/seed.schema.json",
+    "version": "1",
+    "meta": {
+        "name": "Starter + CAD",
+        "description": "Template demo — Project models",
+        "author": "template"
+    },
+    "settings": {
+        "title": "Template title"
+    },
+    "collections": [
+        {
+            "slug": "posts",
+            "label": "Posts (template)",
+            "fields": [
+                {
+                    "slug": "title",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "slug": "parts",
+            "label": "Parts",
+            "fields": [
+                {
+                    "slug": "model_id",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "slug": "projects",
+            "label": "Projects",
+            "fields": []
+        },
+        {
+            "slug": "pages",
+            "label": "Pages",
+            "fields": []
+        }
+    ],
+    "taxonomies": [
+        {
+            "name": "category",
+            "label": "Category (template)"
+        },
+        {
+            "name": "material",
+            "label": "Material"
+        }
+    ],
+    "menus": [
+        {
+            "name": "primary",
+            "items": []
+        }
+    ],
+    "widgetAreas": [
+        {
+            "name": "sidebar",
+            "widgets": []
+        }
+    ],
+    "content": {
+        "projects": [
+            {
+                "id": "projects:alpha",
+                "slug": "alpha",
+                "data": {}
+            }
+        ],
+        "assemblies": [],
+        "parts": [
+            {
+                "id": "parts:bracket",
+                "slug": "bracket",
+                "data": {
+                    "project": "$ref:projects:alpha"
+                }
+            }
+        ],
+        "extras": [
+            {
+                "id": "extras:one",
+                "slug": "one",
+                "data": {}
+            }
+        ],
+        "posts": [
+            {
+                "id": "posts:shared",
+                "slug": "shared",
+                "data": {
+                    "title": "Shared (project)"
+                }
+            },
+            {
+                "id": "posts:hello",
+                "slug": "hello",
+                "data": {
+                    "title": "Hello (template)"
+                }
+            }
+        ],
+        "pages": [
+            {
+                "slug": "no-id-page",
+                "data": {
+                    "title": "No id"
+                }
+            }
+        ]
+    }
+}

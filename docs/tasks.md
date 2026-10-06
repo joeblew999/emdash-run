@@ -1,6 +1,6 @@
 ## `check`
 
-- Depends: repo:check, plugin:typecheck, plugin:audit, plugin:test
+- Depends: repo:check, seed:test, plugin:typecheck, plugin:audit, plugin:test
 
 - **Usage:** `check`
 
@@ -523,6 +523,12 @@ Export the running dev site's model + content as a seed (official: emdash export
 - **Usage:** `seed:from-remote`
 
 Diff a live instance's content model against the repo's seed (read-only; set EMDASH_URL for a deployment)
+
+## `seed:test`
+
+- **Usage:** `seed:test`
+
+Run the seed merge over fixtures and fail unless the output is exactly tests/seed/expected.json
 
 ## `seed:validate`
 

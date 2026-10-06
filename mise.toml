@@ -149,6 +149,13 @@ SITE_DAEMON = "emdash"
 # demo seed is merged INTO it by `seed:build`, and an export is never written back over it.
 SEED_FILE = "{{config_root}}/config/cad.seed.json"
 
+# How `seed:build` merges that seed with the template's. SEED_ORDER is the project's collections in
+# dependency order (`:`-separated): entries carry `$ref:` values that must resolve to something
+# already applied, so a collection is listed after the ones it refers to. SEED_LABEL is appended to
+# the template's site name, so the merged site says what was added to it.
+SEED_ORDER = "projects:assemblies:parts"
+SEED_LABEL = "CAD"
+
 # The code you own, for lint and formatting. Absolute, so it does not depend on a task's working
 # directory; `:`-separated because an env var is a string.
 CODE_PATHS = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
@@ -295,7 +302,13 @@ run = "mise run repo:verify"
 
 [tasks."check"]
 description = "Everything that must pass before a commit — lint, formatting, the repo's own checks, and the plugins' types, structure and tests"
-depends = ["repo:check", "plugin:typecheck", "plugin:audit", "plugin:test"]
+depends = [
+  "repo:check",
+  "seed:test",
+  "plugin:typecheck",
+  "plugin:audit",
+  "plugin:test",
+]
 
 [tasks."check:deployed"]
 description = "The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)"
@@ -515,18 +528,32 @@ print $"  → diagnosing ($db | path relative-to $env.SITE_DIR)"
 [tasks."seed:build"]
 description = "Merge the template's seed with ours → .src/site/seed/seed.json"
 run = """
-# Merge the template's demo seed with this repo's CAD seed.
+let base = $"($env.TEMPLATES_DIR)/($env.TEMPLATE)/seed/seed.json"
+^mise run seed:_merge -- $base $env.SEED_FILE $"($env.SITE_DIR)/seed/seed.json"
+"""
+
+# The merge itself, with its inputs and output as arguments — so `seed:test` can run the SAME code
+# over fixtures. `seed:build` is this pointed at the real files.
+[tasks."seed:_merge"]
+hide = true
+usage = """
+arg "<base>" help="The template's seed.json"
+arg "<project>" help="The project's own seed"
+arg "<dest>" help="Where to write the merged seed"
+"""
+run = """
+# Merge the template's demo seed with the project's own seed (`cad` below, after the first project).
 #
 # The rules are deliberately NOT uniform, and the asymmetry is the point:
 #   collections / taxonomies          a collision goes to the TEMPLATE
-#   content                           a collision goes to CAD — opposite, on purpose: the CAD seed
-#                                     is this repo's reason to exist, and its ids are namespaced
+#   content                           a collision goes to the PROJECT — opposite, on purpose: its
+#                                     seed is the reason the site exists, and its ids are namespaced
 #                                     (`parts:motor-housing`), so a real clash means a malformed seed
-#   menus / widgetAreas / settings    the template's, falling back to CAD's
-# Content order is dependency-first: entries carry `$ref:` values that must resolve to something
-# already applied.
-let base = (open $"($env.TEMPLATES_DIR)/($env.TEMPLATE)/seed/seed.json")
-let cad = (open $env.SEED_FILE)
+#   menus / widgetAreas / settings    the template's, falling back to the project's
+# Content order is dependency-first ($SEED_ORDER): entries carry `$ref:` values that must resolve
+# to something already applied. `seed:test` pins every one of these rules against fixtures.
+let base = (open $env.usage_base)
+let cad = (open $env.usage_project)
 
 # Union two lists by key, with the template winning on collision. `upsert`, not `insert`: nushell
 # errors when `insert` targets a column that already exists, which is exactly the collision case.
@@ -539,7 +566,7 @@ def union [cad_items: list, base_items: list, key: string] {
 
 let cad_content = ($cad | get -o content | default {})
 let base_content = ($base | get -o content | default {})
-let dep_order = ["projects" "assemblies" "parts"]
+let dep_order = ($env.SEED_ORDER | split row ":" | where {|k| $k | is-not-empty })
 let keys = (
   $dep_order
   | append ($cad_content | columns | where {|k| not ($k in $dep_order) })
@@ -579,7 +606,7 @@ let description = (
 )
 # `upsert` again rather than a spread plus an override: nushell rejects a record literal defining a
 # field `...$base_meta` already supplied. These two are the only keys that override the template's.
-let merged_meta = ($base_meta | upsert name $"($site_name) + CAD" | upsert description $description)
+let merged_meta = ($base_meta | upsert name $"($site_name) + ($env.SEED_LABEL)" | upsert description $description)
 
 # Built key by key, in the same order the JavaScript wrote them. `'$schema'` is single-quoted
 # because a double-quoted key would be interpolated as a variable.
@@ -602,11 +629,35 @@ $merged = ($merged | insert menus $menus)
 $merged = ($merged | insert widgetAreas $widget_areas)
 $merged = ($merged | insert content $content)
 
-let dest = $"($env.SITE_DIR)/seed/seed.json"
+let dest = $env.usage_dest
 mkdir ($dest | path dirname)
 $merged | to json --indent 4 | save --force $dest
 let total = ($content | values | each {|list| $list | length } | math sum)
-print $"  ✓ seed → .src/site/seed/seed.json — ($content | columns | length) collections, ($total) entries"
+print $"  ✓ seed → ($dest | path basename) — ($content | columns | length) collections, ($total) entries"
+"""
+
+[tasks."seed:test"]
+description = "Run the seed merge over fixtures and fail unless the output is exactly tests/seed/expected.json"
+run = """
+# The merge decides what the site's content model IS, and its rules are not uniform (see
+# seed:_merge). This runs the SAME task body `seed:build` uses over a small template/project pair
+# in which every rule has a case, and compares the result byte for byte. The fixtures set their own
+# SEED_ORDER and SEED_LABEL, so the test does not move when PROJECT SETTINGS does.
+let dir = $"($env.ROOT)/tests/seed"
+let out = $"($env.RUN_DIR)/seed-test.json"
+# Removed first: a merge that fails would otherwise leave the previous output to be compared.
+rm -f $out
+with-env {SEED_ORDER: "projects:assemblies:parts", SEED_LABEL: "CAD"} {
+  ^mise run seed:_merge -- $"($dir)/template.json" $"($dir)/project.json" $out
+}
+if (open --raw $out) != (open --raw $"($dir)/expected.json") {
+  print "✗ seed:test — the merge no longer produces tests/seed/expected.json"
+  print $"  compare: diff ($out) ($dir)/expected.json"
+  print "  if the change is intended, review that diff and copy the new output over expected.json"
+  exit 1
+}
+rm -f $out
+print "  ✓ the seed merge matches tests/seed/expected.json"
 """
 
 [tasks."seed:validate"]
