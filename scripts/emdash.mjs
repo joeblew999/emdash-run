@@ -26,7 +26,8 @@
  * `emdash login --url …` once, or a token from the admin's Settings → API Tokens.
  */
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,10 +47,43 @@ if (!existsSync(CLI)) {
 const args = process.argv.slice(2);
 const command = args[0];
 const hasUrl = args.includes("--url") || args.includes("-u");
+const url = process.env.EMDASH_URL ?? process.env.SITE_URL ?? "http://localhost:4321";
 
 if (command && !LOCAL_COMMANDS.has(command) && !hasUrl) {
-	args.push("--url", process.env.EMDASH_URL ?? process.env.SITE_URL ?? "http://localhost:4321");
+	args.push("--url", url);
+}
+
+// Work around a bug in emdash 1.1.0's CLI: it does not send the credential that `emdash login`
+// saved, so every remote command fails with "Token is invalid or expired" while the very same
+// token works against the same URL with `curl`. Verified both ways: curl 200 with real data, CLI
+// rejected, same token, same URL, same minute.
+//
+// The token is fine; only the CLI's stored-credential lookup is broken. Passing it explicitly
+// takes the CLI's own documented first choice (`--token`), so this feeds the official tool its
+// own credential rather than replacing anything it does. It is a shim with an expiry: delete it
+// when the CLI reads its own credentials.
+const tokenArgs =
+	command && !LOCAL_COMMANDS.has(command) && !args.includes("--token") && !args.includes("-t");
+if (tokenArgs) {
+	const stored = readStoredToken(url);
+	if (stored) args.push("--token", stored);
 }
 
 const child = spawn(process.execPath, [CLI, ...args], { stdio: "inherit", cwd: SITE_DIR });
 child.on("exit", (code) => process.exit(code ?? 0));
+
+/**
+ * Read the token `emdash login` stored for `targetUrl`, from `~/.config/emdash/auth.json`.
+ * The file is keyed by instance URL: `{ "<url>": { accessToken, refreshToken, … } }`.
+ * Returns null rather than throwing, so a missing or malformed file just means "no token" and
+ * the CLI falls back to its own resolution — the dev bypass still works with no credentials.
+ */
+function readStoredToken(targetUrl) {
+	try {
+		const path = join(homedir(), ".config", "emdash", "auth.json");
+		const entry = JSON.parse(readFileSync(path, "utf8"))[targetUrl];
+		return entry?.accessToken ?? null;
+	} catch {
+		return null;
+	}
+}
