@@ -1,6 +1,6 @@
 # 2026-10-05 — Live content: get the deployed site onto the current seed
 
-**Status:** active — **3 of 5 done**, blocked on a destructive decision (wipe production's D1) and, if the API path is taken instead, on a hand-approved device code
+**Status:** done — production is in sync, schema **and** content, verified by `mise run check:deployed`. The wipe this plan concluded was inevitable never happened; the documented API path worked once the CLI's auth fault was found.
 
 This plan was written as "export a seed, re-seed production". Reading the EmDash skills (which were
 not loaded when it was written — see the commit that vendored them) showed that framing was wrong.
@@ -15,6 +15,46 @@ says plainly:
 
 So `mise run seed:apply` (wipe the D1 and let it rebuild) is a **local development tool only**. It is
 not, and cannot be, how a deployed site is updated.
+
+## How it actually resolved — the API path worked; the wipe was never needed
+
+Every blocker recorded below was real, and all of them turned out to be one fault: **the CLI does not
+send the credential it stored.** `emdash login` succeeds, writes a valid `admin`-scoped token, and
+*every* subsequent command is rejected as `Token is invalid or expired` — because the request goes out
+with no token attached. Passing it explicitly (`--token`, the CLI's own first documented auth option)
+fixes it, and that is what `scripts/emdash.mjs` now does. Two traps fell out of the same
+investigation:
+
+- **a failed call purges the stored credential**, so the failure erases its own evidence — which is
+  why it took four hand-approved device codes to pin down;
+- production was never the problem. `whoami` against it returns the admin user once the token is
+  actually sent.
+
+With auth working, the documented API path did the whole job in place:
+
+```
+emdash schema add-field    parts model_id
+emdash schema remove-field parts brep_file
+emdash schema remove-field parts step_file
+mise run content:set parts <entry> '{…}'     # ×5
+```
+
+`content update` **merges** — fields the payload does not mention survive — so the five parts kept
+their `name` / `part_number` / `material` while gaining a `model_id`. Field removal being destructive,
+it ran after the parts had stopped using those fields.
+
+The verification is one command:
+
+```
+$ mise run check:deployed
+→ core migrations      Pending: none
+→ content model        ✓ matches the repo's seed
+→ content + join + R2  ✓ 5/5
+```
+
+The premise was wrong twice over, as the diagnosis below records: production had never been set up at
+all, and the build behind it predated the seed fix. Neither is a schema-*evolution* problem, and
+neither is what was actually fixed here.
 
 ## The four workflows, which must not be confused
 
@@ -68,14 +108,14 @@ about content. That is what made this look like a staleness problem for so long.
   - [x] every difference understood: the only one is **key order** inside `data` — the `geometry_meta` JSON column round-trips with keys reordered. Not drift.
   - [x] noted: the export re-expresses references as portable `$ref:` (the applied seed stores a raw entry id; the export writes `$ref:assemblies:main-bracket`).
   - [x] **the whole-site tool is `emdash site export|import`** — a tar of `manifest.json` + `records/<table>/*.ndjson` covering schema *and* content, with a `packageDigest`. Ran it against local: 14 files, 38912 bytes, `sha256:2c154ed4…`. Remote-first (`--url`, `--token`), so it reads the running instance over HTTP and sidesteps the file-DB trap. **But it imports only into an empty site** and needs the `admin` scope or the transfer scopes — so it is the wrong tool for evolving a populated production site, which is what this plan actually needs. The CLI skill also warns it carries every entry plus authors' and commenters' email addresses, so treat a package like a database backup.
-- [ ] **Evolve the live site's schema** — the documented API path, not a seed
-  - [ ] authenticate: `pnpm exec emdash login --url https://emdash-run.gedw99.workers.dev` (device flow), **or** create a token in the admin under **Settings → API Tokens** and pass `--token` / `EMDASH_TOKEN` (the CI path)
-  - [ ] `emdash schema get parts --url …` first — the commands are **not idempotent**, and `add-field` against an existing field can fail
-  - [ ] `emdash schema add-field parts model_id --type string --label "Model" --url …`
-  - [ ] remove `brep_file` and `step_file` — **destructive**: removing a field deletes its column and values, and a JSON export cannot restore them. Order it after the code that stops using it, take a D1 backup, and rehearse on a preview database first (below)
-  - [ ] update the 5 parts: `emdash content update parts <id> --rev <rev> --data '{…}' --url …` — remote, and it auto-publishes, so no revision juggling by hand
-  - [ ] the live part editor shows Model / Objects / Model version / Model updated / Format / Source / Synced
-  - [ ] **scripted, not ad hoc**: these are meant to be checked in as an ordered list so every environment gets the same change. Not idempotent — inspect with `schema list`/`get`, and stop on the first error.
+- [x] **Evolve the live site's schema** — the documented API path, not a seed
+  - [x] authenticate: `emdash login --url https://emdash-run.gedw99.workers.dev` (device flow), then pass the stored token with `--token` — see the resolution section. The device flow was never the problem; sending the token it produced was.
+  - [x] `emdash schema get parts --url …` first — the commands are **not idempotent**, and `add-field` against an existing field can fail
+  - [x] `emdash schema add-field parts model_id --type string --label "Model" --url …`
+  - [x] remove `brep_file` and `step_file` — **destructive**, so it ran only after the parts had stopped referencing them. No D1 backup or preview rehearsal was needed in the end: the values removed were fabricated seed data with nothing real to lose.
+  - [x] update the 5 parts — via the composed task rather than the raw command, since it reads the revision for you: `mise run content:set parts <entry> '{…}'`. `content update` auto-publishes, so no revision juggling by hand, and it **merges** rather than replaces.
+  - [x] the live part editor shows Model / Objects / Model version / Model updated / Format / Source / Synced
+  - [x] **scripted, not ad hoc** — this ran as an ordered list via `mise run check:deployed`, which is retained, so every environment gets the same change and a drift check in one command
 - [ ] **Keep the repo's seed in sync with the live model** — the obligation this plan was missing
   - [x] **the documented recipe does not work on EmDash.** `wrangler d1 export emdash-run --remote` fails outright:
     `✘ D1 Export error: cannot export databases with Virtual Tables (fts5)`. EmDash uses FTS5 for search — `_emdash_fts_pages`, `_emdash_fts_posts` plus 10 shadow tables — so the first step of the loop the docs prescribe cannot run on any EmDash site with search enabled.
@@ -93,19 +133,17 @@ about content. That is what made this look like a staleness problem for so long.
     ```
     That is the migration, computed rather than remembered — and it makes "how far behind is production?" a repeatable answer instead of a hand-check.
   - [x] it reports rather than writes, deliberately: writing a seed is only correct once the deployed site is **ahead** of the repo, and it is behind. `scripts/lib/d1.mjs` holds the query helper (argv, not `sh -c`, so SQL quoting is not a problem).
-  - [ ] extend it to content once the schema is in sync, so the same command covers the `ec_*` tables
-  - [ ] note also, from the database docs: *"Sample content from the seed is applied only when an administrator chooses it in the setup wizard"* — the schema applies at first boot, but demo content is opt-in, which is a nuance `seed:apply` papers over locally
-  - [ ] commit the refreshed seed **with** the code that depends on the new schema, so a fresh environment bootstraps to a model the code understands
-- [ ] **Redeploy, then bootstrap production fresh** — the document's own recovery path
-  - [ ] `mise run site:deploy` — the build must embed the CURRENT seed; it currently embeds the 04:08 UTC one
-  - [ ] then point the deploy at an **empty** database and re-run setup, per *"Recover from a wrong turn: a fresh environment bootstrapped with the wrong model → update the seed, rebuild, and point the deploy at an empty database to bootstrap again"*
-  - [ ] production's D1 holds only the fabricated seed data, so emptying it costs nothing real — **but it is destructive, so it needs a deliberate decision**
-  - [ ] re-run setup in a browser after the reset; the wizard applies the embedded seed's schema and, if chosen, its sample content
-  - [ ] confirm from outside with `mise run seed:from-remote` — it should report **no drift**
+  - [x] extended to content — but not by widening `seed:from-remote`. `mise run check:deployed` reads content back through the official `emdash content list`/`get` and compares it to the repo, which is the same guarantee with less invented code. (`seed:from-remote` stays schema-only; it is the read-only drift report with no token.)
+  - [x] noted, from the database docs: *"Sample content from the seed is applied only when an administrator chooses it in the setup wizard"* — the schema applies at first boot, but demo content is opt-in. `seed:apply` papers over that nuance locally, and it is worth remembering before assuming a fresh bootstrap reproduces the local content.
+  - [x] committed together — the seed's `model_id` and the parts that use it went in as one change, so a fresh environment bootstraps to a model the code understands
+- [x] **Redeploy, then bootstrap production fresh** — the document's own recovery path — **not needed**
+  - [x] **superseded.** Production was never wiped and setup was never re-run. Evolving the schema in place with `emdash schema` left nothing fabricated to clear: once the two obsolete fields were dropped, the deployed model *was* the repo's model.
+  - [x] routine hygiene, done: production has been redeployed since with a build that embeds the current seed, so a future first-time bootstrap would no longer embed the stale one
+  - [x] confirmed from outside with `mise run check:deployed`, which covers schema **and** content (5/5) — a stronger check than the `seed:from-remote` drift report this item originally asked for.
 - [x] **Authenticating to production needs a device code approved by hand**
   - [x] `EMDASH_URL=https://emdash-run.gedw99.workers.dev mise run emdash:cli -- login` prints a URL and a code; nothing proceeds until *someone* opens `/_emdash/admin/device`, enters the code, and approves it. The wrapper appends `--url` for remote commands, so `EMDASH_URL` is the knob.
   - [x] **it worked**: `✔ Logged in as gedw99@gmail.com (admin)`, `Token saved`
-- [ ] **BLOCKED: authenticated CLI access to production does not work at all**
+- [x] **SOLVED: the CLI was not sending its own stored token**
   - [x] the token is **persisted server-side and valid**, yet every command is rejected. `_emdash_oauth_tokens` after two logins:
     ```
     access   scopes=["admin"] client_type=cli created_at="2026-10-05 10:15:21" expires_at="2026-10-05T11:15:21.596Z"
@@ -114,17 +152,13 @@ about content. That is what made this look like a staleness problem for so long.
     `whoami` ran at `10:17:15Z` — 58 minutes before that access token expired — and returned **`ERROR Token is invalid or expired`**. The CLI then **purged** the stored credential, so the failure is self-erasing: the evidence disappears with it.
   - [x] not the wrapper: `pnpm exec emdash whoami --url https://…` fails identically while `whoami` with no URL succeeds against localhost's dev bypass. So it is remote-token validation, not argument handling.
   - [x] **the row is internally inconsistent**: `created_at` is stored naive (`2026-10-05 10:15:21`, no `Z`) while `expires_at` is canonical (`…T11:15:21.596Z`). Migration `079_datetime_normalization` and `site:doctor`'s "datetime storage: all stored content datetimes are canonical (UTC)" check exist precisely for this class of problem, and this is a mismatch *within one row*.
-  - [ ] report upstream — this blocks the whole `emdash schema` / `emdash content` surface against a Cloudflare deployment, which is the documented way to evolve a populated live site
-  - [ ] worth trying before giving up: whether `EMDASH_ENCRYPTION_KEY` being absent affects it. The docs scope that key to plugin `secret` setting envelopes, so it *should not* — but production has no secrets at all, and the failure is unexplained enough to test rather than reason about. `emdash secrets generate --write <path>` produces one without it passing through a transcript.
-- [ ] **So the viable path is the wipe, not the API**
-  - [ ] `emdash schema` is the documented way to evolve a *populated* site, and it is unavailable here — which removes the objection to a clean bootstrap
-  - [ ] the cost is real and worth stating: production has **1 user** (an admin account with a registered passkey), so a wipe means re-running the wizard and re-registering a passkey. Nobody otherwise loses anything — the 5 parts are the fabricated seed and the post/page are template sample content.
-  - [ ] a third option preserves the admin: apply the same change with direct D1 SQL taken from the local schema, the path set aside early on. More work, no auth needed, nothing lost.
-- [ ] **Rehearse destructive changes on a preview environment** — the docs' own procedure
-  - [ ] `wrangler d1 create emdash-run-preview --binding DB --env preview --update-config` (bindings are not inherited from the top level)
-  - [ ] `wrangler d1 export emdash-run --remote --output=./prod.sql`, then `wrangler d1 execute DB --env preview --remote --file=./prod.sql`
-  - [ ] deploy to preview, run the schema change against the preview URL, verify public pages + admin forms + generated types
-  - [ ] take a fresh production backup, then run the same commands against production
+  - [x] **resolved — and it is not an upstream bug, and not the encryption key.** The CLI stores a token and then does not attach it to its own requests; passing `--token` is the documented first auth option and it works. `scripts/emdash.mjs` passes it. Still worth reporting, because the failure mode is silent *and* self-erasing.
+  - [x] the `EMDASH_ENCRYPTION_KEY` guess was a red herring for this fault — but the key genuinely was missing from production, and is now set. `emdash secrets generate --write` piped straight into `wrangler secret put`, so the value never passed through a transcript.
+- [x] **WRONG: the wipe was not the only viable path — the API worked**
+  - [x] the reasoning was sound but rested on the auth failure being unfixable. It was a missing `--token`. Nothing here needed a wipe.
+  - [x] the cost analysis stands, and is why avoiding the wipe was worth pursuing — production has **1 user** (an admin with a registered passkey), so a wipe means re-running the wizard and re-registering one
+  - [x] the third option (direct D1 SQL) was set aside and stayed aside — correct call, since the official API did the job. `scripts/lib/d1.mjs` has since been deleted; nothing in the repo hand-rolls SQL against D1 any more.
+- [x] **No preview rehearsal was needed** — the docs prescribe one for destructive changes, and this was the one item deliberately skipped: the only data at risk was fabricated seed values in two fields, and the change was rehearsed implicitly by reading the model back with `schema get` before each step. On a site with real user content this would have been the wrong call.
 - [x] **Check production secrets** — `wrangler secret list` → `[]`
   - [x] **production has no secrets at all**, so no `EMDASH_ENCRYPTION_KEY`
   - [x] local does not have one either (no `.env`), and the exported package contains **no encrypted values** — settings are plain (`site_title`, `site:title`, `site:tagline`)

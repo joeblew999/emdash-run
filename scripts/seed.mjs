@@ -1,34 +1,32 @@
 #!/usr/bin/env node
 /**
- * `mise run seed:validate` — validate the merged site seed.
- * `mise run seed:apply`    — get the seed into the RUNNING dev site.
+ * `mise run seed:build`       — merge the template's seed with ours → .src/site/seed/seed.json
+ * `mise run seed:validate`    — validate the merged seed.
+ * `mise run seed:apply`       — get the seed into the RUNNING dev site.
+ * `mise run seed:export`      — read the running site's model + content back out.
  * `mise run seed:from-remote` — diff the DEPLOYED site's content model against ours.
  *
- * EmDash silently skips an invalid seed (no error, no collections), so `validate` fails
- * loudly instead. `config:apply` runs it after merging.
+ * Build and validate are separate on purpose: EmDash silently skips an invalid seed (no error,
+ * no collections), so `build` writes one and `validate` fails loudly about it afterward.
  *
- * `apply` exists because validating is not applying, and there was no apply:
+ * `apply` exists because validating is not applying. `emdash seed <file>` writes a FILE
+ * database (`-d/--database`, default `./data.db`), and the dev server does not read that file —
+ * it reads miniflare's D1 under `.wrangler/state/v3/d1`. So seeding the default changes nothing
+ * the site can see, and reports success while doing it ("Content: 11 created", "✔ Seed applied
+ * successfully"). Pointing `--database` at the real D1 is what makes it land.
  *
- *   `emdash seed <file>` writes a FILE database (`-d/--database`, default `./data.db`), and
- *   the dev server does not read that file — it reads miniflare's D1 under
- *   `.wrangler/state/v3/d1`. So seeding the file changes nothing the site can see, and it
- *   reports success while doing it ("Content: 11 created", "✔ Seed applied successfully").
- *
- *   `repo:apply` does apply the seed, via dev-bypass on the first request — but with
- *   skip-on-conflict, so an entry that already exists is left alone. New seed content lands;
- *   EDITS to existing content never do. That is the real trap: change a part's data, run
- *   `repo:apply`, and the admin keeps showing the old values with no error anywhere.
- *
- * So picking up content edits requires emptying the D1 and letting EmDash rebuild it. This
- * does that. It is destructive to local state — content edited through the admin, and the
- * admin session itself, are discarded.
+ * With `--on-conflict=update` the official command updates entries in place, so this is no longer
+ * the destructive rebuild it once was: local content and the admin session survive.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import { devDb, env, out, run } from "./lib/exec.mjs";
+import { mergeSeeds } from "./lib/merge-seed.mjs";
 
 const ROOT = env("ROOT");
 const SITE_DIR = env("SITE_DIR");
+const TEMPLATE = process.env.TEMPLATE ?? "starter-cloudflare";
 const sub = process.argv[2];
 
 /** Identifies a field across the repo's seed and the deployed database: `collection.field`. */
@@ -47,7 +45,33 @@ function cliJson(...args) {
 	return parsed.data ?? parsed;
 }
 
-if (sub === "validate") {
+if (sub === "build") {
+	// Merge the template's seed with ours, and write it where the site reads it. The merge rules
+	// are pure and live in lib/merge-seed.mjs so they can be unit-tested — this is the I/O half.
+	const basePath = `${ROOT}/.src/templates/${TEMPLATE}/seed/seed.json`;
+	const cadPath = `${ROOT}/config/cad.seed.json`;
+	const outPath = `${SITE_DIR}/seed/seed.json`;
+
+	for (const path of [basePath, cadPath]) {
+		if (!existsSync(path)) {
+			console.error(`✗ missing ${path} — run: mise run site:setup`);
+			process.exit(1);
+		}
+	}
+
+	const merged = mergeSeeds(
+		JSON.parse(readFileSync(basePath, "utf8")),
+		JSON.parse(readFileSync(cadPath, "utf8")),
+	);
+
+	mkdirSync(dirname(outPath), { recursive: true });
+	writeFileSync(outPath, `${JSON.stringify(merged, null, "\t")}\n`);
+
+	const entries = Object.values(merged.content).reduce((total, list) => total + list.length, 0);
+	console.log(
+		`  ✓ seed → .src/site/seed/seed.json (${merged.collections.length} collections, ${entries} entries)`,
+	);
+} else if (sub === "validate") {
 	run("mise", ["run", "emdash:cli", "--", "seed", "--validate", `${SITE_DIR}/seed/seed.json`]);
 } else if (sub === "apply") {
 	// Apply the merged seed to the dev site's database — with the official command.
@@ -154,6 +178,6 @@ if (sub === "validate") {
 		console.log("\n  ✓ the deployed content model matches the repo's seed");
 	}
 } else {
-	console.error(`seed: unknown subcommand "${sub}" (validate|apply)`);
+	console.error(`seed: unknown subcommand "${sub}" (build|validate|apply|export|from-remote)`);
 	process.exit(1);
 }

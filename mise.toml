@@ -26,9 +26,14 @@
 jobs = 1
 
 [tools]
-node           = "22.22.2"
-pnpm           = "11.9.0"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
+node           = "26.10.0"
+pnpm           = "12.9.1"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
 pitchfork      = "2.29.0"      # process manager for the daemons
+# The shell the inline task scripts run under — `[task_config] shell = "nu -c"` below. A real
+# shell with typed values, paths and error handling, so a task body is not a pile of POSIX
+# incantations that only work on macOS and Linux. Pinned exactly: `latest` floats, and a task
+# shell that shifts under you is a bad place to discover that.
+nushell        = "0.116.1"
 # Secrets. `fnox exec -- <cmd>` is how anything needing credentials runs: `site:deploy`,
 # and the `secret()` helper in scripts/lib/exec.mjs that `repo:verify` uses to reach R2.
 #
@@ -37,7 +42,7 @@ pitchfork      = "2.29.0"      # process manager for the daemons
 # would fail with a confusing error. Short form on purpose: mise maps `fnox` to
 # `github:jdx/fnox`, which is the same resolution the global config gets.
 fnox           = "1.36.0"
-"npm:skills"   = "1.4.7"       # Claude Code skills manager
+"npm:skills"   = "1.7.0"       # Claude Code skills manager
 # Linters + formatter — the same ones the emdash monorepo uses, at the same versions it has
 # installed, so the ecosystem agrees on style AND the toolchain is known-good. Pinned here
 # rather than in a root package.json, because this repo has no root package: mise [tools] is
@@ -47,12 +52,23 @@ fnox           = "1.36.0"
 # oxlint-tsgolint, and a mismatch panics at run time rather than failing cleanly (oxlint
 # 1.86.0 + tsgolint 0.25.0 dies with `panic: unknown rule: no-generated-empty-object-type`).
 # Versions below are read from .src/emdash/node_modules — the pair that works there.
-"npm:oxlint"          = "1.74.0"
-"npm:oxfmt"           = "0.59.0"
-"npm:oxlint-tsgolint" = "0.25.0"
+"npm:oxlint"          = "1.86.0"
+"npm:oxfmt"           = "0.71.0"
+"npm:oxlint-tsgolint" = "7.0.2003"
 # Test runner for the repo's own scripts (`tests/*.test.mjs`). Matches the version the
 # sandboxed plugin already uses, so there is one vitest in the story, not two.
-"npm:vitest"          = "4.1.11"
+"npm:vitest"          = "5.0.3"
+
+# Every `run` body is nushell, not POSIX shell. mise's default is `sh -c`, which means a task
+# written on macOS silently depends on bashisms, BSD flags and `test -f` — none of which hold on
+# Windows. nushell is the same on every platform, gives structured data (`from json`, `where`,
+# `parse`) instead of grep/sed pipelines, and fails loudly rather than carrying on.
+#
+# Single-command tasks are unaffected (`run = "pitchfork logs emdash --follow"` is valid nu).
+# Anything multi-line uses nu syntax: `if $x { } else { }`, `let x = (cmd)`, `^cmd` to force an
+# external binary. See the note on `run_windows` further down for the one platform-specific case.
+[task_config]
+shell = "nu --no-config-file -c"
 
 [env]
 # Project root (where this mise.toml lives)
@@ -131,13 +147,12 @@ depends = ["repo:check", "mise:check", "repo:test", "plugin:typecheck", "plugin:
 [tasks."check:deployed"]
 description = "The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)"
 run = """
-set -e
-echo "→ core migrations"
-mise run site:migrate
-echo "→ content model: repo vs deployed"
-mise run seed:from-remote
-echo "→ content, the model_id join, and snapshot drift"
-mise run repo:verify
+print "→ core migrations"
+^mise run site:migrate
+print "→ content model: repo vs deployed"
+^mise run seed:from-remote
+print "→ content, the model_id join, and snapshot drift"
+^mise run repo:verify
 """
 
 [tasks."release"]
@@ -153,13 +168,19 @@ arg "<entry>" help="Entry id or slug"
 arg "<json>" help="Data to set, as a JSON object"
 """
 run = """
-set -e
-COLLECTION="$usage_collection"; ENTRY="$usage_entry"; DATA="$usage_json"
-REV=$(mise run emdash:content -- get "$COLLECTION" "$ENTRY" --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(j._rev||"")})')
-if [ -z "$REV" ]; then echo "✗ no _rev for $COLLECTION/$ENTRY"; exit 1; fi
-echo "→ $COLLECTION/$ENTRY rev=$REV"
-mise run emdash:content -- update "$COLLECTION" "$ENTRY" --rev="$REV" --data "$DATA"
-echo "✓ updated"
+let collection = $env.usage_collection
+let entry = $env.usage_entry
+# `content get` prints a banner before the JSON, so cut to the first brace and parse from there.
+let raw = (^mise run emdash:content -- get $collection $entry --json | complete).stdout
+let body = ($raw | str substring ($raw | str index-of '{')..)
+let rev = ($body | from json | get -i _rev | default '')
+if ($rev | is-empty) {
+  print $"✗ no _rev for ($collection)/($entry)"
+  exit 1
+}
+print $"→ ($collection)/($entry) rev=($rev)"
+^mise run emdash:content -- update $collection $entry $"--rev=($rev)" --data $env.usage_json
+print "✓ updated"
 """
 
 [tasks."schema:diff"]
@@ -174,28 +195,28 @@ run = "mise run seed:from-remote"
 [tasks."src:clone-templates"]
 description = "Clone or update emdash-cms/templates into .src/templates"
 run = """
-mkdir -p "$SRC_DIR"
-if [ -d "$TEMPLATES_DIR/.git" ]; then
-  git -C "$TEMPLATES_DIR" fetch --depth 1 origin main
-  git -C "$TEMPLATES_DIR" checkout -q FETCH_HEAD
-else
-  git clone --depth 1 "$TEMPLATES_REPO" "$TEMPLATES_DIR"
-fi
-echo "  ✓ templates @ $(git -C "$TEMPLATES_DIR" rev-parse --short HEAD)"
+mkdir $"($env.SRC_DIR)"
+if ($"($env.TEMPLATES_DIR)/.git" | path exists) {
+  ^git -C $env.TEMPLATES_DIR fetch --depth 1 origin main
+  ^git -C $env.TEMPLATES_DIR checkout -q FETCH_HEAD
+} else {
+  ^git clone --depth 1 $env.TEMPLATES_REPO $env.TEMPLATES_DIR
+}
+print $"  ✓ templates @ (^git -C $env.TEMPLATES_DIR rev-parse --short HEAD | str trim)"
 """
 
 [tasks."src:clone-emdash"]
 description = "Clone or update the emdash monorepo at tag emdash@$EMDASH_VERSION into .src/emdash — on demand"
 run = """
-mkdir -p "$SRC_DIR"
-TAG="emdash@$EMDASH_VERSION"
-if [ -d "$EMDASH_DIR/.git" ]; then
-  git -C "$EMDASH_DIR" fetch --depth 1 origin "refs/tags/$TAG"
-  git -C "$EMDASH_DIR" checkout -q FETCH_HEAD
-else
-  git clone --depth 1 --branch "$TAG" "$EMDASH_REPO" "$EMDASH_DIR"
-fi
-echo "  ✓ emdash @ $TAG → $EMDASH_DIR"
+let tag = $"emdash@($env.EMDASH_VERSION)"
+mkdir $"($env.SRC_DIR)"
+if ($"($env.EMDASH_DIR)/.git" | path exists) {
+  ^git -C $env.EMDASH_DIR fetch --depth 1 origin $"refs/tags/($tag)"
+  ^git -C $env.EMDASH_DIR checkout -q FETCH_HEAD
+} else {
+  ^git clone --depth 1 --branch $tag $env.EMDASH_REPO $env.EMDASH_DIR
+}
+print $"  ✓ emdash @ ($tag) → ($env.EMDASH_DIR)"
 """
 # -----------------------------------------------------------------------------
 
@@ -211,16 +232,59 @@ run = "echo '✓ setup done — run: mise run repo:init'"
 [tasks."site:sync"]
 description = "Copy $TEMPLATE into .src/site (pristine copy; drops the template's packageManager pin)"
 depends = ["src:clone-templates"]
-run = "node \"$ROOT/scripts/site.mjs\" sync"
+run = """
+let src = $"($env.TEMPLATES_DIR)/($env.TEMPLATE)"
+if not ($src | path exists) {
+  print $"✗ template '($env.TEMPLATE)' not found in ($env.TEMPLATES_DIR)"
+  print $"  available: (ls ($env.TEMPLATES_DIR) | get name | each {|p| $p | path basename } | str join ' ')"
+  exit 1
+}
+# dest is removed first, so `cp -r` creates it AS a copy of the template rather than copying
+# the template into it (which is what `cp -r` does when the destination already exists).
+rm -rf ($env.SITE_DIR)
+cp -r $src ($env.SITE_DIR)
+# The template pins pnpm via packageManager; mise already provides that pnpm, so drop the pin
+# and let pnpm stop trying to self-manage a second copy.
+mut pkg = (open $"($env.SITE_DIR)/package.json")
+if 'packageManager' in $pkg { $pkg = ($pkg | reject packageManager) }
+$pkg | to json --indent 4 | save -f $"($env.SITE_DIR)/package.json"
+print $"  ✓ site ← ($env.TEMPLATE)"
+"""
 
 [tasks."site:install"]
 description = "Install site deps + the first-party plugins the site config registers"
 depends = ["site:sync"]
-run = "node \"$ROOT/scripts/site.mjs\" install"
+run = """
+^pnpm --dir ($env.SITE_DIR) install
+# Pin the CMS exactly — the template ships floating ranges (emdash: ^1.0.1) that would
+# otherwise drift on every install. `pnpm add --save-exact` still writes a caret here, so set
+# the versions directly.
+mut pkg = (open $"($env.SITE_DIR)/package.json")
+$pkg.dependencies.emdash = $env.EMDASH_VERSION
+$pkg.dependencies."@emdash-cms/cloudflare" = $env.EMDASH_VERSION
+$pkg | to json --indent 4 | save -f $"($env.SITE_DIR)/package.json"
+# First-party plugins the site config registers — declared here rather than hand-edited into
+# the template, so template updates stay clean.
+^pnpm --dir ($env.SITE_DIR) add @emdash-cms/plugin-forms @emdash-cms/plugin-webhook-notifier
+# The template's tsconfig declares `types: ["node"]` but never depends on @types/node, so a
+# strict (pnpm) install leaves the editor reporting "Cannot find type definition file for 'node'".
+^pnpm --dir ($env.SITE_DIR) add -D @types/node
+print $"  ✓ site deps installed — emdash@($env.EMDASH_VERSION)"
+"""
 
 [tasks."config:apply"]
-description = "Write our config into .src/site (astro.config, wrangler.jsonc, merged + validated seed)"
-run = "node \"$ROOT/scripts/config.mjs\" apply"
+description = "Write our config into .src/site — astro.config, wrangler.jsonc, the merged seed — then validate it"
+run = """
+if not ($"($env.SITE_DIR)/package.json" | path exists) {
+  print "✗ .src/site is missing — run: mise run site:setup"
+  exit 1
+}
+cp $"($env.ROOT)/config/site.astro.config.mjs" $"($env.SITE_DIR)/astro.config.mjs"
+cp $"($env.ROOT)/config/site.wrangler.jsonc" $"($env.SITE_DIR)/wrangler.jsonc"
+^mise run seed:build
+^mise run seed:validate
+print "  ✓ config applied to .src/site"
+"""
 
 [tasks."site:dev"]
 description = "Run the site dev server on :4321 — called by pitchfork, do not run directly"
@@ -241,43 +305,83 @@ run = "pitchfork logs emdash --follow"
 
 [tasks."site:open"]
 description = "Open admin UI in browser via dev-bypass (runs migrations + seed; skips passkey auth)"
-run = "open '$SITE_URL/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'"
+run = """
+let url = $"($env.SITE_URL)/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+# No single cross-platform opener exists; nushell can at least dispatch on the one it is running on.
+match $nu.os-info.name {
+  "macos" => { ^open $url }
+  "windows" => { ^cmd /c start "" $url }
+  _ => { ^xdg-open $url }
+}
+"""
 
 [tasks."site:check"]
 description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs. Stops and restarts the site"
-run = "node \"$ROOT/scripts/site.mjs\" check"
+run = "node \"{{config_root}}/scripts/lib/check.mjs\" site"
 
 [tasks."site:doctor"]
 description = "Diagnose the site's real D1 — database health and scheduler wiring (emdash doctor, pointed at the dev database)"
-run = "node \"$ROOT/scripts/site.mjs\" doctor"
+run = """
+# `emdash doctor` defaults to ./data.db, which a Cloudflare site never uses — it would diagnose
+# an empty file and report "no users" on a healthy site. Point it at the D1 the dev server reads.
+let dir = $"($env.SITE_DIR)/.wrangler/state/v3/d1/miniflare-D1DatabaseObject"
+if not ($dir | path exists) {
+  print "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+let db = (
+  ls $dir
+  | where {|f| ($f.name | str ends-with '.sqlite') and (not ($f.name | str ends-with 'metadata.sqlite')) }
+  | get name
+  | first
+)
+print $"  → diagnosing ($db | path relative-to $env.SITE_DIR)"
+^node $"($env.ROOT)/scripts/emdash.mjs" doctor -d $db
+"""
+
+[tasks."seed:build"]
+description = "Merge the template's seed with ours → .src/site/seed/seed.json"
+run = "node \"{{config_root}}/scripts/seed.mjs\" build"
 
 [tasks."seed:validate"]
 description = "Validate the merged site seed — EmDash silently skips an invalid one"
-run = "node \"$ROOT/scripts/seed.mjs\" validate"
+run = "node \"{{config_root}}/scripts/seed.mjs\" validate"
 
 [tasks."seed:apply"]
 description = "Get the seed into the RUNNING dev site, in place — official `emdash seed --on-conflict=update`, so existing entries are UPDATED rather than skipped (and nothing is wiped)"
-run = "node \"$ROOT/scripts/seed.mjs\" apply"
+run = "node \"{{config_root}}/scripts/seed.mjs\" apply"
 
 [tasks."seed:export"]
 description = "Export the running dev site's model + content as a seed (official: emdash export-seed)"
-run = "node \"$ROOT/scripts/seed.mjs\" export"
+run = "node \"{{config_root}}/scripts/seed.mjs\" export"
 
 [tasks."seed:from-remote"]
 description = "Diff the DEPLOYED site's content model against the repo's seed (read-only; Cloudflare creds via fnox)"
-run = "node \"$ROOT/scripts/seed.mjs\" from-remote"
+run = "node \"{{config_root}}/scripts/seed.mjs\" from-remote"
 
 [tasks."site:reset"]
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
-run = "node \"$ROOT/scripts/site.mjs\" reset"
+run = """
+rm -rf $"($env.SITE_DIR)/.wrangler/state"
+print "Done — run: mise run repo:apply"
+"""
 
 [tasks."site:clean"]
 description = "⚠ Wipe .src/site — then run: mise run site:setup → init → apply"
-run = "node \"$ROOT/scripts/site.mjs\" clean"
+run = """
+^pitchfork stop emdash | complete | ignore
+rm -rf ($env.SITE_DIR)
+print "✓ Wiped .src/site — run: mise run site:setup"
+"""
 
 [tasks."site:regen"]
 description = "⚠ Wipe all of .src (templates + site) and re-clone templates"
-run = "node \"$ROOT/scripts/site.mjs\" regen"
+run = """
+^pitchfork stop -a | complete | ignore
+rm -rf ($env.SRC_DIR)
+^mise run src:clone-templates
+print "✓ Wiped .src — run: mise run site:setup → init → apply"
+"""
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -287,35 +391,76 @@ run = "node \"$ROOT/scripts/site.mjs\" regen"
 [tasks."repo:init"]
 description = "One-time init after site:setup — plugin deps + skills"
 depends = ["plugin:install-all", "skills:add-all"]
-run = "node \"$ROOT/scripts/repo.mjs\" init"
+run = "print '✓ init done — run: mise run repo:apply'"
 
 [tasks."repo:apply"]
 description = "Apply config, rebuild + link plugins, re-seed, restart the site, refresh the token — run after every change"
 depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync", "mise:check"]
-run = "node \"$ROOT/scripts/repo.mjs\" apply"
+run = """
+# Stop ONLY the site: the optional daemons (registry, plugins-site) must survive, because the
+# site's plugin discovery points at the local registry while it is running.
+^pitchfork stop emdash | complete | ignore
+# The Vite optimizer re-hashes chunks whenever the dependency graph changes (a plugin's admin
+# module, a production build in the same dir), leaving the server serving stale `deps_ssr/*?v=…`
+# URLs and returning 500s.
+rm -rf $"($env.SITE_DIR)/node_modules/.vite"
+# pitchfork waits for ready_http (pitchfork.toml) before returning.
+^pitchfork start emdash
+# dev-bypass also runs migrations, so poll it until it answers before seeding or minting the
+# MCP token. It applies the seed itself, but with skip-on-conflict — an entry that already
+# exists is left alone — so it picks up NEW seed content and never EDITS existing content.
+# seed:apply below is what makes edits land, via `emdash seed --on-conflict=update`.
+print "⏳ waiting for the site to be ready..."
+mut ready = false
+for _ in 1..60 {
+  if (^curl -fsS -o /dev/null -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass" | complete).exit_code == 0 {
+    $ready = true
+    break
+  }
+  sleep 1sec
+}
+if not $ready { print "⚠ the site did not answer within 60s — continuing anyway" }
+^mise run seed:apply
+^mise run mcp:token-admin
+print $"→ admin:  ($env.SITE_URL)/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+print "→ mcp:    run/token-admin.txt holds the bearer token for /_emdash/api/mcp"
+print "✓ apply done"
+"""
+
 [tasks."repo:urls"]
 description = "Print every URL this project serves"
-run = "node \"$ROOT/scripts/repo.mjs\" urls"
+run = """
+print "Host site"
+print $"  admin      ($env.SITE_URL)/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+print $"  mcp        ($env.SITE_URL)/_emdash/api/mcp — Bearer: run/token-admin.txt"
+print ""
+print "Optional daemons — start with: mise run registry:up / mise run plugins-site:up"
+print $"  registry   ($env.REGISTRY_URL)/health — JSON API under /xrpc/com.emdashcms.experimental.aggregator.*"
+print "             note: / 308-redirects to https://plugins.emdashcms.com/ — there is no local page"
+print $"  plugins UI ($env.PLUGINS_SITE_URL)/"
+print ""
+print "Live         https://emdash-run.gedw99.workers.dev"
+"""
 
 [tasks."repo:verify"]
 description = "Assert the running site matches what the repo claims (set EMDASH_URL to check a deployment instead) — content, the model_id join, and snapshot drift against real R2 objects"
-run = "node \"$ROOT/scripts/repo.mjs\" verify"
+run = "node \"{{config_root}}/scripts/lib/verify.mjs\""
 
 [tasks."repo:check"]
 description = "Lint + formatting over scripts/ and the plugins (oxlint --type-aware, oxfmt)"
-run = "node \"$ROOT/scripts/repo.mjs\" check"
+run = "node \"{{config_root}}/scripts/lib/check.mjs\" check"
 
 [tasks."repo:test"]
 description = "Unit-test the repo's own scripts (tests/*.test.mjs)"
-run = "node \"$ROOT/scripts/repo.mjs\" test"
+run = "vitest run"
 
 [tasks."repo:format"]
 description = "Apply formatting to scripts/ and the plugins — the fix for a failing repo:check"
-run = "node \"$ROOT/scripts/repo.mjs\" format"
+run = "node \"{{config_root}}/scripts/lib/check.mjs\" format"
 
 [tasks."mise:check"]
 description = "Assert the mise/scripts mapping — every script is called by a task, every task-referenced script exists"
-run = "node \"$ROOT/scripts/mise.mjs\" check"
+run = "node \"{{config_root}}/scripts/mise.mjs\" check"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -324,35 +469,58 @@ run = "node \"$ROOT/scripts/mise.mjs\" check"
 
 [tasks."mcp:token-admin"]
 description = "Create admin MCP token → run/token-admin.txt + run/token-admin.env"
-run = "node \"$ROOT/scripts/mcp.mjs\" token-admin"
+run = """
+mkdir $"($env.RUN_DIR)"
+let token = (^node $"($env.ROOT)/scripts/lib/get-mcp-token.mjs" admin | str trim)
+$"($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.txt"
+# _.file loads this into the environment for the EmDash MCP server.
+$"EMDASH_TOKEN=($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.env"
+print "✓ Token saved → run/token-admin.txt"
+"""
 
 [tasks."mcp:clean-tokens"]
 description = "Revoke all API tokens from the database"
-run = "node \"$ROOT/scripts/mcp.mjs\" clean-tokens"
+run = "node \"{{config_root}}/scripts/lib/clean-tokens.mjs\""
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
 # DEPLOY — Cloudflare
 # -----------------------------------------------------------------------------
 
+# EmDash's own CORE migrations — NOT our collections and fields, which the docs are explicit are
+# never managed this way ("Core migrations do not add or remove your collections, fields, or
+# taxonomies"). Reads the DEPLOYED D1 and needs no admin token: it authenticates with the
+# Cloudflare credentials (fnox) rather than the site's API. Read-only — `--status` applies nothing.
+# The database name comes from the wrangler config, so a rename cannot silently point this
+# somewhere else.
 [tasks."site:migrate"]
 description = "Report EmDash CORE migration status for the DEPLOYED D1 (read-only, Cloudflare creds via fnox — no admin token)"
-run = "node \"$ROOT/scripts/site.mjs\" migrate"
+run = '''
+let raw = (open --raw $"($env.ROOT)/config/site.wrangler.jsonc")
+let hits = ($raw | parse --regex '"database_name"\s*:\s*"(?<name>[^"]+)"')
+if ($hits | is-empty) {
+  print "✗ no d1_databases[].database_name in config/site.wrangler.jsonc"
+  exit 1
+}
+let name = ($hits | get name | first)
+print $"  → migration status for the deployed D1: ($name)"
+^fnox exec -- node $"($env.ROOT)/scripts/emdash.mjs" migrate --status --d1 $name
+'''
 
 [tasks."site:build"]
 description = "Production-build the site (astro build → .src/site/dist)"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/site.mjs\" build"
+run = "node \"{{config_root}}/scripts/site.mjs\" build"
 
 [tasks."site:deploy-dry"]
 description = "Validate the production build + Worker bundle without deploying"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/site.mjs\" deploy-dry"
+run = "node \"{{config_root}}/scripts/site.mjs\" deploy-dry"
 
 [tasks."site:deploy"]
 description = "Build + deploy the site to Cloudflare (creds via fnox)"
 depends = ["config:apply"]
-run = "node \"$ROOT/scripts/site.mjs\" deploy"
+run = "node \"{{config_root}}/scripts/site.mjs\" deploy"
 # PLUGIN — the emdash-plugin CLI
 # Singular takes a name; plural sweeps every plugin. The two CLIs differ: `plugin:*` below
 # line up with `emdash-plugin`; site-side commands are under emdash:.
@@ -364,14 +532,14 @@ usage = """
 arg "<name>" help="New plugin name"
 """
 run = """
-set -e
-echo "→ scaffold"
-mise run plugin:init -- "$usage_name"
-echo "→ dependencies"
-mise run plugin:install -- "$usage_name"
-echo "→ validate the generated manifest"
-mise run plugin:validate -- "$usage_name"
-echo "✓ $usage_name is ready — try: mise run plugin:dev -- $usage_name"
+let name = $env.usage_name
+print "→ scaffold"
+^mise run plugin:init -- $name
+print "→ dependencies"
+^mise run plugin:install -- $name
+print "→ validate the generated manifest"
+^mise run plugin:validate -- $name
+print $"✓ ($name) is ready — try: mise run plugin:dev -- ($name)"
 """
 
 [tasks."plugin:dev"]
@@ -379,7 +547,7 @@ description = "Watch a plugin's sources and rebuild on change (official emdash-p
 usage = """
 arg "<plugin>" help="Plugin directory name under plugins/"
 """
-run = "node \"$ROOT/scripts/plugin.mjs\" dev \"$usage_plugin\""
+run = "node \"{{config_root}}/scripts/plugin.mjs\" dev \"$env.usage_plugin\""
 
 [tasks."plugin:check"]
 description = "Validate, typecheck and audit every plugin — the plugin half of `mise run check`"
@@ -387,38 +555,38 @@ depends = ["plugin:audit", "plugin:typecheck", "plugin:validate"]
 
 [tasks."plugin:install"]
 description = "Install deps for one plugin — e.g: mise run plugin:install -- plat-trunk"
-run = "node \"$ROOT/scripts/plugin.mjs\" install"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" install"
 
 [tasks."plugin:install-all"]
 description = "Install deps for all plugins in plugins/"
 wait_for = ["site:setup"]
 sources = ["plugins/*/package.json"]
 outputs = ["plugins/*/node_modules/.modules.yaml"]
-run = "node \"$ROOT/scripts/plugin.mjs\" install-all"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" install-all"
 
 [tasks."plugin:link"]
 description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
-run = "node \"$ROOT/scripts/plugin.mjs\" link"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" link"
 
 [tasks."plugin:build"]
 description = "Build every plugin that declares a build script (sandboxed bundles)"
-run = "node \"$ROOT/scripts/plugin.mjs\" build"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" build"
 
 [tasks."plugin:validate"]
 description = "Validate plugin manifests (sandboxed plugins only)"
-run = "node \"$ROOT/scripts/plugin.mjs\" validate"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" validate"
 
 [tasks."plugin:bundle"]
 description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- plat-trunk-sandboxed"
-run = "node \"$ROOT/scripts/plugin.mjs\" bundle"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" bundle"
 
 [tasks."plugin:typecheck"]
 description = "Typecheck every plugin that declares a typecheck script"
-run = "node \"$ROOT/scripts/plugin.mjs\" typecheck"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" typecheck"
 
 [tasks."plugin:audit"]
 description = "Structural checks across plugins/ — phantom scripts, unbuilt sandbox bundles, emdash drift, empty allowedHosts"
-run = "node \"$ROOT/scripts/plugin.mjs\" audit"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" audit"
 
 # Sandboxed-plugin build + release. The CLI is `@emdash-cms/plugin-cli` (binary
 # `emdash-plugin`) and needs an `emdash-plugin.jsonc`. These sweep every plugin and run the
@@ -430,47 +598,47 @@ run = "node \"$ROOT/scripts/plugin.mjs\" audit"
 
 [tasks."plugin:search"]
 description = "Search the plugin registry (emdash-plugin search, defaulting to the local registry when running)"
-run = "node \"$ROOT/scripts/plugin.mjs\" search"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" search"
 
 [tasks."plugin:info"]
 description = "show details about a single package (official) — e.g: mise run plugin:info -- <slug>"
-run = "node \"$ROOT/scripts/plugin.mjs\" info"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" info"
 
 [tasks."plugin:catalog"]
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
-run = "node \"$ROOT/scripts/plugin.mjs\" catalog"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" catalog"
 
 [tasks."plugin:init"]
 description = "scaffold a new sandboxed plugin (official) — e.g: mise run plugin:init -- my-plugin"
-run = "node \"$ROOT/scripts/plugin.mjs\" init"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" init"
 
 [tasks."plugin:login"]
 description = "log in to the plugin registry via your Atmosphere account (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" login"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" login"
 
 [tasks."plugin:logout"]
 description = "log out of the plugin registry, revoking the publisher session (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" logout"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" logout"
 
 [tasks."plugin:whoami"]
 description = "show the active publisher (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" whoami"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" whoami"
 
 [tasks."plugin:profile"]
 description = "manage the plugin package profile (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" profile"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" profile"
 
 [tasks."plugin:switch"]
 description = "switch the active publisher session to another DID (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" switch"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" switch"
 
 [tasks."plugin:release"]
 description = "manage delegated release intents (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" release"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" release"
 
 [tasks."plugin:update-package"]
 description = "update a published plugin's registry record without a release (official)"
-run = "node \"$ROOT/scripts/plugin.mjs\" update-package"
+run = "node \"{{config_root}}/scripts/plugin.mjs\" update-package"
 
 # -----------------------------------------------------------------------------
 # SKILLS
@@ -478,16 +646,16 @@ run = "node \"$ROOT/scripts/plugin.mjs\" update-package"
 
 [tasks."skills:sync"]
 description = "Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code"
-run = "node \"$ROOT/scripts/skills.mjs\" sync"
+run = "node \"{{config_root}}/scripts/skills.mjs\" sync"
 
 [tasks."skills:check"]
 description = "Fail if the committed .github/skills/ copy has drifted from the skills the site ships"
-run = "node \"$ROOT/scripts/skills.mjs\" check"
+run = "node \"{{config_root}}/scripts/skills.mjs\" check"
 
 [tasks."skills:add-all"]
 description = "Install the standard skill set for this project (run once after init)"
 wait_for = ["site:setup"]
-run = "node \"$ROOT/scripts/skills.mjs\" add-all"
+run = "node \"{{config_root}}/scripts/skills.mjs\" add-all"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -498,79 +666,79 @@ run = "node \"$ROOT/scripts/skills.mjs\" add-all"
 
 [tasks."emdash:cli"]
 description = "Run the site's emdash CLI — localhost by default; export EMDASH_URL to run it against a deployment"
-run = "node \"$ROOT/scripts/emdash.mjs\""
+run = "node \"{{config_root}}/scripts/emdash.mjs\""
 
 [tasks."emdash:help"]
 description = "the official emdash help, or `-- <cmd> --help` for one command"
-run = "node \"$ROOT/scripts/emdash.mjs\" help"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" help"
 
 [tasks."emdash:init"]
 description = "initialize a database from the template config (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" init"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" init"
 
 [tasks."emdash:types"]
 description = "generate TypeScript types from the schema (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" types"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" types"
 
 [tasks."emdash:doctor"]
 description = "check database health and scheduler wiring (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" doctor"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" doctor"
 
 [tasks."emdash:seed"]
 description = "apply a seed file to a database (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" seed"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" seed"
 
 [tasks."emdash:export-seed"]
 description = "export a database's schema + content as a seed (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" export-seed"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" export-seed"
 
 [tasks."emdash:migrate"]
 description = "check or apply deployment-managed migrations (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" migrate"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" migrate"
 
 [tasks."emdash:secrets"]
 description = "generate or fingerprint an EmDash encryption key (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" secrets"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" secrets"
 
 [tasks."emdash:login"]
 description = "log in to an instance — prints a URL and a code you approve by hand"
-run = "node \"$ROOT/scripts/emdash.mjs\" login"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" login"
 
 [tasks."emdash:logout"]
 description = "log out of an instance"
-run = "node \"$ROOT/scripts/emdash.mjs\" logout"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" logout"
 
 [tasks."emdash:whoami"]
 description = "show the current user and auth method"
-run = "node \"$ROOT/scripts/emdash.mjs\" whoami"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" whoami"
 
 [tasks."emdash:content"]
 description = "list/get/create/update/delete/publish/schedule content (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" content"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" content"
 
 [tasks."emdash:schema"]
 description = "list/get/create/delete collections and add/remove fields (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" schema"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" schema"
 
 [tasks."emdash:media"]
 description = "list/upload/get/delete media, or repair-usage (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" media"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" media"
 
 [tasks."emdash:search"]
 description = "full-text search across content (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" search"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" search"
 
 [tasks."emdash:taxonomy"]
 description = "list taxonomies and terms, add a term (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" taxonomy"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" taxonomy"
 
 [tasks."emdash:menu"]
 description = "list menus, or get one with its items (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" menu"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" menu"
 
 [tasks."emdash:site"]
 description = "export/import a whole site as a .emdash package (official)"
-run = "node \"$ROOT/scripts/emdash.mjs\" site"
+run = "node \"{{config_root}}/scripts/emdash.mjs\" site"
 
 # -----------------------------------------------------------------------------
 # REGISTRY — the optional local plugin registry (:8788)
@@ -578,40 +746,97 @@ run = "node \"$ROOT/scripts/emdash.mjs\" site"
 # every query returns nothing.
 # -----------------------------------------------------------------------------
 
+# A private helper. mise does NOT hide a leading `_` on its own — `hide = true` does that.
+# Both admin routes are the same POST with a different path, so the token lookup lives here.
+[tasks."registry:_admin"]
+hide = true
+usage = 'arg "<path>" help="Admin route, e.g. /_admin/backfill"'
+run = """
+let env_file = $"($env.EMDASH_DIR)/apps/aggregator/.env"
+let hits = (open $env_file | lines | where {|l| $l | str starts-with 'ADMIN_TOKEN=' })
+if ($hits | is-empty) {
+  print "✗ no ADMIN_TOKEN — run: mise run registry:env"
+  exit 1
+}
+let token = ($hits | first | split row '=' | skip 1 | str join '=')
+let res = (
+  ^curl -sS -X POST
+    -H $"authorization: Bearer ($token)"
+    -H 'content-type: application/json'
+    -d '{}'
+    $"($env.REGISTRY_URL)($env.usage_path)"
+  | complete
+)
+let body = ($res.stdout | str trim)
+print (if ($body | str length) > 600 { $body | str substring 0..<600 } else { $body })
+exit $res.exit_code
+"""
+
 [tasks."registry:install"]
-description = "Clone (if needed) + install + build the emdash monorepo for the registry aggregator"
+description = "Install + build the emdash monorepo for the registry aggregator"
 depends = ["src:clone-emdash"]
 # Skipped when the lockfile has not changed — otherwise every `registry:up` re-installs
-# the whole monorepo.
-sources = [".src/emdash/pnpm-lock.yaml"]
-outputs = [".src/emdash/node_modules/.modules.yaml"]
-run = "node \"$ROOT/scripts/registry.mjs\" install"
+# the whole monorepo. Absolute paths, so they stay correct whatever the working directory.
+dir = "{{config_root}}/.src/emdash"
+sources = ["{{config_root}}/.src/emdash/pnpm-lock.yaml"]
+outputs = ["{{config_root}}/.src/emdash/node_modules/.modules.yaml"]
+run = """
+^pnpm install --frozen-lockfile
+^pnpm --filter @emdash-cms/aggregator run prebuild
+"""
 
 [tasks."registry:migrate"]
 description = "Apply the registry aggregator's local D1 migrations"
 depends = ["registry:install"]
-run = "node \"$ROOT/scripts/registry.mjs\" migrate"
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+run = "pnpm run db:migrate:local"
 
 [tasks."registry:env"]
 description = "Create the registry aggregator's local .env (LISTING_POLICY_MODE=open + dev admin token)"
 depends = ["src:clone-emdash"]
-run = "node \"$ROOT/scripts/registry.mjs\" env"
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+# Without this the aggregator uses wrangler.jsonc's default LISTING_POLICY_MODE=projection,
+# which fails closed (it needs positive labels from the emdashcms labeller) — so every read
+# returns empty. `.env.example` sets `open`.
+run = """
+if ('.env' | path exists) {
+  print "  ✓ .env already present"
+} else {
+  cp .env.example .env
+  print "  ✓ wrote .env (LISTING_POLICY_MODE=open, dev ADMIN_TOKEN)"
+}
+"""
 
 [tasks."registry:start"]
 description = "Start the local registry aggregator on :8788 — called by pitchfork"
 depends = ["registry:migrate", "registry:env"]
-run = "node \"$ROOT/scripts/registry.mjs\" start"
+dir = "{{config_root}}/.src/emdash/apps/aggregator"
+# `wrangler dev`, NOT the package's `vite dev`: the Cloudflare vite plugin resolves
+# miniflare@4.20260507.1 + workerd@1.20260507.1, and that workerd build crashes on
+# Durable Object SQLite (`table _cf_ALARM has 3 columns but 2 values were supplied`).
+run = "^pnpm exec wrangler dev --port $env.REGISTRY_PORT"
 
 [tasks."registry:up"]
 description = "Start the registry aggregator daemon via pitchfork"
-run = "node \"$ROOT/scripts/registry.mjs\" up"
+run = """
+^pitchfork start registry
+print $"→ registry: ($env.REGISTRY_URL)/health — JSON API under /xrpc/com.emdashcms.experimental.aggregator.*"
+"""
+
+[tasks."registry:logs"]
+description = "Follow the registry aggregator's logs"
+run = "pitchfork logs registry --follow"
 
 [tasks."registry:backfill"]
 description = "Ingest plugin records from the ATProto network — then run registry:project to make reads work"
-run = "node \"$ROOT/scripts/registry.mjs\" backfill"
+# Jetstream only streams NEW records, so a fresh registry stays empty until backfill:
+# this discovers publishers on the relay and fans out one job per (DID × collection).
+run = "mise run registry:_admin -- /_admin/backfill"
 
 [tasks."registry:project"]
 description = "Build the registry's public projection — without it every read returns empty"
-run = "node \"$ROOT/scripts/registry.mjs\" project"
+# Reads gate on public_projection_state.active_generation, and the generation is built by the
+# LABEL ingest DO — locally there is no label stream, so a labels replay is what builds it.
+run = "mise run registry:_admin -- /_admin/labels/replay"
 # -----------------------------------------------------------------------------
 

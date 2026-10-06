@@ -98,3 +98,16 @@ export function check() {
 export function format() {
 	run("oxfmt", CODE);
 }
+
+// Also runnable directly, so mise can call it: `node scripts/lib/check.mjs <check|format|site>`.
+// This replaces a dispatcher whose entire job was relaying these three lines.
+if (import.meta.filename === process.argv[1]) {
+	const sub = process.argv[2];
+	if (sub === "check") check();
+	else if (sub === "format") format();
+	else if (sub === "site") siteCheck();
+	else {
+		console.error(`check: unknown subcommand "${sub}" (check|format|site)`);
+		process.exit(1);
+	}
+}

@@ -177,3 +177,6 @@ export async function verify() {
 	}
 	console.log(`✓ repo:verify passed — ${results.length} checks`);
 }
+
+// Also runnable directly, so mise can call it: `node scripts/lib/verify.mjs`.
+if (import.meta.filename === process.argv[1]) await verify();
