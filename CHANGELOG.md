@@ -16,6 +16,10 @@
   was the "hang" that blocked 0.4.0 and 0.4.2.
 - **`doctor --url` fails on a pending migration** (`emdash migrate --check`); `rollback` says that it
   does not undo migrations.
+- **An encryption key from the start.** `dev` generates `EMDASH_ENCRYPTION_KEY` into your gitignored
+  `.env` and the site reads it; `deploy` refuses a Worker that has none.
+- **A new project stays on the free plan's defaults.** The Worker Loader binding (Workers Paid plan)
+  is switched on by your first `plugin:new`, which says so — not by `setup`.
 - A seed's `redirects`, `sections`, `blockTypes`, `relations`, `bylines`, `menus` and `widgetAreas`
   are merged from both seeds.
 - Leaner: the task shape is declared once; about 100 lines of repeats and dead branches removed.

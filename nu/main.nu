@@ -161,6 +161,9 @@ def "main deploy" [--dry, --build-only, --no-check] {
   let cloudflare = (on-cloudflare)
   let mode = (if $build_only or ((not $cloudflare) and $dry) { "build" } else if $dry { "dry" } else { "deploy" })
   if $cloudflare and $mode == "deploy" and (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
+  if $cloudflare and $mode == "deploy" and (not (site deployed-has-key)) {
+    fail "the deployment has no EMDASH_ENCRYPTION_KEY — secret plugin settings would fail" "make one (mise run emdash -- secrets generate), store it safely, then: cd .src/site; fnox exec -- pnpm exec wrangler secret put EMDASH_ENCRYPTION_KEY"
+  }
   if $mode == "deploy" and (not $no_check) {
     step "check — nothing ships that fails it"
     main check

@@ -57,8 +57,8 @@ and A5–A9, A14, A15.
   - [ ] `deploy` prints one line when the binding is on: sandboxed plugins, paid plan
   - [x] proof: on a fresh `starter-cloudflare` project, `config/site.wrangler.jsonc` is byte-identical to the template's after `setup`, and differs after `plugin:new`
 - [ ] **An encryption key exists, and reaches the deployment**
-  - [ ] `setup` generates one with `emdash secrets generate` into a gitignored file the project owns (not under `.src/`, which `setup` deletes), and `configure` puts it where the dev server reads it
-  - [ ] `deploy` compares fingerprints: the local key's (`emdash secrets fingerprint`) against what the deployment has; it refuses a first deploy with no key and says the `wrangler secret put` command
+  - [x] `dev` generates one with `emdash secrets generate` into the project's gitignored `.env` (once), and copies it into the site, where the dev server reads it
+  - [x] `deploy` refuses when the Worker has no `EMDASH_ENCRYPTION_KEY` secret and prints the commands. It checks presence only: a Worker secret cannot be read back, so fingerprints cannot be compared — the plan's wish, not something Cloudflare allows
   - [ ] on Node, `deploy`'s closing message says the built server does not read `.env` (`docs/deployment/nodejs.mdx:60-63`)
   - [ ] proof: save a secret setting in a plugin locally, restart, read it back
 - [ ] **A migration check that can fail**

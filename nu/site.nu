@@ -18,7 +18,7 @@ def checkout [repo: string, dir: string, ref: string] {
 export def ensure-ignored [] {
   let file = ($env.ROOT | path join ".gitignore")
   let have = (if ($file | path exists) { open --raw $file | lines } else { [] })
-  let missing = ([".src/" "/run/" "node_modules/" "/.claude/skills/" "/config/seed.live.json"] | where {|line| not ($line in $have) })
+  let missing = ([".src/" "/run/" "node_modules/" ".env" "/.claude/skills/" "/config/seed.live.json"] | where {|line| not ($line in $have) })
   if ($missing | is-not-empty) {
     $"($missing | str join (char nl))(char nl)" | save --append $file
     ok $".gitignore ← ($missing | str join ' ')"
@@ -70,6 +70,24 @@ export def install [] {
   # The template's tsconfig asks for node types it never depends on.
   ^pnpm --dir $env.SITE_DIR add -D @types/node
   ok $"site installed — emdash@($env.EMDASH_VERSION)"
+}
+
+# The key EmDash encrypts secret plugin settings with. Made once into the project's own .env
+# (gitignored — back it up: a database backup does not contain it) and copied to the site, where the
+# dev server reads it. Without one, secret settings fail closed.
+export def ensure-key [] {
+  let ours = ($env.ROOT | path join ".env")
+  if not (($ours | path exists) and (open --raw $ours | str contains "EMDASH_ENCRYPTION_KEY=")) {
+    emdash secrets generate --write $ours
+    ok ".env ← a new EMDASH_ENCRYPTION_KEY — keep a copy somewhere safe"
+  }
+  cp $ours (site-file ".env")
+}
+
+# Does the deployed Worker have an encryption key? Its value cannot be read back, only its presence.
+export def deployed-has-key []: nothing -> bool {
+  let listed = (do { cd $env.SITE_DIR; ^fnox exec -- pnpm exec wrangler secret list | complete })
+  $listed.exit_code == 0 and ($listed.stdout | str contains "EMDASH_ENCRYPTION_KEY")
 }
 
 # The EmDash the site has installed, or "" before the first install.
@@ -226,6 +244,7 @@ export def configure [registration: string] {
     }
     cp $ours (site-file ($pair | last))
   }
+  ensure-key
   $registration | save --force (site-file "local-plugins.mjs")
   build-seed
 }
