@@ -8,8 +8,9 @@ is orientation only.
 **Files that must agree** — `mise.toml` is the source of truth for all of them:
 
 - `pitchfork.toml` — every `run` in it is `mise run <task>`; the task must exist in `mise.toml`.
-  It says *when* the daemons run, `mise.toml` says *what* they are. `repo:check` fails if a task
-  named there is missing, so the two cannot drift apart silently.
+  It says *when* the daemons run, `mise.toml` says *what* they are. `mise run repo:sync` fails if
+  a task named there is missing (and `repo:check` composes it), so the two cannot drift apart
+  silently.
 - `.mcp.json` — its `${EMDASH_MCP_TOKEN}` is the file `mcp:token-admin` writes and `[env]` loads.
 - this file — if a rule changes in `mise.toml`, change it here too.
 
