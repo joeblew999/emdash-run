@@ -17,9 +17,9 @@
 # How to work here: docs/agents/README.md
 
 [env]
-TEMPLATE = "starter-cloudflare"                      # any directory in emdash-cms/templates
-EMDASH_VERSION = "1.1.0"                             # the site is pinned to exactly this
-DEPLOY_URL = "https://emdash-run.gedw99.workers.dev"
+TEMPLATE = "starter-cloudflare" # any directory in emdash-cms/templates
+EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
+DEPLOY_URL = ""                 # this repo's own site is not deployed anywhere
 # Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
 PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
 PLUGIN_AUTHOR = "joeblew999"

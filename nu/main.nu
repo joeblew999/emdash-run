@@ -375,7 +375,8 @@ def "main upgrade" [ref?: string, --from: string] {
 # trip, a snapshot, and a production build.
 def "main verify" [--full, --restore] {
   step "bring the site up"
-  if ($env.SITE_DIR | path join "package.json" | path exists) { main dev } else { main setup }
+  # A fresh clone has site/ but nothing installed, so "is there a site" is the wrong question.
+  if (site installed-version | is-empty) { main setup } else { main dev }
   step "check"
   main check
   step "doctor"

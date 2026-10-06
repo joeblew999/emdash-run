@@ -17,8 +17,6 @@
         "@astrojs/cloudflare": "^14.3.1",
         "@astrojs/react": "^6.0.5",
         "@emdash-cms/cloudflare": "1.1.0",
-        "@emdash-cms/plugin-forms": "^0.2.9",
-        "@emdash-cms/plugin-webhook-notifier": "^0.2.2",
         "astro": "^7.3.2",
         "emdash": "1.1.0",
         "react": "19.2.4",
@@ -27,7 +25,7 @@
     "devDependencies": {
         "@astrojs/check": "^0.9.10",
         "@cloudflare/workers-types": "^5.20260820.1",
-        "@types/node": "^26.6.4",
-        "wrangler": "^4.125.0"
+        "wrangler": "^4.125.0",
+        "@types/node": "latest"
     }
 }

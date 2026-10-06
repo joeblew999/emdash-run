@@ -112,7 +112,8 @@ export def installed-version []: nothing -> string {
 # install in place. The site, and its data, stay.
 export def sync-version []: nothing -> bool {
   let have = (installed-version)
-  if ($have | is-empty) or $have == $env.EMDASH_VERSION { return false }
+  if ($have | is-empty) { fail "site/ is not installed" "run: mise run setup" }
+  if $have == $env.EMDASH_VERSION { return false }
   step $"EmDash ($have) → ($env.EMDASH_VERSION)"
   version-set | ignore
   if (has-devdb) {
