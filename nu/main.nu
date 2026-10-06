@@ -6,6 +6,11 @@ use plugin.nu
 use checks.nu
 use registry.nu
 
+# The linter and formatter for plugin code, at the versions pinned in harness.toml. oxlint's
+# type-aware mode needs its companion package beside it, and the two must move together.
+def --wrapped lint [...args: string] { dlx [$"oxlint@($env.OXLINT_VERSION)" $"oxlint-tsgolint@($env.TSGOLINT_VERSION)"] oxlint ...$args }
+def --wrapped format [...args: string] { dlx [$"oxfmt@($env.OXFMT_VERSION)"] oxfmt ...$args }
+
 # Everything between "something changed" and "the site is up on it": config, seed, plugins, skills,
 # a restart, the seed applied to the running database, a fresh admin token.
 def refresh [] {
@@ -93,7 +98,7 @@ def "main check" [--fix, --site] {
   cd $env.ROOT
   if $fix {
     ^mise fmt
-    if ($paths | is-not-empty) { ^oxfmt ...$paths }
+    if ($paths | is-not-empty) { format ...$paths }
     ^mise generate task-docs --output docs/tasks.md
   }
   def passes [block: closure]: nothing -> list<string> { if (code $block) == 0 { [] } else { ["failed — see the output above"] } }
@@ -109,8 +114,8 @@ def "main check" [--fix, --site] {
     {check: "vendored EmDash skills match the site's", problems: (if (checks skills-current) { [] } else { ["drifted — run: mise run dev"] })}
     {check: "no symlinks", problems: (checks symlinks)}
     {check: "plugins are consistent", problems: (plugin audit)}
-    {check: "plugin code lints", problems: (if ($paths | is-empty) { [] } else { passes { ^oxlint --type-aware --deny-warnings ...$paths } })}
-    {check: "plugin code is formatted", problems: (if ($paths | is-empty) { [] } else { passes { ^oxfmt --check ...$paths } })}
+    {check: "plugin code lints", problems: (if ($paths | is-empty) { [] } else { passes { lint --type-aware --deny-warnings ...$paths } })}
+    {check: "plugin code is formatted", problems: (if ($paths | is-empty) { [] } else { passes { format --check ...$paths } })}
     {check: "plugins type-check", problems: (passes { plugin sweep typecheck })}
     {check: "plugin tests", problems: (passes { plugin sweep test })}
   ] | append (if $site { [{check: "the site type-checks", problems: (if (site typecheck) == 0 { [] } else { ["failed — see the output above"] })}] } else { [] })
@@ -426,7 +431,7 @@ def "main source" [] { site clone-emdash }
 # The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
 def --wrapped "main emdash" [...args: string] { emdash ...$args }
 def --wrapped "main emdash-plugin" [...args: string] { plugin cli ...$args }
-def --wrapped "main skills" [...args: string] { ^skills ...$args }
+def --wrapped "main skills" [...args: string] { dlx [$"skills@($env.SKILLS_VERSION)"] skills ...$args }
 
 # Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.
 def --wrapped "main args" [...args: string] { print ($args | to json --raw) }

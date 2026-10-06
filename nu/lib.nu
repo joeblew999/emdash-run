@@ -61,6 +61,13 @@ export def setting [name: string]: nothing -> string {
   $env | get -o $name | default "" | into string
 }
 
+# Run an npm command-line tool at a pinned version, through `pnpm dlx`. Not installed as a mise
+# npm tool: those cannot find their own dependencies on Windows. `packages` are name@version; the
+# first one's binary is what runs unless `--bin` names another.
+export def --wrapped dlx [packages: list<string>, bin: string, ...args: string] {
+  ^pnpm dlx ...($packages | each {|p| ["--package" $p] } | flatten) $bin ...$args
+}
+
 # The emdash CLI, run where it must be run: in the site, which is its project root.
 export def --wrapped emdash [...args: string] {
   cd $env.SITE_DIR

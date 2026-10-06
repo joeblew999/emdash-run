@@ -94,7 +94,7 @@ export def audit []: nothing -> list<string> {
 
 # The official plugin CLI, through `pnpm dlx` — the way EmDash's own docs run it. Installed as a
 # mise npm tool it cannot find its own dependencies on Windows.
-export def --wrapped cli [...args: string] { ^pnpm dlx $"@emdash-cms/plugin-cli@($env.PLUGIN_CLI_VERSION)" ...$args }
+export def --wrapped cli [...args: string] { dlx [$"@emdash-cms/plugin-cli@($env.PLUGIN_CLI_VERSION)"] emdash-plugin ...$args }
 
 # Scaffold with the official CLI. It refuses to run without a terminal unless told who the plugin
 # is from, so those come from settings.

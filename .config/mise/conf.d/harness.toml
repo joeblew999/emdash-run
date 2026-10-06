@@ -7,14 +7,9 @@ experimental = true # `mise daemons`
 [tools]
 node = "26.10.0"
 pnpm = "12.9.1"
-pitchfork = "2.29.0"   # runs the daemons, through `mise daemons`
-nushell = "0.116.1"    # the language of nu/ — the same on every platform
-fnox = "1.36.0"        # secrets: Cloudflare credentials for deploy and the R2 check
-"npm:skills" = "1.7.0"
-# Lint and format for plugin code. These three are version-coupled: move them together.
-"npm:oxlint" = "1.86.0"
-"npm:oxfmt" = "0.71.0"
-"npm:oxlint-tsgolint" = "7.0.2003"
+pitchfork = "2.29.0" # runs the daemons, through `mise daemons`
+nushell = "0.116.1"  # the language of nu/ — the same on every platform
+fnox = "1.36.0"      # secrets: Cloudflare credentials for deploy and the R2 check
 
 [task_config]
 shell = "nu --no-config-file -c"
@@ -22,7 +17,13 @@ shell = "nu --no-config-file -c"
 [env]
 HARNESS_VERSION = "0.4.0"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
-PLUGIN_CLI_VERSION = "0.13.2"                             # @emdash-cms/plugin-cli, run through pnpm dlx
+# npm command-line tools the harness runs through `pnpm dlx`, pinned here. The two oxlint packages
+# are version-coupled: move them together.
+PLUGIN_CLI_VERSION = "0.13.2"
+OXLINT_VERSION = "1.86.0"
+TSGOLINT_VERSION = "7.0.2003"
+OXFMT_VERSION = "0.71.0"
+SKILLS_VERSION = "1.7.0"
 # Defaults for every optional project setting. mise.toml wins over this file, so a project's values
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
 # whatever shell ran the task (another project's seed and checks, in the case that found this).
