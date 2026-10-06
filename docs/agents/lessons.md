@@ -45,8 +45,12 @@ lesson is enforced by a check, it says so — those cannot regress quietly. The 
   silently redirects every CLI call.
 - **`^cmd | ignore` swallows the exit code.** Use `| complete`. *Enforced: `check`.*
 - **Inside `$"…"`, `(word)` runs a command.** *Enforced: `check`.*
-- **A project is `mise.toml` and `config/`. The harness is `harness.toml` and `nu/`.** Nothing
+- **A project is `mise.toml` and `site/`. The harness is `harness.toml` and `nu/`.** Nothing
   project-specific goes in the harness half, or `mise run upgrade` would destroy it.
+- **A real site owns its source.** The first design kept the site as a throwaway copy of the
+  template with two config files laid over it. That suits trying EmDash, not building on it:
+  EmDash's own site changed nearly every file of its template, and every page edit would have cost a
+  restart. The site is `site/`, the project's, edited in place.
 - **Let EmDash do what EmDash does.** Its `dev-bypass` call migrates, sets up, seeds into the right
   storage and returns an admin token. We were doing each of those by hand, and worse.
 

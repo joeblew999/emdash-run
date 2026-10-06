@@ -17,9 +17,10 @@ which of those lessons a check now enforces.
 - **`nu/`** — the logic, in nushell. `main.nu` has one command per task; `lib.nu`, `site.nu`,
   `plugin.nu`, `checks.nu` and `registry.nu` hold what they are made of; `task.nu` hands a task its
   arguments; `tests.nu` tests the pure parts. Read [`nushell.md`](nushell.md) before editing any of it.
-- **`config/`** — the project's site config and seed, copied over the template by `mise run dev`.
-- **`.src/`** — gitignored checkouts: the template, the site, the EmDash source. **Never edit
-  anything under `.src/`** — it is overwritten. Change `config/` or `nu/` and run `mise run dev`.
+- **`site/`** — the project's own site: pages, config, seed. `setup` creates it once from the
+  template; the harness never overwrites it. It is where a real site is built.
+- **`.src/`** — gitignored reference checkouts: the templates, the EmDash source, EmDash's own
+  site (`mise run source -- <name>`). Read them; nothing runs from there.
 
 ## Rules
 
@@ -36,7 +37,7 @@ which of those lessons a check now enforces.
 - **Every task runs on every OS — macOS, Linux, Windows.** That is why this is mise and nushell.
   Use nushell's own commands: `request` (in `lib.nu`, over nushell's `http`) not curl; `files-in`
   (in `lib.nu`, over nushell's `glob`), `ls`, `cp`, `rm` not the programs; `start` to open a
-  browser; `secret` (in `lib.nu`) for a credential; no `/dev/null`, no `sh -c`. The only programs
+  browser; no `/dev/null`, no `sh -c`. The only programs
   the harness runs are the ones mise installs, the site's own `emdash`, plus git and docker — the
   `PORTABLE` list in `nu/checks.nu` — and `check` fails on any other. Do not say a platform
   works until `mise run verify` has run on it; CI runs it on all three.

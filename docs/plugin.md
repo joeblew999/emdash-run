@@ -55,7 +55,7 @@ like a template's. Until then a project keeps the template's defaults — on Clo
 the Worker Loader binding needs the Workers Paid plan to deploy. They are shown here for a config you have reshaped by hand:
 
 ```js
-// config/site.astro.config.mjs
+// site/astro.config.mjs
 import { d1, r2, sandbox } from "@emdash-cms/cloudflare";            // add `sandbox`
 import { sandboxed as localSandboxed } from "./local-plugins.mjs";   // add this line
 
@@ -67,14 +67,14 @@ emdash({
 ```
 
 ```jsonc
-// config/site.wrangler.jsonc — uncomment, or add:
+// site/wrangler.jsonc — uncomment, or add:
 "worker_loaders": [{ "binding": "LOADER" }],
 ```
 
 On a Node.js template there is no wrangler file, and the runner is a package instead:
 
 ```js
-// config/site.astro.config.mjs
+// site/astro.config.mjs
 import { sandboxed as localSandboxed } from "./local-plugins.mjs";
 
 emdash({
@@ -88,7 +88,7 @@ Then `mise run dev`.
 
 ## How the site finds a local plugin
 
-`mise run dev` generates `.src/site/local-plugins.mjs` from `plugins/`, and the site's
+`mise run dev` generates `site/local-plugins.mjs` from `plugins/`, and the site's
 `astro.config.mjs` spreads it into `sandboxed: []`. A directory is registered when it has an
 `emdash-plugin.jsonc`. Nothing is edited by hand, so adding or removing a plugin cannot leave the
 config pointing at something that is not there.

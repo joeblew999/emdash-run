@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0 — 2026-10-06
+
+- **Your site is yours: `site/`.** `setup` creates it once from the template and the harness never
+  overwrites it again. Build there — pages, layouts, components, `astro.config.mjs`, the seed —
+  and the dev server reloads your edits. Before this the site was a throwaway copy under `.src/`
+  with two config files laid over it, which was enough to try EmDash and not enough to build on it.
+- **Gone with the overlay:** `config/`, the seed merge and its `SEED_*` settings, `SITE_PACKAGES`
+  (add dependencies to `site/package.json`), and `reset -- --site/--all` (`reset` wipes local data;
+  it never touches your site).
+- **`doctor` is simpler.** It checks that the site answers and that the collection named in
+  `VERIFY_COLLECTION` has entries carrying data. The R2 cross-check and its five settings, written
+  for one old project, are gone.
+- **Coming from 0.5.0 or earlier:** move `.src/site` to `site/` (leave out `node_modules`,
+  `.wrangler` and `dist`), delete `config/`, remove the `SEED_*` and `SITE_PACKAGES` lines from
+  `mise.toml`, then `mise run setup`.
+
 ## 0.5.0 — 2026-10-06
 
 - **Upgrading EmDash is one line and one command.** Change `EMDASH_VERSION`, run `mise run dev`:

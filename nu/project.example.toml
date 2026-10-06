@@ -1,31 +1,20 @@
-# Your project's mise.toml — copy this to mise.toml and edit it. It is ALL you own of the harness:
-# tools, tasks and daemons are .config/mise/conf.d/harness.toml and nu/, replaced by `mise run upgrade`.
+# Your project's mise.toml — copy this to mise.toml and edit it. Your project is this file and
+# site/ (created by `mise run setup` from the template below, then yours to edit). Tools, tasks and
+# daemons are .config/mise/conf.d/harness.toml and nu/, replaced by `mise run upgrade`.
 #
 #   mise run setup     first time        mise run dev      after any change
 #   mise run check     before a commit   mise run doctor   is the running site right?
 
 [env]
-TEMPLATE = "starter-cloudflare" # starter-cloudflare, blog-cloudflare… (Cloudflare) or starter, blog… (plain Node.js)
+TEMPLATE = "starter-cloudflare" # what `setup` creates site/ from, once: a *-cloudflare template, or starter, blog… for plain Node.js
 EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
 DEPLOY_URL = ""                 # your deployment's URL — `deploy` verifies it; empty until you have one
-
-# Packages your config/site.astro.config.mjs imports that the template does not ship.
-SITE_PACKAGES = ""
-
-# Your own seed, merged over the template's. Empty: run on the template's seed alone.
-SEED_FILE = ""  # e.g. "{{config_root}}/config/seed.json"
-SEED_ORDER = "" # its collections, dependency-first, `:`-separated
-SEED_LABEL = "" # appended to the template's site name
 
 # Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
 PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
 PLUGIN_AUTHOR = "your-name"
 PLUGIN_SECURITY_URL = "https://example.com/security"
 
-# What `doctor` asserts about live content. Each is optional — empty skips that check.
-VERIFY_COLLECTION = ""     # its entries must carry data
-VERIFY_JOIN_FIELD = ""     # each entry must have this field…
-VERIFY_BUCKET = ""         # …naming an object in this R2 bucket…
-VERIFY_OBJECT_KEY = ""     # …at this key, e.g. "models/{id}/manifest.json"
-VERIFY_SNAPSHOT_FIELD = "" # …whose fields this stored snapshot must match
-VERIFY_SNAPSHOT_MAP = ""   # stored=object pairs, e.g. "name=title,version=version"
+# What `doctor` asserts about live content: this collection has entries, and they carry data.
+# Empty skips the check.
+VERIFY_COLLECTION = ""

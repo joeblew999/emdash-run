@@ -53,7 +53,7 @@ From then on:
 ```
 mise run open        the admin, signed in
 mise run status      what is running, and on what
-mise run dev         after you change anything — your settings, config/, a plugin
+mise run dev         after you change settings, the seed or a plugin — page edits reload by themselves
 ```
 
 <details><summary>What the installer does, if you would rather run it by hand</summary>
@@ -161,13 +161,14 @@ Each task is a **flow** — one command for a whole job. `mise tasks ls` lists a
 
 | | whose | what |
 |---|---|---|
-| `mise.toml` | **yours** | your settings: template, EmDash version, seed, deploy URL, what `doctor` checks |
-| `config/` | **yours** | your site config and seed. `setup` starts you from the template's own files |
+| `site/` | **yours** | the site itself — pages, layouts, components, `astro.config.mjs`, `wrangler.jsonc`, `seed/seed.json`. `setup` creates it once from the template; after that the harness never overwrites it |
+| `mise.toml` | **yours** | your settings: template, EmDash version, deploy URL, what `doctor` checks |
 | `plugins/` | **yours** | your plugins, made by `plugin:new` |
 | `.config/mise/conf.d/harness.toml`, `nu/` | the harness's | tools, tasks, daemons, and the logic. Don't edit — `mise run upgrade` replaces them |
-| `.src/`, `run/` | generated | the template, the site, tokens, snapshots. Gitignored; never edit |
+| `.src/`, `run/` | generated | reference checkouts, tokens, snapshots, database backups. Gitignored |
 
-To change the site, edit `config/` and run `mise run dev`. Never edit `.src/site` — it is rebuilt.
+**Build your site in `site/`.** Edit a page and the dev server reloads it — no command to run.
+Run `mise run dev` when you change settings, the seed, or a plugin. Commit `site/` like any code.
 
 ## Plugins
 
@@ -194,6 +195,6 @@ what the official scaffold gets wrong, and how the harness fixes it.
 - [`docs/emdash.md`](docs/emdash.md) — EmDash itself, read from its source: the pieces, the platforms, and how the harness maps onto them
 - [`docs/plans/`](docs/plans/) — what is left
 
-This repo is also a working project: its own `mise.toml` and `config/` are an example (a CAD parts
-catalogue whose `doctor` checks need its owner's Cloudflare bucket). Start from the release above,
-not from a clone, unless you are working on the harness.
+This repo is also a working project: its own `mise.toml` and `site/` are a plain `starter-cloudflare`
+site that the harness is tested against. Start from the release above, not from a clone, unless you
+are working on the harness.

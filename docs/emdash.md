@@ -313,7 +313,7 @@ numbers did not survive.
   calling `setup/dev-bypass`, which seeds **content** by default (`dev-bypass.ts:61-70`). Any entry
   in a seeded collection blocks an import (`core:transfer/domain.ts:120-131`). Ran, read-only: the
   local site's `/_emdash/api/admin/transfer/capabilities` reports `empty: false` with
-  `collection_has_entries` for `pages`, `posts`, `parts`, `projects`, `assemblies`. Predicted:
+  `collection_has_entries` for the seeded collections. Predicted:
   `restore … --wipe --confirm` fails with "the plan has blockers" on any template whose seed has
   content. `restore` itself was not run. The fix is in EmDash already: `dev-bypass?content=0`.
 - **A2 — ~~"The CLI only accepts `--url` as the LAST argument."~~ Fixed in 0.4.2.** For the record:

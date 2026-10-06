@@ -1,4 +1,4 @@
-# The host site: the official template in .src/site, our config on top, its seed, its dev server.
+# The project's site (site/): creating it from a template, installing, seeding, serving, shipping.
 use lib.nu *
 
 def site-file [...parts: string]: nothing -> string { $env.SITE_DIR | path join ...$parts }
@@ -18,7 +18,7 @@ def checkout [repo: string, dir: string, ref: string] {
 export def ensure-ignored [] {
   let file = ($env.ROOT | path join ".gitignore")
   let have = (if ($file | path exists) { open --raw $file | lines } else { [] })
-  let missing = ([".src/" "/run/" "node_modules/" ".env" "/.claude/skills/" "/config/seed.live.json"] | where {|line| not ($line in $have) })
+  let missing = ([".src/" "/run/" "node_modules/" ".env" "/.claude/skills/"] | where {|line| not ($line in $have) })
   if ($missing | is-not-empty) {
     $"($missing | str join (char nl))(char nl)" | save --append $file
     ok $".gitignore ← ($missing | str join ' ')"
@@ -51,51 +51,48 @@ export def source-heads []: nothing -> list<string> {
   | each {|s| $"($s.name)@(^git -C ($env.SRC_DIR | path join $s.name) rev-parse --short HEAD | str trim)" }
 }
 
-# A pristine copy of the template. Never edited by hand: config comes from config/, by `configure`.
-export def copy-template [] {
+# The site is the project's own: `site/`, made ONCE from the template and edited freely after that —
+# pages, layouts, config, seed. The harness never overwrites it. (Template updates are yours to
+# merge; `mise run source -- templates` keeps the current one under .src/ to compare against.)
+export def create [] {
+  if (site-file "package.json" | path exists) { return }
   let src = ($env.TEMPLATES_DIR | path join $env.TEMPLATE)
   if not ($src | path exists) {
     fail $"template ($env.TEMPLATE) not found" $"available: (ls $env.TEMPLATES_DIR | where type == dir | get name | each {|p| $p | path basename } | str join ' ')"
   }
-  rm -rf $env.SITE_DIR
   cp -r $src $env.SITE_DIR
-  # mise provides pnpm, so the template's own packageManager pin goes.
-  open (site-file "package.json") | reject -o packageManager | to json --indent 4 | save -f (site-file "package.json")
-  ok $"site ← ($env.TEMPLATE)"
+  # The template links .claude/skills to .agents/skills; this repo allows no symlinks.
+  for link in (files-in $env.SITE_DIR "**/*" | where {|f| ($f | path type) == "symlink" }) { rm $link }
+  ok $"site/ ← the ($env.TEMPLATE) template — it is yours now"
 }
 
+# Pin EmDash to EMDASH_VERSION and install. Run by setup, and by dev when the version changes.
 export def install [] {
-  ^pnpm --dir $env.SITE_DIR install
-  # Pin EmDash exactly: the template ships floating ranges that drift on every install.
-  mut pkg = (open (site-file "package.json"))
+  mut pkg = (open (site-file "package.json") | reject -o packageManager)
   $pkg.dependencies.emdash = $env.EMDASH_VERSION
   if "@emdash-cms/cloudflare" in ($pkg.dependencies | columns) { $pkg.dependencies."@emdash-cms/cloudflare" = $env.EMDASH_VERSION }
-  $pkg | to json --indent 4 | save -f (site-file "package.json")
-  # On Node, sandboxed plugins run in workerd, which the Node templates do not ship: add the runner
-  # and let its binary install. (On Cloudflare the platform is the runner.)
-  let runner = (if (on-cloudflare) { [] } else {
+  if not (on-cloudflare) {
+    # On Node, sandboxed plugins run in workerd, which the Node templates do not ship.
+    $pkg.dependencies."@emdash-cms/sandbox-workerd" = (version-set | get "@emdash-cms/sandbox-workerd")
+    if not ("workerd" in ($pkg.dependencies | columns)) { $pkg.dependencies.workerd = "latest" }
     let workspace = (site-file "pnpm-workspace.yaml")
     open $workspace | upsert allowBuilds {|w| $w | get -o allowBuilds | default {} | upsert workerd true } | to yaml | save -f $workspace
-    [$"@emdash-cms/sandbox-workerd@(version-set | get '@emdash-cms/sandbox-workerd')" "workerd"]
-  })
-  # Packages our site config imports, declared in settings rather than edited into the template.
-  let extra = (setting SITE_PACKAGES | split row " " | where {|p| $p | is-not-empty } | append $runner)
-  if ($extra | is-not-empty) { ^pnpm --dir $env.SITE_DIR add ...$extra }
-  # The template's tsconfig asks for node types it never depends on.
-  ^pnpm --dir $env.SITE_DIR add -D @types/node
+  }
+  # The templates' tsconfig asks for node types they never depend on.
+  $pkg = ($pkg | upsert devDependencies {|p| $p | get -o devDependencies | default {} | upsert "@types/node" ($p | get -o devDependencies."@types/node" | default "latest") })
+  $pkg | to json --indent 4 | save -f (site-file "package.json")
+  ^pnpm --dir $env.SITE_DIR install
   ok $"site installed — emdash@($env.EMDASH_VERSION)"
 }
 
-# The key EmDash encrypts secret plugin settings with. Made once into the project's own .env
-# (gitignored — back it up: a database backup does not contain it) and copied to the site, where the
-# dev server reads it. Without one, secret settings fail closed.
+
+# The key EmDash encrypts secret plugin settings with. Made once into site/.env (gitignored by the
+# template — back it up: a database backup does not contain it). Without one, secrets fail closed.
 export def ensure-key [] {
-  let ours = ($env.ROOT | path join ".env")
-  if not (($ours | path exists) and (open --raw $ours | str contains "EMDASH_ENCRYPTION_KEY=")) {
-    emdash secrets generate --write $ours
-    ok ".env ← a new EMDASH_ENCRYPTION_KEY — keep a copy somewhere safe"
-  }
-  cp $ours (site-file ".env")
+  let file = (site-file ".env")
+  if ($file | path exists) and (open --raw $file | str contains "EMDASH_ENCRYPTION_KEY=") { return }
+  emdash secrets generate --write $file
+  ok "site/.env ← a new EMDASH_ENCRYPTION_KEY — keep a copy somewhere safe"
 }
 
 # Does the deployed Worker have an encryption key? Its value cannot be read back, only its presence.
@@ -129,61 +126,9 @@ export def sync-version []: nothing -> bool {
   true
 }
 
-# Merge the template's seed with the project's. Pure — see tests.nu. Keyed lists are unioned and a
-# collision goes to the TEMPLATE. Content is the exception: the PROJECT wins, and it is ordered
-# dependency-first, because entries carry `$ref:` values that must already exist.
-export def merge-seeds [base: record, project: record, order: list<string>, label: string]: nothing -> record {
-  def items [seed: record, key: string] { $seed | get -o $key | default [] }
-  def pick [key: string, fallback: any] { $base | get -o $key | default ($project | get -o $key | default $fallback) }
-  # The later item wins, so the template goes last. An item without the id cannot collide.
-  def union [key: string, id: string] {
-    items $project $key | append (items $base $key)
-    | reduce --fold {} {|item, acc| $acc | upsert ($item | get -o $id | default ($item | to json --raw) | into string) $item }
-    | values
-  }
-  let ours = ($project | get -o content | default {})
-  let theirs = ($base | get -o content | default {})
-  # The first entry with an id wins, across all collections; the project's are read first.
-  let content = ($order | append ($ours | columns) | append ($theirs | columns) | uniq | reduce --fold {seen: [], out: {}} {|key, acc|
-    let kept = (items $ours $key | append (items $theirs $key) | reduce --fold {seen: $acc.seen, rows: []} {|entry, got|
-      let id = ($entry | get -o id)
-      if ($id | is-not-empty) and ($id in $got.seen) { $got } else {
-        {seen: (if ($id | is-empty) { $got.seen } else { $got.seen | append $id }), rows: ($got.rows | append $entry)}
-      }
-    })
-    {seen: $kept.seen, out: ($acc.out | upsert $key $kept.rows)}
-  } | get out)
-
-  let meta = ($base | get -o meta | default {})
-  let name = ($meta | get -o name | default "Site")
-  let description = (
-    [($meta | get -o description | default "") ($project | get -o meta | default {} | get -o description | default "")]
-    | where {|part| $part | is-not-empty } | str join " — "
-  )
-  let always = {collections: "slug", taxonomies: "name", menus: "name", widgetAreas: "name"}
-  let if_present = {redirects: "source", sections: "slug", blockTypes: "slug", relations: "slug", bylines: "id"}
-  let head = (
-    {} | insert '$schema' (pick '$schema' "") | insert version (pick version "1")
-    | insert meta ($meta | upsert name (if ($label | is-empty) { $name } else { $"($name) + ($label)" }) | upsert description $description)
-    | insert settings (pick settings {})
-  )
-  let merged = (
-    $always | transpose key id | reduce --fold $head {|l, acc| $acc | insert $l.key (union $l.key $l.id) }
-    | insert content $content
-  )
-  let merged = (
-    $if_present | transpose key id | where {|l| (items $base $l.key | append (items $project $l.key)) | is-not-empty }
-    | reduce --fold $merged {|l, acc| $acc | insert $l.key (union $l.key $l.id) }
-  )
-  # Anything else a seed carries passes through: the template's, falling back to the project's.
-  let known = ($merged | columns)
-  ($base | columns) | append ($project | columns) | uniq | where {|key| not ($key in $known) }
-  | reduce --fold $merged {|key, acc| $acc | insert $key (pick $key null) }
-}
-
 # Does the project's site config load local plugins? plugin:new needs it to.
 export def loads-local-plugins []: nothing -> bool {
-  open --raw ($env.ROOT | path join "config" "site.astro.config.mjs") | str contains "local-plugins.mjs"
+  open --raw (site-file "astro.config.mjs") | str contains "local-plugins.mjs"
 }
 
 # Make the project's site config load local plugins — sandboxed, on either platform: Cloudflare's
@@ -191,13 +136,13 @@ export def loads-local-plugins []: nothing -> bool {
 # changing nothing, when the config is not shaped like a template's (then docs/plugin.md says how).
 export def enable-local-plugins []: nothing -> bool {
   if (loads-local-plugins) { return true }
-  let astro = ($env.ROOT | path join "config" "site.astro.config.mjs")
+  let astro = (site-file "astro.config.mjs")
   let config = (open --raw $astro)
   let load = 'import { sandboxed as localSandboxed } from "./local-plugins.mjs";'
   let tabs = (char tab | fill --character (char tab) --width 3)
   let registered = $"($tabs)// Local plugins from plugins/ — generated by the harness.(char nl)($tabs)sandboxed: [...localSandboxed],"
   if (on-cloudflare) {
-    let wrangler = ($env.ROOT | path join "config" "site.wrangler.jsonc")
+    let wrangler = (site-file "wrangler.jsonc")
     let import_line = 'import { d1, r2 } from "@emdash-cms/cloudflare";'
     let anchor = 'storage: r2({ binding: "MEDIA" }),'
     let loader_line = '// "worker_loaders": [{ "binding": "LOADER" }],'
@@ -218,49 +163,18 @@ export def enable-local-plugins []: nothing -> bool {
     | str replace $anchor $"($anchor)(char nl)($registered)(char nl)($tabs)sandboxRunner: \"@emdash-cms/sandbox-workerd/sandbox\","
     | save --force $astro
   }
-  ok "config/ now loads local plugins"
+  ok "site/astro.config.mjs now loads local plugins"
   if (on-cloudflare) { print "    this switches on the Worker Loader binding — deploying with it needs the Workers Paid plan" }
   true
 }
 
-# The project's own seed, or {} when the project has none and runs on the template's alone.
-export def project-seed []: nothing -> record {
-  let file = (setting SEED_FILE)
-  if ($file | is-not-empty) and ($file | path exists) { open $file } else { {} }
-}
-
-def seed-order []: nothing -> list<string> { setting SEED_ORDER | split row ":" | where {|k| $k | is-not-empty } }
-
-export def build-seed [] {
-  let base = (open ($env.TEMPLATES_DIR | path join $env.TEMPLATE "seed" "seed.json"))
-  let merged = (merge-seeds $base (project-seed) (seed-order) (setting SEED_LABEL))
-  mkdir (site-file "seed")
-  $merged | to json --indent 4 | save --force (site-file "seed" "seed.json")
-  let total = ($merged.content | values | each {|list| $list | length } | append 0 | math sum)
-  ok $"seed — ($merged.content | columns | length) collections, ($total) entries"
-  # EmDash silently skips an invalid seed, so validate it here.
-  emdash seed --validate seed/seed.json
-}
-
-# Our config over the template's, then the seed. `registration` is the generated plugin module.
-export def configure [registration: string] {
-  if not (site-file "package.json" | path exists) { fail ".src/site is missing" "run: mise run setup" }
-  # config/ is the project's. A project that has none yet starts from the template's own files.
-  # Only the Cloudflare templates have a wrangler.jsonc.
-  let pairs = ([["site.astro.config.mjs" "astro.config.mjs"] ["site.wrangler.jsonc" "wrangler.jsonc"]]
-    | where {|pair| $env.TEMPLATES_DIR | path join $env.TEMPLATE ($pair | last) | path exists })
-  for pair in $pairs {
-    let ours = ($env.ROOT | path join "config" ($pair | first))
-    if not ($ours | path exists) {
-      mkdir ($ours | path dirname)
-      cp ($env.TEMPLATES_DIR | path join $env.TEMPLATE ($pair | last)) $ours
-      ok $"config/($pair | first) ← the template's — it is yours to edit now"
-    }
-    cp $ours (site-file ($pair | last))
-  }
+# What `dev` makes sure of before the site starts: an encryption key, the generated plugin
+# registration, and a seed EmDash will accept — it silently skips an invalid one.
+export def prepare [registration: string] {
+  if not (site-file "package.json" | path exists) { fail "there is no site/ yet" "run: mise run setup" }
   ensure-key
   $registration | save --force (site-file "local-plugins.mjs")
-  build-seed
+  if (site-file "seed" "seed.json" | path exists) { emdash seed --validate seed/seed.json }
 }
 
 # Get the seed into the RUNNING site's database, updating entries that already exist. The site's
@@ -344,7 +258,7 @@ export def admin-url []: nothing -> string { $"($env.SITE_URL)/_emdash/api/setup
 export def next-steps [] {
   print ""
   print "  mise run open                     the admin, signed in"
-  print "  mise run dev                      after you change config/, the seed, or a plugin"
+  print "  mise run dev                      after you change settings, the seed or a plugin (page edits reload by themselves)"
   print "  mise run plugin:new -- <name>     scaffold a plugin and load it"
   print "  mise run emdash -- schema list    the official CLI, any command"
   print "  mise run status                   what is running, at a glance"
@@ -408,7 +322,7 @@ export def --wrapped wrangler [...args: string] {
 
 # The deployed D1's name, from our wrangler config.
 export def d1-name []: nothing -> string {
-  let hits = (open --raw ($env.ROOT | path join "config" "site.wrangler.jsonc") | parse --regex '"database_name"\s*:\s*"(?<name>[^"]+)"')
-  if ($hits | is-empty) { fail "no d1_databases[].database_name in config/site.wrangler.jsonc" }
+  let hits = (open --raw (site-file "wrangler.jsonc") | parse --regex '"database_name"\s*:\s*"(?<name>[^"]+)"')
+  if ($hits | is-empty) { fail "no d1_databases[].database_name in site/wrangler.jsonc" }
   $hits | first | get name
 }

@@ -181,7 +181,7 @@ Something broke? Prints your versions, status and recent site log, ready to past
 
 ## `reset`
 
-Wipe the local database and bring the site back up on the seed. --site / --all wipe more
+Wipe the local database and uploads, then bring the site back up on its seed. Your site/ is untouched
 
 
 - **Usage:** `reset [args]…`
@@ -231,7 +231,7 @@ Export the running site's model and content as a seed, to review against the pro
 
 ## `setup`
 
-First time here: clone the template, install, apply config, then bring the site up
+First time here: create site/ from the template (once), install, then bring the site up
 
 
 - **Usage:** `setup [args]…`

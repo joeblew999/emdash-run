@@ -16,8 +16,8 @@ def --wrapped format [...args: string] { dlx [$"oxfmt@($env.OXFMT_VERSION)"] oxf
 def refresh [] {
   # Plugins move with EmDash: re-pin each to the new version before they are built against it.
   if (site sync-version) { for dir in (plugin dirs) { plugin fit ($dir | path basename); plugin install ($dir | path basename) } }
-  step "config, seed and plugin registration"
-  site configure (plugin current-registration)
+  step "key, plugin registration, seed"
+  site prepare (plugin current-registration)
   plugin sweep build
   plugin link
   plugin require-consistent
@@ -34,7 +34,7 @@ def "main setup" [] {
   site ensure-ignored
   step "template"
   site clone-source templates
-  site copy-template
+  site create
   step "install"
   site install
   if ($env.ROOT | path join ".githooks" | path exists) { ^git -C $env.ROOT config core.hooksPath .githooks }
@@ -63,7 +63,6 @@ def "main status" [] {
   print $"  template  ($env.TEMPLATE)"
   print $"  emdash    (if ($installed | path exists) { open $installed | get version } else { 'not installed — run: mise run setup' })"
   print $"  site      (if $site_up { $'running at ($env.SITE_URL)' } else { 'stopped — run: mise run dev' })"
-  print $"  seed      (if (setting SEED_FILE | is-empty) { 'the template only' } else { setting SEED_FILE | path relative-to $env.ROOT })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
   print $"  sources   (site source-heads | str join ', ')"
   print $"  registry  (if (answers $'($env.REGISTRY_URL)/health') { $'local, at ($env.REGISTRY_URL)' } else { 'hosted' })"
@@ -163,14 +162,14 @@ def "main deploy" [--dry, --build-only, --no-check] {
   let mode = (if $build_only or ((not $cloudflare) and $dry) { "build" } else if $dry { "dry" } else { "deploy" })
   if $cloudflare and $mode == "deploy" and (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
   if $cloudflare and $mode == "deploy" and (not (site deployed-has-key)) {
-    fail "the deployment has no EMDASH_ENCRYPTION_KEY — secret plugin settings would fail" "make one (mise run emdash -- secrets generate), store it safely, then: cd .src/site; fnox exec -- pnpm exec wrangler secret put EMDASH_ENCRYPTION_KEY"
+    fail "the deployment has no EMDASH_ENCRYPTION_KEY — secret plugin settings would fail" "make one (mise run emdash -- secrets generate), store it safely, then: cd site; fnox exec -- pnpm exec wrangler secret put EMDASH_ENCRYPTION_KEY"
   }
   if $mode == "deploy" and (not $no_check) {
     step "check — nothing ships that fails it"
     main check
   }
-  step "config and seed"
-  site configure (plugin current-registration)
+  step "prepare"
+  site prepare (plugin current-registration)
   step $mode
   let rc = (site ship $mode)
   if $rc != 0 { fail $"($mode) failed" }
@@ -180,7 +179,7 @@ def "main deploy" [--dry, --build-only, --no-check] {
     print $"✓ live at ($env.DEPLOY_URL)"
   } else if $mode == "deploy" {
     # A Node build runs anywhere Node does; the harness does not choose your host.
-    print "✓ built → .src/site/dist — start it with: node ./dist/server/entry.mjs"
+    print "✓ built → site/dist — start it with: node ./dist/server/entry.mjs"
     print "  once it is running somewhere: mise run doctor -- --url <where>"
   }
 }
@@ -239,20 +238,11 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
   ok "restored — check it: mise run doctor"
 }
 
-# Wipe the local database and bring the site back up on the seed. --site wipes the site copy too;
-# --all wipes every checkout under .src. Both of those need `mise run setup` afterwards.
-def "main reset" [--site, --all] {
-  ^mise daemons stop --all | complete | ignore
-  if $all {
-    rm -rf $env.SRC_DIR
-    print "✓ wiped .src — next: mise run setup"
-  } else if $site {
-    rm -rf $env.SITE_DIR
-    print "✓ wiped .src/site — next: mise run setup"
-  } else {
-    wipe-local-data
-    main dev
-  }
+# Wipe the local database and uploads, and bring the site back up on its seed. Your site/ stays.
+def "main reset" [] {
+  daemon-stop $env.SITE_DAEMON
+  wipe-local-data
+  main dev
 }
 
 # Follow logs: the site by default, another daemon by name, or --deployed for the live Worker.
@@ -268,7 +258,7 @@ def "main open" [] { site open-admin }
 # call it. When this prints ✓ the plugin is live.
 def "main plugin new" [name: string] {
   if not (site enable-local-plugins) {
-    fail "config/site.astro.config.mjs does not load local plugins, and is not shaped like a template's" "three edits, shown in docs/plugin.md § Enabling plugins"
+    fail "site/astro.config.mjs does not load local plugins, and is not shaped like a template's" "three edits, shown in docs/plugin.md § Enabling plugins"
   }
   step "scaffold"
   plugin scaffold $name
@@ -328,9 +318,9 @@ def "main schema diff" [--url: string] {
 
 # Export the running site's model and content as a seed, to compare with the project's.
 def "main seed export" [] {
-  let dest = ($env.ROOT | path join "config" "seed.live.json")
+  let dest = ($env.RUN_DIR | path join "seed.live.json")
   emdash export-seed --database (devdb) --with-content=all | save -f $dest
-  ok $"exported → config/seed.live.json — a review copy, never written over the project's seed"
+  ok "exported → run/seed.live.json — compare it with site/seed/seed.json"
 }
 
 # Start the local plugin registry and point the site at it. Builds the EmDash monorepo the first time.

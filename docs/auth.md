@@ -55,17 +55,3 @@ The harness signs in through `POST /_emdash/api/setup/dev-bypass`, which also co
 |-------|--------|-----|
 | token-admin | `admin` | AI agents, devs, Claude Code (minted by `mise run dev` into `run/token-admin.txt`) |
 | token-user | `content:read content:write media:read media:write` | A narrower token for a tool or a person. An admin creates it, in the admin |
-| ricos | `content:read media:read` | Fukumitsu / RICOS API access |
-
-## The authZ gap we filed as an issue
-
-Issue #52 on emdash-cms/emdash.
-
-The 4-role model (Admin/Editor/Author/Contributor) is too coarse for CAD.
-We need resource-level permissions:
-- "Alice can edit assembly X but not assembly Y"
-- "Agent can write to this part record only"
-- Permissions following the assembly hierarchy
-
-A Zanzibar-style tuple model (subject, relation, object) would address this.
-Proof of concept: https://github.com/joeblew999/zanzojs/blob/feat/better-auth-plugin/examples/workspace-d1/README.md

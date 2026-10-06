@@ -12,9 +12,7 @@ already fixed (a failing build left the site down; `site:_pause` never paused; a
   vitest suite was deleted with `scripts/`.
   - [x] a fixture pair (template seed + project seed) and an expected output, checked by a task in `mise run check` — `seed:test`, over `tests/seed/`, running the same `seed:_merge` body `seed:build` uses
   - [x] prove it blocks: three faults planted one at a time (template loses a collection collision; content collision goes to the template; dependency order ignored) — each failed `seed:test`, and it passed again once restored
-- [x] **`seed:build` still names this project.** `dep_order = ["projects" "assemblies" "parts"]` and
-  the `+ CAD` site-name suffix are hardcoded, against the rule that only PROJECT SETTINGS names a site.
-  - [x] move both into the PROJECT SETTINGS block — `SEED_ORDER` and `SEED_LABEL`; the real merged seed is byte-identical before and after
+- [x] **`seed:build` still names this project.** Its hardcoded collection order and site-name suffix moved to settings; the whole seed merge was later deleted (0.6.0), when the site became the project's own.
 - [x] **`usage` specs are checked by nothing.** — **wrong, and closed without a change.** `mise tasks validate` rejects a malformed spec and `repo:check` already runs it.
   - [x] planted one: `mise tasks validate` exits 1 and names the task. The doc that claimed otherwise is corrected
 - [x] **`repo:verify` leaves temp files** — one `mktemp` per model, never removed — and crashes

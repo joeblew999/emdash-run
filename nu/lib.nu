@@ -147,14 +147,6 @@ export def wipe-local-data [] {
   }
 }
 
-# A credential: the environment first, then fnox. "" when there is none — a finding, not a crash.
-export def secret [name: string]: nothing -> string {
-  let ambient = (setting $name)
-  if ($ambient | is-not-empty) { return $ambient }
-  let result = (^fnox get $name | complete)
-  if $result.exit_code == 0 { $result.stdout | str trim } else { "" }
-}
-
 export def daemon-running [name: string]: nothing -> bool {
   let listed = (^mise daemons ls --json | complete)
   if $listed.exit_code != 0 { return false }

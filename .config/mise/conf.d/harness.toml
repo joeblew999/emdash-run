@@ -15,7 +15,7 @@ fnox = "1.36.0"      # secrets: Cloudflare credentials for deploy and the R2 che
 shell = "nu --no-config-file -c"
 
 [env]
-HARNESS_VERSION = "0.5.0"
+HARNESS_VERSION = "0.6.0"
 HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 # npm command-line tools the harness runs through `pnpm dlx`, pinned here. The two oxlint packages
 # are version-coupled: move them together.
@@ -27,21 +27,12 @@ SKILLS_VERSION = "1.7.0"
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
 # whatever shell ran the task (another project's seed and checks, in the case that found this).
 DEPLOY_URL = ""
-SITE_PACKAGES = ""
-SEED_FILE = ""
-SEED_ORDER = ""
-SEED_LABEL = ""
 VERIFY_COLLECTION = ""
-VERIFY_JOIN_FIELD = ""
-VERIFY_BUCKET = ""
-VERIFY_OBJECT_KEY = ""
-VERIFY_SNAPSHOT_FIELD = ""
-VERIFY_SNAPSHOT_MAP = ""
 EMDASH_URL = ""
 ROOT = "{{config_root}}"
 SRC_DIR = "{{config_root}}/.src"                                  # gitignored checkouts
 TEMPLATES_DIR = "{{config_root}}/.src/templates"
-SITE_DIR = "{{config_root}}/.src/site"                            # a pristine copy of $TEMPLATE — never edit it
+SITE_DIR = "{{config_root}}/site"                                 # the project's own site — created once from $TEMPLATE
 EMDASH_DIR = "{{config_root}}/.src/emdash"                        # the EmDash source, on demand
 PLUGINS_DIR = "{{config_root}}/plugins"
 RUN_DIR = "{{config_root}}/run"                                   # gitignored output: token, snapshots
@@ -53,7 +44,7 @@ SITE_DAEMON = "site"
 REGISTRY_URL = "http://localhost:8788"
 REGISTRY_PORT = "8788"
 # The site's own emdash CLI on PATH, so the CLI and the site cannot drift apart.
-_.path = ["{{config_root}}/.src/site/node_modules/.bin"]
+_.path = ["{{config_root}}/site/node_modules/.bin"]
 # The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.
 _.file = "{{config_root}}/run/token-admin.env"
 # Unset on purpose. Both are read by the CLIs, and a stale value inherited from an old shell
@@ -70,7 +61,7 @@ run = "nu --no-config-file {{config_root}}/nu/task.nu"
 
 [tasks.setup]
 extends = "harness"
-description = "First time here: clone the template, install, apply config, then bring the site up"
+description = "First time here: create site/ from the template (once), install, then bring the site up"
 
 [tasks.dev]
 extends = "harness"
@@ -111,7 +102,7 @@ description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm 
 
 [tasks.reset]
 extends = "harness"
-description = "Wipe the local database and bring the site back up on the seed. --site / --all wipe more"
+description = "Wipe the local database and uploads, then bring the site back up on its seed. Your site/ is untouched"
 
 [tasks.logs]
 extends = "harness"

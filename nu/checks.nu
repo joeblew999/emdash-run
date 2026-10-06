@@ -172,72 +172,21 @@ def report [passed: bool, label: string, detail: string]: nothing -> bool {
   $passed
 }
 
-# Does the running site (or the deployment in EMDASH_URL) match what the repo says? Every check is
-# driven by the project's settings and is skipped, not failed, when its setting is empty.
+# Is the running site (or the deployment in EMDASH_URL) alive and holding content? It answers, and
+# — when VERIFY_COLLECTION names one — that collection has entries and every one carries data.
 export def verify []: nothing -> bool {
   let target = (if (setting EMDASH_URL | is-empty) { $env.SITE_URL } else { $env.EMDASH_URL })
-  # Retried: a config change restarts the dev server, and one attempt reports a false alarm.
-  # Patient, not frequent: see wait-for.
-  let status = (if (wait-for $target 60) { 200 } else { (request GET $target --timeout 30sec).status })
-  if $status == 0 or $status >= 500 {
-    return (report false $"($target) responds" (if $status == 0 { "no response" } else { $status | into string }))
-  }
-  mut results = [(report true $"($target) responds" ($status | into string))]
-
+  if not (wait-for $target 60) { return (report false $"($target) responds" "no answer") }
+  let up = (report true $"($target) responds" "")
   let collection = (setting VERIFY_COLLECTION)
-  if ($collection | is-empty) { return true }
+  if ($collection | is-empty) { return $up }
   # `content list` is slim — no `data` — so each entry is fetched. A check that passes because it
   # read nothing is worse than one that fails, hence the count.
   let entries = (try {
     emdash-json content list $collection | get -o items | default [] | each {|item| emdash-json content get $collection $item.slug }
   } catch {|err| print --stderr $"    ($err.msg)"; [] })
   let with_data = ($entries | where {|e| $e | get -o data | is-not-empty } | length)
-  $results = ($results | append (report ($with_data > 0 and $with_data == ($entries | length)) $"($collection) entries carry data" $"($with_data) of ($entries | length)"))
-
-  let join = (setting VERIFY_JOIN_FIELD)
-  if ($join | is-empty) or ($entries | is-empty) { return ($results | all {|r| $r }) }
-  let unjoined = ($entries | where {|e| $e | get -o data | default {} | get -o $join | is-empty } | each {|e| $e.slug })
-  $results = ($results | append (report ($unjoined | is-empty) $"every ($collection) entry has a ($join)" ($unjoined | str join ", ")))
-
-  # The join field names an object in a bucket; a stored snapshot must match that object's fields.
-  let bucket = (setting VERIFY_BUCKET)
-  if ($bucket | is-empty) { return ($results | all {|r| $r }) }
-  let account = (secret "CLOUDFLARE_ACCOUNT_ID")
-  let token = (secret "CLOUDFLARE_API_TOKEN")
-  if ($account | is-empty) or ($token | is-empty) {
-    print $"  – ($bucket) cross-check skipped: no Cloudflare credentials"
-    return ($results | all {|r| $r })
-  }
-  let pairs = (setting VERIFY_SNAPSHOT_MAP | split row "," | where {|p| $p | str contains "=" } | each {|p| $p | split row "=" })
-  let snapshot_field = (setting VERIFY_SNAPSHOT_FIELD)
-  let checked = ($entries | where {|e| $e | get -o data | default {} | get -o $join | is-not-empty } | first 5 | each {|entry|
-    let id = ($entry.data | get $join)
-    let key = (setting VERIFY_OBJECT_KEY | str replace "{id}" $id)
-    let fetched = (
-      request GET $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/($key)"
-        --headers {Authorization: $"Bearer ($token)"}
-    )
-    if $fetched.status == 0 { return {missing: $"($id) unreachable", drift: []} }
-    if $fetched.status >= 400 { return {missing: $"($id) ($fetched.status)", drift: []} }
-    # R2 serves the object with its own content type, so the body may arrive as text or bytes.
-    let object = (match ($fetched.body | describe) {
-      "string" => { $fetched.body | from json }
-      "binary" => { $fetched.body | decode utf-8 | from json }
-      _ => { $fetched.body }
-    })
-    let stored = ($entry.data | get -o $snapshot_field | default {})
-    let drift = ($pairs | where {|p| ($stored | get -o ($p | first)) != ($object | get -o ($p | last)) } | each {|p|
-      $"($entry.slug): ($p | first) is ($stored | get -o ($p | first)), live is ($object | get -o ($p | last))"
-    })
-    {missing: null, drift: $drift}
-  })
-  let missing = ($checked | get missing | compact)
-  let drift = ($checked | get drift | flatten)
-  $results = ($results | append (report ($missing | is-empty) $"($join) resolves in ($bucket)" (if ($missing | is-empty) { $"($checked | length) objects" } else { $missing | str join ", " })))
-  if ($pairs | is-not-empty) {
-    $results = ($results | append (report ($drift | is-empty) "stored snapshot matches the live object" ($drift | first 6 | str join "; ")))
-  }
-  $results | all {|r| $r }
+  report ($with_data > 0 and $with_data == ($entries | length)) $"($collection) entries carry data" $"($with_data) of ($entries | length)"
 }
 
 # The content model: the repo's seed against a live instance. Returns true when they agree.

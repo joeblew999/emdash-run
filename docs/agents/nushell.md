@@ -26,7 +26,7 @@ nu/tests.nu      unit tests for the pure functions
   (`$env.EMDASH_VERSION`), paths and defaults from `harness.toml` (`$env.SITE_DIR`). Use
   `setting NAME` for an optional one — it returns `""` when unset.
 - **A function that can be pure, is** — records in, records out, no files — and gets a test in
-  `tests.nu`. `merge-seeds` and `registration` are the models.
+  `tests.nu`. `split-args` and `registration` are the models.
 
 ## The helpers in `lib.nu`
 
@@ -43,7 +43,6 @@ nu/tests.nu      unit tests for the pure functions
 | `on-cloudflare` | true when the template runs on Cloudflare (it ships a `wrangler.jsonc`), false on Node.js |
 | `devdb` | the dev server's real database file, on either platform |
 | `wipe-local-data` | delete the local database and uploads |
-| `secret NAME` | a credential from the environment, else fnox, else `""` |
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `request` | one HTTP request: `{status, body, cookies}`, never throws |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
@@ -60,7 +59,7 @@ run, and anything else fails.
 | `curl` | `request GET|POST|DELETE url --headers {…} --body {…}` — returns `{status, body, cookies}`, never throws |
 | `find`, `cp`, `rm`, `mkdir`, `cat` | `files-in`, and nushell's `ls`, `cp`, `rm`, `mkdir`, `open` |
 | `open` / `xdg-open` / `start` | nushell's `start` |
-| `printenv`, `env` | `$env.NAME`, `setting NAME`, `secret NAME` |
+| `printenv`, `env` | `$env.NAME`, `setting NAME` |
 | `/dev/null` | `| ignore`, or `| complete` |
 | `sh -c "…"` | write it in nushell |
 | building paths with `/` | `path join` |
