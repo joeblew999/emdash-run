@@ -22,13 +22,22 @@
  *
  * Env knobs: GEOMETRY_BUCKET (default `cad-documents`), VERIFY_MODEL_LIMIT (default 5).
  */
-import { existsSync, readFileSync } from "node:fs";
+import { env, out, secret } from "./exec.mjs";
 
-import { env, secret } from "./exec.mjs";
+/**
+ * Run an `emdash` command and parse its JSON, skipping the task banner. Returns the RAW parsed
+ * value: the envelopes differ per command (`content list` wraps its items in `data`, while
+ * `content get` IS the entry, with its own `data` holding the field values), so unwrapping here
+ * would silently hand back the wrong level.
+ */
+function cliJson(...args) {
+	const stdout = out("mise", ["run", "emdash:cli", "--", ...args]);
+	return JSON.parse(stdout.slice(stdout.search(/^[{[]/m)));
+}
 
 export async function verify() {
 	const SITE_URL = env("SITE_URL");
-	const RUN_DIR = env("RUN_DIR");
+
 	const ACCOUNT = secret("CLOUDFLARE_ACCOUNT_ID");
 	const TOKEN = secret("CLOUDFLARE_API_TOKEN");
 	const BUCKET = process.env.GEOMETRY_BUCKET ?? "cad-documents";
@@ -69,29 +78,39 @@ export async function verify() {
 		process.exit(1);
 	}
 
-	// ── 2. the admin API is authenticated and holds the seeded content ───────
-	const tokenPath = `${RUN_DIR}/token-admin.txt`;
-	const adminToken = existsSync(tokenPath) ? readFileSync(tokenPath, "utf8").trim() : null;
-
-	if (!adminToken) {
-		record(false, "admin token", `missing ${tokenPath} — run: mise run repo:apply`);
-	} else {
-		const res = await fetch(`${SITE_URL}/_emdash/api/content/parts?limit=100`, {
-			headers: { Authorization: `Bearer ${adminToken}`, "X-EmDash-Request": "1" },
-		});
-		const body = res.ok ? await res.json() : null;
-		const parts = body?.data?.items ?? [];
+	// ── 2. read the content through the official CLI ──────────────────────────
+	//
+	// This used to fetch `/_emdash/api/content/parts` with a token read out of
+	// run/token-admin.txt. `emdash content list` is the documented way to read content from an
+	// instance and it resolves auth itself, so the raw endpoint and the hand-held token both go.
+	//
+	// It reads the running site — the local one by default, or a deployment when EMDASH_URL is
+	// set, which makes this the same command that can check production.
+	let parts = [];
+	try {
+		const listed = cliJson("content", "list", "parts", "--json").items ?? [];
+		// `content list` is slim — it carries no `data`. The checks below need field values, so each
+		// entry is fetched with `content get`. That matters more than it looks: with the slim list,
+		// every part had `data === undefined`, so nothing resolved and nothing mismatched — the R2
+		// checks PASSED VACUOUSLY. A check that passes because it read nothing is worse than one
+		// that fails, so the guard below also asserts the data actually arrived.
+		parts = listed.map((item) => cliJson("content", "get", "parts", item.slug, "--json"));
+		const withData = parts.filter((part) => part.data).length;
 		record(
-			res.ok && parts.length > 0,
-			"content API returns parts",
-			`${res.status}, ${parts.length} parts`,
+			withData === parts.length && withData > 0,
+			"content get returns data",
+			`${withData} of ${parts.length} entries`,
 		);
+	} catch (error) {
+		record(false, "content get returns data", String(error.message).slice(0, 90));
+	}
 
+	if (parts.length > 0) {
 		// ── 3 + 4. resolve every model_id, then compare the stored snapshot ──
-		if (parts.length > 0 && (!ACCOUNT || !TOKEN)) {
+		if (!ACCOUNT || !TOKEN) {
 			const missing = !ACCOUNT ? "CLOUDFLARE_ACCOUNT_ID" : "CLOUDFLARE_API_TOKEN";
 			record(false, "R2 cross-check", `cannot run: ${missing} is unset`);
-		} else if (parts.length > 0) {
+		} else {
 			const limit = Number(process.env.VERIFY_MODEL_LIMIT ?? 5);
 			const samples = parts.slice(0, limit);
 
