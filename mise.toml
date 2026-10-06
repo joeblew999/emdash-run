@@ -42,6 +42,12 @@
 # There are no scripts. Every task body is nushell, run by `[task_config] shell` below, so
 # the task IS the implementation — readable in one place, and the same on every platform.
 #
+# WRITTEN TO BE REUSED. This harness is not specific to this site: the tasks are built on the two
+# official CLIs and the official template layout, and every value that names a project lives in the
+# PROJECT SETTINGS block at the top of [env] — template, EmDash version, deploy URL, daemon name,
+# the project's own seed, the code to lint, and the collection/field/bucket that `repo:verify`
+# asserts. Point those at another EmDash project and the flows work unchanged.
+#
 # Tasks are the interface, and they come in two kinds — the distinction is the point:
 #
 #   PRIMITIVES  one official command or script, nothing invented. Thin on purpose: the
@@ -113,13 +119,49 @@ shell = "nu --no-config-file -c"
 dir = "{{config_root}}/.src/site"
 
 [env]
-# Project root (where this mise.toml lives)
-ROOT            = "{{config_root}}"
+# =============================================================================
+# PROJECT SETTINGS — edit these for a different EmDash project.
+#
+# Everything else in this file is written against the two official CLIs and the official template
+# layout, so it is generic: point these at your project and the flows work. Nothing below this
+# block needs to know which site it is.
+# =============================================================================
 
-# The code we own, for lint and formatting: the plugins, since there are no scripts any more.
-# Absolute, so the path does not depend on a task's working directory. `:`-separated because an
-# env var is a string.
-CODE_PATHS      = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
+# Where this mise.toml lives.
+ROOT                   = "{{config_root}}"
+
+# Which official template to host — any directory in emdash-cms/templates.
+TEMPLATE               = "starter-cloudflare"
+
+# The EmDash version to pin the site to. `site:install` writes exactly this into the site's
+# package.json, for `emdash` and `@emdash-cms/cloudflare`.
+EMDASH_VERSION         = "1.1.0"
+
+# Where `mise run deploy` ships, and what `deploy` then verifies.
+DEPLOY_URL             = "https://emdash-run.gedw99.workers.dev"
+
+# The pitchfork daemon that runs the site — the name under [daemons.*] in pitchfork.toml.
+SITE_DAEMON            = "emdash"
+
+# This project's hand-maintained seed: the source of truth for the content model. The template's
+# demo seed is merged INTO it by `seed:build`, and an export is never written back over it.
+SEED_FILE              = "{{config_root}}/config/cad.seed.json"
+
+# The code you own, for lint and formatting. Absolute, so it does not depend on a task's working
+# directory; `:`-separated because an env var is a string.
+CODE_PATHS             = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
+
+# What `repo:verify` asserts about the RUNNING site: a collection whose entries carry a field that
+# names an object in an R2 bucket, and a stored snapshot of that object's manifest. The checks are
+# generic — these four names are the only domain knowledge in them.
+VERIFY_COLLECTION      = "parts"
+VERIFY_JOIN_FIELD      = "model_id"
+VERIFY_SNAPSHOT_FIELD  = "geometry_meta"
+VERIFY_BUCKET          = "cad-documents"
+
+# =============================================================================
+# DERIVED — the layout below follows the official template; you should not need to change it.
+# =============================================================================
 
 # Gitignored working checkouts (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md)
 SRC_DIR         = "{{config_root}}/.src"
@@ -128,22 +170,11 @@ SITE_DIR        = "{{config_root}}/.src/site"        # copy of $TEMPLATE — the
 SITE_URL        = "http://localhost:4321"            # the host site as a URL — scripts read this, never a literal
 EMDASH_DIR      = "{{config_root}}/.src/emdash"      # optional emdash monorepo clone (on demand)
 
-# Which official template to host. `blank` was retired upstream; starter-cloudflare
-# is the minimal Cloudflare (D1 + R2) base — the closest live equivalent.
-TEMPLATE        = "starter-cloudflare"
-
 TEMPLATES_REPO  = "https://github.com/emdash-cms/templates"
 EMDASH_REPO     = "https://github.com/emdash-cms/emdash"
 
-# EmDash version — single source of truth. `site:install` pins the site's `emdash`
-# and `@emdash-cms/cloudflare` to exactly this.
-EMDASH_VERSION  = "1.1.0"
-
 # Local plugins under development — symlinked into the site's node_modules by plugin:link
 PLUGINS_DIR     = "{{config_root}}/plugins"
-
-# Where `mise run deploy` ships to, and what `check:deployed` then verifies.
-DEPLOY_URL      = "https://emdash-run.gedw99.workers.dev"
 
 # Generated output, gitignored: the MCP token, site snapshots, and the temp files the nushell
 # check writes.
@@ -499,7 +530,7 @@ run = """
 # Content order is dependency-first: entries carry `$ref:` values that must resolve to something
 # already applied.
 let base = (open $"($env.TEMPLATES_DIR)/($env.TEMPLATE)/seed/seed.json")
-let cad = (open $"($env.ROOT)/config/cad.seed.json")
+let cad = (open $env.SEED_FILE)
 
 # Union two lists by key, with the template winning on collision. `upsert`, not `insert`: nushell
 # errors when `insert` targets a column that already exists, which is exactly the collision case.
@@ -606,12 +637,12 @@ description = "Export the running dev site's model + content as a seed (official
 run = """
 let db = (^mise run site:_devdb | str trim)
 if ($db | is-empty) { exit 1 }
-# Written to a SEPARATE file, never over config/cad.seed.json: that one is hand-maintained and is
+# Written to a SEPARATE file, never over $SEED_FILE: that one is hand-maintained and is
 # the source of truth, so overwriting it with an export would turn a review into a replacement.
 ^emdash export-seed --database $db --with-content=all
   | save -f $"($env.ROOT)/config/seed.live.json"
 print "✓ exported the live model → config/seed.live.json"
-print "  compare it with config/cad.seed.json — it is not written over it on purpose."
+print $"  compare it with ($env.SEED_FILE | path relative-to $env.ROOT) — not written over it on purpose."
 """
 
 [tasks."seed:from-remote"]
@@ -643,7 +674,7 @@ for slug in $remote_slugs {
   }
 }
 
-let ours = (open $"($env.ROOT)/config/cad.seed.json")
+let ours = (open $env.SEED_FILE)
 let local_slugs = ($ours | get -o collections | default [] | each {|c| $c.slug })
 mut local = {}
 for collection in ($ours | get -o collections | default []) {
@@ -807,7 +838,7 @@ def report [ok: bool, label: string, detail: string] {
 let site_url = $env.SITE_URL
 let account = (secret "CLOUDFLARE_ACCOUNT_ID")
 let token = (secret "CLOUDFLARE_API_TOKEN")
-let bucket = ($env.GEOMETRY_BUCKET? | default "cad-documents")
+let bucket = $env.VERIFY_BUCKET
 mut checks = []
 
 # ── 1. the site answers at all ───────────────────────────────────────────────
@@ -841,7 +872,7 @@ $checks = ($checks | append true)
 mut parts = []
 mut data_ok = false
 try {
-  let listed = (^mise run emdash:_json -- "content list parts --json" | from json)
+  let listed = (^mise run emdash:_json -- $"content list ($env.VERIFY_COLLECTION) --json" | from json)
   # `content list` is SLIM — it carries no `data` — so each entry is fetched with `content get`.
   # That matters more than it looks: given only the slim list every part has no data, so nothing
   # resolved and nothing mismatched, and the R2 checks PASSED VACUOUSLY. A check that passes
@@ -870,18 +901,18 @@ if ($parts_final | is-not-empty) {
 
     let missing_join = (
       $parts_final
-      | where {|part| ($part | get -o data | default {} | get -o model_id) | is-empty }
+      | where {|part| ($part | get -o data | default {} | get -o $env.VERIFY_JOIN_FIELD) | is-empty }
       | each {|part| $part.slug }
     )
     let join_ok = ($missing_join | is-empty)
     let join_detail = (if $join_ok { $"($parts_final | length) parts" } else { $missing_join | str join ", " })
-    report $join_ok "every part declares a model_id" $join_detail
+    report $join_ok $"every ($env.VERIFY_COLLECTION) entry declares a ($env.VERIFY_JOIN_FIELD)" $join_detail
     $checks = ($checks | append $join_ok)
 
     mut unresolved = []
     mut drift = []
     for part in $samples {
-      let id = ($part | get -o data | default {} | get -o model_id)
+      let id = ($part | get -o data | default {} | get -o $env.VERIFY_JOIN_FIELD)
       if ($id | is-empty) { continue }
       let body = (mktemp)
       let url = $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/models/($id)/manifest.json"
@@ -896,7 +927,7 @@ if ($parts_final | is-not-empty) {
         continue
       }
       let manifest = (open $body | from json)
-      let snapshot = ($part | get -o data | default {} | get -o geometry_meta | default {})
+      let snapshot = ($part | get -o data | default {} | get -o $env.VERIFY_SNAPSHOT_FIELD | default {})
       # The snapshot must equal the live manifest, field for field. Drift means the entry describes
       # a model that has since changed — or never matched at all.
       let pairs = [
@@ -917,7 +948,7 @@ if ($parts_final | is-not-empty) {
 
     let resolve_ok = ($unresolved | is-empty)
     let resolve_detail = (if $resolve_ok { $"($samples | length) models" } else { $unresolved | str join ", " })
-    report $resolve_ok $"model_id resolves in ($bucket)" $resolve_detail
+    report $resolve_ok $"($env.VERIFY_JOIN_FIELD) resolves in ($bucket)" $resolve_detail
     $checks = ($checks | append $resolve_ok)
 
     let drift_ok = ($drift | is-empty)
@@ -1291,7 +1322,7 @@ description = "Validate plugin manifests (sandboxed plugins only)"
 run = "mise run plugin:_sweep -- validate"
 
 [tasks."plugin:bundle"]
-description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- plat-trunk-sandboxed"
+description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- <name>"
 run = "mise run plugin:_sweep -- bundle"
 
 [tasks."plugin:typecheck"]
@@ -1677,116 +1708,78 @@ run = "skills experimental_install"
 
 [tasks."emdash:cli"]
 description = "Run the official emdash CLI with any arguments — e.g: mise run emdash:cli -- schema get parts"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash"
 
 [tasks."emdash:help"]
 description = "the official emdash help — for one command: mise run emdash:cli -- <cmd> --help"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash --help"
 
 [tasks."emdash:init"]
 description = "initialize a database from the template config (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash init"
 
 [tasks."emdash:types"]
 description = "generate TypeScript types from the schema (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash types"
 
 [tasks."emdash:doctor"]
 description = "check database health and scheduler wiring (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash doctor"
 
 [tasks."emdash:seed"]
 description = "apply a seed file to a database (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash seed"
 
 [tasks."emdash:export-seed"]
 description = "export a database's schema + content as a seed (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash export-seed"
 
 [tasks."emdash:migrate"]
 description = "check or apply deployment-managed migrations (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash migrate"
 
 [tasks."emdash:secrets"]
 description = "generate or fingerprint an EmDash encryption key (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash secrets"
 
 [tasks."emdash:login"]
 description = "log in to an instance — prints a URL and a code you approve by hand"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash login"
 
 [tasks."emdash:logout"]
 description = "log out of an instance"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash logout"
 
 [tasks."emdash:whoami"]
 description = "show the current user and auth method"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash whoami"
 
 [tasks."emdash:content"]
 description = "list/get/create/update/delete/publish/schedule content (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash content"
 
 [tasks."emdash:schema"]
 description = "list/get/create/delete collections and add/remove fields (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash schema"
 
 [tasks."emdash:media"]
 description = "list/upload/get/delete media, or repair-usage (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash media"
 
 [tasks."emdash:search"]
 description = "full-text search across content (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash search"
 
 [tasks."emdash:taxonomy"]
 description = "list taxonomies and terms, add a term (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash taxonomy"
 
 [tasks."emdash:menu"]
 description = "list menus, or get one with its items (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash menu"
 
 [tasks."emdash:site"]
 description = "export/import a whole site as a .emdash package (official)"
-# The CLI looks for a project root (a package.json) for several commands, including
-# `migrate`. The repo root has none — the site is the project.
 run = "emdash site"
 
 # -----------------------------------------------------------------------------
@@ -2003,7 +1996,7 @@ hide = true
 run = """
 let listed = (^pitchfork list | complete)
 let running = (($listed.stdout | lines) | any {|l|
-  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
+  ($l | str contains $"/($env.SITE_DAEMON)") and ($l | str contains "running")
 })
 if $running { ^pitchfork stop emdash | complete | ignore }
 print (if $running { "running" } else { "stopped" })
