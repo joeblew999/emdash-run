@@ -1,0 +1,11 @@
+[tools]
+nushell = "0.116.1"
+[task_config]
+shell = "nu --no-config-file -c"
+
+[tasks.t1]
+run = "nu --no-config-file {{config_root}}/show.nu t1"
+
+[tasks.t2]
+usage = 'arg "[args]" var=#true'
+run = "nu --no-config-file {{config_root}}/show.nu t2 ($env.usage_args? | default 'UNSET')"

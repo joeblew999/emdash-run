@@ -19,14 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - name: (diagnostic) how do task arguments arrive?
-        if: runner.os == 'Windows'
-        continue-on-error: true
-        run: |
-          echo "--- with --"; mise run plugin:probe -- nosuch-a 2>&1 | Select-String -Pattern "no such|Missing|positional"
-          echo "--- without --"; mise run plugin:probe nosuch-b 2>&1 | Select-String -Pattern "no such|Missing|positional"
-          echo "--- cmd with --"; cmd /c "mise run plugin:probe -- nosuch-c" 2>&1 | Select-String -Pattern "no such|Missing|positional"
-          echo "--- which mise"; (Get-Command mise).Source
       - run: mise run verify
       # The same check on a plain Node.js template — EmDash without Cloudflare.
       - run: mise run verify:template -- starter
