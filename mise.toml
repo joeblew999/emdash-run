@@ -111,6 +111,9 @@ EMDASH_VERSION  = "1.1.0"
 # Local plugins under development — symlinked into the site's node_modules by plugin:link
 PLUGINS_DIR     = "{{config_root}}/plugins"
 
+# Where `mise run deploy` ships to, and what `check:deployed` then verifies.
+DEPLOY_URL      = "https://emdash-run.gedw99.workers.dev"
+
 # Runtime output dirs (both gitignored)
 LOGS_DIR        = "{{config_root}}/logs"   # pitchfork daemon logs
 RUN_DIR         = "{{config_root}}/run"    # generated tokens (token-admin.txt, token-admin.env, token-user.txt)
@@ -141,7 +144,23 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # -----------------------------------------------------------------------------
 
 # =============================================================================
-# QUICK REFERENCE
+# QUICK REFERENCE — the flows. Everything else is a primitive they are built from.
+# =============================================================================
+#
+#   mise run setup       first time here: clone the template, install, apply config, plugins, skills
+#   mise run dev         every time: bring the site up on the current config, seed and plugins
+#   mise run check       before a commit — lint, formatting, plugin checks
+#   mise run deploy      ship it: build, deploy to Cloudflare, then VERIFY what is live
+#   mise run snapshot    save the whole site — schema AND content — as a .emdash package
+#   mise run doctor      diagnose: the site's database, the plugins, and the running site's state
+#
+# Against a deployment:  export EMDASH_URL=https://…  then `mise run check:deployed`
+# URLs:                  mise run repo:urls          Admin UI:  mise run site:open
+#
+# Task bodies are NUSHELL, not POSIX sh — see the note in [tools]. `$env.VAR`, `^cmd` to force an
+# external binary, and no `set -e`: a failing external command does not abort the body.
+#
+# `mise tasks ls` lists everything. This file is the source of truth — never keep a second copy.
 # =============================================================================
 #
 # First time:      mise run site:setup && mise run repo:init && mise run repo:apply
@@ -173,151 +192,46 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # point of the file: one command for one job, not a relay of a single CLI call.
 # -----------------------------------------------------------------------------
 
-# The ONE place that reads JSON back from the CLI. It owns three things so no caller repeats them:
-#
-#   --url       the CLI accepts it only as the LAST argument (anywhere else and it prints its help),
-#               and it comes from EMDASH_URL — so targeting a deployment is one environment variable.
-#   the banner  the CLI writes progress lines before its payload, so the payload is found by
-#               locating the first line that opens with `{` or `[`.
-#   the parse   callers receive JSON text and pipe it through `from json`.
-#
-# The argument is one string rather than a variadic because mise VALIDATES a declared signature:
-# extra bare words are rejected outright rather than appended, so a variadic is not available.
-[tasks."emdash:_json"]
-hide = true
-usage = 'arg "<args>" help="emdash arguments as one string, e.g. \"content list parts --json\""'
+[tasks."setup"]
+description = "First time here: clone the template, install the site, apply our config, install the plugins, vendor the skills, then bring it up"
+depends = ["site:setup", "repo:init"]
+run = "mise run repo:apply"
+
+[tasks."dev"]
+description = "Start working — bring the site up on the current config, seed and plugins, then print where everything is"
+depends = ["repo:apply"]
+run = "mise run repo:urls"
+
+[tasks."deploy"]
+description = "Ship it — build, deploy to Cloudflare, then PROVE what is live matches the repo"
 run = """
-let args = ($env.usage_args | split row ' ')
+print "→ config and seed"
+^mise run config:apply
+print "→ build and deploy"
+^mise run site:deploy
+print "→ verify what is now live"
+with-env { EMDASH_URL: $env.DEPLOY_URL } { ^mise run check:deployed }
+"""
+
+[tasks."snapshot"]
+description = "Save the whole site — schema AND content — as a .emdash package (official: emdash site export)"
+run = """
+# The only backup that carries the content MODEL as well as the content: a seed cannot restore
+# collections and fields, and `wrangler d1 export` refuses a database with FTS5 tables — which every
+# EmDash site has. Set EMDASH_URL to snapshot a deployment instead of the local site.
 let url = ($env.EMDASH_URL? | default "")
-let full = (if ($url | is-not-empty) { $args | append ["--url" $url] } else { $args })
-let lines = (^emdash ...$full | complete).stdout | lines
-let start = ($lines | enumerate | where {|l|
-  ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
-} | get -o index | first)
-$lines | skip $start | str join (char nl)
+let extra = (if ($url | is-not-empty) { ["--url" $url] } else { [] })
+let dest = $"($env.RUN_DIR)/snapshots/(date now | format date "%Y%m%d-%H%M%S").emdash"
+mkdir ($dest | path dirname)
+^emdash site export --output $dest ...$extra
+print $"✓ saved → ($dest)"
+print "  it carries every entry plus authors' email addresses — treat it like a database backup."
 """
 
-# EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
-# localhost without a passkey. A curl cookie jar carries it — so nothing hand-assembles a Cookie
-# header — and the jar lives at a fixed path, so callers need not capture any output.
-[tasks."mcp:_login"]
-hide = true
-run = """
-mkdir $"($env.RUN_DIR)"
-^curl -sS -o /dev/null -c $"($env.RUN_DIR)/.mcp-cookies" -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
-if $env.LAST_EXIT_CODE != 0 {
-  print --stderr "✗ could not reach the site — is it running? mise run repo:apply"
-  exit 1
-}
-"""
-
-# Where the site ships its EmDash skills: `.claude/skills` first, `.agents/skills` as the fallback.
-# Prints the path, or nothing when the site has not been set up yet.
-[tasks."skills:_shipped"]
-hide = true
-run = """
-let site = $env.SITE_DIR
-print (
-  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
-  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
-  else { "" }
-)
-"""
-
-# A plugin is a directory under plugins/ with a package.json. Defined once, so the five tasks that
-# sweep plugins/ cannot disagree about what counts as one.
-[tasks."plugin:_dirs"]
-hide = true
-run = """
-print (
-  ls ($env.PLUGINS_DIR)
-  | get name
-  | to json --raw
-)
-"""
-
-# Fails with the list of what does exist, so a typo says what you probably meant. Both callers used
-# to spell this out for themselves.
-[tasks."plugin:_require"]
-hide = true
-usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
-run = """
-if not ($"($env.PLUGINS_DIR)/($env.usage_plugin)" | path exists) {
-  print --stderr $"✗ no such plugin: ($env.usage_plugin)"
-  let available = (^mise run plugin:_dirs | from json | each {|p| $p | path basename } | str join ' ')
-  print --stderr $"  available: ($available)"
-  exit 1
-}
-"""
-
-# The dev-server daemon, stopped and put back around anything that re-runs the Vite optimizer in
-# .src/site (a production build, `astro check`). Re-hashing the `deps_ssr/*?v=…` URLs under a
-# running server makes it serve stale ones and return 500s — clearing the on-disk caches is not
-# enough, because the stale module graph is held in memory. Prints one word for site:_resume.
-[tasks."site:_pause"]
-hide = true
-run = """
-let listed = (^pitchfork list | complete)
-let running = (($listed.stdout | lines) | any {|l|
-  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
-})
-if $running { ^pitchfork stop emdash | complete | ignore }
-print (if $running { "running" } else { "stopped" })
-"""
-
-[tasks."site:_resume"]
-hide = true
-usage = 'arg "<state>" help="what site:_pause printed: running | stopped"'
-run = """
-if ($env.usage_state == "running") {
-  print "  → restarting the dev server (it holds a stale module graph)"
-  ^pitchfork start emdash
-}
-"""
-
-# The dev server's ACTUAL database, as a path a file-based CLI can read.
-#
-# EmDash's file-based commands (`doctor`, `seed`, `export-seed`) all default to `./data.db`, which a
-# Cloudflare site never uses — the dev server reads miniflare's D1 under `.wrangler/state/v3/d1`.
-# So the default silently reports on the WRONG database: `emdash doctor` announced "no users" while
-# the real one had one, and `emdash seed` printed "Seed applied successfully" into a file the site
-# never reads. Prints the path, or exits non-zero having said why on stderr.
-[tasks."site:_devdb"]
-hide = true
-run = """
-let d1 = $"($env.SITE_DIR)/.wrangler/state/v3/d1/miniflare-D1DatabaseObject"
-let found = (
-  if ($d1 | path exists) {
-    ls $d1
-    | get name
-    | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) }
-  } else { [] }
-)
-if ($found | is-empty) {
-  print --stderr "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
-print ($found | first)
-"""
-
-# A symlink, or a junction on Windows. Node used to paper over that difference; it is spelled out
-# once here instead of in every caller. `ln -sfn` stores the target string verbatim, so a RELATIVE
-# target stays relative to the link — which is what keeps a committed config link portable.
-[tasks."fs:_link"]
-hide = true
-usage = """
-arg "<target>" help="what the link points at"
-arg "<link>" help="path of the link to create"
-"""
-run = """
-rm -rf $env.usage_link
-mkdir ($env.usage_link | path dirname)
-if ($nu.os-info.name == "windows") {
-  ^cmd /c mklink /J $env.usage_link $env.usage_target | complete | ignore
-} else {
-  ^ln -sfn $env.usage_target $env.usage_link
-}
-"""
+[tasks."doctor"]
+description = "Diagnose the lot — the site's database, the plugins' consistency, and whether the running site matches the repo"
+depends = ["site:doctor", "plugin:audit"]
+run = "mise run repo:verify"
 
 [tasks."check"]
 description = "Everything that must pass before a commit — lint, formatting, plugin checks"
@@ -817,7 +731,7 @@ print $"  registry   ($env.REGISTRY_URL)/health — JSON API under /xrpc/com.emd
 print "             note: / 308-redirects to https://plugins.emdashcms.com/ — there is no local page"
 print $"  plugins UI ($env.PLUGINS_SITE_URL)/"
 print ""
-print "Live         https://emdash-run.gedw99.workers.dev"
+print $"Live         ($env.DEPLOY_URL)"
 """
 
 [tasks."repo:verify"]
@@ -1861,3 +1775,153 @@ description = "Build the registry's public projection — without it every read 
 run = "mise run registry:_admin -- /_admin/labels/replay"
 # -----------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------
+# HELPERS — hidden via hide = true (a leading `_` in the name does NOT hide a task). Each owns ONE
+# concern so no flow repeats it. Not part of the interface: none of these is meant to be typed.
+# -----------------------------------------------------------------------------
+
+# The ONE place that reads JSON back from the CLI. It owns three things so no caller repeats them:
+#
+#   --url       the CLI accepts it only as the LAST argument (anywhere else and it prints its help),
+#               and it comes from EMDASH_URL — so targeting a deployment is one environment variable.
+#   the banner  the CLI writes progress lines before its payload, so the payload is found by
+#               locating the first line that opens with `{` or `[`.
+#   the parse   callers receive JSON text and pipe it through `from json`.
+#
+# The argument is one string rather than a variadic because mise VALIDATES a declared signature:
+# extra bare words are rejected outright rather than appended, so a variadic is not available.
+[tasks."emdash:_json"]
+hide = true
+usage = 'arg "<args>" help="emdash arguments as one string, e.g. \"content list parts --json\""'
+run = """
+let args = ($env.usage_args | split row ' ')
+let url = ($env.EMDASH_URL? | default "")
+let full = (if ($url | is-not-empty) { $args | append ["--url" $url] } else { $args })
+let lines = (^emdash ...$full | complete).stdout | lines
+let start = ($lines | enumerate | where {|l|
+  ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
+} | get -o index | first)
+$lines | skip $start | str join (char nl)
+"""
+
+# EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
+# localhost without a passkey. A curl cookie jar carries it — so nothing hand-assembles a Cookie
+# header — and the jar lives at a fixed path, so callers need not capture any output.
+[tasks."mcp:_login"]
+hide = true
+run = """
+mkdir $"($env.RUN_DIR)"
+^curl -sS -o /dev/null -c $"($env.RUN_DIR)/.mcp-cookies" -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
+if $env.LAST_EXIT_CODE != 0 {
+  print --stderr "✗ could not reach the site — is it running? mise run repo:apply"
+  exit 1
+}
+"""
+
+# Where the site ships its EmDash skills: `.claude/skills` first, `.agents/skills` as the fallback.
+# Prints the path, or nothing when the site has not been set up yet.
+[tasks."skills:_shipped"]
+hide = true
+run = """
+let site = $env.SITE_DIR
+print (
+  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
+  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
+  else { "" }
+)
+"""
+
+# A plugin is a directory under plugins/ with a package.json. Defined once, so the five tasks that
+# sweep plugins/ cannot disagree about what counts as one.
+[tasks."plugin:_dirs"]
+hide = true
+run = """
+print (
+  ls ($env.PLUGINS_DIR)
+  | get name
+  | to json --raw
+)
+"""
+
+# Fails with the list of what does exist, so a typo says what you probably meant. Both callers used
+# to spell this out for themselves.
+[tasks."plugin:_require"]
+hide = true
+usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
+run = """
+if not ($"($env.PLUGINS_DIR)/($env.usage_plugin)" | path exists) {
+  print --stderr $"✗ no such plugin: ($env.usage_plugin)"
+  let available = (^mise run plugin:_dirs | from json | each {|p| $p | path basename } | str join ' ')
+  print --stderr $"  available: ($available)"
+  exit 1
+}
+"""
+
+# The dev-server daemon, stopped and put back around anything that re-runs the Vite optimizer in
+# .src/site (a production build, `astro check`). Re-hashing the `deps_ssr/*?v=…` URLs under a
+# running server makes it serve stale ones and return 500s — clearing the on-disk caches is not
+# enough, because the stale module graph is held in memory. Prints one word for site:_resume.
+[tasks."site:_pause"]
+hide = true
+run = """
+let listed = (^pitchfork list | complete)
+let running = (($listed.stdout | lines) | any {|l|
+  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
+})
+if $running { ^pitchfork stop emdash | complete | ignore }
+print (if $running { "running" } else { "stopped" })
+"""
+
+[tasks."site:_resume"]
+hide = true
+usage = 'arg "<state>" help="what site:_pause printed: running | stopped"'
+run = """
+if ($env.usage_state == "running") {
+  print "  → restarting the dev server (it holds a stale module graph)"
+  ^pitchfork start emdash
+}
+"""
+
+# The dev server's ACTUAL database, as a path a file-based CLI can read.
+#
+# EmDash's file-based commands (`doctor`, `seed`, `export-seed`) all default to `./data.db`, which a
+# Cloudflare site never uses — the dev server reads miniflare's D1 under `.wrangler/state/v3/d1`.
+# So the default silently reports on the WRONG database: `emdash doctor` announced "no users" while
+# the real one had one, and `emdash seed` printed "Seed applied successfully" into a file the site
+# never reads. Prints the path, or exits non-zero having said why on stderr.
+[tasks."site:_devdb"]
+hide = true
+run = """
+let d1 = $"($env.SITE_DIR)/.wrangler/state/v3/d1/miniflare-D1DatabaseObject"
+let found = (
+  if ($d1 | path exists) {
+    ls $d1
+    | get name
+    | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) }
+  } else { [] }
+)
+if ($found | is-empty) {
+  print --stderr "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+print ($found | first)
+"""
+
+# A symlink, or a junction on Windows. Node used to paper over that difference; it is spelled out
+# once here instead of in every caller. `ln -sfn` stores the target string verbatim, so a RELATIVE
+# target stays relative to the link — which is what keeps a committed config link portable.
+[tasks."fs:_link"]
+hide = true
+usage = """
+arg "<target>" help="what the link points at"
+arg "<link>" help="path of the link to create"
+"""
+run = """
+rm -rf $env.usage_link
+mkdir ($env.usage_link | path dirname)
+if ($nu.os-info.name == "windows") {
+  ^cmd /c mklink /J $env.usage_link $env.usage_target | complete | ignore
+} else {
+  ^ln -sfn $env.usage_target $env.usage_link
+}
+"""
