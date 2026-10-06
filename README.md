@@ -139,7 +139,7 @@ creeps in.
 
 ```
 mise run status                   what is running, and on what
-mise run dev                      after any change: config, seed, plugins, restart — prints the URLs
+mise run dev                      after any change: config, seed, plugins, a restart if one is needed — prints the URLs
 mise run check                    before a commit (the git hook runs it)        --fix repairs
 mise run doctor                   is the running site what the repo says?       --url <deployment>
 mise run deploy                   check, build, ship to Cloudflare, verify      --dry
@@ -195,7 +195,8 @@ If that is cut off, run the last line again: it finishes the import it started.
 made in the deployment's admin. It is a secret: export it in the CI job, or put it in the gitignored
 `mise.local.toml`. Without one, the flows use what `mise run emdash -- login --url <deployment>`
 stored. (`EMDASH_TOKEN` is deliberately removed from every task, even when your shell exports it,
-so a token for one site can never be sent to another.)
+so a stale one cannot redirect a call. `DEPLOY_TOKEN` is not tied to a site: while it is exported in
+a shell, every `--url` flow run from that shell sends it to whatever URL it is given.)
 
 ## What is yours, and what is the harness's
 

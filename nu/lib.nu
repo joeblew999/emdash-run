@@ -117,8 +117,7 @@ export def --wrapped emdash-result [...args: string]: nothing -> record {
 }
 
 # Run an emdash command and return its JSON, parsed; an error when the command fails or prints
-# none. To target a deployment, set $env.EMDASH_URL — the CLI reads it itself, and flows that take
-# `--url` do exactly that.
+# none. Aimed like the others, by cli-target: a `--url` flow calls `target` first.
 export def emdash-json [...args: string]: nothing -> any {
   let full = ($args | append "--json")
   let result = (emdash-result ...$full)

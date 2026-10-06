@@ -25,7 +25,7 @@ which of those lessons a check now enforces.
 ## Rules
 
 - **A task is a flow.** One command does a whole job: `dev` applies config, builds the seed, loads
-  plugins, restarts the site, applies the seed and mints a token. If a dev would have to remember two tasks, it is
+  plugins, restarts the site when it has to, applies the seed and mints a token. If a dev would have to remember two tasks, it is
   one task. The steps are functions in `nu/`, not tasks.
 - **Use the tasks.** `mise tasks ls` is the list. For anything the official CLIs do, use the
   passthroughs: `mise run emdash -- …`, `mise run emdash-plugin -- …`.

@@ -45,7 +45,9 @@ nu/tests.nu      unit tests for the pure functions
 | `devdb` | the dev server's real database file, on either platform |
 | `wipe-local-data` | stop the site and delete the local database and uploads |
 | `backup-local-data LABEL`, `restore-local-data DIR` | stop the site and copy its database and media into `run/backups/`, or back. The caller restarts |
-| `request` | one HTTP request: `{status, body, cookies}`, never throws |
+| `request` | one HTTP request: `{status, body}`, status 0 when nothing answered. Never throws |
+| `holds FILE TEXT` | does the file hold exactly this text — how `run/` remembers what the seed, or the running server, was last brought up on |
+| `emdash-in DIR` | the EmDash installed in the site or a plugin, `""` before an install |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
 | `daemon-running`, `daemon-stop`, `answers`, `port-taken` | daemons and "is anything listening". `daemon-stop` returns only when the daemon's port is free |
 | `site-url`, `registry-url` | where the site and the local registry answer — they follow `SITE_PORT` and `REGISTRY_PORT` |
@@ -58,7 +60,7 @@ run, and anything else fails.
 
 | instead of | use |
 |---|---|
-| `curl` | `request GET|POST|DELETE url --headers {…} --body {…}` — returns `{status, body, cookies}`, never throws |
+| `curl` | `request GET|POST url --headers {…} --timeout 10sec` — returns `{status, body}`, never throws. A POST sends an empty JSON body |
 | `find`, `cp`, `rm`, `mkdir`, `cat` | `files-in`, and nushell's `ls`, `cp`, `rm`, `mkdir`, `open` |
 | `open` / `xdg-open` / `start` | nushell's `start` |
 | `printenv`, `env` | `$env.NAME`, `setting NAME` |

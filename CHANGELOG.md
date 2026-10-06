@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **`dev` leaves a running site alone.** It restarts the server only when something changed that
+  the server cannot pick up by itself — `mise.toml`, the harness, the site's `package.json`,
+  lockfile, `astro.config.mjs`, `wrangler.jsonc`, `.env` or `.dev.vars`, a plugin — or when it is
+  not running or not answering. Otherwise it does the cheap steps and prints the URLs.
+- **`check -- --site` no longer restarts a running site.** It type-checks beside it.
+- **A restored site keeps its content.** After `restore -- <package> --wipe --confirm`, the next
+  `dev` wrote the seed over what had just been restored. The seed is now applied only to a database
+  it was applied to before, and only when the seed has changed.
+- **An upgrade cannot stick half done.** What `dev` prints about an upgrade can no longer stop it
+  (it read the network after the install), it no longer refreshes `.src/templates`, and a re-run of
+  `dev` re-pins any plugin still on the old EmDash.
+- **Going back to an older EmDash keeps what it replaces.** `restore -- <backup directory>
+  --confirm` with `EMDASH_VERSION` set back first copies the current data to
+  `run/backups/emdash-<the version it is on>-…`, then installs, then puts the backup in place.
+- `dev` clones EmDash's source only when the site ships skills to vendor, and carries on offline.
+- `check` no longer claims the vendored skills match EmDash: that check compared against a
+  gitignored checkout and could not fail in CI. `dev` still refreshes them — commit what changes.
+- `verify -- --restore` proves the database backup by editing an entry, wiping the data after the
+  backup, and requiring the edit after the restore.
+
 - **A backup that is one: `mise run snapshot -- --database`.** Locally and on Node.js it stops the
   site, copies the database with its `-wal` and `-shm` files and the uploads into `run/backups/`,
   and starts the site again; `mise run restore -- <that directory> --confirm` puts it back — users,
