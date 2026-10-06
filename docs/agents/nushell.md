@@ -37,7 +37,7 @@ nu/tests.nu      unit tests for the pure functions
 | `setting NAME` | an optional setting from the environment, `""` when unset |
 | `harness-file` | the path of `harness.toml` |
 | `split-args` | a shell-quoted string into its arguments — how `task.nu` reads a task's arguments |
-| `emdash …` | the CLI, run in the site directory, where it must run |
+| `emdash …` | the CLI, run in the site directory, where it must run, aimed at this checkout's site (`cli-target`) — its own default is port 4321 |
 | `emdash-json …` | the CLI's JSON, parsed. Errors when no JSON comes back |
 | `url-flag` | `--url <deployment>` when `EMDASH_URL` is set |
 | `on-cloudflare` | true when the template runs on Cloudflare (it ships a `wrangler.jsonc`), false on Node.js |
@@ -46,7 +46,8 @@ nu/tests.nu      unit tests for the pure functions
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `request` | one HTTP request: `{status, body, cookies}`, never throws |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
-| `daemon-running`, `daemon-stop`, `answers` | daemons and "is anything listening" |
+| `daemon-running`, `daemon-stop`, `answers`, `port-taken` | daemons and "is anything listening". `daemon-stop` returns only when the daemon's port is free |
+| `site-url`, `registry-url` | where the site and the local registry answer — they follow `SITE_PORT` and `REGISTRY_PORT` |
 
 ## Portable, by construction
 

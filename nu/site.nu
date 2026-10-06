@@ -169,6 +169,21 @@ export def enable-local-plugins []: nothing -> bool {
   true
 }
 
+# Make the site config take its registry from EMDASH_REGISTRY_URL, which `serve` sets while the
+# local registry answers; unset, EmDash falls back to its hosted default. One line, put after the
+# one enable-local-plugins wrote — a registry is no use without the sandbox that switches on.
+export def enable-local-registry []: nothing -> bool {
+  if not (enable-local-plugins) { return false }
+  let astro = (site-file "astro.config.mjs")
+  let config = (open --raw $astro)
+  if ($config | str contains "EMDASH_REGISTRY_URL") { return true }
+  let edited = ($config | str replace --regex '(\s*)sandboxed: \[\.\.\.localSandboxed\],' '$0${1}registry: process.env.EMDASH_REGISTRY_URL,')
+  if $edited == $config { return false }
+  $edited | save --force $astro
+  ok "site/astro.config.mjs now takes its registry from EMDASH_REGISTRY_URL"
+  true
+}
+
 # What `dev` makes sure of before the site starts: an encryption key, the generated plugin
 # registration, and a seed EmDash will accept — it silently skips an invalid one.
 export def prepare [registration: string] {
@@ -233,6 +248,7 @@ export def restart [--empty] {
     # minutes — the first request compiles the site. Never many short calls: they starve it.
     let deadline = ((date now) + 90sec)
     mut setup: any = {status: 0, body: null}
+    let asked = (date now)
     loop {
       $setup = (request POST $"(site-url)/_emdash/api/setup/dev-bypass($query)" --timeout 5min)
       if $setup.status != 0 or (date now) > $deadline { break }
@@ -244,6 +260,7 @@ export def restart [--empty] {
       $"($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.txt")
       # mise loads this file into the environment; .mcp.json reads EMDASH_MCP_TOKEN from there.
       $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f ($env.RUN_DIR | path join "token-admin.env")
+      ok $"the site answered its setup call ((date now) - $asked | format duration sec) after it was started"
       return
     }
     print --stderr $"  setup answered ($setup.status): ($setup.body | to json --raw)"
@@ -283,7 +300,7 @@ export def open-admin [] { start (admin-url) }
 export def serve [] {
   $env.ASTRO_DEV_BACKGROUND = "1"
   # Plugin discovery uses the hosted registry unless the optional local one is really answering.
-  if (answers $"($env.REGISTRY_URL)/health") { $env.EMDASH_REGISTRY_URL = $env.REGISTRY_URL }
+  if (answers $"(registry-url)/health") { $env.EMDASH_REGISTRY_URL = (registry-url) }
   # Bound to IPv4 on purpose. Astro's default listens on [::1] only, and on Linux `localhost`
   # resolves to 127.0.0.1 first — so the emdash CLI was refused there while curl worked.
   ^pnpm --dir $env.SITE_DIR dev --host 127.0.0.1 --port $env.SITE_PORT
