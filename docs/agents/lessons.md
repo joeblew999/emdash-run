@@ -67,7 +67,8 @@ lesson is enforced by a check, it says so — those cannot regress quietly. The 
   background, or hand it to an agent with a read-only brief, and keep working.
 - **Agents need boundaries.** Give each one the files it may touch and say who owns the running
   site and its port — two flows on port 4321 corrupt each other, and so does a check run while
-  another flow is installing a plugin.
+  another flow is installing a plugin. `verify:template` builds its throwaway project on the
+  checkout's own `SITE_PORT`, and leaves other checkouts' recent throwaway projects alone.
 - **Plans are checkboxes with proofs** (`docs/plans/`). A plan says what was verified and what is a
   guess. When it is done it moves to `done/`; when it is dropped it says why.
 - **Comments say what; docs say why; git says when.**

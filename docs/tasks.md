@@ -271,7 +271,7 @@ Clone or update a reference checkout under .src/ for reading: emdash (the defaul
 
 ## `status`
 
-What is running, and on what: harness, template, EmDash, site, plugins, deployment
+What is running, and on what: harness, template (and the EmDash it was synced from, when that differs), EmDash, site, plugins, deployment
 
 
 - **Usage:** `status [args]…`
@@ -311,7 +311,7 @@ The same verification in a clean Linux container with only git and mise. Needs d
 
 ## `verify:template`
 
-Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data
+Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data and a plugin
 
 
 - **Usage:** `verify:template [args]…`

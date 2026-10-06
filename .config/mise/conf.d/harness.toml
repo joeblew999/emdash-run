@@ -71,7 +71,7 @@ description = "Bring the site up on the current config, seed and plugins — run
 
 [tasks.status]
 extends = "harness"
-description = "What is running, and on what: harness, template, EmDash, site, plugins, deployment"
+description = "What is running, and on what: harness, template (and the EmDash it was synced from, when that differs), EmDash, site, plugins, deployment"
 
 [tasks.report]
 extends = "harness"
@@ -168,7 +168,7 @@ description = "Does this project work on THIS machine? Site up, check, doctor. -
 
 [tasks."verify:template"]
 extends = "harness"
-description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data"
+description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data and a plugin"
 
 [tasks.upgrade-probe]
 extends = "harness"

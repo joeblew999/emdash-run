@@ -2,6 +2,7 @@
 use std/assert
 use lib.nu [split-args wait-for request]
 use plugin.nu
+use site.nu
 
 # Task arguments, as mise hands them over: one shell-quoted string.
 assert equal (split-args "") [] "no arguments"
@@ -21,4 +22,8 @@ let two = (plugin registration ["zeta" "@scope/alpha"])
 assert ($two | str contains 'import local0 from "@scope/alpha";') "plugins are imported in sorted order"
 assert ($two | str contains 'export const sandboxed = [local0, local1];') "every plugin is registered"
 
-print "  ✓ 10 unit tests"
+# Which EmDash a templates commit was synced from.
+assert equal (site synced-from "chore: sync templates from emdash v1.0.1 (#61)") "1.0.1" "the version in a sync commit's subject"
+assert equal (site synced-from "fix a typo") "" "a subject that names no version"
+
+print "  ✓ 12 unit tests"

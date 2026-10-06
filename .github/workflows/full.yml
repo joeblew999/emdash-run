@@ -18,6 +18,8 @@ jobs:
         platform:
           - { name: Cloudflare, run: "verify --full --restore" }
           - { name: Node.js, run: "verify:template starter --full" }
+          # An EmDash upgrade from the previous release: data and a plugin survive it.
+          - { name: Upgrade, run: "verify:template starter-cloudflare --from 1.0.1" }
     name: ${{ matrix.platform.name }} · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

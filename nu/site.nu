@@ -51,6 +51,29 @@ export def source-heads []: nothing -> list<string> {
   | each {|s| $"($s.name)@(^git -C ($env.SRC_DIR | path join $s.name) rev-parse --short HEAD | str trim)" }
 }
 
+# The EmDash release a templates commit was synced from, read from its subject — the templates repo
+# has no tags, and its head can trail EmDash. "" when the subject does not say. Pure — see tests.nu.
+export def synced-from [subject: string]: nothing -> string {
+  $subject | parse --regex 'emdash v(?<version>[0-9][0-9A-Za-z.-]*)' | get -o version.0 | default ""
+}
+
+# One line when the templates checkout is not at the EmDash the site is pinned to, else "".
+export def template-lag []: nothing -> string {
+  if not ($env.TEMPLATES_DIR | path join ".git" | path exists) { return "" }
+  let at = (synced-from (^git -C $env.TEMPLATES_DIR log -1 --format=%s | complete).stdout)
+  if ($at | is-empty) or $at == $env.EMDASH_VERSION { "" } else {
+    $"the templates are synced from EmDash ($at), not ($env.EMDASH_VERSION): upstream does not version them"
+  }
+}
+
+# The EmDash source at exactly the version the site is pinned to, fetched when it is not. Returns
+# its directory. The skills and the updating notes for a version are read from here.
+export def emdash-source []: nothing -> string {
+  let pkg = ($env.EMDASH_DIR | path join "packages" "core" "package.json")
+  if not (($pkg | path exists) and (open $pkg | get version) == $env.EMDASH_VERSION) { clone-source emdash }
+  $env.EMDASH_DIR
+}
+
 # The site is the project's own: `site/`, made ONCE from the template and edited freely after that —
 # pages, layouts, config, seed. The harness never overwrites it. (Template updates are yours to
 # merge; `mise run source -- templates` keeps the current one under .src/ to compare against.)
@@ -64,6 +87,8 @@ export def create [] {
   # The template links .claude/skills to .agents/skills; this repo allows no symlinks.
   for link in (files-in $env.SITE_DIR "**/*" | where {|f| ($f | path type) == "symlink" }) { rm $link }
   ok $"site/ ← the ($env.TEMPLATE) template — it is yours now"
+  let lag = (template-lag)
+  if ($lag | is-not-empty) { print $"    ⚠ ($lag)" }
 }
 
 # Pin EmDash to EMDASH_VERSION and install. Run by setup, and by dev when the version changes.
@@ -124,7 +149,33 @@ export def sync-version []: nothing -> bool {
     print $"    to go back: set EMDASH_VERSION to ($have), put that file back, run mise run dev — both, together"
   }
   install
+  what-changed $have
   true
+}
+
+# What an upgrade does not do for you, said before it bites: EmDash's own notes on the releases
+# crossed, and the template files — an update changes packages only, and site/ is the project's.
+def what-changed [from: string] {
+  let notes = "docs/src/content/docs/deployment/updating.mdx"
+  let src = (emdash-source)
+  print $"    releases:  ($env.EMDASH_REPO)/compare/emdash@($from)...emdash@($env.EMDASH_VERSION)"
+  # The older tag is fetched beside the checkout, shallow; the diff is between the two trees.
+  let older = (^git -C $src fetch --quiet --depth 1 origin $"refs/tags/emdash@($from)" | complete)
+  let diff = (if $older.exit_code == 0 { ^git -C $src diff --unified=0 FETCH_HEAD HEAD -- $notes | complete } else { $older })
+  let added = ($diff.stdout | lines | where {|l| ($l | str starts-with "+") and (not ($l | str starts-with "+++")) } | each {|l| $l | str substring 1.. } | where {|l| $l | str trim | is-not-empty })
+  if $diff.exit_code != 0 {
+    print $"    EmDash's updating notes could not be compared — read .src/emdash/($notes)"
+  } else if ($added | is-empty) {
+    print "    EmDash's updating notes did not change between the two — nothing new is asked of you"
+  } else {
+    print $"    EmDash's updating notes gained ($added | length) lines — in full: .src/emdash/($notes)"
+    for line in ($added | first 30) { print $"      │ ($line)" }
+  }
+  clone-source templates
+  let lag = (template-lag)
+  if ($lag | is-not-empty) { print $"    ⚠ ($lag)" }
+  print "    site/ is yours and was not touched. To adopt a template change, compare a file with it:"
+  print $"      git diff --no-index .src/templates/($env.TEMPLATE)/astro.config.mjs site/astro.config.mjs"
 }
 
 # Does the project's site config load local plugins? plugin:new needs it to.

@@ -21,7 +21,7 @@ def refresh [] {
   plugin sweep build
   plugin link
   plugin require-consistent
-  checks sync-skills
+  checks sync-skills (site emdash-source)
   step "restart the site"
   let fresh = (not (has-devdb))
   site restart
@@ -60,7 +60,8 @@ def "main status" [] {
   let plugins = (plugin dirs | each {|p| $p | path basename })
   let live = (setting DEPLOY_URL)
   print $"  harness   ($env.HARNESS_VERSION)"
-  print $"  template  ($env.TEMPLATE)"
+  let lag = (site template-lag)
+  print $"  template  ($env.TEMPLATE)(if ($lag | is-empty) { '' } else { $' — ($lag)' })"
   print $"  emdash    (if ($installed | path exists) { open $installed | get version } else { 'not installed — run: mise run setup' })"
   print $"  site      (if $site_up { $'running at (site-url)' } else { 'stopped — run: mise run dev' })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
@@ -113,7 +114,7 @@ def "main check" [--fix, --site] {
     {check: "mise accepts the task definitions", problems: ((if (^mise tasks validate | complete).exit_code == 0 { [] } else { ["mise rejects a task definition — run: mise tasks validate"] }))}
     {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
     {check: "docs/tasks.md matches the tasks", problems: (if (checks docs-current) { [] } else { ["out of date — run: mise run check -- --fix"] })}
-    {check: "vendored EmDash skills match the site's", problems: (if (checks skills-current) { [] } else { ["drifted — run: mise run dev"] })}
+    {check: "vendored EmDash skills match the site's EmDash", problems: (if (checks skills-current) { [] } else { ["drifted — run: mise run dev"] })}
     {check: "no symlinks", problems: (checks symlinks)}
     {check: "plugins are consistent", problems: (plugin audit)}
     {check: "plugin code lints", problems: (if ($paths | is-empty) { [] } else { passes { lint --type-aware --deny-warnings ...$paths } })}
@@ -402,13 +403,15 @@ def "main verify" [--full, --restore] {
 
 # Does the harness work for a project on ANOTHER template? Builds a throwaway project from this
 # checkout's harness with that template and runs `verify` in it. This is how the Node.js path is
-# proven from a repo whose own project is on Cloudflare — CI runs it with `starter`.
+# proven from a repo whose own project is on Cloudflare — CI runs it with `starter`. --from <version>
+# proves an EmDash upgrade instead: data and a plugin made on the older version survive the move.
 def "main verify template" [template: string, --full, --from: string] {
   # A fresh directory every time: on Windows a just-stopped site can still hold its files open,
   # so neither reusing nor deleting a previous run's directory is safe.
   let scratch = ($nu.temp-dir | path join "emdash-run-verify")
-  # Earlier runs' directories, best effort: Windows may still hold one open.
-  if ($scratch | path exists) { for old in (ls $scratch | get name) { try { rm -rf $old } } }
+  # Earlier runs' directories, best effort: Windows may still hold one open. Only old ones — a
+  # recent one may be another checkout's run, still going.
+  if ($scratch | path exists) { for old in (ls $scratch | where modified < ((date now) - 6hr) | get name) { try { rm -rf $old } } }
   let dir = ($scratch | path join $"($template)-(random chars --length 6)")
   let was_running = (daemon-running $env.SITE_DAEMON)
   mkdir ($dir | path join ".config" "mise" "conf.d")
@@ -418,20 +421,24 @@ def "main verify template" [template: string, --full, --from: string] {
     | str replace --regex 'TEMPLATE = "[^"]*"' $"TEMPLATE = \"($template)\""
     | save ($dir | path join "mise.toml"))
   ^git init --quiet $dir
-  # Both sites want the same port, so ours steps aside for the duration.
+  # The throwaway site takes this checkout's port, so ours steps aside for the duration.
+  $"[env](char nl)SITE_PORT = \"($env.SITE_PORT)\"(char nl)" | save ($dir | path join "mise.local.toml")
   if $was_running { daemon-stop $env.SITE_DAEMON }
   let rc = (code {
     cd $dir
     ^mise trust --all --quiet
     ^mise fmt
     if $from != null {
-      # An upgrade: come up on the older EmDash, mark an entry, move to this version, find the mark.
+      # An upgrade: come up on the older EmDash with a plugin, mark an entry, move to this version,
+      # then find the mark and have the site call the plugin.
       ^mise set $"EMDASH_VERSION=($from)"
       ^mise run setup
+      ^mise run plugin:new -- upgraded
       ^mise run upgrade-probe -- mark
       ^mise set $"EMDASH_VERSION=($env.EMDASH_VERSION)"
       ^mise run dev
       ^mise run upgrade-probe -- find
+      ^mise run plugin:probe -- upgraded
       ^mise run doctor
     } else if $full { ^mise run verify -- --full --restore } else { ^mise run verify }
   })
