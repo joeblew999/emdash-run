@@ -980,16 +980,17 @@ run = """
 # interpolated-string bug at commit time: `(s)` reads as a variable, so `problem(s)` is a static
 # "Variable not found" instead of a failure at 2am.
 let cfg = (open $"($env.ROOT)/mise.toml")
+# One scratch file, cleared first and removed at the end — an earlier version wrote one file per
+# body and left 116 of them behind on every run.
 let scratch = $"($env.RUN_DIR)/nucheck"
+rm -rf $scratch
 mkdir $scratch
+let file = $"($scratch)/body.nu"
 mut problems = []
 mut checked = 0
-mut index = 0
 for name in ($cfg.tasks | columns) {
   let body = ($cfg.tasks | get $name | get -o run)
   if ($body | is-empty) { continue }
-  $index = $index + 1
-  let file = $"($scratch)/($index).nu"
   $body | save --force $file
   let found = (
     ^nu --ide-check 200 $file
@@ -1005,6 +1006,7 @@ for name in ($cfg.tasks | columns) {
   }
   $checked = $checked + 1
 }
+rm -rf $scratch
 if ($problems | is-not-empty) {
   print $"✗ nushell rejected ($problems | length) of ($checked) task bodies:"
   for problem in $problems { print $"  - ($problem)" }
@@ -1060,10 +1062,13 @@ let sync = $env.LAST_EXIT_CODE
 print "→ repo:nu (every task body parses and type-checks)"
 ^mise run repo:nu
 let nucheck = $env.LAST_EXIT_CODE
+print "→ mise tasks validate (mise's own checks on the task definitions)"
+^mise tasks validate
+let tasks_ok = $env.LAST_EXIT_CODE
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $sync $nucheck] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck $tasks_ok] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]

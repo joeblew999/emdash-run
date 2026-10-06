@@ -29,6 +29,7 @@ machine.
 |---|---|
 | `mise run check` | everything before a commit; composes the rest |
 | `mise run repo:nu` | **nushell's own checker** over every task body |
+| `mise tasks validate` | mise's own checks on the task definitions (composed into `repo:check`) |
 | `mise run repo:sync` | a daemon in `pitchfork.toml` naming a task that does not exist |
 | `mise run doctor` | the live state: site database, plugin consistency, `repo:verify` |
 | `mise run site:check` | the site type-checks, including that `astro.config.mjs` loads |
@@ -43,6 +44,11 @@ It has already caught, in tasks that had never been run:
 - `&&` — **not a nushell operator**;
 - a command wrapped across two lines — **a parse error**;
 - `let nu = …` — `nu` is not a usable variable name.
+
+**What none of them check: `usage` specs.** mise validates a usage spec only when the task is
+invoked, so a malformed one fails at *use*, not at check time — `mise tasks ls`, `mise tasks info`
+and `mise tasks validate` all accept a broken spec (verified). Keep usage specs simple, and treat
+the first invocation of a task you just wrote as the check.
 
 ## mise facts that are not obvious
 
