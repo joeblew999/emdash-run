@@ -295,7 +295,7 @@ numbers did not survive.
 | W2 | `mint-token` in `nu/site.nu` — session cookie, list tokens, delete, create | A token is shown once | **Yes.** `POST …/setup/dev-bypass?token=1` returns a fresh `admin` token and drops the old one (`dev-bypass.ts:146-168`) |
 | W3 | `devdb` in `nu/lib.nu` — finds Miniflare's D1 file under `.wrangler/state/v3/d1/` | `seed`, `export-seed`, `doctor` only open a SQLite file | No. EmDash's own docs reach local D1 through `wrangler d1 execute --local` (`docs:deployment/core-migrations.mdx:209-213`). The path is Miniflare's, not a contract |
 | W4 | `fit` in `nu/plugin.nu` — rewrites the scaffold's `emdash` and `plugin-test` versions, removes links | The scaffold asks for `emdash >=0.12.0 <1.0.0` and `plugin-test ^0.1.0` (`pkg:plugin-cli/src/init/templates.ts:255-261`) | No — [upstream](#to-report-upstream). The links have no off switch (`pkg:plugin-cli/src/init/scaffold.ts:101-105,228-251`) |
-| W5 | `link` in `nu/plugin.nu` — copies each plugin into the site's `node_modules` | The repo allows no symlinks | The documented way is `pnpm add file:../plugin` in the site (`docs:plugins/creating-plugins/your-first-plugin.mdx:184-188`). Whether that suits Windows and the no-symlink rule is [unverified](#unverified) |
+| W5 | `link` in `nu/plugin.nu` — copies each plugin into the site's `node_modules` | The repo allows no symlinks | The documented way is `pnpm add file:../plugin` in the site (`docs:plugins/creating-plugins/your-first-plugin.mdx:184-188`). **Tried on macOS, 2026-10-06, and not adopted.** Neither `file:` nor `link:` leaves a symlink outside `node_modules`, but both write the plugin into `site/package.json` and `site/pnpm-lock.yaml`, which are committed — so adding and removing a plugin would each become a `pnpm` call that edits the project's files. `file:` hard-links the plugin's files into the store: a rebuild that rewrites a file in place shows through, a file it adds or removes does not until the next `pnpm install`. `link:` follows rebuilds, but the plugin then resolves its own `node_modules/emdash` instead of the site's. The copy is ten lines and touches nothing committed |
 | W6 | `clone-templates` + `copy-template` in `nu/site.nu` | — | `pnpm create emdash … --template cloudflare:starter --yes --no-install` does it, and also writes the encryption key (`pkg:create-emdash/src/flags.ts:258-290`). It fetches the same unpinned branch |
 | W7 | `enable-local-plugins` in `nu/site.nu` — string edits to the config | Templates ship without a sandbox runner | Only the `wrangler.jsonc` half: `create-emdash --sandboxed-plugins` (`pkg:create-emdash/src/utils.ts:126-162`) |
 | W8 | `emdash-json` in `nu/lib.nu` scans stdout for the line where JSON starts | It once saw progress lines before the payload | Not needed at 1.1.0: with `--json` or a pipe, everything but the result goes to stderr (`core:cli/output.ts:13-19`). Ran: stdout starts with `[` / `{`. Harmless |
@@ -325,10 +325,12 @@ numbers did not survive.
   `schema.ts:27-29`). The real exit-0 cases are [upstream](#to-report-upstream).
 - **A4 — `registry:up` "points the site at it".** `serve` (`nu/site.nu`) sets `EMDASH_REGISTRY_URL`
   for the dev server. Core does not read that variable; only the plugin CLI does
-  (`pkg:plugin-cli/src/config.ts:39`). It works in this repo only because
-  `config/site.astro.config.mjs` passes it to `registry:` by hand. A config made from a template has
-  no `registry:` line (`tpl:starter-cloudflare/astro.config.mjs`), so there `registry:up` changes
-  nothing.
+  (`pkg:plugin-cli/src/config.ts:39`), and a template's config has no `registry:` line
+  (`tpl:starter-cloudflare/astro.config.mjs`). **Fixed:** `registry:up` writes
+  `registry: process.env.EMDASH_REGISTRY_URL,` into `site/astro.config.mjs` — unset, EmDash falls
+  back to its hosted default (`core:registry/config.ts:16-27`) — and fails unless the site's
+  manifest then names the local registry. Run on a pristine `starter-cloudflare` config: the
+  admin's Registry page fetched `…/xrpc/…aggregator.searchPackages` from the local aggregator.
 - **A5 — A fresh project gets the Worker Loader switched on** (`configure` calls
   `enable-local-plugins` when `config/` is new). EmDash ships it off because it needs the Workers
   Paid plan (`docs:deployment/plugin-sandbox.mdx:23`). What a free-plan deploy does with the
@@ -513,10 +515,10 @@ relation to the version they are moving to. Ask: tag the templates repo per rele
 - What Cloudflare does when a free-plan account deploys a `worker_loaders` binding (A5).
 - ~~Whether the `emdash-cms/templates` and `emdash-cms/skills` repos carry release tags.~~ Ran
   `git ls-remote --tags --refs` on both, 2026-10-06: neither has any.
-- Whether `pnpm add file:` for a local plugin works on Windows and under the no-symlink rule (W5).
 - Whether `--url` must come last for `emdash site import` (A2).
 - Anything about Astro or Vite that `nu/` works around — `ASTRO_DEV_BACKGROUND`, clearing
   `node_modules/.vite`, binding `127.0.0.1`. Those are not EmDash's and were not checked.
-- The registry flow (`registry:up`): the aggregator's routes and its `.env` were not read.
+- The registry flow (`registry:up`) on a Node.js template, and on Linux or Windows: run on macOS
+  with `starter-cloudflare` only.
 - Whether the Cloudflare template needs a `SESSION` KV namespace declared. This project's
   `wrangler.jsonc` has one; the template has none.

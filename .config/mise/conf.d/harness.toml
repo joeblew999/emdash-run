@@ -43,8 +43,7 @@ EMDASH_REPO = "https://github.com/emdash-cms/emdash"
 # sites run side by side — which is what lets several people, or agents, work at once.
 SITE_PORT = "4321"
 SITE_DAEMON = "site"
-REGISTRY_URL = "http://localhost:8788"
-REGISTRY_PORT = "8788"
+REGISTRY_PORT = "8788" # the optional local plugin registry's — overridable the same way
 # The site's own emdash CLI on PATH, so the CLI and the site cannot drift apart.
 _.path = ["{{config_root}}/site/node_modules/.bin"]
 # The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.

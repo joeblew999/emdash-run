@@ -69,7 +69,7 @@ def "main status" [] {
   print $"  site      (if $site_up { $'running at (site-url)' } else { 'stopped — run: mise run dev' })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
   print $"  sources   (site source-heads | str join ', ')"
-  print $"  registry  (if (answers $'($env.REGISTRY_URL)/health') { $'local, at ($env.REGISTRY_URL)' } else { 'hosted' })"
+  print $"  registry  (if (answers $'(registry-url)/health') { $'local, at (registry-url)' } else { 'hosted' })"
   print $"  deployed  (if ($live | is-empty) { 'no DEPLOY_URL set' } else if (answers $live) { $'($live) answers' } else { $'($live) does not answer' })"
 }
 
@@ -225,7 +225,7 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     # Empty: a site that already has entries cannot receive a package.
     site restart --empty
   }
-  let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json | complete })
+  let analysis = (do { cd $env.SITE_DIR; with-env (cli-target) { ^emdash site import $pkg --analyze --json | complete } })
   if $analysis.exit_code != 0 {
     fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
   }
@@ -329,18 +329,26 @@ def "main seed export" [] {
 
 # Start the local plugin registry and point the site at it. Builds the EmDash monorepo the first time.
 def "main registry up" [] {
+  let line = "registry: process.env.EMDASH_REGISTRY_URL,"
+  if not (site enable-local-registry) {
+    fail "site/astro.config.mjs passes no registry to EmDash, and is not shaped like a template's" $"add to its emdash\({ … }) options, beside a sandboxRunner:  ($line)"
+  }
   step "prepare the registry"
   registry prepare
   ^mise daemons start registry
-  if not (wait-for $"($env.REGISTRY_URL)/health" 120) {
+  if not (wait-for $"(registry-url)/health" 120) {
     print --stderr (daemon-log registry)
     fail "the registry did not answer within 120s" "its last log lines are above"
   }
-  # A fresh registry is empty: ingest published plugins, then build the projection reads go through.
+  step "fill the registry from the published plugins — the label replay takes a few minutes"
   registry admin "/_admin/backfill"
   registry admin "/_admin/labels/replay"
   site restart
-  ok $"registry at ($env.REGISTRY_URL) — the site now discovers plugins from it"
+  # EmDash tells its admin which registry to ask; that is the one the site uses.
+  let token = (open --raw ($env.RUN_DIR | path join "token-admin.txt") | str trim)
+  let used = (request GET $"(site-url)/_emdash/api/manifest" --headers {Authorization: $"Bearer ($token)"} | get -o body.data.registry.aggregatorUrl | default "none")
+  if $used != (registry-url) { fail $"the registry is up at (registry-url), but the site uses ($used)" $"site/astro.config.mjs must hold:  ($line)" }
+  ok $"registry at (registry-url) — the site now discovers plugins from it"
 }
 
 # Stop the local registry and point the site back at the hosted one.
@@ -416,7 +424,6 @@ def "main verify template" [template: string, --full, --from: string] {
   # recent one may be another checkout's run, still going.
   if ($scratch | path exists) { for old in (ls $scratch | where modified < ((date now) - 6hr) | get name) { try { rm -rf $old } } }
   let dir = ($scratch | path join $"($template)-(random chars --length 6)")
-  let was_running = (daemon-running $env.SITE_DAEMON)
   mkdir ($dir | path join ".config" "mise" "conf.d")
   cp -r ($env.ROOT | path join "nu") ($dir | path join "nu")
   cp (harness-file) ($dir | path join ".config" "mise" "conf.d" "harness.toml")
@@ -424,12 +431,12 @@ def "main verify template" [template: string, --full, --from: string] {
     | str replace --regex 'TEMPLATE = "[^"]*"' $"TEMPLATE = \"($template)\""
     | save ($dir | path join "mise.toml"))
   ^git init --quiet $dir
-  # The throwaway site takes this checkout's port, so ours steps aside for the duration.
-  $"[env](char nl)SITE_PORT = \"($env.SITE_PORT)\"(char nl)" | save ($dir | path join "mise.local.toml")
-  if $was_running { daemon-stop $env.SITE_DAEMON }
   let rc = (code {
     cd $dir
     ^mise trust --all --quiet
+    # A port of its own, free right now, so it runs beside this site and anyone else's.
+    let free = (port)
+    ^mise set $"SITE_PORT=($free)"
     ^mise fmt
     if $from != null {
       # An upgrade: come up on the older EmDash with a plugin, mark an entry, move to this version,
@@ -446,7 +453,6 @@ def "main verify template" [template: string, --full, --from: string] {
     } else if $full { ^mise run verify -- --full --restore } else { ^mise run verify }
   })
   do { cd $dir; ^mise daemons stop --all | complete | ignore }
-  if $was_running { ^mise daemons start $env.SITE_DAEMON }
   if $rc != 0 { fail $"the harness does not verify on the ($template) template" $"the project is left in ($dir)" }
   try { rm -rf $dir }
   print $"✓ the harness works on the ($template) template"

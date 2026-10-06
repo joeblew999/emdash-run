@@ -20,13 +20,14 @@ export def prepare [] {
 # crashes on Durable Object SQLite.
 export def serve [] { cd (aggregator); ^pnpm exec wrangler dev --port $env.REGISTRY_PORT }
 
-# POST to one of the aggregator's admin routes with its dev token.
+# POST to one of the aggregator's admin routes with its dev token. The label replay answers only
+# when it has fetched every label from the hosted labeler — 171s when measured — hence the limit.
 export def admin [route: string] {
   let token = (
     open --raw (aggregator | path join ".env") | lines | where {|l| $l | str starts-with "ADMIN_TOKEN=" }
     | get -o 0 | default "" | str replace "ADMIN_TOKEN=" ""
   )
   if ($token | is-empty) { fail "the registry has no ADMIN_TOKEN in its .env" }
-  let res = (request POST $"($env.REGISTRY_URL)($route)" --headers {authorization: $"Bearer ($token)"} --timeout 60sec)
+  let res = (request POST $"(registry-url)($route)" --headers {authorization: $"Bearer ($token)"} --timeout 10min)
   if not ($res.status in 200..299) { fail $"the registry refused ($route): status ($res.status)" }
 }

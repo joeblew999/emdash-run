@@ -22,6 +22,9 @@ export def code [block: closure]: nothing -> int {
 # SITE_PORT in mise.local.toml must get a URL that follows it.
 export def site-url []: nothing -> string { $"http://localhost:($env.SITE_PORT)" }
 
+# Where the optional local plugin registry answers. It follows REGISTRY_PORT the same way.
+export def registry-url []: nothing -> string { $"http://localhost:($env.REGISTRY_PORT)" }
+
 # The harness-owned mise config: tools, tasks, daemons.
 export def harness-file []: nothing -> string { $env.ROOT | path join ".config" "mise" "conf.d" "harness.toml" }
 
@@ -91,10 +94,16 @@ export def version-set [version?: string]: nothing -> record {
   $set
 }
 
+# What the emdash CLI talks to: the deployment in EMDASH_URL, else THIS checkout's site. Left to
+# itself the CLI asks port 4321 — with SITE_PORT moved, that is nobody, or somebody else's site.
+export def cli-target []: nothing -> record {
+  {EMDASH_URL: (if (setting EMDASH_URL | is-empty) { site-url } else { $env.EMDASH_URL })}
+}
+
 # The emdash CLI, run where it must be run: in the site, which is its project root.
 export def --wrapped emdash [...args: string] {
   cd $env.SITE_DIR
-  ^emdash ...$args
+  with-env (cli-target) { ^emdash ...$args }
 }
 
 # Run an emdash command and return its JSON, parsed; an error when the command fails or prints
@@ -102,7 +111,7 @@ export def --wrapped emdash [...args: string] {
 # `--url` do exactly that.
 export def emdash-json [...args: string]: nothing -> any {
   let full = ($args | append "--json")
-  let result = (do { cd $env.SITE_DIR; ^emdash ...$full | complete })
+  let result = (do { cd $env.SITE_DIR; with-env (cli-target) { ^emdash ...$full | complete } })
   # With --json the CLI writes only JSON to stdout (progress goes to stderr) and exits non-zero on error.
   if $result.exit_code != 0 or ($result.stdout | str trim | is-empty) {
     error make {msg: $"emdash ($full | str join ' ') failed: ($result.stderr | str trim) ($result.stdout | str trim)"}
@@ -157,7 +166,24 @@ export def daemon-running [name: string]: nothing -> bool {
   $listed.stdout | from json | any {|d| $d.name == $name and $d.status == "running" }
 }
 
-export def daemon-stop [name: string] { ^mise daemons stop $name | complete | ignore }
+# Is something listening on the port? Asked by trying to take it — true whoever holds it.
+export def port-taken [number: int]: nothing -> bool { try { port $number $number; false } catch { true } }
+
+# Stop a daemon, and return only once it is gone: not running, and its port free. "Stopped" alone
+# is not enough — on Linux `mise run` puts the server in a process group of its own, so pitchfork
+# reports the daemon stopped while the server is still shutting down, and a start that follows
+# comes up beside the old one instead of replacing it. Stopping one that is not running is fine.
+export def daemon-stop [name: string] {
+  ^mise daemons stop $name | complete | ignore
+  let number = (if $name == $env.SITE_DAEMON { $env.SITE_PORT } else { $env.REGISTRY_PORT } | into int)
+  let deadline = ((date now) + 30sec)
+  while (daemon-running $name) or (port-taken $number) {
+    if (date now) > $deadline {
+      fail $"the ($name) daemon was stopped, but port ($number) is still taken after 30s" "another program may hold it — give this checkout its own port in mise.local.toml, or see: mise daemons status"
+    }
+    sleep 250ms
+  }
+}
 
 # Run a block with the dev server stopped, then put it back — whatever the block did. Anything that
 # re-runs the Vite optimizer in the site (a production build, astro check) breaks a running server.

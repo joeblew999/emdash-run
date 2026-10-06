@@ -39,6 +39,10 @@ lesson is enforced by a check, it says so — those cannot regress quietly. The 
 
 - **Nothing waits without a limit.** A readiness wait with no timeout hung a release for fifteen
   minutes. Use `wait-for`. *Enforced by test.*
+- **"Stopped" is not "gone".** On Linux `mise run` gives the server a process group of its own, so
+  `mise daemons stop` returned in 0.02s with the daemon marked stopped while a process slow to exit
+  lived four more seconds; a start in that window meets the old server. On macOS the same stop
+  waits. `daemon-stop` waits until the port is free.
 - **Every optional setting has an empty default in `harness.toml`.** Otherwise a project inherits
   another project's value from the shell that ran the task — one built its site with the wrong seed.
 - **`EMDASH_TOKEN`, `EMDASH_REGISTRY_URL` are unset on purpose.** A stale value in an old shell

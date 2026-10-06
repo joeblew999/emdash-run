@@ -12,9 +12,25 @@
   not the template's older copy. `dev` fetches `.src/emdash` when it is not at that version.
 - `verify:template -- <template> --from <version>` now also scaffolds a plugin on the old version
   and has the upgraded site call it.
-- `verify:template` runs its throwaway project on the checkout's own `SITE_PORT`, and no longer
-  deletes another checkout's throwaway project that is still running — both collided when several
-  checkouts verified at once.
+- **`registry:up` really points the site at the local registry.** EmDash takes its registry from
+  the site config, not from the environment, and a template's config names none — so the task
+  started the registry and the site went on using the hosted one. It now adds
+  `registry: process.env.EMDASH_REGISTRY_URL,` to `site/astro.config.mjs` (once; unset, EmDash uses
+  its hosted default), and fails unless the running site then reports the local registry.
+- **`REGISTRY_PORT`** (default 8788) moves the local registry the way `SITE_PORT` moves the site.
+  `REGISTRY_URL` is gone; it was derived from the port and did not follow an override.
+- **A restart restarts, on Linux too.** There `mise daemons stop` can report the site stopped while
+  the server is still shutting down, and a start in that moment meets the old one. Stopping now
+  waits, up to 30 seconds, until the port is free — and says so if something else holds it.
+- **The CLI follows `SITE_PORT`.** With the port moved, `doctor`, `snapshot`, `restore`,
+  `content:set` and `mise run emdash -- …` still asked port 4321 — nobody, or another checkout's
+  site. They ask this checkout's site now.
+- `registry:up` gives the registry's label replay the minutes it takes; at 60 seconds it failed on a
+  fresh registry.
+- `verify:template` gives its throwaway project a free port, so it runs beside your site instead of
+  stopping it, and no longer deletes another checkout's throwaway project that is still running —
+  both collided when several checkouts verified at once.
+- `dev` prints how long the site took to answer its setup call.
 
 ## 0.6.1 — 2026-10-06
 
