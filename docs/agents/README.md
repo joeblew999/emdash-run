@@ -37,9 +37,11 @@ whether it makes the harness more reusable or more trustworthy.
   the harness runs are the ones mise installs, the site's own `emdash`, plus git and docker — the
   `PORTABLE` list in `nu/checks.nu` — and `check` fails on any other. Do not say a platform
   works until `mise run verify` has run on it; CI runs it on all three.
-- **CI is not a second system.** `.github/workflows/verify.yml` installs mise and runs
-  `mise run check`, `mise run verify` and `mise run verify:template starter` — the same commands a
-  dev runs locally. Never add a CI-only step.
+- **CI is not a second system, and not the test loop.** Verify locally: `mise run check`, then
+  `mise run verify -- --full`, `verify:template -- starter --full` for Node.js, `verify:linux` for a
+  clean Linux. A push runs only `mise run check` on the three OSes. The full matrix — every OS,
+  both platforms, the installers — runs on a release tag. Push once per finished piece of work, not
+  per commit, and never add a CI-only step.
 - **No symlinks.** git writes the target path into a file on Windows. Copy instead; `check` fails
   on one.
 - **Comments say what; docs say why.** A comment is a line or three. History goes in git.

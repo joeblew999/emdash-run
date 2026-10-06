@@ -100,7 +100,7 @@ development needs neither.
 **Something broke?** `mise run report` prints your versions, status and recent site log — paste it
 into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
 
-## Fully verified — on every push to main, and before every release
+## Fully verified — before every release
 
 [![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
 
@@ -122,9 +122,8 @@ run on your laptop** — no CI-only scripts — and a release is published **onl
 Deploying to a live Cloudflare account is not in CI — it needs credentials. `deploy` and `rollback`
 each end in a `doctor` pass on the deployment.
 
-- **On every push to main and every pull request** ([`verify`](.github/workflows/verify.yml)):
-  `check` answers in under a minute per OS, with the site verifications in parallel beside it.
-  Changes that touch only docs are skipped.
+- **On every push and pull request** ([`verify`](.github/workflows/verify.yml)): `mise run check`
+  on all three OSes — seconds. It is what catches a portability slip.
 - **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
   above, 12 verification jobs, plus one that packages the tarball. The release is created by that
   workflow's last job — which only runs if all of them pass.
