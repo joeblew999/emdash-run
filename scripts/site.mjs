@@ -134,15 +134,8 @@ switch (sub) {
 	case "install":
 		install();
 		break;
-	case "dev":
-		run("pnpm", ["dev"], { cwd: SITE_DIR });
-		break;
-	case "logs":
-		run("pitchfork", ["logs", "emdash", "--follow"]);
-		break;
-	case "open":
-		sh(`open '${env("SITE_URL")}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'`);
-		break;
+	// site:dev, site:logs and site:open are inline in mise.toml now — they were one-liners that
+	// this script only relayed to pnpm, pitchfork and `open`.
 	case "check": {
 		const { siteCheck } = await import("./lib/check.mjs");
 		siteCheck();

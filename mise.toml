@@ -146,12 +146,31 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # -----------------------------------------------------------------------------
 
 [tasks."src:clone-templates"]
-description = "Clone/update emdash-cms/templates into .src/templates"
-run = "node \"$ROOT/scripts/src.mjs\" clone-templates"
+description = "Clone or update emdash-cms/templates into .src/templates"
+run = """
+mkdir -p "$SRC_DIR"
+if [ -d "$TEMPLATES_DIR/.git" ]; then
+  git -C "$TEMPLATES_DIR" fetch --depth 1 origin main
+  git -C "$TEMPLATES_DIR" checkout -q FETCH_HEAD
+else
+  git clone --depth 1 "$TEMPLATES_REPO" "$TEMPLATES_DIR"
+fi
+echo "  ✓ templates @ $(git -C "$TEMPLATES_DIR" rev-parse --short HEAD)"
+"""
 
 [tasks."src:clone-emdash"]
-description = "Clone the emdash monorepo (shallow, tag emdash@$EMDASH_VERSION) into .src/emdash — on demand"
-run = "node \"$ROOT/scripts/src.mjs\" clone-emdash"
+description = "Clone or update the emdash monorepo at tag emdash@$EMDASH_VERSION into .src/emdash — on demand"
+run = """
+mkdir -p "$SRC_DIR"
+TAG="emdash@$EMDASH_VERSION"
+if [ -d "$EMDASH_DIR/.git" ]; then
+  git -C "$EMDASH_DIR" fetch --depth 1 origin "refs/tags/$TAG"
+  git -C "$EMDASH_DIR" checkout -q FETCH_HEAD
+else
+  git clone --depth 1 --branch "$TAG" "$EMDASH_REPO" "$EMDASH_DIR"
+fi
+echo "  ✓ emdash @ $TAG → $EMDASH_DIR"
+"""
 
 # -----------------------------------------------------------------------------
 # SITE (host site = official template copy, runs on :4321)
@@ -194,7 +213,8 @@ run = "echo '✓ setup done — run: mise run repo:init'"
 
 [tasks."site:dev"]
 description = "Run the site dev server on :4321 — called by pitchfork, do not run directly"
-run = "node \"$ROOT/scripts/site.mjs\" dev"
+dir = "{{config_root}}/.src/site"
+run = "pnpm dev"
 
 # Astro 7 auto-backgrounds itself when it detects an agent / non-TTY parent
 # (`isRunByAgent()`), which makes it exit and orphans the server so pitchfork cannot
@@ -206,11 +226,11 @@ ASTRO_DEV_BACKGROUND = "1"
 
 [tasks."site:logs"]
 description = "Follow live site logs"
-run = "node \"$ROOT/scripts/site.mjs\" logs"
+run = "pitchfork logs emdash --follow"
 
 [tasks."site:open"]
 description = "Open admin UI in browser via dev-bypass (runs migrations + seed; skips passkey auth)"
-run = "node \"$ROOT/scripts/site.mjs\" open"
+run = "open '$SITE_URL/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin'"
 
 [tasks."site:check"]
 description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs. Stops and restarts the site"
@@ -249,6 +269,53 @@ run = "node \"$ROOT/scripts/repo.mjs\" init"
 description = "Apply config + restart the site + refresh token — run after every change"
 depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync", "mise:check"]
 run = "node \"$ROOT/scripts/repo.mjs\" apply"
+
+# ── COMPOSED WORKFLOWS ──────────────────────────────────────────────────────────────
+# The CLI gives one-shot commands; these are the jobs a developer actually does, each
+# composed from several of them. The point of this file is that `mise run <task>` is the
+# whole job — not a relay of one CLI call, which the CLI already does better.
+
+[tasks."check"]
+description = "Everything that must pass before a commit — lint, format, tests, plugin checks, mapping"
+depends = ["repo:check", "mise:check", "repo:test", "plugin:typecheck", "plugin:audit"]
+
+[tasks."check:deployed"]
+description = "The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)"
+run = """
+set -e
+echo "→ core migrations"
+mise run site:migrate
+echo "→ content model: repo vs deployed"
+mise run seed:from-remote
+echo "→ content, the model_id join, and snapshot drift"
+mise run repo:verify
+"""
+
+[tasks."release"]
+description = "Everything a sandboxed-plugin release needs — audit + typecheck, then validate, build, bundle"
+depends = ["plugin:audit", "plugin:typecheck"]
+run = "mise run plugin:validate && mise run plugin:build && mise run plugin:bundle"
+
+[tasks."content:set"]
+description = "Set fields on a live entry: read its rev, update, print the result"
+usage = """
+arg "<collection>" help="Collection slug, e.g. parts"
+arg "<entry>" help="Entry id or slug"
+arg "<json>" help="Data to set, as a JSON object"
+"""
+run = """
+set -e
+COLLECTION="$usage_collection"; ENTRY="$usage_entry"; DATA="$usage_json"
+REV=$(mise run emdash:content -- get "$COLLECTION" "$ENTRY" --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(j._rev||"")})')
+if [ -z "$REV" ]; then echo "✗ no _rev for $COLLECTION/$ENTRY"; exit 1; fi
+echo "→ $COLLECTION/$ENTRY rev=$REV"
+mise run emdash:content -- update "$COLLECTION" "$ENTRY" --rev="$REV" --data "$DATA"
+echo "✓ updated"
+"""
+
+[tasks."schema:diff"]
+description = "Diff the repo's content model against a live instance (set EMDASH_URL for a deployment)"
+run = "mise run seed:from-remote"
 
 [tasks."repo:urls"]
 description = "Print every URL this project serves"

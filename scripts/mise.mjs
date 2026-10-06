@@ -16,14 +16,6 @@ const ROOT = env("ROOT");
 const MISE = `${ROOT}/mise.toml`;
 const sub = process.argv[2];
 
-/** Sections with no script of their own — they call the tool directly. */
-// Empty: every namespace has a matching script. `pitchfork:*` used to be the
-// exception, but those were pure passthroughs to the pitchfork CLI and are gone.
-const NO_SCRIPT = new Set();
-
-const taskNames = () =>
-	[...readFileSync(MISE, "utf8").matchAll(/^\[tasks\."([^"]+)"/gm)].map((match) => match[1]);
-
 function reorder() {
 	const lines = readFileSync(MISE, "utf8").split("\n");
 	const starts = [];
@@ -73,34 +65,32 @@ function reorder() {
 }
 
 function check() {
-	const namespaces = [
-		...new Set(
-			taskNames()
-				.map((name) => name.split(":")[0])
-				.filter((ns, _i, all) => all.includes(ns) && !taskNames().includes(ns)),
-		),
-	];
+	// The rule that matters is not "every namespace has a script" — most tasks should be inline
+	// shell in mise.toml, and only a namespace whose tasks actually CALL a script needs one.
+	// So: a referenced script must exist, and a script must be referenced. Inline tasks are fine.
+	const miseText = readFileSync(MISE, "utf8");
+	const referenced = new Set(
+		[...miseText.matchAll(/scripts\/([A-Za-z0-9_-]+)\.mjs/g)].map((match) => match[1]),
+	);
 	const scripts = readdirSync(`${ROOT}/scripts`, { withFileTypes: true })
 		.filter((entry) => entry.isFile() && entry.name.endsWith(".mjs"))
 		.map((entry) => entry.name.replace(/\.mjs$/, ""));
 
 	const problems = [];
-	for (const ns of namespaces) {
-		if (NO_SCRIPT.has(ns)) continue;
-		if (!scripts.includes(ns)) problems.push(`namespace "${ns}:" has no scripts/${ns}.mjs`);
+	for (const name of referenced) {
+		if (!scripts.includes(name))
+			problems.push(`mise.toml calls scripts/${name}.mjs, which does not exist`);
 	}
 	for (const name of scripts) {
-		if (!namespaces.includes(name)) problems.push(`scripts/${name}.mjs matches no mise namespace`);
+		if (!referenced.has(name)) problems.push(`scripts/${name}.mjs is not called by any task`);
 	}
 
 	if (problems.length > 0) {
-		console.error("mise/scripts mapping is not 1:1:");
+		console.error("mise/scripts mapping is broken:");
 		for (const problem of problems) console.error(`  - ${problem}`);
 		process.exit(1);
 	}
-	console.log(
-		`✓ ${namespaces.length} mise namespaces ↔ scripts/*.mjs (${NO_SCRIPT.size} exception)`,
-	);
+	console.log(`✓ ${scripts.length} scripts, every one referenced by mise.toml`);
 }
 
 if (sub === "reorder") reorder();
