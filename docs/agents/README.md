@@ -43,6 +43,10 @@ whether it makes the harness more reusable or more trustworthy.
 - **Comments say what; docs say why.** A comment is a line or three. History goes in git.
 - **Plugins are scaffolded, not hand-written:** `mise run plugin:new -- <name>`. See
   [`../plugin.md`](../plugin.md).
+- **Releasing is a tag.** Bump `HARNESS_VERSION` in `harness.toml`, add a `## x.y.z` section to
+  `CHANGELOG.md`, commit, then `git tag vx.y.z && git push origin main vx.y.z`. The `full
+  verification` workflow runs everything on every OS and both platforms, runs the installers, and
+  publishes the release with its tarball **only if all of it passes**. Never create a release by hand.
 - **Plans live in `docs/plans/`** — read the active one before structural changes.
 
 ## The checks

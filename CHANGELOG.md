@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — 2026-10-06
+
+- **Releases are gated by full verification.** Tagging a version runs 12 jobs — every OS, Cloudflare
+  and Node.js, the whole dev loop including a plugin round trip, a snapshot and a production build,
+  plus the installers in an empty folder — and the release is published only if all pass.
+- **The installers are proven**, `install.ps1` on Windows included, for both the Cloudflare and the
+  Node.js template.
+- **Plugins on Windows.** The plugin CLI is run through `pnpm dlx`, as EmDash's docs do; installed
+  as a mise tool it could not load its own dependencies on Windows. One fewer tool to install.
+
 ## 0.3.0 — 2026-10-06
 
 - **Not locked into Cloudflare.** The harness runs on the plain Node.js templates (`starter`,

@@ -9,7 +9,7 @@ use plugin.nu
 # the way to keep that true is to not call anything that is not on all three: HTTP is nushell's
 # `http`, files are nushell's `glob`/`ls`/`cp`/`rm`, opening a browser is nushell's `start`. What is
 # left is what mise installs, plus git and docker.
-const PORTABLE = [git pnpm mise nu fnox emdash emdash-plugin oxlint oxfmt skills docker]
+const PORTABLE = [git pnpm mise nu fnox emdash oxlint oxfmt skills docker]
 
 # nushell's own checker over every module, plus two things it cannot see: programs that are not
 # on every OS, and the interpolation trap: inside `$"..."` a

@@ -425,7 +425,7 @@ def "main source" [] { site clone-emdash }
 
 # The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
 def --wrapped "main emdash" [...args: string] { emdash ...$args }
-def --wrapped "main emdash-plugin" [...args: string] { ^emdash-plugin ...$args }
+def --wrapped "main emdash-plugin" [...args: string] { plugin cli ...$args }
 def --wrapped "main skills" [...args: string] { ^skills ...$args }
 
 # Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.

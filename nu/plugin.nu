@@ -92,13 +92,17 @@ export def audit []: nothing -> list<string> {
   } | flatten
 }
 
+# The official plugin CLI, through `pnpm dlx` — the way EmDash's own docs run it. Installed as a
+# mise npm tool it cannot find its own dependencies on Windows.
+export def --wrapped cli [...args: string] { ^pnpm dlx $"@emdash-cms/plugin-cli@($env.PLUGIN_CLI_VERSION)" ...$args }
+
 # Scaffold with the official CLI. It refuses to run without a terminal unless told who the plugin
 # is from, so those come from settings.
 export def scaffold [name: string] {
   if ($env.PLUGINS_DIR | path join $name | path exists) { fail $"plugins/($name) already exists" $"remove it first: mise run plugin:remove -- ($name)" }
   mkdir $env.PLUGINS_DIR
   cd $env.PLUGINS_DIR
-  (^emdash-plugin init $name --publisher $env.PLUGIN_PUBLISHER --author-name $env.PLUGIN_AUTHOR
+  (cli init $name --publisher $env.PLUGIN_PUBLISHER --author-name $env.PLUGIN_AUTHOR
     --security-url $env.PLUGIN_SECURITY_URL --package-manager pnpm)
 }
 

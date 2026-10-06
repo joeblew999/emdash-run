@@ -1,6 +1,6 @@
 # 2026-10-06 — Other platforms, and what 0.1.0 left open
 
-**Status:** active — **4 of 6 done**
+**Status:** active — **5 of 7 done**
 
 0.1.0 is proven on macOS. These are what the first runs elsewhere found, and what nobody has run.
 
@@ -12,6 +12,7 @@
 - [x] **Windows** — works. CI runs `mise run verify` on `windows-latest`: the toolchain installs, the site builds, starts and seeds, `check` and `doctor` pass.
   - [x] what it took: no program that is not on every OS (`curl`, `find`, `printenv`, `open` → nushell's own), and glob patterns built with forward slashes — `path join` gives backslashes, which a glob reads as escapes
   - [x] `check` now fails on any of those, so it cannot regress unseen
+- [x] **The installers** — `install.sh` and `install.ps1` run in an empty folder on all three OSes, for the Cloudflare and the Node.js template, in the `full verification` workflow
 - [x] **Not only Cloudflare** — the Node.js templates work: `mise run verify:template -- starter --full` passes (site, checks, doctor, a sandboxed plugin under `workerd`, snapshot, build). CI runs it on every OS
 - [ ] **`snapshot` on the blog template** — fails locally with `TRANSFER_MEDIA_BLOB_MISSING`: the seed declares sample media whose files are not in local storage
   - [ ] work out whether the seed should fetch them or the export should skip them, and report upstream if it is EmDash's

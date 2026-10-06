@@ -16,9 +16,34 @@ The real published `emdash`, an official template, the official CLIs — wired t
 job is one command: bring a site up, model content, build a plugin, deploy and verify, back up and
 restore. You own about 40 lines of settings; the rest is the harness, and it updates itself.
 
-**It runs everywhere, and that is checked, not claimed.** The `verify` badge above is the same
-`mise run verify` you run on your laptop, run on macOS, Linux and Windows on every push — on a
-Cloudflare template *and* on a plain Node.js one.
+## Fully verified — on every push, and before every release
+
+[![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
+
+Nothing here is "should work". Every claim is a job that runs the **same `mise run` command you
+run on your laptop** — no CI-only scripts — and a release is published **only if all of them pass**.
+
+| what is proven | macOS | Linux | Windows |
+|---|:-:|:-:|:-:|
+| **The installer** a new dev runs, in an empty folder — Cloudflare template | ✅ | ✅ | ✅ |
+| **The installer** — plain Node.js template, no Cloudflare | ✅ | ✅ | ✅ |
+| **Site up + `check` + `doctor`** — Cloudflare | ✅ | ✅ | ✅ |
+| **Site up + `check` + `doctor`** — Node.js | ✅ | ✅ | ✅ |
+| **A plugin scaffolded, loaded, and called by the running site** — Cloudflare | ✅ | ✅ | ✅ |
+| **A plugin scaffolded, loaded, and called by the running site** — Node.js | ✅ | ✅ | ✅ |
+| **Snapshot of the whole site + production build** — both platforms | ✅ | ✅ | ✅ |
+| **Task arguments arrive intact** — spaces, JSON, quotes, flags | ✅ | ✅ | ✅ |
+| **The harness's own checks can fail** — known faults planted, each must be caught | ✅ | ✅ | ✅ |
+
+And against a live Cloudflare deployment: `deploy` (check, build, ship, verify), `rollback`, and a
+redeploy, each ending in a `doctor` pass on production.
+
+- **On every push** ([`verify`](.github/workflows/verify.yml)): the fast lane answers in about
+  15 seconds per OS, with the site verifications in parallel beside it.
+- **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
+  above, 12 jobs. The release and its tarball are created by that workflow's last job — which only
+  runs if the other twelve pass.
+- **On your machine**: `mise run verify -- --full` runs the same thing.
 
 ## Get started — in your own repo
 
