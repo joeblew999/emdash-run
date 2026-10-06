@@ -344,24 +344,40 @@ def "main upgrade" [ref?: string, --from: string] {
   ok $"harness ($env.HARNESS_VERSION) → ($incoming) — review with git diff, then: mise run dev"
 }
 
-# Prove this project on a clean Linux machine: a container with only git and mise, a fresh clone
-# of this checkout, then the flows a dev runs. Needs docker; the host can be any OS.
+# Does this project work on THIS machine? The minimum that answers it: bring the site up, run the
+# checks, ask doctor. It is what CI runs on every OS. --full adds the slower flows: a plugin round
+# trip, a snapshot, and a production build.
+def "main verify" [--full] {
+  step "bring the site up"
+  if ($env.SITE_DIR | path join "package.json" | path exists) { main dev } else { main setup }
+  step "check"
+  main check
+  step "doctor"
+  main doctor
+  if $full {
+    step "plugin round trip"
+    main plugin roundtrip
+    step "snapshot"
+    main snapshot
+    step "deploy --dry"
+    main deploy --dry
+  }
+  print $"✓ verified on ($nu.os-info.name) ($nu.os-info.arch)(if $full { ' — site, checks, doctor, plugins, snapshot, build' } else { ' — site, checks, doctor' })"
+}
+
+# The same verification on a clean Linux machine: a container with only git and mise, and a fresh
+# clone of this checkout. Needs docker; the host can be any OS.
 def "main verify linux" [] {
-  let flows = ["setup" "status" "check" "doctor" "plugin:roundtrip" "snapshot" "deploy -- --dry"]
   let script = ([
     "export DEBIAN_FRONTEND=noninteractive"
     "apt-get update -qq >/tmp/apt.log && apt-get install -y -qq curl git ca-certificates xz-utils unzip procps libatomic1 >>/tmp/apt.log"
     "curl -fsSL https://mise.run | sh >/tmp/mise.log 2>&1"
     "export PATH=$HOME/.local/bin:$PATH"
     "git config --global --add safe.directory '*'"
-    "git clone -q /src /work && cd /work && mise trust --all -q"
-    "failed=0"
-    ($flows | each {|flow| $"if mise run ($flow) >/tmp/flow.log 2>&1; then echo '  ✓ ($flow)'; else echo '  ✗ ($flow)'; tail -15 /tmp/flow.log; failed=1; fi" } | str join (char nl))
-    "exit $failed"
+    "git clone -q /src /work && cd /work && mise trust --all -q && mise run verify -- --full"
   ] | str join (char nl))
   step "a clean Debian container — this takes about five minutes"
   ^docker run --rm -v $"($env.ROOT):/src:ro" debian:stable-slim bash -c $script
-  print "✓ this project sets up and runs on a clean Linux machine"
 }
 
 # Clone the EmDash source at the version the site runs, into .src/emdash, for reading.

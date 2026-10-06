@@ -1,0 +1,2 @@
+# Every OS gets the same bytes: nushell and TOML are checked out with LF endings on Windows too.
+* text=auto eol=lf

@@ -37,6 +37,22 @@ nu/tests.nu      unit tests for the pure functions
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `daemon-running`, `daemon-stop`, `answers` | daemons and "is anything listening" |
 
+## Portable, by construction
+
+Every task has to run on macOS, Linux and Windows. So nothing calls a program that is not on all
+three. `check` enforces it: the `PORTABLE` list in `checks.nu` is every program the harness may
+run, and anything else fails.
+
+| instead of | use |
+|---|---|
+| `curl` | `request GET|POST|DELETE url --headers {…} --body {…}` — returns `{status, body, cookies}`, never throws |
+| `find`, `cp`, `rm`, `mkdir`, `cat` | nushell's `glob`, `ls`, `cp`, `rm`, `mkdir`, `open` |
+| `open` / `xdg-open` / `start` | nushell's `start` |
+| `printenv`, `env` | `$env.NAME`, `setting NAME`, `secret NAME` |
+| `/dev/null` | `| ignore`, or `| complete` |
+| `sh -c "…"` | write it in nushell |
+| building paths with `/` | `path join` |
+
 ## Traps — each one cost a session here
 
 - **A failing external command aborts the script.** Nothing after it runs — not cleanup, not the

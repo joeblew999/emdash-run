@@ -162,8 +162,12 @@ run = "nu --no-config-file {{config_root}}/nu/main.nu registry down"
 description = "Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- <tag> picks a version"
 run = "nu --no-config-file {{config_root}}/nu/main.nu upgrade"
 
+[tasks.verify]
+description = "Does this project work on THIS machine? Site up, check, doctor — what CI runs on every OS. --full adds a plugin round trip, a snapshot and a build"
+run = "nu --no-config-file {{config_root}}/nu/main.nu verify"
+
 [tasks."verify:linux"]
-description = "Prove this project on a clean Linux machine: a container with only git and mise, then the flows a dev runs. Needs docker"
+description = "The same verification in a clean Linux container with only git and mise. Needs docker"
 run = "nu --no-config-file {{config_root}}/nu/main.nu verify linux"
 
 [tasks.source]

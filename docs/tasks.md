@@ -172,8 +172,14 @@ What is running, and on what: harness, template, EmDash, site, plugins, deployme
 
 Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- &lt;tag> picks a version
 
+## `verify`
+
+- **Usage:** `verify`
+
+Does this project work on THIS machine? Site up, check, doctor — what CI runs on every OS. --full adds a plugin round trip, a snapshot and a build
+
 ## `verify:linux`
 
 - **Usage:** `verify:linux`
 
-Prove this project on a clean Linux machine: a container with only git and mise, then the flows a dev runs. Needs docker
+The same verification in a clean Linux container with only git and mise. Needs docker
