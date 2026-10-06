@@ -162,7 +162,7 @@ _.file          = "{{config_root}}/run/token-admin.env"
 
 [tasks."check"]
 description = "Everything that must pass before a commit — lint, format, tests, plugin checks, mapping"
-depends = ["repo:check", "mise:check", "repo:test", "plugin:typecheck", "plugin:audit"]
+depends = ["repo:check", "plugin:typecheck", "plugin:audit"]
 
 [tasks."check:deployed"]
 description = "The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)"
@@ -195,7 +195,7 @@ mut url = []
 if ($env.EMDASH_URL? | is-not-empty) { $url = ['--url' $env.EMDASH_URL] }
 let raw = (^emdash content get $collection $entry --json ...$url | complete).stdout
 let body = ($raw | str substring ($raw | str index-of '{')..)
-let rev = ($body | from json | get -i _rev | default '')
+let rev = ($body | from json | get -o _rev | default '')
 if ($rev | is-empty) {
   print $"✗ no _rev for ($collection)/($entry)"
   exit 1
@@ -339,7 +339,38 @@ match $nu.os-info.name {
 
 [tasks."site:check"]
 description = "Typecheck the site — astro check (incl. that the config loads) + tsc --checkJs on astro.config.mjs. Stops and restarts the site"
-run = "node \"{{config_root}}/scripts/lib/check.mjs\" site"
+run = """
+# Two passes, because they cover different things and neither covers both:
+#   `astro check`    the template's own .astro/.ts files. It also LOADS astro.config.mjs, so a
+#                    config that throws on load fails here — which is the class that bit us.
+#   `tsc --checkJs`  the TYPES of that same config, which `astro check` never inspects: it
+#                    executes the config rather than analysing it.
+# `--ignoreConfig` is required — the site has a tsconfig.json and tsc refuses to combine it with
+# explicit file arguments.
+#
+# The daemon is stopped first and restarted afterwards: `astro check` re-runs the Vite optimizer
+# inside .src/site, re-hashing the `deps_ssr/*?v=…` URLs a running server is already serving.
+# Leaving a site that is up and broken is worse than a check that takes 30s.
+let site = $env.SITE_DIR
+let listed = (^pitchfork list | complete)
+let was_running = (($listed.stdout | lines) | any {|l|
+  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
+})
+if $was_running { ^pitchfork stop emdash | complete | ignore }
+print "→ astro check (the site, and that its config loads)"
+^pnpm --dir $site exec astro check
+let astro = $env.LAST_EXIT_CODE
+print "→ tsc --checkJs astro.config.mjs (the types astro check does not see)"
+^pnpm --dir $site exec tsc --noEmit --ignoreConfig --allowJs --checkJs
+  --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs
+let tsc = $env.LAST_EXIT_CODE
+# Restarted regardless of the result, so a failing check does not also cost you the site.
+if $was_running {
+  print "→ restarting the site"
+  ^pitchfork start emdash
+}
+if $astro != 0 or $tsc != 0 { exit 1 }
+"""
 
 [tasks."site:doctor"]
 description = "Diagnose the site's real D1 — database health and scheduler wiring (emdash doctor, pointed at the dev database)"
@@ -365,23 +396,255 @@ print $"  → diagnosing ($db | path relative-to $env.SITE_DIR)"
 
 [tasks."seed:build"]
 description = "Merge the template's seed with ours → .src/site/seed/seed.json"
-run = "node \"{{config_root}}/scripts/seed.mjs\" build"
+run = """
+# Merge the template's demo seed with this repo's CAD seed.
+#
+# The rules are deliberately NOT uniform, and the asymmetry is the point:
+#   collections / taxonomies          a collision goes to the TEMPLATE
+#   content                           a collision goes to CAD — opposite, on purpose: the CAD seed
+#                                     is this repo's reason to exist, and its ids are namespaced
+#                                     (`parts:motor-housing`), so a real clash means a malformed seed
+#   menus / widgetAreas / settings    the template's, falling back to CAD's
+# Content order is dependency-first: entries carry `$ref:` values that must resolve to something
+# already applied.
+let base = (open $"($env.TEMPLATES_DIR)/($env.TEMPLATE)/seed/seed.json")
+let cad = (open $"($env.ROOT)/config/cad.seed.json")
+
+# Union two lists by key, with the template winning on collision. `upsert`, not `insert`: nushell
+# errors when `insert` targets a column that already exists, which is exactly the collision case.
+def union [cad_items: list, base_items: list, key: string] {
+  mut acc = {}
+  for item in $cad_items { $acc = ($acc | upsert ($item | get $key) $item) }
+  for item in $base_items { $acc = ($acc | upsert ($item | get $key) $item) }
+  $acc | values
+}
+
+let cad_content = ($cad | get -o content | default {})
+let base_content = ($base | get -o content | default {})
+let dep_order = ["projects" "assemblies" "parts"]
+let keys = (
+  $dep_order
+  | append ($cad_content | columns | where {|k| not ($k in $dep_order) })
+  | append ($base_content | columns)
+  | uniq
+)
+
+mut content = {}
+mut seen = []
+for key in $keys {
+  let entries = (
+    ($cad_content | get -o $key | default [])
+    | append ($base_content | get -o $key | default [])
+  )
+  mut kept = []
+  for entry in $entries {
+    let id = ($entry | get -o id)
+    # Ids are namespaced already, so the id alone identifies an entry — the old composite key
+    # (`parts:parts:motor-housing`) could not have caught a cross-collection duplicate.
+    if ($id | is-empty) {
+      $kept = ($kept | append $entry)
+    } else if not ($id in $seen) {
+      $seen = ($seen | append $id)
+      $kept = ($kept | append $entry)
+    }
+  }
+  $content = ($content | upsert $key $kept)
+}
+
+let base_meta = ($base | get -o meta | default {})
+let cad_meta = ($cad | get -o meta | default {})
+let site_name = ($base_meta | get -o name | default "Site")
+let description = (
+  [($base_meta | get -o description | default "") ($cad_meta | get -o description | default "")]
+  | where {|part| $part | is-not-empty }
+  | str join " — "
+)
+# `upsert` again rather than a spread plus an override: nushell rejects a record literal defining a
+# field `...$base_meta` already supplied. These two are the only keys that override the template's.
+let merged_meta = ($base_meta | upsert name $"($site_name) + CAD" | upsert description $description)
+
+# Built key by key, in the same order the JavaScript wrote them. `'$schema'` is single-quoted
+# because a double-quoted key would be interpolated as a variable.
+let schema_uri = ($base | get -o '$schema' | default ($cad | get -o '$schema' | default ""))
+let version = ($base | get -o version | default ($cad | get -o version | default "1"))
+let settings = ($base | get -o settings | default ($cad | get -o settings | default {}))
+let menus = ($base | get -o menus | default ($cad | get -o menus | default []))
+let widget_areas = ($base | get -o widgetAreas | default ($cad | get -o widgetAreas | default []))
+let collections = (union ($cad | get -o collections | default []) ($base | get -o collections | default []) "slug")
+let taxonomies = (union ($cad | get -o taxonomies | default []) ($base | get -o taxonomies | default []) "name")
+
+mut merged = {}
+$merged = ($merged | insert '$schema' $schema_uri)
+$merged = ($merged | insert version $version)
+$merged = ($merged | insert meta $merged_meta)
+$merged = ($merged | insert settings $settings)
+$merged = ($merged | insert collections $collections)
+$merged = ($merged | insert taxonomies $taxonomies)
+$merged = ($merged | insert menus $menus)
+$merged = ($merged | insert widgetAreas $widget_areas)
+$merged = ($merged | insert content $content)
+
+let dest = $"($env.SITE_DIR)/seed/seed.json"
+mkdir ($dest | path dirname)
+$merged | to json --indent 4 | save --force $dest
+let total = ($content | values | each {|list| $list | length } | math sum)
+print $"  ✓ seed → .src/site/seed/seed.json — ($content | columns | length) collections, ($total) entries"
+"""
 
 [tasks."seed:validate"]
 description = "Validate the merged site seed — EmDash silently skips an invalid one"
-run = "node \"{{config_root}}/scripts/seed.mjs\" validate"
+dir = "{{config_root}}/.src/site"
+run = "^emdash seed --validate seed/seed.json"
 
+# `emdash seed <file>` writes a FILE database (`-d`, default `./data.db`), and the dev server does
+# not read that file — it reads miniflare's D1 under `.wrangler/state/v3/d1`. So the default seeds
+# nothing the site can see and still reports "✔ Seed applied successfully". Pointing `--database`
+# at the real D1 is what makes it land; `--on-conflict=update` is what makes EDITS to existing
+# entries land rather than being skipped.
 [tasks."seed:apply"]
-description = "Get the seed into the RUNNING dev site, in place — official `emdash seed --on-conflict=update`, so existing entries are UPDATED rather than skipped (and nothing is wiped)"
-run = "node \"{{config_root}}/scripts/seed.mjs\" apply"
+description = "Get the seed into the RUNNING dev site, in place — existing entries are UPDATED, nothing is wiped"
+dir = "{{config_root}}/.src/site"
+run = """
+let d1 = ".wrangler/state/v3/d1/miniflare-D1DatabaseObject"
+if not ($d1 | path exists) {
+  print "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+let dbs = (ls $d1 | get name | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) })
+if ($dbs | is-empty) {
+  print "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+let db = ($dbs | first)
+print $"→ emdash seed → ($db | path relative-to $d1)  with on-conflict=update"
+^emdash seed seed/seed.json --database $db --on-conflict=update
+print "✓ seed applied — then: mise run repo:verify"
+"""
 
 [tasks."seed:export"]
 description = "Export the running dev site's model + content as a seed (official: emdash export-seed)"
-run = "node \"{{config_root}}/scripts/seed.mjs\" export"
+dir = "{{config_root}}/.src/site"
+run = """
+let d1 = ".wrangler/state/v3/d1/miniflare-D1DatabaseObject"
+if not ($d1 | path exists) {
+  print "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+let dbs = (ls $d1 | get name | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) })
+if ($dbs | is-empty) {
+  print "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+# Written to a SEPARATE file, never over config/cad.seed.json: that one is hand-maintained and is
+# the source of truth, so overwriting it with an export would turn a review into a replacement.
+^emdash export-seed --database ($dbs | first) --with-content=all
+  | save -f $"($env.ROOT)/config/seed.live.json"
+print "✓ exported the live model → config/seed.live.json"
+print "  compare it with config/cad.seed.json — it is not written over it on purpose."
+"""
 
 [tasks."seed:from-remote"]
-description = "Diff the DEPLOYED site's content model against the repo's seed (read-only; Cloudflare creds via fnox)"
-run = "node \"{{config_root}}/scripts/seed.mjs\" from-remote"
+description = "Diff a live instance's content model against the repo's seed (read-only; set EMDASH_URL for a deployment)"
+# The CLI looks for a project root, and the repo root has no package.json.
+dir = "{{config_root}}/.src/site"
+run = """
+# The authoritative page is "evolve a deployed site's schema" — through the API, NOT a seed: a seed
+# only participates in first-time bootstrap, so deploying a changed one against an existing database
+# does nothing. This answers "how far behind is the deployment?" without touching it.
+mut urlargs = []
+if ($env.EMDASH_URL? | is-not-empty) { $urlargs = ["--url" $env.EMDASH_URL] }
+
+# The CLI prints a banner before its JSON, so cut to the first line that opens with { or [.
+def cli_json [cli_args: list] {
+  let lines = (^emdash ...$cli_args | complete).stdout | lines
+  let start = ($lines | enumerate | where {|l|
+    ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
+  } | get -o index | first)
+  let parsed = ($lines | skip $start | str join (char nl) | from json)
+  # The envelope differs per command, so unwrap it the way the script this replaces did
+  # (`parsed.data ?? parsed`) — but only for a record: `get` against a list is a cell-path error,
+  # and `schema list --json` returns a bare array.
+  # Only a RECORD carries the envelope; anything else is the payload. (`describe` reports a table,
+  # not a list, for an array of objects — which is what `schema list` returns.)
+  if (($parsed | describe) | str starts-with "record") {
+    $parsed | get -o data | default $parsed
+  } else {
+    $parsed
+  }
+}
+
+let listed = (cli_json ["schema" "list" "--json" ...$urlargs])
+# `schema list --json` returns a BARE ARRAY of collections — no envelope. (The `parsed.data ?? parsed`
+# and `listed.items ?? listed.collections ?? listed` fallbacks in the script this replaces were both
+# no-ops on an array, which is why they looked like they were doing something.) Accept either shape,
+# so a future CLI that starts wrapping does not silently yield nothing.
+let collection_rows = (
+  if (($listed | describe) | str starts-with "record") {
+    ($listed | get -o items | default ($listed | get -o collections | default []))
+  } else {
+    $listed
+  }
+)
+let remote_slugs = ($collection_rows | each {|c| $c.slug })
+
+mut remote = {}
+for slug in $remote_slugs {
+  let detail = (cli_json ["schema" "get" $slug "--json" ...$urlargs])
+  let fields = (
+    if (($detail | describe) | str starts-with "record") { $detail | get -o fields | default [] }
+    else { [] }
+  )
+  for field in $fields {
+    $remote = ($remote | insert $"($slug).($field.slug)" $field.type)
+  }
+}
+
+let ours = (open $"($env.ROOT)/config/cad.seed.json")
+let local_slugs = ($ours | get -o collections | default [] | each {|c| $c.slug })
+mut local = {}
+for collection in ($ours | get -o collections | default []) {
+  for field in ($collection | get -o fields | default []) {
+    $local = ($local | insert $"($collection.slug).($field.slug)" $field.type)
+  }
+}
+
+# Immutable copies: nushell will not let a closure capture a `mut` binding, and the comparisons
+# below are all closures.
+let remote_map = $remote
+let local_map = $local
+let remote_keys = ($remote_map | columns)
+let local_keys = ($local_map | columns)
+let only_local = ($local_keys | where {|k| not ($k in $remote_keys) } | sort)
+let only_remote = ($remote_keys | where {|k| not ($k in $local_keys) } | sort)
+let type_diff = (
+  $local_keys
+  | where {|k| ($k in $remote_keys) and (($remote_map | get $k) != ($local_map | get $k)) }
+  | sort
+  | each {|k| $"($k): repo=($local_map | get $k) deployed=($remote_map | get $k)" }
+)
+let missing = ($local_slugs | where {|s| not ($s in $remote_slugs) })
+let extra = ($remote_slugs | where {|s| not ($s in $local_slugs) })
+let repo_only = (if ($missing | is-empty) { "none" } else { $missing | str join ", " })
+let deploy_only = (if ($extra | is-empty) { "none" } else { $extra | str join ", " })
+
+print $"  deployed: ($remote_slugs | length) collections, ($remote_keys | length) fields"
+print $"  repo:     ($local_slugs | length) collections, ($local_keys | length) fields"
+print $"  collections only in the repo:     ($repo_only)"
+print $"  collections only deployed:        ($deploy_only)"
+
+if ([$only_local $only_remote $type_diff] | any {|group| $group | is-not-empty }) {
+  print ""
+  print "  drift:"
+  for k in $only_local { print $"    missing from the deployed site: ($k)" }
+  for k in $only_remote { print $"    only on the deployed site:      ($k)" }
+  for d in $type_diff { print $"    type differs:                   ($d)" }
+  print ""
+  print "  the deployed site is behind. Evolve it with `emdash schema` — not a seed."
+} else {
+  print ""
+  print "  ✓ the deployed content model matches the repo's seed"
+}
+"""
 
 [tasks."site:reset"]
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
@@ -419,7 +682,7 @@ run = "print '✓ init done — run: mise run repo:apply'"
 
 [tasks."repo:apply"]
 description = "Apply config, rebuild + link plugins, re-seed, restart the site, refresh the token — run after every change"
-depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync", "mise:check"]
+depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync"]
 run = """
 # Stop ONLY the site: the optional daemons (registry, plugins-site) must survive, because the
 # site's plugin discovery points at the local registry while it is running.
@@ -471,31 +734,86 @@ description = "Assert the running site matches what the repo claims (set EMDASH_
 run = "node \"{{config_root}}/scripts/lib/verify.mjs\""
 
 [tasks."repo:check"]
-description = "Lint + formatting over scripts/ and the plugins (oxlint --type-aware, oxfmt)"
-run = "node \"{{config_root}}/scripts/lib/check.mjs\" check"
-
-[tasks."repo:test"]
-description = "Unit-test the repo's own scripts (tests/*.test.mjs)"
-run = "vitest run"
+description = "Lint + formatting over the plugins (oxlint --type-aware, oxfmt), and that the committed skills match the site's"
+run = """
+# The same tools and flags the emdash monorepo uses, taken from mise [tools] because this repo has
+# no root package.json. `--deny-warnings` is what makes a warning mean something rather than scroll
+# past. Targets are explicit rather than `.`: oxfmt also rewrites TOML and Markdown, and prose
+# (docs/) and generated files gain nothing from that except unreviewable diffs.
+let targets = ["plugins/plat-trunk/src" "plugins/plat-trunk-sandboxed/src" "plugins/plat-trunk-sandboxed/tests"]
+print "→ oxlint --type-aware --deny-warnings"
+^oxlint --type-aware --deny-warnings ...$targets
+let lint = $env.LAST_EXIT_CODE
+print "→ oxfmt --check"
+^oxfmt --check ...$targets
+let fmt = $env.LAST_EXIT_CODE
+print "→ skills:check (the committed EmDash skills match the site's)"
+^mise run skills:check
+let skills = $env.LAST_EXIT_CODE
+# There is no `set -e` in nushell: a failing external command does not abort the script, so every
+# one of them is collected and the task fails if any did. Running all three also shows you every
+# problem at once instead of stopping at the first.
+if ([$lint $fmt $skills] | any {|code| $code != 0 }) { exit 1 }
+"""
 
 [tasks."repo:format"]
-description = "Apply formatting to scripts/ and the plugins — the fix for a failing repo:check"
-run = "node \"{{config_root}}/scripts/lib/check.mjs\" format"
+description = "Apply formatting to the plugins — the fix for a failing repo:check"
+run = """
+^oxfmt ...["plugins/plat-trunk/src" "plugins/plat-trunk-sandboxed/src" "plugins/plat-trunk-sandboxed/tests"]
+exit $env.LAST_EXIT_CODE
+"""
 
-[tasks."mise:check"]
-description = "Assert the mise/scripts mapping — every script is called by a task, every task-referenced script exists"
-run = "node \"{{config_root}}/scripts/mise.mjs\" check"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
 # MCP — tokens for the EmDash MCP server
 # -----------------------------------------------------------------------------
 
+# EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
+# localhost without a passkey. A curl cookie jar carries it, so none of this has to hand-assemble a
+# Cookie header — which is most of what the deleted scripts were doing.
+[tasks."mcp:_session"]
+hide = true
+run = """
+let jar = (mktemp)
+^curl -sS -o /dev/null -c $jar -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
+if $env.LAST_EXIT_CODE != 0 {
+  print "✗ could not reach the site — is it running? mise run repo:apply"
+  exit 1
+}
+print $jar
+"""
+
 [tasks."mcp:token-admin"]
 description = "Create admin MCP token → run/token-admin.txt + run/token-admin.env"
 run = """
+let base = $env.SITE_URL
+let jar = (mktemp)
+# dev-bypass is idempotent: it creates the dev user, applies migrations and marks setup complete.
+^curl -sS -o /dev/null -c $jar -X POST $"($base)/_emdash/api/setup/dev-bypass"
+if $env.LAST_EXIT_CODE != 0 {
+  print "✗ could not reach the site — is it running? mise run repo:apply"
+  exit 1
+}
+let api = [$"-b" $jar "-H" "X-EmDash-Request: 1" "-H" "content-type: application/json"]
+# Idempotent, because this runs on every `repo:apply`: an old token with this name is revoked
+# first. EmDash shows a token's secret only once, so re-creating is the only way to get one back.
+let listed = (^curl -sS ...$api $"($base)/_emdash/api/admin/api-tokens" | from json)
+for old in ($listed.data.items | default [] | where name == "token-admin") {
+  ^curl -sS -o /dev/null -X DELETE ...$api $"($base)/_emdash/api/admin/api-tokens/($old.id)"
+  print $"→ revoked the previous ($old.name)"
+}
+let created = (
+  ^curl -sS -X POST ...$api -d '{"name":"token-admin","scopes":["admin"]}'
+    $"($base)/_emdash/api/admin/api-tokens"
+  | from json
+)
+let token = ($created.data.token? | default "")
+if ($token | is-empty) {
+  print $"✗ token creation failed: ($created | to json --raw)"
+  exit 1
+}
 mkdir $"($env.RUN_DIR)"
-let token = (^node $"($env.ROOT)/scripts/lib/get-mcp-token.mjs" admin | str trim)
 $"($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.txt"
 # _.file loads this into the environment for the EmDash MCP server (as EMDASH_MCP_TOKEN).
 $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.env"
@@ -503,8 +821,25 @@ print "✓ Token saved → run/token-admin.txt"
 """
 
 [tasks."mcp:clean-tokens"]
-description = "Revoke all API tokens from the database"
-run = "node \"{{config_root}}/scripts/lib/clean-tokens.mjs\""
+description = "Revoke every API token from the local database (the token file is regenerated by repo:apply)"
+run = """
+let base = $env.SITE_URL
+let jar = (mktemp)
+^curl -sS -o /dev/null -c $jar -X POST $"($base)/_emdash/api/setup/dev-bypass"
+if $env.LAST_EXIT_CODE != 0 {
+  print "✗ could not reach the site — is it running? mise run repo:apply"
+  exit 1
+}
+let api = [$"-b" $jar "-H" "X-EmDash-Request: 1"]
+let items = (^curl -sS ...$api $"($base)/_emdash/api/admin/api-tokens" | from json | get -o data.items | default [])
+if ($items | is-empty) { print "No API tokens to revoke."; exit 0 }
+print $"→ revoking ($items | length) tokens…"
+for tok in $items {
+  ^curl -sS -o /dev/null -X DELETE ...$api $"($base)/_emdash/api/admin/api-tokens/($tok.id)"
+  print $"  ✓ ($tok.name)"
+}
+print "✓ revoked — run: mise run mcp:token-admin"
+"""
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -533,20 +868,65 @@ print $"  → migration status for the deployed D1: ($name)"
 ^fnox exec -- emdash migrate --status --d1 $name
 '''
 
+# `site:_deploy` is the shared body: a production build in .src/site re-runs the Vite optimizer
+# and re-hashes the `deps_ssr/*?v=…` URLs the RUNNING dev server is already serving. Clearing the
+# on-disk caches is not enough — the server holds the stale module graph in memory and starts
+# returning 500s — so it is stopped first and put back afterwards.
+[tasks."site:_deploy"]
+hide = true
+usage = 'arg "<mode>" help="build | deploy-dry | deploy"'
+run = """
+let mode = $env.usage_mode
+# A production build must use the HOSTED registry, so drop the dev override set in [env].
+hide-env EMDASH_REGISTRY_URL
+let site = $env.SITE_DIR
+let listed = (^pitchfork list | complete)
+let was_running = (($listed.stdout | lines) | any {|l|
+  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
+})
+if $was_running { ^pitchfork stop emdash | complete | ignore }
+let rc = (match $mode {
+  "build" => {
+    ^pnpm --dir $site build
+    $env.LAST_EXIT_CODE
+  }
+  "deploy-dry" => {
+    ^pnpm --dir $site build
+    let built = $env.LAST_EXIT_CODE
+    if $built == 0 { ^pnpm --dir $site exec wrangler deploy --dry-run --outdir dist }
+    if $built == 0 { $env.LAST_EXIT_CODE } else { $built }
+  }
+  _ => {
+    # Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
+    ^fnox exec -- pnpm --dir $site run deploy
+    $env.LAST_EXIT_CODE
+  }
+})
+# A production build leaves .vite/.astro in a state `astro dev` cannot reuse, so clean up either way.
+rm -rf $"($site)/node_modules/.vite"
+rm -rf $"($site)/.astro"
+if $was_running {
+  print "  → restarting the dev server (the build invalidated its module graph)"
+  ^pitchfork start emdash
+}
+if $rc != 0 { exit $rc }
+print "→ dev server needs a restart: mise run repo:apply"
+"""
+
 [tasks."site:build"]
 description = "Production-build the site (astro build → .src/site/dist)"
 depends = ["config:apply"]
-run = "node \"{{config_root}}/scripts/site.mjs\" build"
+run = "mise run site:_deploy -- build"
 
 [tasks."site:deploy-dry"]
 description = "Validate the production build + Worker bundle without deploying"
 depends = ["config:apply"]
-run = "node \"{{config_root}}/scripts/site.mjs\" deploy-dry"
+run = "mise run site:_deploy -- deploy-dry"
 
 [tasks."site:deploy"]
 description = "Build + deploy the site to Cloudflare (creds via fnox)"
 depends = ["config:apply"]
-run = "node \"{{config_root}}/scripts/site.mjs\" deploy"
+run = "mise run site:_deploy -- deploy"
 # PLUGIN — the emdash-plugin CLI
 # Singular takes a name; plural sweeps every plugin. The two CLIs differ: `plugin:*` below
 # line up with `emdash-plugin`; site-side commands are under emdash:.
@@ -570,45 +950,110 @@ print $"✓ ($name) is ready — try: mise run plugin:dev -- ($name)"
 
 [tasks."plugin:dev"]
 description = "Watch a plugin's sources and rebuild on change (official emdash-plugin dev)"
-usage = """
+usage = '''
 arg "<plugin>" help="Plugin directory name under plugins/"
+'''
+run = """
+let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
+if not ($dir | path exists) {
+  print $"✗ no such plugin: ($env.usage_plugin)"
+  print $"  available: (ls ($env.PLUGINS_DIR) | get name | each {|p| $p | path basename } | str join ' ')"
+  exit 1
+}
+# Must run IN the plugin being watched, hence --dir rather than the task's own `dir`.
+^pnpm --dir $dir exec emdash-plugin dev
 """
-run = "node \"{{config_root}}/scripts/plugin.mjs\" dev \"$env.usage_plugin\""
 
 [tasks."plugin:check"]
 description = "Validate, typecheck and audit every plugin — the plugin half of `mise run check`"
 depends = ["plugin:audit", "plugin:typecheck", "plugin:validate"]
 
 [tasks."plugin:install"]
-description = "Install deps for one plugin — e.g: mise run plugin:install -- plat-trunk"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" install"
+description = "Install deps for one plugin"
+usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
+run = """
+let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
+if not ($dir | path exists) {
+  print $"✗ no such plugin: ($env.usage_plugin)"
+  print $"  available: (ls ($env.PLUGINS_DIR) | get name | each {|p| $p | path basename } | str join ' ')"
+  exit 1
+}
+print $"→ pnpm install in ($env.usage_plugin)"
+^pnpm --dir $dir install
+"""
 
 [tasks."plugin:install-all"]
 description = "Install deps for all plugins in plugins/"
 wait_for = ["site:setup"]
 sources = ["plugins/*/package.json"]
 outputs = ["plugins/*/node_modules/.modules.yaml"]
-run = "node \"{{config_root}}/scripts/plugin.mjs\" install-all"
+run = """
+for dir in (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) }) {
+  print $"→ pnpm install in ($dir | path basename)"
+  ^pnpm --dir $dir install
+}
+"""
 
 [tasks."plugin:link"]
 description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
 run = "node \"{{config_root}}/scripts/plugin.mjs\" link"
 
+# The four sweep tasks below are one idea — "run each plugin's own <script>, skipping plugins that
+# do not declare it, so a native plugin is skipped rather than failed". It lives here once instead
+# of four times.
+#
+# `build` is not optional before `link`: a sandboxed plugin's `./sandbox` export points at its
+# built bundle, so linking without building leaves the site importing a file that is not there.
+# See docs/plugin.md.
+[tasks."plugin:_sweep"]
+hide = true
+usage = '''
+arg "<script>" help="Plugin script to run, in every plugin that declares it"
+arg "[plugin]" help="Restrict to one plugin directory (default: every plugin)"
+'''
+run = """
+let script = $env.usage_script
+let only = $env.usage_plugin?
+let dirs = (
+  ls ($env.PLUGINS_DIR)
+  | get name
+  | where {|p| ($"($p)/package.json" | path exists) }
+  | where {|p| ($only | is-empty) or (($p | path basename) == $only) }
+)
+mut ran = 0
+for dir in $dirs {
+  let manifest = (open $"($dir)/package.json")
+  if ($manifest | get -o scripts | default {} | get -o $script | is-not-empty) {
+    print $"→ ($script) ($manifest.name)"
+    ^pnpm --dir $dir run $script
+    $ran = $ran + 1
+  }
+}
+if $ran == 0 {
+  print $"✗ no plugin declares a ($script) script — see docs/plugin.md"
+  exit 1
+}
+"""
+
 [tasks."plugin:build"]
 description = "Build every plugin that declares a build script (sandboxed bundles)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" build"
+run = "mise run plugin:_sweep -- build"
 
 [tasks."plugin:validate"]
 description = "Validate plugin manifests (sandboxed plugins only)"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" validate"
+run = "mise run plugin:_sweep -- validate"
 
 [tasks."plugin:bundle"]
 description = "Bundle a plugin for release — e.g: mise run plugin:bundle -- plat-trunk-sandboxed"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" bundle"
+run = "mise run plugin:_sweep -- bundle"
 
 [tasks."plugin:typecheck"]
 description = "Typecheck every plugin that declares a typecheck script"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" typecheck"
+run = "mise run plugin:_sweep -- typecheck"
+
+[tasks."plugin:test"]
+description = "Run each plugin's own tests — the plugin half of repo:test"
+run = "mise run plugin:_sweep -- test"
 
 [tasks."plugin:audit"]
 description = "Structural checks across plugins/ — phantom scripts, unbuilt sandbox bundles, emdash drift, empty allowedHosts"
@@ -641,8 +1086,11 @@ description = "Fetch the live plugin list from the registry → docs/plugin-cata
 run = "node \"{{config_root}}/scripts/plugin.mjs\" catalog"
 
 [tasks."plugin:init"]
-description = "scaffold a new sandboxed plugin (official) — e.g: mise run plugin:init -- my-plugin"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" init"
+description = "Scaffold a new sandboxed plugin (official) — then: mise run plugin:new -- <name>"
+usage = 'arg "<name>" help="New plugin name"'
+# Scaffolds a NEW plugin, so it must run in plugins/ itself.
+dir = "{{config_root}}/plugins"
+run = "^emdash-plugin init $env.usage_name"
 
 # These were tasks that could never work: plugin.mjs documented them as subcommands but had no
 # `case` for any of them, so each one fell through to `default` and printed "unknown subcommand".

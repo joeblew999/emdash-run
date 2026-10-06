@@ -1,19 +1,16 @@
 #!/usr/bin/env node
 /**
- * The plugin SWEEPS — the subcommands that iterate `plugins/` and run each plugin's OWN script,
- * so a new plugin joins the flow by declaring the script and nothing here changes. That is why
- * native and sandboxed plugins coexist without a branch on which kind they are.
+ * The three plugin operations that are LOGIC rather than shell, and so are worth a real file:
  *
- *   mise run plugin:install -- <name>           (one plugin)
- *   mise run plugin:install-all | plugin:link   (all plugins)
- *   mise run plugin:build | :bundle | :validate | :typecheck | :audit
- *   mise run plugin:catalog
+ *   link     symlink plugins/ into the site's node_modules. Platform-specific on purpose — Node
+ *            handles junctions on Windows, which `ln -s` does not.
+ *   audit    the structural rules (phantom scripts, unbuilt sandbox bundles, emdash drift,
+ *            empty allowedHosts). Each rule encodes a bug found by hand.
+ *   catalog  fetch the registry and write docs/plugin-catalog/.
  *
- * The one-shot commands that only call the official CLI — `login`, `logout`, `whoami`, `profile`,
- * `switch`, `info`, `release`, `update-package`, `search` — are plain tasks in mise.toml now.
- * They were advertised here as subcommands, but this file never had a `case` for any of them, so
- * every one of them fell through to `default` and died with "unknown subcommand". A relay that
- * does not relay is worse than no relay.
+ * Everything else that used to be a subcommand here — install, install-all, build, bundle,
+ * validate, typecheck, init, dev — was a loop over `plugins/` running `pnpm`, and is a nushell
+ * task in mise.toml now. `plugin:_sweep` covers the four that share one rule.
  */
 import {
 	existsSync,
@@ -49,28 +46,12 @@ function readJson(path) {
 	}
 }
 
-function requireName() {
-	if (!name) {
-		console.error(`plugin:${sub} needs a plugin name — e.g: mise run plugin:${sub} -- plat-trunk`);
-		process.exit(1);
-	}
-}
-
 /**
  * Fetch every package from the EmDash registry and write docs/plugin-catalog/.
  *
  * The registry is the source of truth for published plugins — a GitHub scrape (what this
  * used to do) goes stale and misses anything not hosted on GitHub.
  */
-/**
- * The `emdash-plugin` binary, from `@emdash-cms/plugin-cli`.
- *
- * Taken from the PATH rather than borrowed from a plugin's node_modules: the CLI is scheduled as
- * a mise tool in its own right, so there is no longer a "which plugin happens to have it
- * installed" question.
- */
-const PLUGIN_CLI = "emdash-plugin";
-
 async function catalog(dry) {
 	const base = process.env.CATALOG_REGISTRY_URL ?? "https://registry.emdashcms.com";
 	const packages = [];
@@ -223,19 +204,7 @@ function audit() {
 }
 
 switch (sub) {
-	case "install":
-		requireName();
-		run("pnpm", ["install"], { cwd: `${PLUGINS_DIR}/${name}` });
-		break;
-
-	case "install-all":
-		for (const dir of pluginDirs()) {
-			console.log(`→ pnpm install in ${dir}`);
-			run("pnpm", ["install"], { cwd: `${PLUGINS_DIR}/${dir}` });
-		}
-		break;
-
-	case "link":
+		case "link":
 		// Plugins live in plugins/ but the site resolves them from its own node_modules;
 		// symlinking keeps edits live.
 		mkdirSync(`${SITE_DIR}/node_modules`, { recursive: true });
@@ -249,46 +218,7 @@ switch (sub) {
 		}
 		break;
 
-	case "validate":
-	case "bundle":
-	case "build": {
-		// The sandboxed-plugin flow (`@emdash-cms/plugin-cli`, binary `emdash-plugin`), which
-		// needs an `emdash-plugin.jsonc`. Not every plugin is sandboxed, so this applies the
-		// same rule as `typecheck`: run the plugin's own script. A plugin that declares it opts
-		// in; one that does not is skipped rather than failed. Singular takes a name, plural
-		// sweeps every plugin.
-		//
-		// `build` is separate from `bundle` on purpose: a sandboxed plugin's `./sandbox` export
-		// points at the built bundle, so `plugin:link` without a build leaves the site
-		// importing a file that does not exist yet.
-		const targets = name ? [name] : pluginDirs();
-		let ran = 0;
-		for (const dir of targets) {
-			const manifest = JSON.parse(readFileSync(`${PLUGINS_DIR}/${dir}/package.json`, "utf8"));
-			if (!manifest.scripts?.[sub]) continue;
-			console.log(`→ ${sub} ${manifest.name}`);
-			run("pnpm", ["--dir", `${PLUGINS_DIR}/${dir}`, "run", sub]);
-			ran += 1;
-		}
-		if (ran === 0) {
-			console.error(`plugin:${sub}: no plugin declares a "${sub}" script — see docs/plugin.md`);
-			process.exit(1);
-		}
-		break;
-	}
-
-	case "typecheck":
-		// Every plugin that declares a `typecheck` script. Runs the plugin's own tsc, so the
-		// plugin's tsconfig decides what is checked — not the site's.
-		for (const dir of pluginDirs()) {
-			const manifest = JSON.parse(readFileSync(`${PLUGINS_DIR}/${dir}/package.json`, "utf8"));
-			if (!manifest.scripts?.typecheck) continue;
-			console.log(`→ typecheck ${manifest.name}`);
-			run("pnpm", ["--dir", `${PLUGINS_DIR}/${dir}`, "run", "typecheck"]);
-		}
-		break;
-
-	case "audit":
+		case "audit":
 		audit();
 		break;
 
@@ -296,38 +226,7 @@ switch (sub) {
 		await catalog(false);
 		break;
 
-	case "init": {
-		// Scaffolds a NEW plugin, so it must run in plugins/ itself. The shared passthrough runs
-		// in whichever plugin owns the CLI, which would nest the scaffold inside that plugin.
-		const pluginName = process.argv[3];
-		if (!pluginName) {
-			console.error("plugin:init needs a name — e.g: mise run plugin:new -- my-plugin");
-			process.exit(1);
-		}
-		run(PLUGIN_CLI, ["init", pluginName], { cwd: PLUGINS_DIR });
-		break;
-	}
-
-	case "dev": {
-		// The official watch loop. It must run IN the plugin being watched, not in whichever
-		// plugin happens to own the CLI.
-		const pluginName = process.argv[3];
-		if (!pluginName) {
-			console.error(
-				"plugin:dev needs a plugin name — e.g: mise run plugin:dev -- plat-trunk-sandboxed",
-			);
-			process.exit(1);
-		}
-		const dir = `${PLUGINS_DIR}/${pluginName}`;
-		if (!existsSync(dir)) {
-			console.error(`no such plugin: ${pluginName}`);
-			process.exit(1);
-		}
-		run("pnpm", ["--dir", dir, "exec", "emdash-plugin", "dev"]);
-		break;
-	}
-
-	default:
+		default:
 		console.error(`plugins: unknown subcommand "${sub}"`);
 		process.exit(1);
 }
