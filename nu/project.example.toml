@@ -9,6 +9,8 @@
 TEMPLATE = "starter-cloudflare" # what `setup` creates site/ from, once: a *-cloudflare template, or starter, blog… for plain Node.js
 EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
 DEPLOY_URL = ""                 # your deployment's URL — `deploy` verifies it; empty until you have one
+# The --url flows sign in to a deployment with DEPLOY_TOKEN, an API token made in its admin. It is a
+# secret, so not here: export it in the CI job, or set it in the gitignored mise.local.toml.
 
 # Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
 PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"

@@ -49,8 +49,11 @@ REGISTRY_PORT = "8788"
 _.path = ["{{config_root}}/site/node_modules/.bin"]
 # The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.
 _.file = "{{config_root}}/run/token-admin.env"
-# Unset on purpose. Both are read by the CLIs, and a stale value inherited from an old shell
-# silently redirects them: a dead token, or a registry nothing is running.
+# Unset on purpose — and `false` removes them even when the shell that ran the task exported them.
+# Both are read by the CLIs, and a stale value silently redirects them: a dead token, or a registry
+# nothing is running. A deployment's token goes in DEPLOY_TOKEN instead: the `--url` flows hand it
+# to the CLI, and nothing else does. It has no default here, because a default would replace the
+# value a CI job or mise.local.toml supplies.
 EMDASH_TOKEN = false
 EMDASH_REGISTRY_URL = false
 

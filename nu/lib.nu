@@ -225,5 +225,11 @@ export def daemon-log [name: string, lines: int = 30]: nothing -> string {
   (^mise daemons logs $name | complete).stdout | lines | last $lines | str join (char nl)
 }
 
-# Aim the emdash CLI at a deployment for the rest of the caller's flow: it reads EMDASH_URL itself.
-export def --env target [url?: string] { if $url != null { $env.EMDASH_URL = $url } }
+# Aim the emdash CLI at a deployment for the rest of the caller's flow: it reads EMDASH_URL itself,
+# and EMDASH_TOKEN. The deployment's token is its own setting, DEPLOY_TOKEN, and becomes EMDASH_TOKEN
+# only here — so it never reaches the local site, and no stale EMDASH_TOKEN reaches a deployment.
+export def --env target [url?: string] {
+  if $url == null { return }
+  $env.EMDASH_URL = $url
+  if (setting DEPLOY_TOKEN | is-not-empty) { $env.EMDASH_TOKEN = $env.DEPLOY_TOKEN }
+}
