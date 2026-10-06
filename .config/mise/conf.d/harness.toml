@@ -42,7 +42,6 @@ EMDASH_REPO = "https://github.com/emdash-cms/emdash"
 # The dev server's port. Give a second checkout its own (SITE_PORT in its mise.local.toml) and two
 # sites run side by side — which is what lets several people, or agents, work at once.
 SITE_PORT = "4321"
-SITE_URL = "http://localhost:{{env.SITE_PORT}}"
 SITE_DAEMON = "site"
 REGISTRY_URL = "http://localhost:8788"
 REGISTRY_PORT = "8788"
