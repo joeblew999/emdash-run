@@ -13,56 +13,55 @@ plugins. Each task is either one official CLI command, or a workflow composed fr
 | | |
 |---|---|
 | **Run EmDash locally** | An official template (`starter-cloudflare`) against the published `emdash` package — admin UI, passkey auth, revisions, media library, schema builder — on `:4321`. |
-| **Model content** | Collections, fields, taxonomies, menus. `mise run emdash -- schema …`, or the admin. `mise run schema:diff` shows how a deployment differs from the repo. |
-| **Seed it** | `seed:build` merges the template's demo seed with your project's seed. `seed:apply` lands *edits* into the running site's D1, in place. |
+| **Model content** | Collections, fields, taxonomies, menus. `mise run emdash -- schema …`, or the admin. `mise run schema:diff -- --url <url>` shows how a deployment differs from the repo. |
+| **Seed it** | `mise run dev` merges the template's seed with your project's and lands *edits* in the running database, in place. `seed:export` reads it back. |
 | **Write content** | `mise run content:set -- <collection> <entry> <json>`, or the whole `emdash content` surface. |
 | **Write plugins** | `mise run plugin:new -- <name>` scaffolds one with the official CLI, fits it to the site, loads it, and has the running site call it. `plugin:roundtrip` proves that whole path with a throwaway plugin. |
-| **Deploy, then verify** | `mise run deploy` builds, ships to Cloudflare, and *proves* what is live matches the repo. |
-| **Back up and restore** | `mise run snapshot` — the whole site, schema **and** content, as a `.emdash` package. `mise run restore -- <package>` puts it back into an empty site. |
+| **Deploy, then verify** | `mise run deploy` refuses to ship if `check` fails, builds, ships to Cloudflare, and verifies what is live. `mise run rollback` puts the previous version back. |
+| **Back up and restore** | `mise run snapshot` — the whole site, schema **and** content, as a `.emdash` package. `mise run restore -- <package> --wipe --confirm` puts it back locally. |
 | **Drive it from an agent** | EmDash's MCP endpoint with scoped tokens, plus mise's MCP server for the tasks. |
 
 ## Where to start
 
 ```
-mise run setup     first time: clone the template, install, apply config, plugins, skills
-mise run dev       every time: bring the site up and print every URL
-mise run check     before a commit — and it is wired to git's pre-commit hook
+mise run setup       first time: template, install, config — then the site is up
+mise run dev         after any change: config, seed, plugins, restart, URLs
+mise run check       before a commit — the git hook runs it          --fix repairs
+mise run doctor      is the running site what the repo says?         --url <deployment>
+mise run deploy      check, build, ship to Cloudflare, verify        --dry
+mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
+mise run emdash -- <anything>     the official CLI
 ```
 
-`mise tasks ls` lists everything. [`docs/tasks.md`](docs/tasks.md) is the same list as
-documentation, generated from `mise.toml` so it cannot drift.
+`mise tasks ls` lists all 26. Each is a **flow** — one command for one job — and
+[`docs/tasks.md`](docs/tasks.md) is the same list, generated.
 
 ## How it is put together
 
-**`mise.toml` is the interface *and* the implementation.** There are no scripts: every task body is
-nushell, so a task is one readable thing that behaves the same on every platform. mise supplies the
-composition — `depends`, `usage` for typed arguments, `dir`/`env`, `sources`/`outputs` to skip work
-already done, and `[daemons]` for the processes; nushell does the work.
-
 ```
-mise.toml    the tasks, in two kinds: PRIMITIVES (one official CLI command, nothing invented)
-             and WORKFLOWS (the jobs a developer does, composed from them)
-config/      our config — astro.config, wrangler.jsonc, and this project's own seed
-plugins/     local plugins — empty until you run plugin:new; registered with the site automatically
-.src/        gitignored checkouts: templates/, site/, emdash/ (on demand)
-docs/        agents/ (how to work here), tasks.md (generated), plugin.md, auth.md
-.githooks/   the committed pre-commit hook — `mise run repo:hooks` points git at it
+mise.toml    settings and task names — 230 lines
+nu/          the logic, in nushell: one command per task, shared helpers, unit tests
+config/      our site config and this project's seed, applied over the template by `dev`
+plugins/     local plugins — empty until you run plugin:new
+.src/        gitignored checkouts: the template, the site, the EmDash source
+docs/        agents/ (how to work here), tasks.md (generated), plugin.md, auth.md, plans/
 ```
 
-`mise run repo:urls` prints every URL it serves.
+Everything is built on the two official CLIs and the official template. The harness adds only
+what they leave to you: getting config and a seed into a template, loading a plugin into a running
+site, checking that what is live matches the repo.
 
 ## Pointing it at your own project
 
-Every value that names a project lives in one **PROJECT SETTINGS** block at the top of `[env]` in
-`mise.toml`: the template, the EmDash version, the deploy URL, the site's daemon name, your seed
-file, and the collection/field/bucket that `repo:verify` asserts. The tasks are
-written against the official CLIs and the official template layout, so they do not change — that
-block is the whole port.
+Every value that names a project is in the **PROJECT SETTINGS** block of `mise.toml`: the template,
+the EmDash version, the deploy URL, your seed, who your plugins are from, and what `doctor` should
+assert about your content. Each `doctor` setting is optional — leave it empty and that check is
+skipped. `nu/` never names a project.
 
 ## Where to look
 
 - [`docs/agents/README.md`](docs/agents/README.md) — how to work here: the rules, the checks, the tools
-- [`docs/agents/mise-nushell.md`](docs/agents/mise-nushell.md) — writing tasks: mise facts, nushell traps
+- [`docs/agents/nushell.md`](docs/agents/nushell.md) — working in `nu/`: the shape, the helpers, the traps
 - [`docs/tasks.md`](docs/tasks.md) — every task, with its dependencies (generated)
 - [`docs/plugin.md`](docs/plugin.md) — plugins: the scaffold-to-running round trip, and what the scaffold gets wrong
 - [`docs/auth.md`](docs/auth.md) — EmDash's auth model and our token strategy
@@ -70,6 +69,6 @@ block is the whole port.
 - [`docs/plugin-catalog/`](docs/plugin-catalog/) — generated from the registry
 
 **What is still one project's.** The seed in `config/cad.seed.json` and the R2 cross-check in
-`repo:verify` come from the project this started on. They work, and they are the example of "your
+`doctor` come from the project this started on. They work, and they are the example of "your
 project's seed" — but they are the part to replace. [`docs/plans/`](docs/plans/) tracks making
 that clean.

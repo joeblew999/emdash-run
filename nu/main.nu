@@ -258,22 +258,20 @@ def "main seed export" [] {
   ok $"exported → config/seed.live.json — a review copy, never written over the project's seed"
 }
 
-# Start the local plugin registry (builds the EmDash monorepo the first time). --ui adds its web UI.
-def "main registry up" [--ui] {
+# Start the local plugin registry and point the site at it. Builds the EmDash monorepo the first time.
+def "main registry up" [] {
   step "prepare the registry"
   registry prepare
   ^mise daemons start registry
   # A fresh registry is empty: ingest published plugins, then build the projection reads go through.
   registry admin "/_admin/backfill"
   registry admin "/_admin/labels/replay"
-  if $ui { ^mise daemons start registry-ui }
   site restart
-  ok $"registry at ($env.REGISTRY_URL) — the site now discovers plugins from it(if $ui { $', UI at ($env.PLUGINS_SITE_URL)' } else { '' })"
+  ok $"registry at ($env.REGISTRY_URL) — the site now discovers plugins from it"
 }
 
 # Stop the local registry and point the site back at the hosted one.
 def "main registry down" [] {
-  daemon-stop "registry-ui"
   daemon-stop "registry"
   site restart
   ok "registry stopped — the site uses the hosted registry"
@@ -285,6 +283,5 @@ def "main source" [] { site clone-emdash }
 # What the daemons run. Not for typing: `mise run dev` and `mise run registry:up` start them.
 def "main daemon site" [] { site serve }
 def "main daemon registry" [] { registry serve }
-def "main daemon registry-ui" [] { registry serve-ui }
 
 def main [] { print "run a task: mise tasks ls" }

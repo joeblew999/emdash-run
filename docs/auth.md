@@ -44,8 +44,8 @@ Only works when `import.meta.env.DEV` is true.
 
 | Token | Scopes | Who |
 |-------|--------|-----|
-| token-admin | `admin` | AI agents, devs, Claude Code (`mise run mcp:token-admin`) |
-| token-user | `content:read content:write media:read media:write` | Max, end users (`mise run mcp:token-user`) |
+| token-admin | `admin` | AI agents, devs, Claude Code (minted by `mise run dev` into `run/token-admin.txt`) |
+| token-user | `content:read content:write media:read media:write` | Max, end users (create in the admin, or `mise run emdash -- …`) |
 | ricos | `content:read media:read` | Fukumitsu / RICOS API access |
 
 ## The authZ gap we filed as an issue

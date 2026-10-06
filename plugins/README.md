@@ -10,4 +10,4 @@ mise run plugin:roundtrip          all three with a throwaway plugin — proves 
 ```
 
 A directory with an `emdash-plugin.jsonc` is a sandboxed plugin and is registered with the site
-automatically. See `docs/plugin.md`.
+automatically. See `docs/plugin.md`. After editing one: `mise run dev`.

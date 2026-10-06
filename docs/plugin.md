@@ -17,42 +17,40 @@ Run it after changing `EMDASH_VERSION`, the plugin CLI version, or the template.
 
 ## What happens, and which tool does it
 
-| step | tool | task |
-|---|---|---|
-| scaffold | `emdash-plugin init` | `plugin:init` |
-| fit to this site | this repo | `plugin:_fit` |
-| install | `pnpm install` | `plugin:install` |
-| validate the manifest | `emdash-plugin validate` | `plugin:validate` |
-| typecheck | `tsc --noEmit` | `plugin:typecheck` |
-| test, through EmDash's sandbox | `vitest` + `@emdash-cms/plugin-test` | `plugin:test` |
-| build | `emdash-plugin build` | `plugin:build` |
-| register with the site | this repo | `plugin:_register` (run by `config:apply`) |
-| copy into the site | this repo | `plugin:link` |
-| restart the site | mise daemons | `repo:apply` |
-| prove the site runs it | this repo | `plugin:probe` |
-| bundle for release | `emdash-plugin bundle` | `plugin:bundle` |
+| step | tool |
+|---|---|
+| scaffold | `emdash-plugin init` |
+| fit to this site | the harness (`fit` in `nu/plugin.nu`) |
+| install | `pnpm install` |
+| validate the manifest | `emdash-plugin validate` |
+| typecheck | `tsc --noEmit` |
+| test, through EmDash's sandbox | `vitest` + `@emdash-cms/plugin-test` |
+| build | `emdash-plugin build` |
+| register with the site, copy it in, restart | the harness (`mise run dev`) |
+| prove the site runs it | the harness (`mise run plugin:probe`) |
+| bundle for release | `emdash-plugin bundle` (`mise run plugin:release`) |
 
-Everything the official CLI does, it does. The three steps marked "this repo" are the ones the CLI
+Everything the official CLI does, it does. The steps marked "the harness" are the ones the CLI
 leaves to you, and they are where the time used to go.
 
-## What the scaffold needs fixing — `plugin:_fit`
+## What the scaffold needs fixing
 
 `emdash-plugin init` writes a plugin for a site that is not this one:
 
 - **It will not run without a terminal.** It exits with "Non-interactive setup requires:
-  --publisher, --author-name, --security-email or --security-url". `plugin:init` passes them from
+  --publisher, --author-name, --security-email or --security-url". The harness passes them from
   `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR` and `PLUGIN_SECURITY_URL` in PROJECT SETTINGS.
 - **It asks for EmDash 0.x.** `emdash: ">=0.12.0 <1.0.0"` installs 0.x while the site runs 1.x, so
   the scaffold's green test is evidence about a different CMS. Pinned to `EMDASH_VERSION`;
-  `plugin:audit` fails on any drift afterwards.
+  `check` fails on any drift afterwards.
 - **Its `@emdash-cms/plugin-test` range predates EmDash 1.x.** Set to the current release.
 - **It pins `packageManager`.** mise provides pnpm, so the pin is dropped.
 - **It creates three symlinks** (`.agents/skills`, `.claude/skills`, `.claude/CLAUDE.md`). This
-  repo allows none — `repo:check` fails on one — and the skills are vendored at the repo root.
+  repo allows none — `check` fails on one — and the skills are vendored at the repo root.
 
 ## How the site finds a local plugin
 
-`config:apply` generates `.src/site/local-plugins.mjs` from `plugins/`, and the site's
+`mise run dev` generates `.src/site/local-plugins.mjs` from `plugins/`, and the site's
 `astro.config.mjs` spreads it into `sandboxed: []`. A directory is registered when it has an
 `emdash-plugin.jsonc`. Nothing is edited by hand, so adding or removing a plugin cannot leave the
 config pointing at something that is not there.
@@ -63,8 +61,8 @@ Two details that cost a session each to learn:
   descriptor at the root that names `<pkg>/sandbox` as its entrypoint. Importing `/sandbox` hands
   EmDash the implementation and it refuses: *Plugin "undefined" uses the native format*.
 - **Build before link.** The descriptor points at the built bundle, so copying an unbuilt plugin
-  leaves the site importing a file that does not exist. `repo:apply` runs them in that order, and
-  `plugin:audit` fails on an unbuilt one.
+  leaves the site importing a file that does not exist. `dev` runs them in that order, and `check`
+  fails on an unbuilt one.
 
 ## Limits worth knowing before you design a plugin
 

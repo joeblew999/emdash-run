@@ -98,7 +98,7 @@ Stop the local registry — the site goes back to the hosted one
 
 - **Usage:** `registry:up`
 
-Start the optional local plugin registry (builds the EmDash monorepo the first time). --ui adds its web UI
+Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)
 
 ## `reset`
 

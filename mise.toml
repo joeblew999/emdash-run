@@ -73,8 +73,6 @@ SITE_URL = "http://localhost:4321"
 SITE_DAEMON = "site"
 REGISTRY_URL = "http://localhost:8788"
 REGISTRY_PORT = "8788"
-PLUGINS_SITE_URL = "http://localhost:4330"
-PLUGINS_SITE_PORT = "4330"
 # The site's own emdash CLI on PATH, so the CLI and the site cannot drift apart.
 _.path = ["{{config_root}}/.src/site/node_modules/.bin"]
 # The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.
@@ -167,7 +165,7 @@ description = "Export the running site's model and content as a seed, to review 
 run = "nu --no-config-file {{config_root}}/nu/main.nu seed export"
 
 [tasks."registry:up"]
-description = "Start the optional local plugin registry (builds the EmDash monorepo the first time). --ui adds its web UI"
+description = "Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)"
 run = "nu --no-config-file {{config_root}}/nu/main.nu registry up"
 
 [tasks."registry:down"]
@@ -207,10 +205,6 @@ run = "nu --no-config-file {{config_root}}/nu/main.nu daemon site"
 hide = true
 run = "nu --no-config-file {{config_root}}/nu/main.nu daemon registry"
 
-[tasks."daemon:registry-ui"]
-hide = true
-run = "nu --no-config-file {{config_root}}/nu/main.nu daemon registry-ui"
-
 # Values here reach pitchfork verbatim — mise does not expand templates in [daemons].
 [daemons.site]
 run = "mise run daemon:site"
@@ -223,9 +217,3 @@ run = "mise run daemon:registry"
 dir = "."
 auto = ["stop"]
 ready_http = "http://localhost:8788/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
-
-[daemons.registry-ui]
-run = "mise run daemon:registry-ui"
-dir = "."
-auto = ["stop"]
-ready_http = "http://localhost:4330/"

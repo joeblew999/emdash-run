@@ -1,4 +1,4 @@
-# The optional local plugin registry (the EmDash aggregator) and its web UI, built from source.
+# The optional local plugin registry (the EmDash aggregator), built from source.
 use lib.nu *
 use site.nu
 
@@ -19,8 +19,6 @@ export def prepare [] {
 # `wrangler dev`, not the package's `vite dev`: the vite plugin resolves a workerd build that
 # crashes on Durable Object SQLite.
 export def serve [] { cd (aggregator); ^pnpm exec wrangler dev --port $env.REGISTRY_PORT }
-
-export def serve-ui [] { cd ($env.EMDASH_DIR | path join "apps" "plugins-site"); ^pnpm dev -- --port $env.PLUGINS_SITE_PORT }
 
 # POST to one of the aggregator's admin routes with its dev token.
 export def admin [route: string] {
