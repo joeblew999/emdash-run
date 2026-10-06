@@ -3,7 +3,7 @@
 *.db
 *.db-shm
 *.db-wal
-# Gitignored working checkouts (see ADR-0007): templates + host site + emdash monorepo
+# Gitignored working checkouts (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md): templates + host site + emdash monorepo
 .src/
 node_modules/
 .env
@@ -17,8 +17,7 @@ node_modules/
 # the site, and they are vendored into .github/skills/ (committed) so they exist on a fresh
 # clone. Skills are discovered when a session STARTS, so a gitignored copy means an agent
 # can begin work with no EmDash knowledge at all — which is exactly what happened. The
-# .claude/skills/emdash symlink below is still gitignored: it points into .src/, so it would
-# be broken on any other clone.
+# .claude/skills/emdash copy below is still gitignored: it is generated from .src/.
 /.agents/skills/
 /.claude/skills/
 .crush/

@@ -1,7 +1,20 @@
 # 2026-10-05 — Repo checks: typecheck, lint, tests
 
-**Status:** active — **7 of 8 done** (item 8 is partly done: structural, live-state, lint,
-unit-test and type checks have each been proven to block)
+**Status:** done — closed 2026-10-06, superseded in part
+
+## Closing note (2026-10-06)
+
+The checks exist and block: `mise run check` runs lint, format, `repo:nu`, `repo:sync`, `repo:docs`,
+`skills:check`, the plugin typecheck, audit and tests; `doctor` covers the live state.
+
+What this plan built that **no longer exists**: `repo:test` and its 10 vitest tests of the seed
+merge. They were deleted with `scripts/` when the merge became a nushell task body. The merge was
+shown byte-identical at the time, but nothing tests it now — carried forward in
+[`harness-gaps`](../2026-10-06-harness-gaps.md).
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 Nothing in this repo was verified automatically: no typecheck, no lint, no tests. Wiring the
 plugin typecheck into `repo:apply` immediately found three real faults, so the rest of this

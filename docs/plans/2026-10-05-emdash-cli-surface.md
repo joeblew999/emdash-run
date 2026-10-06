@@ -1,6 +1,21 @@
 # 2026-10-05 — Use more of the emdash CLI
 
-**Status:** active — **3 of 4 done**
+**Status:** active — **3 of 4 done**, 3 steps left
+
+## Where this stands (2026-10-06)
+
+Every CLI command is now a task (`emdash:*`), and the composed ones are `site:doctor`,
+`site:migrate`, `snapshot`, `seed:export`, `schema:diff`, `content:set`. What is left:
+
+- [ ] **`site:doctor` fails loudly** — prove it by breaking the local database and watching it exit non-zero
+- [ ] **Report the `emdash types` missing import upstream** — the generated `.emdash/types.ts` does not compile (details below)
+- [ ] **Prove `snapshot` restores** — `mise run snapshot` writes the package and the README names it as the backup; an import into an empty site has never been run
+
+Dropped: generating site-side types. The site already gets correct types from `emdash-env.d.ts`.
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 We call exactly **one** subcommand of the site's CLI: `seed --validate`. The others do things
 this repo currently does by hand, or not at all.
@@ -38,7 +53,7 @@ this repo currently does by hand, or not at all.
 - [x] **`emdash migrate` → understand production migrations** — answered
   - [x] **it can read the DEPLOYED D1, and it needs no admin token.** `emdash migrate --status --d1 <name>` authenticates with the Cloudflare credentials (fnox), not the site's API — so migration state is inspectable even while every content command is blocked on auth. Added as `site:migrate` (read-only).
   - [x] **production is fully current**: `Known applied: 001_initial … 091_redirect_artifacts`, `Pending: none`, `Unknown applied: none`. So production's problem is **not** migrations.
-  - [x] **and this is orthogonal to our schema work.** The docs are explicit that core migrations "do not add or remove your collections, fields, or taxonomies" — so a clean migration state says nothing about the missing `model_id` field. The API path in [`live-content`](2026-10-05-live-content.md) still stands.
+  - [x] **and this is orthogonal to our schema work.** The docs are explicit that core migrations "do not add or remove your collections, fields, or taxonomies" — so a clean migration state says nothing about the missing `model_id` field. The API path in [`live-content`](done/2026-10-05-live-content.md) still stands.
   - [x] the count is 90, not 91: the manifest's name list skips `010` (`009_user_disabled` → `011_sections`), which matches `site:doctor`'s "90 applied, none pending".
   - [x] `Target fingerprint: 2ac649bc7d22b10d34535e4b63ec6cb65d4ca7e594caf386e4af49753d41c48a` — required for a noninteractive apply (`--expected-target-fingerprint`), which is how a deploy would apply the exact build manifest ahead of traffic instead of relying on runtime auto-migration.
   - [x] local `--check --database <sqlite>` refuses with "A valid Cloudflare account ID is required for D1 migrations" — the command is D1-oriented, so local migration state is best read from `site:doctor` instead.

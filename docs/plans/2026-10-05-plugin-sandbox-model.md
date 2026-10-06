@@ -1,8 +1,24 @@
 # 2026-10-05 — Adopt the sandboxed plugin model
 
-**Status:** active — **2 of 8 top-level items done** (items 2 and 4 carry done sub-items but
-stay open: item 2 needs a publisher DID, and item 4 needs that DID, the `fields` truncation fix,
-and the written comparison)
+**Status:** active — **2 of 8 done**; the next step needs a publisher DID
+
+## Where this stands (2026-10-06)
+
+Both plugins work and both panels render on the same Part. The native one is `plugins/plat-trunk`,
+the sandboxed twin is `plugins/plat-trunk-sandboxed`; `mise run check` typechecks, audits and tests
+them, and `plugin:*` tasks wrap the `emdash-plugin` CLI. What is left, in the order it unblocks:
+
+- [ ] **A publisher DID** — the manifest still holds `did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID`. Blocks the manifest item and the release path
+- [ ] **Format the truncated timestamp** in the sandboxed panel's `fields` block
+- [ ] **Write the native-vs-sandboxed comparison** in `docs/plugin.md`
+- [ ] **Settings page** (`admin.settingsSchema`) — only useful once there is a geometry worker URL to configure; see [`panel-live-geometry`](2026-10-05-panel-live-geometry.md)
+- [ ] **Public-site component** (`./astro`)
+- [ ] **Custom admin page** (`admin.pages`)
+- [ ] **Release path** — `plugin:bundle`, then publish with the DID, and write down the version-bump rule
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 `plugins/plat-trunk` is a **native** plugin: the host imports it and it renders a React panel
 directly. Published plugins are **sandboxed** — a manifest declaring what they may do, plus a

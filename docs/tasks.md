@@ -1,10 +1,10 @@
 ## `check`
 
-- Depends: repo:check, plugin:typecheck, plugin:audit
+- Depends: repo:check, plugin:typecheck, plugin:audit, plugin:test
 
 - **Usage:** `check`
 
-Everything that must pass before a commit — lint, formatting, plugin checks
+Everything that must pass before a commit — lint, formatting, the repo's own checks, and the plugins' types, structure and tests
 
 ## `check:deployed`
 
@@ -308,7 +308,7 @@ switch the active publisher session to another DID (official)
 
 - **Usage:** `plugin:test`
 
-Run each plugin's own tests — the plugin half of repo:test
+Run each plugin's own tests — every plugin that declares a test script
 
 ## `plugin:typecheck`
 

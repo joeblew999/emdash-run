@@ -10,7 +10,7 @@
 #                    a daemon names a task that does not exist — mise itself does not check that.
 #   .mcp.json        its `${EMDASH_MCP_TOKEN}` is written by `mcp:token-admin` into
 #                    run/token-admin.env, which [env] loads. Rename one, rename the other.
-#   AGENTS.md        how to work in this repo. If a rule here changes, it changes there.
+#   docs/agents/     how to work in this repo. If a rule here changes, it changes there.
 #
 # Never keep a second copy of the task list in any of them — duplicated lists drift.
 # -----------------------------------------------------------------------------
@@ -27,7 +27,7 @@
 #                        It has already caught a `&&` — not a nushell operator — and a command
 #                        wrapped across two lines. Both tasks had never been run and could not
 #                        have worked.
-#   mise run repo:sync   every `mise run <task>` in [daemons] names a task that exists.
+#   mise run repo:sync   every `mise run <task>` in this file names a task that exists.
 #   mise run doctor      the LIVE state: the site's database, plugin consistency, repo:verify.
 #   mise run site:check  the site type-checks, including that astro.config.mjs loads.
 #
@@ -70,7 +70,7 @@ jobs = 1
 
 [tools]
 node = "26.10.0"
-pnpm = "12.9.1"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
+pnpm = "12.9.1"      # the one pnpm for site and plugins — site:sync drops the template's own packageManager pin
 pitchfork = "2.29.0" # process manager for the daemons
 # The shell the inline task scripts run under — `[task_config] shell = "nu -c"` below. A real
 # shell with typed values, paths and error handling, so a task body is not a pile of POSIX
@@ -189,8 +189,8 @@ REGISTRY_PORT = "8788"
 PLUGINS_SITE_URL = "http://localhost:4330"
 PLUGINS_SITE_PORT = "4330"
 
-# Point the site's plugin discovery at the LOCAL registry. build.mjs deletes this before
-# site:build / site:deploy, so production uses the hosted registry.
+# Point the site's plugin discovery at the LOCAL registry. `site:_deploy` hides this before a
+# production build, so site:build / site:deploy use the hosted registry.
 EMDASH_REGISTRY_URL = "{{env.REGISTRY_URL}}"
 
 # The EmDash CLI that ships with the host site — the same version the site runs, so the CLI and
@@ -205,6 +205,12 @@ _.path = ["{{config_root}}/.src/site/node_modules/.bin"]
 # which looked exactly like the CLI being unable to read its own stored login. Under its own
 # name the variable reaches the MCP server (see .mcp.json) and nothing else.
 _.file = "{{config_root}}/run/token-admin.env"
+# And UNSET here, because not exporting it is not enough: a shell or editor that was started while
+# this file still exported EMDASH_TOKEN keeps the old value for as long as it lives, and every task
+# inherits it. The CLI then sends that dead token instead of falling through to its stored login or
+# the localhost dev bypass, and every read fails with "Invalid or expired token" — `repo:verify`
+# reported "0 of 0 entries" for exactly this reason. To use a token on purpose, pass `--token`.
+EMDASH_TOKEN = false
 # -----------------------------------------------------------------------------
 
 # =============================================================================
@@ -213,7 +219,7 @@ _.file = "{{config_root}}/run/token-admin.env"
 #
 #   mise run setup       first time here: clone the template, install, apply config, plugins, skills
 #   mise run dev         every time: bring the site up on the current config, seed and plugins
-#   mise run check       before a commit — lint, formatting, plugin checks
+#   mise run check       before a commit — lint, formatting, the repo's checks, plugin types and tests
 #   mise run deploy      ship it: build, deploy to Cloudflare, then VERIFY what is live
 #   mise run snapshot    save the whole site — schema AND content — as a .emdash package
 #   mise run doctor      diagnose: the site's database, the plugins, and the running site's state
@@ -221,23 +227,13 @@ _.file = "{{config_root}}/run/token-admin.env"
 # Against a deployment:  export EMDASH_URL=https://…  then `mise run check:deployed`
 # URLs:                  mise run repo:urls          Admin UI:  mise run site:open
 #
+# After a change:        mise run repo:apply         ← idempotent; `dev` is this plus the URLs
+#
 # Task bodies are NUSHELL, not POSIX sh — see the note in [tools]. `$env.VAR`, `^cmd` to force an
-# external binary, and no `set -e`: a failing external command does not abort the body.
+# external binary. A failing external command ABORTS the body (like `set -e`): to keep going and
+# read its exit code, wrap it in `try` or pipe it through `complete`. See docs/agents/mise-nushell.md.
 #
 # `mise tasks ls` lists everything. This file is the source of truth — never keep a second copy.
-# =============================================================================
-#
-# First time:      mise run site:setup && mise run repo:init && mise run repo:apply
-# After a change:  mise run repo:apply          ← idempotent, and it IS the check
-# Before a commit: mise run check               ← lint, format, tests, plugin checks
-# Against a deploy: export EMDASH_URL=https://… ; mise run check:deployed
-#
-# URLs (once running):  mise run repo:urls
-# Admin UI:  http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
-#
-# Writing a task: bodies are NUSHELL, not POSIX sh — see the note in [tools]. `$env.VAR`, commas
-# between arguments, `^cmd` to force an external binary. There is no `set -e`; a failing external
-# command does not abort the script, so check the one you care about.
 #
 # Targeting a deployment: the COMPOSED checks read `EMDASH_URL` (check:deployed, seed:from-remote,
 # repo:verify). A single `emdash:*` task does NOT — it is the official CLI, so use its own flag:
@@ -298,8 +294,8 @@ depends = ["site:doctor", "plugin:audit"]
 run = "mise run repo:verify"
 
 [tasks."check"]
-description = "Everything that must pass before a commit — lint, formatting, plugin checks"
-depends = ["repo:check", "plugin:typecheck", "plugin:audit"]
+description = "Everything that must pass before a commit — lint, formatting, the repo's own checks, and the plugins' types, structure and tests"
+depends = ["repo:check", "plugin:typecheck", "plugin:audit", "plugin:test"]
 
 [tasks."check:deployed"]
 description = "The same checks against a DEPLOYMENT — export EMDASH_URL=https://… first (needs emdash:login)"
@@ -316,14 +312,11 @@ print "→ content, the model_id join, and snapshot drift"
 description = "Everything a sandboxed-plugin release needs — audit + typecheck, then validate, build, bundle"
 depends = ["plugin:audit", "plugin:typecheck"]
 run = """
-# No `&&` in nushell — and a failing external command does not abort the body either, so each step
-# is checked. (`repo:nu` caught the `&&`; it had never been run.)
+# In order, one per line: a failing external aborts a nushell body, so a step that fails stops the
+# release. (There is no `&&` in nushell — `repo:nu` caught one here.)
 ^mise run plugin:validate
-if $env.LAST_EXIT_CODE != 0 { exit 1 }
 ^mise run plugin:build
-if $env.LAST_EXIT_CODE != 0 { exit 1 }
 ^mise run plugin:bundle
-if $env.LAST_EXIT_CODE != 0 { exit 1 }
 """
 
 [tasks."content:set"]
@@ -498,12 +491,13 @@ run = """
 # Leaving a site that is up and broken is worse than a check that takes 30s.
 let site = $env.SITE_DIR
 let paused = (^mise run site:_pause | str trim)
+# A failing external ABORTS a nushell body, so each check runs inside `try` and hands back its exit
+# code — otherwise a failed `astro check` would skip the restart below and leave the site down.
+def code [block: closure] { try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 } }
 print "→ astro check (the site, and that its config loads)"
-^pnpm --dir $site exec astro check
-let astro = $env.LAST_EXIT_CODE
+let astro = (code { ^pnpm --dir $site exec astro check })
 print "→ tsc --checkJs astro.config.mjs (the types astro check does not see)"
-^pnpm --dir $site exec tsc --noEmit --ignoreConfig --allowJs --checkJs --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs
-let tsc = $env.LAST_EXIT_CODE
+let tsc = (code { ^pnpm --dir $site exec tsc --noEmit --ignoreConfig --allowJs --checkJs --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs })
 # Restarted regardless of the result, so a failing check does not also cost you the site.
 ^mise run site:_resume -- $paused
 if $astro != 0 or $tsc != 0 { exit 1 }
@@ -887,7 +881,7 @@ try {
   # resolved and nothing mismatched, and the R2 checks PASSED VACUOUSLY. A check that passes
   # because it read nothing is worse than one that fails, hence this guard.
   $parts = (($listed | get -o items | default []) | each {|item|
-    ^mise run emdash:_json -- $"content get parts ($item.slug) --json" | from json
+    ^mise run emdash:_json -- $"content get ($env.VERIFY_COLLECTION) ($item.slug) --json" | from json
   })
   let fetched = $parts
   let with_data = ($fetched | where {|part| ($part | get -o data) | is-not-empty } | length)
@@ -1068,9 +1062,8 @@ run = "^mise --cd $env.ROOT generate task-docs --output docs/tasks.md"
 description = "Fail if any `mise run <task>` in this file names a task that does not exist — neither nushell nor mise checks this"
 run = """
 # Every daemon's `run` is `mise run <task>`, and mise does NOT check the task exists — `mise tasks
-# run, and every one of its `run` lines is `mise run <task>`. A name there that is not a task here
-# is a daemon that cannot start — which is exactly how the registry's web UI sat broken, running a
-# task nobody had written. Both files carry a note about this at the top; this is the enforcement.
+# validate` passes with a daemon naming a task nobody wrote. That is a daemon that cannot start,
+# which is exactly how the registry's web UI sat broken.
 # EVERY `mise run <task>` in the file, not just the ones in [daemons]: a body that calls a task
 # which does not exist is the same failure, and it has happened here — `repo:urls` once told you to
 # run `plugins-site:up`, which was not a task at all. `nu --ide-check` cannot see this (it is a
@@ -1100,30 +1093,25 @@ run = """
 # past. Targets are explicit rather than `.`: oxfmt also rewrites TOML and Markdown, and prose
 # (docs/) and generated files gain nothing from that except unreviewable diffs.
 let targets = ($env.CODE_PATHS | split row ":")
+# A failing external ABORTS a nushell body. Each check therefore runs inside `try` and hands back
+# its exit code, so one run shows every problem instead of stopping at the first.
+def code [block: closure] { try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 } }
 print "→ oxlint --type-aware --deny-warnings"
-^oxlint --type-aware --deny-warnings ...$targets
-let lint = $env.LAST_EXIT_CODE
+let lint = (code { ^oxlint --type-aware --deny-warnings ...$targets })
 print "→ oxfmt --check"
-^oxfmt --check ...$targets
-let fmt = $env.LAST_EXIT_CODE
+let fmt = (code { ^oxfmt --check ...$targets })
 print "→ skills:check (the committed EmDash skills match the site's)"
-^mise run skills:check
-let skills = $env.LAST_EXIT_CODE
-print "→ repo:sync (the files that must agree)"
-^mise run repo:sync
-let sync = $env.LAST_EXIT_CODE
+let skills = (code { ^mise run skills:check })
+print "→ repo:sync (every task this file names exists)"
+let sync = (code { ^mise run repo:sync })
 print "→ repo:nu (every task body parses and type-checks)"
-^mise run repo:nu
-let nucheck = $env.LAST_EXIT_CODE
+let nucheck = (code { ^mise run repo:nu })
 print "→ mise tasks validate (mise's own checks on the task definitions)"
-^mise tasks validate
-let tasks_ok = $env.LAST_EXIT_CODE
+let tasks_ok = (code { ^mise tasks validate })
 print "→ mise fmt --check (mise.toml is formatted by mise's own formatter)"
-^mise --cd $env.ROOT fmt --check
-let misefmt = $env.LAST_EXIT_CODE
+let misefmt = (code { ^mise --cd $env.ROOT fmt --check })
 print "→ repo:docs (docs/tasks.md is what the tasks actually are)"
-^mise run repo:docs
-let docs_ok = $env.LAST_EXIT_CODE
+let docs_ok = (code { ^mise run repo:docs })
 print "→ no symlinks (a link is a broken file on a Windows checkout)"
 # git cannot make a symlink on Windows, so it writes the TARGET PATH into the file instead — a
 # committed symlink is a file containing the word `AGENTS.md` for anyone who clones there. This repo
@@ -1139,9 +1127,6 @@ if $nolinks != 0 {
 } else {
   print "  ✓ none"
 }
-# There is no `set -e` in nushell: a failing external command does not abort the script, so every
-# one of them is collected and the task fails if any did. Running them all also shows you every
-# problem at once instead of stopping at the first.
 if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok $nolinks] | any {|code| $code != 0 }) { exit 1 }
 """
 
@@ -1151,7 +1136,6 @@ run = """
 # mise formats its own config — oxfmt does not touch TOML, so `mise.toml` went unchecked.
 ^mise --cd $env.ROOT fmt
 ^oxfmt ...($env.CODE_PATHS | split row ":")
-exit $env.LAST_EXIT_CODE
 """
 
 # -----------------------------------------------------------------------------
@@ -1245,21 +1229,24 @@ let mode = $env.usage_mode
 hide-env EMDASH_REGISTRY_URL
 let site = $env.SITE_DIR
 let paused = (^mise run site:_pause | str trim)
+# A failing external ABORTS a nushell body, so the build runs inside `try` and hands back its exit
+# code — otherwise a failed build would skip the cleanup and restart below and leave the site down.
+def code [block: closure] { try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 } }
 let rc = (match $mode {
-  "build" => {
-    ^pnpm --dir $site build
-    $env.LAST_EXIT_CODE
-  }
+  "build" => { code { ^pnpm --dir $site build } }
   "deploy-dry" => {
-    ^pnpm --dir $site build
-    let built = $env.LAST_EXIT_CODE
-    if $built == 0 { ^pnpm --dir $site exec wrangler deploy --dry-run --outdir dist }
-    if $built == 0 { $env.LAST_EXIT_CODE } else { $built }
+    code {
+      ^pnpm --dir $site build
+      ^pnpm --dir $site exec wrangler deploy --dry-run --outdir dist
+    }
+  }
+  "deploy" => {
+    # Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
+    code { ^fnox exec -- pnpm --dir $site run deploy }
   }
   _ => {
-    # Cloudflare creds come from fnox (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
-    ^fnox exec -- pnpm --dir $site run deploy
-    $env.LAST_EXIT_CODE
+    print --stderr $"✗ unknown mode: ($mode) — expected build, deploy-dry or deploy"
+    2
   }
 })
 # A production build leaves .vite/.astro in a state `astro dev` cannot reuse, so clean up either way.
@@ -1267,7 +1254,6 @@ rm -rf $"($site)/node_modules/.vite"
 rm -rf $"($site)/.astro"
 ^mise run site:_resume -- $paused
 if $rc != 0 { exit $rc }
-print "→ dev server needs a restart: mise run repo:apply"
 """
 
 [tasks."site:build"]
@@ -1284,6 +1270,8 @@ run = "mise run site:_deploy -- deploy-dry"
 description = "Build + deploy the site to Cloudflare (creds via fnox)"
 depends = ["config:apply"]
 run = "mise run site:_deploy -- deploy"
+
+# -----------------------------------------------------------------------------
 # PLUGIN — the emdash-plugin CLI
 # Singular takes a name; plural sweeps every plugin. The two CLIs differ: `plugin:*` below
 # line up with `emdash-plugin`; site-side commands are under emdash:.
@@ -1313,7 +1301,7 @@ arg "<plugin>" help="Plugin directory name under plugins/"
 run = """
 ^mise run plugin:_require -- $env.usage_plugin
 let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
-# Must run IN the plugin being watched.`
+# Must run IN the plugin being watched.
 ^pnpm --dir $dir exec emdash-plugin dev
 """
 
@@ -1424,7 +1412,7 @@ description = "Typecheck every plugin that declares a typecheck script"
 run = "mise run plugin:_sweep -- typecheck"
 
 [tasks."plugin:test"]
-description = "Run each plugin's own tests — the plugin half of repo:test"
+description = "Run each plugin's own tests — every plugin that declares a test script"
 run = "mise run plugin:_sweep -- test"
 
 [tasks."plugin:audit"]
@@ -2022,11 +2010,19 @@ run = """
 let args = ($env.usage_args | split row ' ')
 let url = ($env.EMDASH_URL? | default "")
 let full = (if ($url | is-not-empty) { $args | append ["--url" $url] } else { $args })
-let lines = (^emdash ...$full | complete).stdout | lines
-let start = ($lines | enumerate | where {|l|
+let result = (^emdash ...$full | complete)
+let lines = ($result.stdout | lines)
+let starts = ($lines | enumerate | where {|l|
   ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
-} | get -o index | first)
-$lines | skip $start | str join (char nl)
+} | get index)
+# The CLI reports an error as text and still exits 0, so "no JSON came back" is the failure signal.
+# Without this the caller parsed nothing and carried on: an auth error read as "0 entries".
+if $result.exit_code != 0 or ($starts | is-empty) {
+  print --stderr $"✗ emdash ($full | str join ' ') returned no JSON:"
+  print --stderr ($"($result.stdout)($result.stderr)" | str trim)
+  exit 1
+}
+$lines | skip ($starts | first) | str join (char nl)
 """
 
 # EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
@@ -2036,8 +2032,9 @@ $lines | skip $start | str join (char nl)
 hide = true
 run = """
 mkdir $"($env.RUN_DIR)"
-^curl -sS -o /dev/null -c $"($env.RUN_DIR)/.mcp-cookies" -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
-if $env.LAST_EXIT_CODE != 0 {
+let jar = $"($env.RUN_DIR)/.mcp-cookies"
+let login = (^curl -fsS -o /dev/null -c $jar -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass" | complete)
+if $login.exit_code != 0 {
   print --stderr "✗ could not reach the site — is it running? mise run repo:apply"
   exit 1
 }
@@ -2089,10 +2086,11 @@ if not ($"($env.PLUGINS_DIR)/($env.usage_plugin)" | path exists) {
 [tasks."site:_pause"]
 hide = true
 run = """
-let listed = (^mise daemons status | complete)
-let running = (($listed.stdout | lines) | any {|l|
-  ($l | str contains $"/($env.SITE_DAEMON)") and ($l | str contains "running")
-})
+# Structured, not scraped: `mise daemons status` prints name and status on SEPARATE lines, so a
+# test for one line holding both never matched — this helper reported "stopped" for a running site
+# and paused nothing, and the build went on to re-hash the caches underneath it.
+let daemons = (^mise daemons ls --json | complete).stdout | from json
+let running = ($daemons | any {|d| $d.name == $env.SITE_DAEMON and $d.status == "running" })
 if $running { ^mise daemons stop $env.SITE_DAEMON | complete | ignore }
 print (if $running { "running" } else { "stopped" })
 """

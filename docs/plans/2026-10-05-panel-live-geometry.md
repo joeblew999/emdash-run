@@ -1,6 +1,21 @@
 # 2026-10-05 — Live geometry in the Parts panel
 
-**Status:** active — **blocked** — **0 of 3 done**
+**Status:** active — **blocked upstream** — 2 of 5 done
+
+## Where this stands (2026-10-06)
+
+Done: the `parts` → `models/<id>` join (`model_id`), and the fabricated geometry is gone from the
+seed. `mise run repo:verify` checks both against the real `cad-documents` bucket — 5 of 5 pass.
+
+The three items left all need something from **plat-trunk**, not from this repo:
+
+- [ ] **Validation badge** — needs a real source for validation status; the manifest has none
+- [ ] **Deep link into the CAD viewport** — needs the viewer's URL pattern for a model id
+- [ ] **Live stats** — needs an endpoint or binding that reads `scene.json`; `cad.ubuntusoftware.net` has no DNS record
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 The panel (`plugins/plat-trunk/src/admin/index.tsx`) renders only what is stored on the entry
 (`geometry_meta`). It should fetch live stats from the plat-trunk geometry worker
@@ -87,7 +102,7 @@ reachable with zero servers.
   - [x] `format` is `automerge`, which is what is actually stored
   - [x] verified: the panel renders Part number / Material / Model / Objects / Model version / Model updated / Format / Source / Synced, and the content API returns the same
   - [x] the sandboxed twin's test asserts the same rows, so both models stay equivalent
-  - [x] **made the seed actually reachable** — see the seed-apply gap in [`repo-checks`](2026-10-05-repo-checks.md); a seed edit previously could not reach the running site at all
+  - [x] **made the seed actually reachable** — see the seed-apply gap in [`repo-checks`](done/2026-10-05-repo-checks.md); a seed edit previously could not reach the running site at all
 - [ ] **Validation badge** — now blocked rather than readyable
   - deleting the fabricated stats removed the only `validation` value the panel had. `manifest.json` has no validation field, so a real one needs whatever can read `scene.json`
   - [ ] (unblock) find a real source for validation status

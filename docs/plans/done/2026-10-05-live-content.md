@@ -1,6 +1,21 @@
 # 2026-10-05 — Live content: get the deployed site onto the current seed
 
-**Status:** done — production is in sync, schema **and** content, verified by `mise run check:deployed`. The wipe this plan concluded was inevitable never happened; the documented API path worked once the CLI's auth fault was found.
+**Status:** done — closed 2026-10-06
+
+## Closing note (2026-10-06)
+
+Production matches the repo — schema and content — and `mise run check:deployed` is the standing
+proof. Two boxes below were never ticked and are dropped rather than carried: "capture one real
+request with `wrangler tail`" was a nice-to-have, and "keep the seed in sync" is done by
+`schema:diff` / `check:deployed`, with every sub-step ticked.
+
+One correction to the record below: it says the fix was passing `--token`. The real cause was this
+repo exporting a local token as `EMDASH_TOKEN`. That variable is now explicitly unset in
+`mise.toml` — a stale copy inherited from an old shell broke `repo:verify` again on 2026-10-06.
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 This plan was written as "export a seed, re-seed production". Reading the EmDash skills (which were
 not loaded when it was written — see the commit that vendored them) showed that framing was wrong.

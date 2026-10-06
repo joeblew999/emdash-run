@@ -147,10 +147,26 @@ way, and it is the first thing to try when a mise command behaves oddly inside a
 - **A regex in a double-quoted string is a parse error** (`unrecognized escape sequence '\s'`).
   Regexes go in single quotes. In TOML, a block containing `\s` needs `'''`, because `"""`
   rejects the escape.
-- **There is no `set -e`.** A failing external command does not abort the body. Check
-  `$env.LAST_EXIT_CODE` for the ones you care about and `exit` non-zero yourself. To collect several
-  results and fail once, keep the codes and test them together — that is how `repo:check` shows you
-  every problem in one run.
+- **A failing external command ABORTS the body.** nushell behaves like `set -e`: the first external
+  that exits non-zero ends the task, and nothing after it runs — not a `let x = $env.LAST_EXIT_CODE`
+  on the next line, and not a cleanup step. This file said the opposite for a long time, and three
+  tasks were built on it: `site:check` and `site:_deploy` promised to restart the site "regardless of
+  the result" and never did after a failure, and `repo:check` promised every problem in one run and
+  stopped at the first. Verify it yourself:
+
+  ```sh
+  mise exec -- nu --no-config-file -c '^false
+  print "never printed"'
+  ```
+
+  To keep going and read the exit code, run the command inside `try`. The output still streams:
+
+  ```nu
+  def code [block: closure] { try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 } }
+  let lint = (code { ^oxlint ...$targets })
+  ```
+
+  To tolerate a failure and capture the output instead, pipe through `complete`.
 - **`insert` errors when the column already exists; `upsert` is the overwrite.** A JavaScript
   `Map.set` union is `upsert`.
 - **A record literal cannot define a field that `...$spread` already supplied** — `upsert` twice.
@@ -160,8 +176,12 @@ way, and it is the first thing to try when a mise command behaves oddly inside a
 - `get -i` is deprecated → **`get -o`**. `str downcase` → **`str lowercase`**.
 - `sort-by` is **not** case-insensitive; JavaScript's `localeCompare` was. Use `str lowercase` on
   the sort key.
-- A failing external with `^` still sets `LAST_EXIT_CODE`; `| complete | ignore` is how to tolerate
-  one on purpose.
+- `| complete | ignore` is how to tolerate a failing external on purpose.
+- **Read structured output, do not scrape it.** `mise daemons ls --json` and `from json`, not a line
+  match on `mise daemons status` — that prints name and status on separate lines, so `site:_pause`
+  matched nothing and silently paused nothing.
+- **The emdash CLI prints an error and still exits 0.** Read it only through `emdash:_json`, which
+  fails when no JSON comes back. Parsing its output directly turns an auth error into "0 entries".
 
 ## What nushell gives us that mise cannot
 
@@ -178,7 +198,8 @@ mise composes; nushell does the work. The parts actually in use:
   detail in `msg`.
 - **`complete`** — run a command and keep stdout, stderr and the exit code separately. Every helper
   that returns a value uses it, because mise's own banner goes to stderr and stdout stays clean.
-- **`$env.LAST_EXIT_CODE`** — there is no `set -e`, so this is how a failing external is noticed.
+- **`try` / `catch`** — a failing external aborts the body, so this is how a task keeps going past
+  one and still learns its exit code (`$err.exit_code`).
 - **`upsert` / `get -o` / `describe` / `str starts-with`** — the shape of the data is checked
   rather than assumed. `describe` says `table` for an array of objects, which is what silently
   broke a guard once.

@@ -60,8 +60,8 @@ Full list with the reasoning behind each: **`mise-nushell.md`** (in this folder)
   correctness: for user-facing changes, also verify the actual behaviour (admin UI, MCP
   call, HTTP response).
 - Read `docs/plans/` before structural changes (closed plans in `docs/plans/done/`, including the former ADRs).
-- EmDash API questions (hooks, schema, seed, CLI, plugin authoring): read the skills
-  shipped with the site at `.claude/skills/emdash/` — `building-emdash-site`,
+- EmDash API questions (hooks, schema, seed, CLI, plugin authoring): read the vendored skills
+  at `.github/skills/` — `building-emdash-site`,
   `creating-plugins`, `emdash-cli`. The site is an official template, not the monorepo.
 
 ## Tasks
@@ -88,8 +88,10 @@ same on every machine.
   (`\s`), so regexes go in single quotes; in TOML a block containing `\s` needs `'''`, since `"""`
   rejects the escape. `insert` errors on an existing column and `upsert` is the overwrite. A
   closure cannot capture a `mut` binding, so copy it into a `let` first;
-- there is no `set -e`: a failing external command does not abort the body, so check
-  `$env.LAST_EXIT_CODE` for the ones you care about and exit non-zero yourself.
+- **a failing external command aborts the body** — nushell behaves like `set -e`, and nothing
+  after the failure runs. That is the right default, and it is a trap for cleanup: a restart placed
+  after a build never happens when the build fails. To keep going, wrap the command in `try` and
+  take its exit code (`site:check`, `site:_deploy`, `repo:check`), or pipe it through `complete`.
 - **Before writing a task body, read `mise-nushell.md`** (in this folder). It holds the mise facts that are not
   obvious (`usage` is a validated signature, `[task_config] dir`, `mise tasks info` as an existence
   test), the nushell traps above and more, how to edit this file without eating tasks, and how to
@@ -105,7 +107,7 @@ hardcodes a site — so pointing that block at another project is the whole port
 
 ## Layout
 
-Paths and what is generated are mapped in `README.md` (§ "Where things are").
+Paths and what is generated are mapped in `README.md` (§ "How it is put together").
 
 `.src/emdash/` is an **optional** shallow clone of the emdash monorepo
 (`mise run src:clone-emdash`) — read EmDash's own source when the published types/docs are
@@ -117,8 +119,7 @@ The one rule that matters: **never edit anything under `.src/`** — it is gener
 
 ## Tools
 
-**MCP servers** — use these instead of shelling out where they apply:
-- `mise` — run tasks, inspect tools/env/config. Registered in `.claude/settings.json`.
+**MCP servers** — registered in `.mcp.json`; use them instead of shelling out where they apply:
 - `emdash` — read/write content, schema, media, taxonomy (see `.mcp.json`).
 - `playwright` — drive the admin UI in a real browser.
   Use **`browser_run_code_unsafe`**, not the individual click tools. The integrated browser's
@@ -159,7 +160,7 @@ export formats, the database layout, and the plugin model.
   EmDash knowledge and will rediscover `export-seed`, `site import` and the file-vs-D1
   database trap by trial and error. That is not a hypothetical: it happened.
 - `mise run skills:sync` refreshes both the vendored copy and the `.claude/skills/emdash`
-  symlink (kept for Claude Code; gitignored, because it points into `.src/`). `apply` runs it.
+  copy (kept for Claude Code; gitignored, because it is generated from `.src/`). `apply` runs it.
 - `mise run skills:check` fails if the committed copy has drifted from what the site ships.
   `repo:check` runs it.
 - Separately, `skills add`-installed skills (currently just `mise-guide`) are **not** vendored

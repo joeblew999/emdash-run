@@ -1,6 +1,6 @@
 # 2026-10-05 — Use the registry's search filters
 
-**Status:** active — **0 of 3 done**
+**Status:** closed 2026-10-05, mostly not built. `mise run plugin:search` wraps the official `emdash-plugin search`, which answers the first item. The catalog filter and the capability vocabulary were dropped, not done (commit `3bd7d5f`).
 
 `plugin:catalog` calls `searchPackages` with **no query**, so it only ever fetches every
 package. The endpoint also takes: `q` (full-text, or a handle/DID, or `handle/slug`),

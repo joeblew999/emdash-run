@@ -1,6 +1,16 @@
 # 2026-10-05 — One MCP surface for content and geometry
 
-**Status:** active — **blocked** — **0 of 3 done**
+**Status:** active — **blocked upstream** — 0 of 3 done
+
+## Where this stands (2026-10-06)
+
+Unchanged, and nothing in this repo can move it: there is no geometry MCP server and no deployed
+geometry worker to wrap. The EmDash half is ready (`.mcp.json` registers it; the token is minted by
+`mcp:token-admin`). Same root blocker as [`panel-live-geometry`](2026-10-05-panel-live-geometry.md).
+
+---
+
+*Everything below is the record as it was written. Where it names `scripts/…`, `lib/…`, `repo:test` or vitest, read it as history: the scripts were replaced by nushell task bodies in `mise.toml` on 2026-10-06.*
 
 An agent should manage EmDash content *and* plat-trunk geometry from a single tool surface.
 EmDash's MCP server is proven here (content, schema, media, taxonomy, menus). The geometry

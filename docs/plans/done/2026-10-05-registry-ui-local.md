@@ -1,6 +1,6 @@
 # 2026-10-05 — Point the registry UI at the local registry
 
-**Status:** active — **0 of 2 done**
+**Status:** abandoned 2026-10-05 — nothing below was built. Closed in commit `3bd7d5f` on the grounds that the CLI answers the need; the local registry UI on `:4330` still shows the hosted registry's packages.
 
 `apps/plugins-site` (the registry's own web UI) calls `registryLoader()` with **no options**,
 so it is hardcoded to the hosted registry — `https://registry.emdashcms.com` is baked into
