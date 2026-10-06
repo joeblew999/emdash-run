@@ -1,7 +1,10 @@
 #!/bin/sh
 # Put the emdash-run harness in the current directory and bring EmDash up.
 #   curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh
+# Pick a template (default starter-cloudflare; `starter` is plain Node.js, no Cloudflare):
+#   curl -fsSL …/install.sh | sh -s -- starter
 set -e
+TEMPLATE_CHOICE="${1:-}"
 command -v mise >/dev/null 2>&1 || { echo "✗ mise is not installed — get it first: https://mise.jdx.dev/getting-started.html"; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "✗ git is not installed"; exit 1; }
 [ -d .git ] || git init -q
@@ -15,6 +18,7 @@ if [ -f mise.toml ]; then
   fi
 else
   cp nu/project.example.toml mise.toml
+  if [ -n "$TEMPLATE_CHOICE" ]; then mise set "TEMPLATE=$TEMPLATE_CHOICE"; mise fmt; fi
   echo "  ✓ mise.toml — your settings; edit it any time, then: mise run dev"
 fi
 mise trust --all -q

@@ -1,21 +1,40 @@
 # emdash-run
 
-**Develop and run [EmDash](https://docs.emdashcms.com) from any repo, with one set of mise tasks.**
+[![verify](https://github.com/joeblew999/emdash-run/actions/workflows/verify.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/verify.yml)
+[![release](https://img.shields.io/github/v/release/joeblew999/emdash-run)](https://github.com/joeblew999/emdash-run/releases/latest)
+![macOS](https://img.shields.io/badge/macOS-works-brightgreen?logo=apple)
+![Linux](https://img.shields.io/badge/Linux-works-brightgreen?logo=linux&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-works-brightgreen)
+![Cloudflare](https://img.shields.io/badge/runs%20on-Cloudflare-f38020?logo=cloudflare&logoColor=white)
+![Node.js](https://img.shields.io/badge/runs%20on-Node.js-5fa04e?logo=nodedotjs&logoColor=white)
+![mise](https://img.shields.io/badge/tasks-mise-blueviolet)
+![nushell](https://img.shields.io/badge/logic-nushell-4e9a06)
+
+**Develop and run [EmDash](https://docs.emdashcms.com) from any repo, on any OS, with one set of mise tasks.**
 
 The real published `emdash`, an official template, the official CLIs — wired together so that each
 job is one command: bring a site up, model content, build a plugin, deploy and verify, back up and
 restore. You own about 40 lines of settings; the rest is the harness, and it updates itself.
+
+**It runs everywhere, and that is checked, not claimed.** The `verify` badge above is the same
+`mise run verify` you run on your laptop, run on macOS, Linux and Windows on every push — on a
+Cloudflare template *and* on a plain Node.js one.
 
 ## Get started — in your own repo
 
 You need [mise](https://mise.jdx.dev) and git. In your repo (or an empty folder):
 
 ```sh
+# macOS, Linux
 curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.sh | sh
+```
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex
 ```
 
 That is the whole install. It fetches the harness, gives you a `mise.toml` of settings, installs the
-toolchain, builds a site from the official starter template, starts it, checks it, and prints:
+toolchain, builds a site from an official template, starts it, checks it, and prints:
 
 ```
 ✓ EmDash 1.1.0 is running — the starter-cloudflare template, on your settings
@@ -41,6 +60,31 @@ mise run setup
 ```
 </details>
 
+## You are not locked into Cloudflare
+
+EmDash runs on Cloudflare **or** on plain Node.js, and so does this. It is one line in your
+`mise.toml`:
+
+| `TEMPLATE =` | runs on | database | media | you need |
+|---|---|---|---|---|
+| `starter-cloudflare`, `blog-cloudflare`, `marketing-cloudflare`, `portfolio-cloudflare` | Cloudflare Workers | D1 | R2 | a Cloudflare account, to deploy |
+| `starter`, `blog`, `marketing`, `portfolio` | Node.js — any host, any container, your own server | a SQLite file | local files | nothing |
+
+To start on Node.js, pass the template to the installer —
+`curl -fsSL …/install.sh | sh -s -- starter` — or change `TEMPLATE` and run `mise run setup`.
+
+**The tasks are the same on both.** `dev`, `check`, `doctor`, `snapshot`, `restore`, the plugin
+flows — identical. What differs is only what a platform cannot offer:
+
+- `deploy` on Cloudflare builds, ships and verifies what is live. On Node.js it builds, and tells
+  you how to start it — where it runs is yours to choose.
+- `rollback` and `logs -- --deployed` talk to Cloudflare, and say so on Node.js.
+
+**Plugins are sandboxed on both.** A plugin made by `mise run plugin:new` runs isolated, with only
+the capabilities its manifest declares — in Cloudflare's Worker Loader, or in `workerd` under
+Node.js. One kind of plugin, the same security, either platform. You never have to fall back to
+trusted "native" plugins to leave Cloudflare.
+
 **Why you can trust it**
 
 - It is the real thing: the published `emdash` package, an official template, the official CLIs.
@@ -48,19 +92,19 @@ mise run setup
 - `mise run check` (4 seconds) proves the harness itself holds together — including planting known
   faults to make sure its own checks can fail.
 - `mise run doctor` proves the *running* site matches your repo; `doctor -- --url` does the same
-  for a deployment. `deploy` will not ship if `check` fails, and verifies what is live.
-- Every release is run end to end first: on macOS, in a clean Linux container, on a second project
-  with a different template, and against a live Cloudflare deployment.
+  for a deployment. `deploy` will not ship if `check` fails.
+- `mise run verify` answers "does it work on this machine". CI runs exactly that — nothing is
+  CI-only — on three operating systems and both platforms.
+- It is portable by construction: the logic is nushell and runs only programs mise installs. No
+  curl, no shell scripts, no symlinks — and `check` fails if one creeps in.
 
-**Platforms.** macOS and Linux are proven (minimal Debian needs `apt install libatomic1`).
-Windows has an installer that has **not been run yet** — try it and tell us:
-`irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex`
+**Minimal Debian** needs `apt install libatomic1` before the install.
+**Deploying to Cloudflare** needs credentials in [fnox](https://fnox.jdx.dev)
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
+development needs neither.
 
 **Something broke?** `mise run report` prints your versions, status and recent site log — paste it
 into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
-**Deploying** needs Cloudflare credentials in [fnox](https://fnox.jdx.dev)
-(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DEPLOY_URL` in your `mise.toml`. Local
-development needs neither.
 
 ## Every day
 
@@ -78,10 +122,11 @@ mise run logs                     follow the site                               
 mise run plugin:new -- <name>     scaffold a plugin and load it into the running site
 mise run emdash -- <anything>     the official CLI: schema, content, media, taxonomy, menu, search…
 mise run upgrade                  take a newer harness
+mise run verify                   does it all work on this machine? what CI runs      --full
 mise run report                   something broke? prints what to paste into an issue
 ```
 
-Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 29;
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 32;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
 
 ## What is yours, and what is the harness's

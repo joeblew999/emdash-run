@@ -17,6 +17,8 @@ jobs:
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
       - run: mise run verify
+      # The same check on a plain Node.js template — EmDash without Cloudflare.
+      - run: mise run verify:template -- starter

@@ -71,6 +71,19 @@ emdash({
 "worker_loaders": [{ "binding": "LOADER" }],
 ```
 
+On a Node.js template there is no wrangler file, and the runner is a package instead:
+
+```js
+// config/site.astro.config.mjs
+import { sandboxed as localSandboxed } from "./local-plugins.mjs";
+
+emdash({
+	database: sqlite({ url: "file:./data.db" }),
+	sandboxed: [...localSandboxed],
+	sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox",
+})
+```
+
 Then `mise run dev`.
 
 ## How the site finds a local plugin
@@ -91,16 +104,19 @@ Two details that cost a session each to learn:
 
 ## Limits worth knowing before you design a plugin
 
-- **Sandboxed plugins are D1-only.** The sandbox bridge talks to a D1 binding directly, so a
-  Node.js or PostgreSQL deployment cannot run them. This harness is Cloudflare + D1.
+- **Sandboxed plugins run on both platforms.** On Cloudflare each one is a Dynamic Worker behind
+  the `LOADER` binding (Workers Paid plan to deploy; free locally). On Node.js the server runs them
+  in `workerd` (`@emdash-cms/sandbox-workerd`, which the harness installs on Node templates). Same
+  bundle, same manifest, same capabilities.
 - **The capability is `content:read`, not `read:content`.** The manifest's `capabilities`,
   `allowedHosts` and `storage` are a consent contract: changing them requires a version bump.
 - **An editor panel sees saved values only.** Unsaved edits need `admin.editor-draft:read` and an
   explicit interaction.
 - **A `secret` setting needs `EMDASH_ENCRYPTION_KEY`** and fails closed without it
   (`mise run emdash -- secrets generate`).
-- **Native plugins** — trusted React code the host imports — are not scaffolded by the CLI and are
-  not auto-registered here. Add one to `config/site.astro.config.mjs` by hand.
+- **Native plugins** — trusted code the host imports, with the site's full authority — are not
+  what this harness makes. Sandboxed plugins run on Cloudflare and on Node.js, so there is no
+  platform reason to need one; if you write one anyway, register it in your site config by hand.
 - **Publishing needs your own publisher identity.** Replace `PLUGIN_PUBLISHER` and run
   `mise run emdash-plugin -- login` before publishing.
 

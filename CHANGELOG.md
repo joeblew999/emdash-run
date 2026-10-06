@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-10-06
+
+- **Not locked into Cloudflare.** The harness runs on the plain Node.js templates (`starter`,
+  `blog`, …) as well as the `*-cloudflare` ones: a SQLite file and local uploads instead of D1 and
+  R2. Same tasks. Sandboxed plugins work on both — under `workerd` on Node.js.
+- **Windows works**, with macOS and Linux — proven by CI, which runs the same `mise run verify`
+  a dev runs, on all three, on a Cloudflare template and a Node.js one.
+- **Portable by construction.** The harness runs only programs mise installs: `curl`, `find`,
+  `printenv`, `open` and friends are replaced by nushell's own commands, and `check` fails on any
+  other program, on `/dev/null`, and on a Windows-unsafe glob.
+- New: `mise run verify` (does it work on this machine), `verify:template -- <template>`,
+  `verify:linux` (a clean container).
+- `install.sh` takes a template: `… | sh -s -- starter`.
+
 ## 0.2.2 — 2026-10-06
 
 - **`mise run report`** — when something breaks, it prints your OS, versions, status and the recent

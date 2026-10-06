@@ -51,17 +51,35 @@ export def emdash-json [...args: string]: nothing -> any {
   $lines | skip ($starts | first) | str join (char nl) | from json
 }
 
-# The dev server's real database. EmDash's file commands default to ./data.db, which a Cloudflare
-# site never uses — the dev server reads miniflare's D1 — so they must be pointed here.
+# EmDash runs on Cloudflare (D1, R2, Workers) or on plain Node.js (a SQLite file, local uploads).
+# The template decides: the Cloudflare ones ship a wrangler.jsonc.
+export def on-cloudflare []: nothing -> bool { $env.SITE_DIR | path join "wrangler.jsonc" | path exists }
+
+# The dev server's real database, as a file the CLI's file commands can be pointed at. On
+# Cloudflare that is miniflare's D1 — NOT the ./data.db those commands default to. On Node it is
+# the SQLite file the template configures.
 export def devdb []: nothing -> string {
-  let d1 = ($env.SITE_DIR | path join ".wrangler" "state" "v3" "d1" "miniflare-D1DatabaseObject")
   let found = (
-    if ($d1 | path exists) {
-      ls $d1 | get name | where {|n| ($n | str ends-with ".sqlite") and (not ($n | str ends-with "metadata.sqlite")) }
-    } else { [] }
+    if (on-cloudflare) {
+      let d1 = ($env.SITE_DIR | path join ".wrangler" "state" "v3" "d1" "miniflare-D1DatabaseObject")
+      if ($d1 | path exists) {
+        ls $d1 | get name | where {|n| ($n | str ends-with ".sqlite") and (not ($n | str ends-with "metadata.sqlite")) }
+      } else { [] }
+    } else {
+      [($env.SITE_DIR | path join "data.db")] | where {|f| $f | path exists }
+    }
   )
   if ($found | is-empty) { fail "no local database yet" "run: mise run dev" }
   $found | first
+}
+
+# Delete the local database and uploads. The site recreates them, seeded, when it next starts.
+export def wipe-local-data [] {
+  if (on-cloudflare) {
+    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
+  } else {
+    for name in ["data.db" "data.db-shm" "data.db-wal" "uploads"] { rm -rf ($env.SITE_DIR | path join $name) }
+  }
 }
 
 # A credential: the environment first, then fnox. "" when there is none — a finding, not a crash.

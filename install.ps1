@@ -1,7 +1,7 @@
 # Put the emdash-run harness in the current directory and bring EmDash up — Windows.
 #   irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex
-# NOT YET RUN ON WINDOWS. If it fails, please run `mise run report` (if you got that far) and open
-# an issue: https://github.com/joeblew999/emdash-run/issues/new
+# Pick a template (default starter-cloudflare; `starter` is plain Node.js, no Cloudflare):
+#   $env:EMDASH_TEMPLATE = "starter"; irm …/install.ps1 | iex
 $ErrorActionPreference = "Stop"
 if (-not (Get-Command mise -ErrorAction SilentlyContinue)) { Write-Host "x mise is not installed - get it first: https://mise.jdx.dev/getting-started.html"; exit 1 }
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Host "x git is not installed"; exit 1 }
@@ -19,6 +19,7 @@ if (Test-Path mise.toml) {
   }
 } else {
   Copy-Item nu/project.example.toml mise.toml
+  if ($env:EMDASH_TEMPLATE) { mise set "TEMPLATE=$($env:EMDASH_TEMPLATE)"; mise fmt }
   Write-Host "  ok mise.toml - your settings; edit it any time, then: mise run dev"
 }
 mise trust --all -q

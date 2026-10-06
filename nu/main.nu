@@ -133,8 +133,10 @@ def "main doctor" [--url: string] {
     let faults = (plugin audit)
     if ($faults | is-not-empty) { fail $"plugins are inconsistent: ($faults | str join '; ')" }
   } else {
-    step "core migrations on the deployed database"
-    do { cd $env.SITE_DIR; ^fnox exec -- emdash migrate --status --d1 (site d1-name) }
+    if (on-cloudflare) {
+      step "core migrations on the deployed database"
+      do { cd $env.SITE_DIR; ^fnox exec -- emdash migrate --status --d1 (site d1-name) }
+    }
     step "content model"
     if not (checks schema-diff (open ($env.SITE_DIR | path join "seed" "seed.json"))) { exit 1 }
   }
@@ -146,8 +148,9 @@ def "main doctor" [--url: string] {
 # Ship it: check, build, deploy to Cloudflare, then verify what is live. --dry builds and bundles
 # without deploying; --build-only stops after the build; --no-check skips the gate.
 def "main deploy" [--dry, --build-only, --no-check] {
-  let mode = (if $build_only { "build" } else if $dry { "dry" } else { "deploy" })
-  if $mode == "deploy" and (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
+  let cloudflare = (on-cloudflare)
+  let mode = (if $build_only or ((not $cloudflare) and $dry) { "build" } else if $dry { "dry" } else { "deploy" })
+  if $cloudflare and $mode == "deploy" and (setting DEPLOY_URL | is-empty) { fail "DEPLOY_URL is not set in mise.toml" }
   if $mode == "deploy" and (not $no_check) {
     step "check — nothing ships that fails it"
     main check
@@ -157,15 +160,20 @@ def "main deploy" [--dry, --build-only, --no-check] {
   step $mode
   let rc = (site ship $mode)
   if $rc != 0 { fail $"($mode) failed" }
-  if $mode == "deploy" {
+  if $mode == "deploy" and $cloudflare {
     step "verify what is live"
     main doctor --url $env.DEPLOY_URL
     print $"✓ live at ($env.DEPLOY_URL)"
+  } else if $mode == "deploy" {
+    # A Node build runs anywhere Node does; the harness does not choose your host.
+    print "✓ built → .src/site/dist — start it with: node ./dist/server/entry.mjs"
+    print "  once it is running somewhere: mise run doctor -- --url <where>"
   }
 }
 
 # Put the previous deployment back, then verify what is live.
 def "main rollback" [] {
+  if not (on-cloudflare) { fail "rollback is for Cloudflare deployments" "on Node, redeploy the previous build the way your host does it" }
   step "rollback to the previous version"
   site wrangler rollback --yes --message "rollback via mise run rollback"
   main doctor --url $env.DEPLOY_URL
@@ -191,8 +199,8 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     if not $confirm { fail "--wipe destroys the local database — pass --confirm as well" }
     step "wipe the local database"
     daemon-stop $env.SITE_DAEMON
-    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
-    ^mise daemons start $env.SITE_DAEMON
+    wipe-local-data
+    site restart
   }
   let analysis = (do { cd $env.SITE_DIR; ^emdash site import $pkg --analyze --json ...(url-flag) | complete })
   let start = ($analysis.stdout | str index-of "{")
@@ -224,13 +232,14 @@ def "main reset" [--site, --all] {
     rm -rf $env.SITE_DIR
     print "✓ wiped .src/site — next: mise run setup"
   } else {
-    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
+    wipe-local-data
     main dev
   }
 }
 
 # Follow logs: the site by default, another daemon by name, or --deployed for the live Worker.
 def "main logs" [daemon?: string, --deployed] {
+  if $deployed and (not (on-cloudflare)) { fail "--deployed follows a Cloudflare Worker" "on Node, read the logs where your host keeps them" }
   if $deployed { site wrangler tail --format pretty } else { ^mise daemons logs ($daemon | default $env.SITE_DAEMON) --follow }
 }
 
@@ -363,6 +372,35 @@ def "main verify" [--full] {
     main deploy --dry
   }
   print $"✓ verified on ($nu.os-info.name) ($nu.os-info.arch)(if $full { ' — site, checks, doctor, plugins, snapshot, build' } else { ' — site, checks, doctor' })"
+}
+
+# Does the harness work for a project on ANOTHER template? Builds a throwaway project from this
+# checkout's harness with that template and runs `verify` in it. This is how the Node.js path is
+# proven from a repo whose own project is on Cloudflare — CI runs it with `starter`.
+def "main verify template" [template: string, --full] {
+  let dir = ($nu.temp-dir | path join "emdash-run-verify" $template)
+  let was_running = (daemon-running $env.SITE_DAEMON)
+  rm -rf $dir
+  mkdir ($dir | path join ".config" "mise" "conf.d")
+  cp -r ($env.ROOT | path join "nu") ($dir | path join "nu")
+  cp (harness-file) ($dir | path join ".config" "mise" "conf.d" "harness.toml")
+  (open --raw ($env.ROOT | path join "nu" "project.example.toml")
+    | str replace --regex 'TEMPLATE = "[^"]*"' $"TEMPLATE = \"($template)\""
+    | save ($dir | path join "mise.toml"))
+  ^git init --quiet $dir
+  # Both sites want the same port, so ours steps aside for the duration.
+  if $was_running { daemon-stop $env.SITE_DAEMON }
+  let rc = (code {
+    cd $dir
+    ^mise trust --all --quiet
+    ^mise fmt
+    if $full { ^mise run verify -- --full } else { ^mise run verify }
+  })
+  do { cd $dir; ^mise daemons stop --all | complete | ignore }
+  if $was_running { ^mise daemons start $env.SITE_DAEMON }
+  if $rc != 0 { fail $"the harness does not verify on the ($template) template" $"the project is left in ($dir)" }
+  rm -rf $dir
+  print $"✓ the harness works on the ($template) template"
 }
 
 # The same verification on a clean Linux machine: a container with only git and mise, and a fresh

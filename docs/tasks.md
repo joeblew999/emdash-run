@@ -183,3 +183,9 @@ Does this project work on THIS machine? Site up, check, doctor — what CI runs 
 - **Usage:** `verify:linux`
 
 The same verification in a clean Linux container with only git and mise. Needs docker
+
+## `verify:template`
+
+- **Usage:** `verify:template`
+
+Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter (plain Node.js)

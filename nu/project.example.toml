@@ -5,7 +5,7 @@
 #   mise run check     before a commit   mise run doctor   is the running site right?
 
 [env]
-TEMPLATE = "starter-cloudflare" # any *-cloudflare directory in github.com/emdash-cms/templates
+TEMPLATE = "starter-cloudflare" # starter-cloudflare, blog-cloudflare… (Cloudflare) or starter, blog… (plain Node.js)
 EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
 DEPLOY_URL = ""                 # where `mise run deploy` ships; empty until you have one
 
