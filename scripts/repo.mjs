@@ -34,12 +34,11 @@ if (sub === "init") {
 	// pitchfork waits for ready_http (pitchfork.toml) before returning.
 	run("pitchfork", ["start", "emdash"]);
 
-	// dev-bypass also runs migrations and applies the seed on the first request, so poll it
-	// until it answers before minting the MCP token.
-	//
-	// Note it applies with skip-on-conflict: an entry that already exists is left alone. So
-	// this picks up NEW seed content but never EDITS to existing content — for those you
-	// have to empty the D1 first (`mise run seed:apply`).
+	// dev-bypass also runs migrations, so poll it until it answers before seeding or minting the
+	// MCP token. It applies the seed itself, but with skip-on-conflict — an entry that already
+	// exists is left alone — so it picks up NEW seed content and never EDITS to existing content.
+	// `seed:apply` below is what makes edits land, using the official
+	// `emdash seed --on-conflict=update`.
 	console.log("⏳ waiting for the site to be ready...");
 	for (let i = 0; i < 60; i++) {
 		const res = await fetch(`${SITE_URL}/_emdash/api/setup/dev-bypass`, { method: "POST" }).catch(
@@ -48,6 +47,9 @@ if (sub === "init") {
 		if (res?.status === 200) break;
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	}
+
+	// Make seed EDITS land, not just new entries. The official command updates in place.
+	run("mise", ["run", "seed:apply"]);
 
 	run("mise", ["run", "mcp:token-admin"]);
 	console.log(`→ admin:  ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);

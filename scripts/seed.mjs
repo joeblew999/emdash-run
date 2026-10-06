@@ -23,13 +23,12 @@
  * does that. It is destructive to local state — content edited through the admin, and the
  * admin session itself, are discarded.
  */
-import { rmSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
-import { env, run, sh } from "./lib/exec.mjs";
+import { devDb, env, out, run } from "./lib/exec.mjs";
 
 const ROOT = env("ROOT");
 const SITE_DIR = env("SITE_DIR");
-const SITE_URL = env("SITE_URL");
 const sub = process.argv[2];
 
 /** Identifies a field across the repo's seed and the deployed database: `collection.field`. */
@@ -38,44 +37,72 @@ const fieldKey = (collection, field) => `${collection}.${field}`;
 /** Alphabetical, explicitly — `Array#sort()` without a comparator is a lint error. */
 const byName = (a, b) => a.localeCompare(b);
 
+/**
+ * Run an `emdash` command and parse its JSON. Skips the task banner, and matches a LINE that
+ * opens JSON so an array result is not cut into by a `{` further down inside it.
+ */
+function cliJson(...args) {
+	const stdout = out("mise", ["run", "emdash:cli", "--", ...args]);
+	const parsed = JSON.parse(stdout.slice(stdout.search(/^[{[]/m)));
+	return parsed.data ?? parsed;
+}
+
 if (sub === "validate") {
 	run("mise", ["run", "emdash:cli", "--", "seed", "--validate", `${SITE_DIR}/seed/seed.json`]);
 } else if (sub === "apply") {
-	console.log("→ emptying the local D1 (the seed CLI writes data.db, which the site never reads)");
-	sh("pitchfork stop emdash || true");
-	rmSync(`${SITE_DIR}/.wrangler/state`, { recursive: true, force: true });
-
-	// repo:apply restarts the site and polls dev-bypass, which migrates and re-applies the seed.
-	run("mise", ["run", "repo:apply"]);
-
-	// That poll is a server-side POST, so it cannot set the BROWSER's session cookie. The D1
-	// it just replaced held the old sessions, so any open admin tab is now signed out. Say
-	// so, and hand over the URL that signs in — otherwise the first thing you see after a
-	// successful seed is a login page, and it reads as a failure.
+	// Apply the merged seed to the dev site's database — with the official command.
+	//
+	// `emdash seed` is a LOCAL command, and its `--database` accepts a path. The dev server's
+	// database IS a file (miniflare's D1), so pointing `--database` at it applies the seed
+	// straight to the database the site reads, and `--on-conflict=update` makes it update entries
+	// that already exist rather than skipping them.
+	//
+	// This replaces what was here before: empty the D1's state directory, restart, and let
+	// dev-bypass reseed on the first request. That worked, but it was our invention — and it
+	// destroyed local content and the admin session every time. The official command does the
+	// same job, updates in place, and needs no restart.
+	const db = devDb();
+	if (!db) {
+		console.error("✗ no local D1 yet — run: mise run repo:apply");
+		process.exit(1);
+	}
+	console.log(`→ emdash seed → ${db.replace(`${SITE_DIR}/`, "")} (on-conflict=update)`);
+	run("mise", [
+		"run",
+		"emdash:cli",
+		"--",
+		"seed",
+		`${SITE_DIR}/seed/seed.json`,
+		"--database",
+		db,
+		"--on-conflict=update",
+	]);
 	console.log("✓ seed applied");
-	console.log("  the D1 was replaced, so your admin session is gone. Sign in again at:");
-	console.log(`  ${SITE_URL}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);
 	console.log("  then: mise run repo:verify");
 } else if (sub === "from-remote") {
-	// Compare the DEPLOYED site's content model against ours.
+	// Compare the DEPLOYED content model against ours — through the official CLI.
 	//
-	// The docs' recipe for this (`wrangler d1 export --remote`) cannot run on EmDash — FTS5
-	// virtual tables — so the model is read back with targeted queries instead. Read-only:
-	// this reports drift, it does not write a seed. Writing one is only correct once the
-	// deployed site is AHEAD of the repo, and it is not (production has no model_id).
-	const { queryRemote } = await import("./lib/d1.mjs");
-
-	const remoteCollections = queryRemote(
-		"SELECT slug, label FROM _emdash_collections ORDER BY slug",
-	);
-	const remoteFields = queryRemote(
-		"SELECT c.slug AS collection, f.slug AS field, f.type AS type FROM _emdash_fields f " +
-			"JOIN _emdash_collections c ON c.id = f.collection_id ORDER BY c.slug, f.sort_order",
-	);
-
+	// This used to query D1 directly with hand-rolled SQL, because `wrangler d1 export` cannot run
+	// on EmDash at all (FTS5 virtual tables). But `emdash schema` is the documented way to read a
+	// live content model, needs no Cloudflare credentials, and works against a remote instance —
+	// so the SQL is gone, and with it `scripts/lib/d1.mjs`.
+	//
+	// Target the deployed site with EMDASH_URL=https://… ; it defaults to the local one.
+	//
+	// Read-only: it reports drift and writes nothing. Writing a seed only becomes correct once the
+	// deployed site is AHEAD of the repo.
 	const ours = JSON.parse(readFileSync(`${ROOT}/config/cad.seed.json`, "utf8"));
 
-	const remote = new Map(remoteFields.map((r) => [fieldKey(r.collection, r.field), r.type]));
+	const listed = cliJson("schema", "list", "--json");
+	const remoteSlugs = (listed.items ?? listed.collections ?? listed).map((c) => c.slug);
+
+	const remote = new Map();
+	for (const slug of remoteSlugs) {
+		for (const f of cliJson("schema", "get", slug, "--json").fields ?? []) {
+			remote.set(fieldKey(slug, f.slug), f.type);
+		}
+	}
+
 	const local = new Map();
 	for (const c of ours.collections) {
 		for (const f of c.fields ?? []) local.set(fieldKey(c.slug, f.slug), f.type);
@@ -87,16 +114,15 @@ if (sub === "validate") {
 		.filter((k) => remote.has(k) && remote.get(k) !== local.get(k))
 		.map((k) => `${k}: repo=${local.get(k)} deployed=${remote.get(k)}`);
 
-	const remoteSlugs = new Set(remoteCollections.map((c) => c.slug));
 	const localSlugs = ours.collections.map((c) => c.slug);
 
-	console.log(`  deployed: ${remoteCollections.length} collections, ${remoteFields.length} fields`);
+	console.log(`  deployed: ${remoteSlugs.length} collections, ${remote.size} fields`);
 	console.log(`  repo:     ${localSlugs.length} collections, ${local.size} fields`);
 	console.log(
-		`  collections only in the repo:     ${localSlugs.filter((s) => !remoteSlugs.has(s)).join(", ") || "none"}`,
+		`  collections only in the repo:     ${localSlugs.filter((s) => !remoteSlugs.includes(s)).join(", ") || "none"}`,
 	);
 	console.log(
-		`  collections only deployed:        ${[...remoteSlugs].filter((s) => !localSlugs.includes(s)).join(", ") || "none"}`,
+		`  collections only deployed:        ${remoteSlugs.filter((s) => !localSlugs.includes(s)).join(", ") || "none"}`,
 	);
 
 	if (onlyLocal.length || onlyRemote.length || typeDiff.length) {
