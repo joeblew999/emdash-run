@@ -18,12 +18,19 @@ not, and cannot be, how a deployed site is updated.
 
 ## How it actually resolved — the API path worked; the wipe was never needed
 
-Every blocker recorded below was real, and all of them turned out to be one fault: **the CLI does not
-send the credential it stored.** `emdash login` succeeds, writes a valid `admin`-scoped token, and
-*every* subsequent command is rejected as `Token is invalid or expired` — because the request goes out
-with no token attached. Passing it explicitly (`--token`, the CLI's own first documented auth option)
-fixes it, and that is what `scripts/emdash.mjs` now does. Two traps fell out of the same
-investigation:
+Every blocker recorded below was real, and the explanation this plan first reached for — "the CLI
+does not send the credential it stored" — was **wrong**. The CLI sends its own stored credential
+correctly. What broke it was this repo: mise exported `EMDASH_TOKEN` into the environment of every
+task, and that variable held the **local** site's token. The CLI reads `EMDASH_TOKEN` as an auth
+source, so every remote call sent a local token to production and was rejected as invalid. A failed
+call also purges the stored credential, which is what made it keep looking like the CLI could not
+read its own login.
+
+Proven, not reasoned about: with `EMDASH_TOKEN` unset, `emdash whoami --url <production>` returns the
+admin user and `Auth: stored` — no `--token`, no wrapper. The workaround `scripts/emdash.mjs` applied
+(`--token`, read from `~/.config/emdash/auth.json`) worked only because an explicit flag outranks the
+environment, which hid the real fault for an entire session. The variable is `EMDASH_MCP_TOKEN` now,
+and the wrapper is deleted.
 
 - **a failed call purges the stored credential**, so the failure erases its own evidence — which is
   why it took four hand-approved device codes to pin down;

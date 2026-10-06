@@ -29,6 +29,16 @@ const SITE_DIR = env("SITE_DIR");
 const TEMPLATE = process.env.TEMPLATE ?? "starter-cloudflare";
 const sub = process.argv[2];
 
+/**
+ * `--url` for a deployment, or nothing for localhost.
+ *
+ * The CLI has no EMDASH_URL env var (its only URL-ish variable is EMDASH_TOKEN, which is auth),
+ * and it only accepts `--url` after the whole command path — so the flag is appended last.
+ */
+function urlArgs() {
+	return process.env.EMDASH_URL ? ["--url", process.env.EMDASH_URL] : [];
+}
+
 /** Identifies a field across the repo's seed and the deployed database: `collection.field`. */
 const fieldKey = (collection, field) => `${collection}.${field}`;
 
@@ -40,7 +50,7 @@ const byName = (a, b) => a.localeCompare(b);
  * opens JSON so an array result is not cut into by a `{` further down inside it.
  */
 function cliJson(...args) {
-	const stdout = out("mise", ["run", "emdash:cli", "--", ...args]);
+	const stdout = out("emdash", [...args, ...urlArgs()], { cwd: SITE_DIR });
 	const parsed = JSON.parse(stdout.slice(stdout.search(/^[{[]/m)));
 	return parsed.data ?? parsed;
 }
@@ -72,7 +82,7 @@ if (sub === "build") {
 		`  ✓ seed → .src/site/seed/seed.json (${merged.collections.length} collections, ${entries} entries)`,
 	);
 } else if (sub === "validate") {
-	run("mise", ["run", "emdash:cli", "--", "seed", "--validate", `${SITE_DIR}/seed/seed.json`]);
+	run("emdash", ["seed", "--validate", `${SITE_DIR}/seed/seed.json`], { cwd: SITE_DIR });
 } else if (sub === "apply") {
 	// Apply the merged seed to the dev site's database — with the official command.
 	//
@@ -91,16 +101,9 @@ if (sub === "build") {
 		process.exit(1);
 	}
 	console.log(`→ emdash seed → ${db.replace(`${SITE_DIR}/`, "")} (on-conflict=update)`);
-	run("mise", [
-		"run",
-		"emdash:cli",
-		"--",
-		"seed",
-		`${SITE_DIR}/seed/seed.json`,
-		"--database",
-		db,
-		"--on-conflict=update",
-	]);
+	run("emdash", ["seed", `${SITE_DIR}/seed/seed.json`, "--database", db, "--on-conflict=update"], {
+		cwd: SITE_DIR,
+	});
 	console.log("✓ seed applied");
 	console.log("  then: mise run repo:verify");
 } else if (sub === "export") {
@@ -118,7 +121,7 @@ if (sub === "build") {
 	const dest = `${ROOT}/config/seed.live.json`;
 	writeFileSync(
 		dest,
-		out("mise", ["run", "emdash:cli", "--", "export-seed", "--database", db, "--with-content=all"]),
+		out("emdash", ["export-seed", "--database", db, "--with-content=all"], { cwd: SITE_DIR }),
 	);
 	console.log(`✓ exported the live model → ${dest.replace(`${ROOT}/`, "")}`);
 	console.log("  compare it with config/cad.seed.json — it is not written over it on purpose.");

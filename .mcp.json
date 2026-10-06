@@ -4,7 +4,7 @@
       "type": "http",
       "url": "http://localhost:4321/_emdash/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${EMDASH_TOKEN}"
+        "Authorization": "Bearer ${EMDASH_MCP_TOKEN}"
       }
     },
     "playwright": {

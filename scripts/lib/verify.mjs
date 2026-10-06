@@ -24,14 +24,27 @@
  */
 import { env, out, secret } from "./exec.mjs";
 
+/** The CLI runs from the site — it looks for a project root (a package.json). */
+const SITE_DIR = env("SITE_DIR");
+
 /**
  * Run an `emdash` command and parse its JSON, skipping the task banner. Returns the RAW parsed
  * value: the envelopes differ per command (`content list` wraps its items in `data`, while
  * `content get` IS the entry, with its own `data` holding the field values), so unwrapping here
  * would silently hand back the wrong level.
  */
+/**
+ * `--url` for a deployment, or nothing for localhost.
+ *
+ * The CLI has no EMDASH_URL env var (its only URL-ish variable is EMDASH_TOKEN, which is auth),
+ * and it only accepts `--url` after the whole command path — so the flag is appended last.
+ */
+function urlArgs() {
+	return process.env.EMDASH_URL ? ["--url", process.env.EMDASH_URL] : [];
+}
+
 function cliJson(...args) {
-	const stdout = out("mise", ["run", "emdash:cli", "--", ...args]);
+	const stdout = out("emdash", [...args, ...urlArgs()], { cwd: SITE_DIR });
 	return JSON.parse(stdout.slice(stdout.search(/^[{[]/m)));
 }
 
