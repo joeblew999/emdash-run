@@ -996,7 +996,27 @@ for dir in (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" 
 
 [tasks."plugin:link"]
 description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" link"
+run = """
+# Plugins live in plugins/ but the site resolves them from its own node_modules, so they are
+# symlinked in — which keeps edits live with no rebuild step.
+let node_modules = $"($env.SITE_DIR)/node_modules"
+mkdir $node_modules
+let dirs = (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) })
+for dir in $dirs {
+  let pkg = ((open $"($dir)/package.json") | get -o name | default ($dir | path basename))
+  let dest = $"($node_modules)/($pkg)"
+  mkdir ($dest | path dirname)
+  rm -rf $dest
+  # `ln -sfn` on unix. Windows needs a junction, which `ln` cannot make — Node used to paper over
+  # that difference, so it is spelled out here rather than assumed.
+  if ($nu.os-info.name == "windows") {
+    ^cmd /c mklink /J $dest $dir | complete | ignore
+  } else {
+    ^ln -sfn $dir $dest
+  }
+  print $"  ✓ linked ($pkg)"
+}
+"""
 
 # The four sweep tasks below are one idea — "run each plugin's own <script>, skipping plugins that
 # do not declare it, so a native plugin is skipped rather than failed". It lives here once instead
@@ -1057,7 +1077,87 @@ run = "mise run plugin:_sweep -- test"
 
 [tasks."plugin:audit"]
 description = "Structural checks across plugins/ — phantom scripts, unbuilt sandbox bundles, emdash drift, empty allowedHosts"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" audit"
+run = '''
+# Every rule here encodes a bug that was found by hand, and each one presented as "the feature is
+# broken" when the real fault was a file describing a setup that did not exist:
+#
+#   1. A script the toolchain can never run — the native plugin declared validate/build/bundle/test
+#      pointing at the sandboxed CLI while having no manifest. Unrunnable for months; it only
+#      surfaced when a sweep tried to run one.
+#   2. A sandboxed plugin whose `./sandbox` entry has not been built. The descriptor names a built
+#      bundle as its entrypoint, so linking without building leaves the site importing a file that
+#      is not there.
+#   3. A plugin pinned to a different `emdash` than the site runs — the scaffold asked for 0.x and
+#      installed 0.42.0 while the site ran 1.1.0, so its passing test proved nothing about the site.
+#   4. `network:request` with nothing to allow. The bundle-time check rejects it, so failing here
+#      just fails earlier, with a better message.
+#
+# The manifest is read as TEXT with regexes rather than parsed: this is a lint, and
+# `emdash-plugin validate` remains the authority on whether a manifest is valid.
+def version_at [path: string] {
+  if ($path | path exists) { open $path | get -o version } else { null }
+}
+let site_emdash = (version_at $"($env.SITE_DIR)/node_modules/emdash/package.json")
+let dirs = (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) })
+mut failures = []
+
+for abs in $dirs {
+  let manifest = (open $"($abs)/package.json")
+  let label = ($manifest | get -o name | default ($abs | path basename))
+  let has_manifest = ($"($abs)/emdash-plugin.jsonc" | path exists)
+
+  # 1. a script the toolchain cannot run.
+  if not $has_manifest {
+    for name in (($manifest | get -o scripts | default {}) | columns) {
+      let command = ($manifest | get -o scripts | get $name)
+      if ($command | str contains "emdash-plugin") {
+        $failures = ($failures | append $"($label): script ($name) runs emdash-plugin but the plugin has no emdash-plugin.jsonc — it can never succeed")
+      }
+    }
+  }
+
+  # 2. the sandbox bundle has not been built.
+  let entry = ($manifest | get -o exports | default {} | get -o './sandbox')
+  let relative = (
+    if ($entry | describe | str starts-with "string") { $entry }
+    else if ($entry | is-empty) { null }
+    else { $entry | get -o import | default ($entry | get -o default) }
+  )
+  if $has_manifest and ($relative | is-not-empty) and (not ($"($abs)/($relative)" | path exists)) {
+    $failures = ($failures | append $"($label): exports ./sandbox to ($relative), which does not exist — run: mise run plugin:build")
+  }
+
+  # 3. emdash drift from the site.
+  let pinned = (version_at $"($abs)/node_modules/emdash/package.json")
+  if ($site_emdash | is-not-empty) and ($pinned | is-not-empty) and ($pinned != $site_emdash) {
+    $failures = ($failures | append $"($label): has emdash ($pinned), but the site runs ($site_emdash) — a green test here says nothing about the site")
+  }
+
+  # 4. network access declared with nothing to allow.
+  if $has_manifest {
+    let raw = (open --raw $"($abs)/emdash-plugin.jsonc")
+    # Single-quoted regexes: a `$"..."` pattern would have its embedded quotes read as the end of
+    # the string. The manifest is text here — `emdash-plugin validate` is the authority on whether
+    # it is a valid manifest.
+    let capability_hits = ($raw | parse --regex '(?s)"capabilities"\s*:\s*\[(?<v>[^\]]*)\]')
+    let allowed_hits = ($raw | parse --regex '(?s)"allowedHosts"\s*:\s*\[(?<v>[^\]]*)\]')
+    let capabilities = (if ($capability_hits | is-empty) { "" } else { $capability_hits | first | get v })
+    let allowed = (if ($allowed_hits | is-empty) { "" } else { $allowed_hits | first | get v })
+    if ($capabilities | str contains "network:request") and (not ($capabilities | str contains "network:request:unrestricted")) {
+      if (($allowed | str trim) | is-empty) {
+        $failures = ($failures | append $"($label): declares network:request but allowedHosts is empty — the bundle-time check will reject it")
+      }
+    }
+  }
+}
+
+if ($failures | is-not-empty) {
+  print $"✗ plugin:audit found ($failures | length) problems:"
+  for failure in $failures { print $"  ✗ ($failure)" }
+  exit 1
+}
+print $"  ✓ ($dirs | length) plugins consistent"
+'''
 
 # Sandboxed-plugin build + release. The CLI is `@emdash-cms/plugin-cli` (binary
 # `emdash-plugin`) and needs an `emdash-plugin.jsonc`. These sweep every plugin and run the
@@ -1083,7 +1183,81 @@ run = "emdash-plugin info"
 
 [tasks."plugin:catalog"]
 description = "Fetch the live plugin list from the registry → docs/plugin-catalog/"
-run = "node \"{{config_root}}/scripts/plugin.mjs\" catalog"
+run = '''
+# The registry is the source of truth for published plugins — a GitHub scrape (what this used to
+# do) goes stale and misses anything not hosted on GitHub.
+let base = ($env.CATALOG_REGISTRY_URL? | default "https://registry.emdashcms.com")
+mut packages = []
+mut cursor = ""
+loop {
+  mut url = $"($base)/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=100"
+  if ($cursor | is-not-empty) { $url = $"($url)&cursor=($cursor)" }
+  let page = (^curl -sS $url | from json)
+  $packages = ($packages | append ($page | get -o packages | default []))
+  $cursor = ($page | get -o cursor | default "")
+  if ($cursor | is-empty) { break }
+}
+# `str lowercase` because the JavaScript sorted with `localeCompare`, which is case-insensitive:
+# a plain sort-by puts every capitalised name first, which is not the catalogue anyone expects.
+$packages = ($packages | sort-by {|p| $p | get -o profile | default {} | get -o name | default $p.slug | str lowercase })
+
+# One row per package. Each field is computed before the string is built: a brace or a paren inside
+# an interpolated string is not literal, and `(s)` in a message fails as "Command `s` not found".
+let rows = ($packages | each {|pkg|
+  let profile = ($pkg | get -o profile | default {})
+  let name = ($profile | get -o name | default $pkg.slug)
+  let authors = (
+    ($profile | get -o authors | default [])
+    | each {|author| $author | get -o name }
+    | where {|n| $n | is-not-empty }
+    | str join ", "
+  )
+  let author_text = (if ($authors | is-empty) { "—" } else { $authors })
+  let license = ($profile | get -o license | default "—")
+  let description = (($profile | get -o description | default "") | str replace --all --regex '\s+' " " | str trim)
+  let clipped = (if ($description | str length) > 130 { $description | str substring 0..<130 } else { $description })
+  $"| ($name) | `($pkg.slug)` | ($author_text) | ($license) | ($clipped) |"
+})
+
+let markdown = $"# Plugin catalog
+
+Live packages published to the EmDash **registry** — generated by `mise run plugin:catalog`.
+
+- Source: `($base)`
+- Generated: (date now | format date "%Y-%m-%d")
+- Packages: ($packages | length)
+
+| Name | Slug | Author | License | Description |
+|------|------|--------|---------|-------------|
+($rows | str join (char nl))
+"
+
+# Only stable, useful fields: the raw records carry `cid`, `labels` and `indexedAt`, which change on
+# every publish, and committing those turns the diff into noise.
+let slim = ($packages | each {|pkg|
+  let profile = ($pkg | get -o profile | default {})
+  {
+    slug: $pkg.slug,
+    did: $pkg.did,
+    handle: ($pkg | get -o handle),
+    name: ($profile | get -o name | default $pkg.slug),
+    description: ($profile | get -o description | default ""),
+    authors: (
+      ($profile | get -o authors | default [])
+      | each {|author| $author | get -o name }
+      | where {|n| $n | is-not-empty }
+    ),
+    license: ($profile | get -o license),
+    keywords: ($profile | get -o keywords | default []),
+    latestVersion: ($pkg | get -o latestVersion),
+  }
+})
+
+mkdir $"($env.ROOT)/docs/plugin-catalog"
+$markdown | save --force $"($env.ROOT)/docs/plugin-catalog/README.md"
+($slim | to json --indent 4) | save --force $"($env.ROOT)/docs/plugin-catalog/packages.json"
+print $"  ✓ ($packages | length) packages → docs/plugin-catalog/"
+'''
 
 [tasks."plugin:init"]
 description = "Scaffold a new sandboxed plugin (official) — then: mise run plugin:new -- <name>"
