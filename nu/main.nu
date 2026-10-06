@@ -283,13 +283,14 @@ def "main registry down" [] {
 
 # Take a newer harness from emdash-run: nu/ and the harness mise config are replaced wholesale —
 # they hold nothing of the project's — and check says whether the project still holds together.
-def "main upgrade" [ref?: string] {
+def "main upgrade" [ref?: string, --from: string] {
   let scratch = ($env.RUN_DIR | path join "upgrade")
   rm -rf $scratch
   mkdir $env.RUN_DIR
   let target = ($ref | default "main")
-  step $"fetch ($env.HARNESS_REPO) @ ($target)"
-  ^git clone --quiet --depth 1 --branch $target $env.HARNESS_REPO $scratch
+  let repo = ($from | default $env.HARNESS_REPO)
+  step $"fetch ($repo) @ ($target)"
+  ^git clone --quiet --depth 1 --branch $target $repo $scratch
   let incoming = (open ($scratch | path join ".config" "mise" "conf.d" "harness.toml") | get env.HARNESS_VERSION)
   rm -rf ($env.ROOT | path join "nu")
   cp -r ($scratch | path join "nu") ($env.ROOT | path join "nu")
