@@ -116,9 +116,10 @@ export def skills-current []: nothing -> bool {
 # git cannot make a symlink on Windows — it writes the target path into a file instead. None allowed.
 export def symlinks []: nothing -> list<string> {
   let committed = ((^git -C $env.ROOT ls-files -s | complete).stdout | lines | where {|l| $l | str starts-with "120000" })
+  # nushell's own glob, not the `find` program: on Windows `find` is a text search.
   let on_disk = (
-    (^find $env.ROOT -type l -not -path "*/node_modules/*" -not -path "*/.src/*" -not -path "*/.git/*" | complete).stdout
-    | lines | where {|l| $l | is-not-empty }
+    glob ($env.ROOT | path join "**" "*") --exclude ["**/node_modules/**" "**/.src/**" "**/.git/**"]
+    | where {|path| ($path | path type) == "symlink" }
   )
   $committed | append $on_disk
 }
