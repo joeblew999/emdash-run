@@ -99,11 +99,11 @@ description = "Put the previous deployment back, then verify what is live"
 
 [tasks.snapshot]
 extends = "harness"
-description = "Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --url snapshots a deployment"
+description = "Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --database backs up the database itself instead. --url does either for a deployment"
 
 [tasks.restore]
 extends = "harness"
-description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first"
+description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it (or finishes an interrupted one), --wipe empties the local site first. Given a backup directory, puts that database back"
 
 [tasks.reset]
 extends = "harness"

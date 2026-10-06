@@ -117,11 +117,9 @@ export def sync-version []: nothing -> bool {
   step $"EmDash ($have) → ($env.EMDASH_VERSION)"
   version-set | ignore
   if (has-devdb) {
-    let backup = ($env.RUN_DIR | path join "backups" $"emdash-($have)-(date now | format date '%Y%m%d-%H%M%S')")
-    mkdir $backup
-    cp (devdb) $backup
-    ok $"database as it was on ($have) → ($backup | path relative-to $env.ROOT)"
-    print $"    to go back: set EMDASH_VERSION to ($have), put that file back, run mise run dev — both, together"
+    let backup = (backup-local-data $"emdash-($have)" | path relative-to $env.ROOT)
+    ok $"database and media as they were on ($have) → ($backup)"
+    print $"    to go back: set EMDASH_VERSION to ($have), then: mise run restore -- ($backup) --confirm"
   }
   install
   true
@@ -326,4 +324,12 @@ export def d1-name []: nothing -> string {
   let hits = (open --raw (site-file "wrangler.jsonc") | parse --regex '"database_name"\s*:\s*"(?<name>[^"]+)"')
   if ($hits | is-empty) { fail "no d1_databases[].database_name in site/wrangler.jsonc" }
   $hits | first | get name
+}
+
+# The deployed D1's Time Travel bookmark for this moment — what `time-travel restore` goes back to.
+# "" when Cloudflare gives none: no credentials, or a database that does not exist yet.
+export def d1-bookmark []: nothing -> string {
+  let info = (do { cd $env.SITE_DIR; ^fnox exec -- pnpm exec wrangler d1 time-travel info (d1-name) --json | complete })
+  if $info.exit_code != 0 { return "" }
+  try { $info.stdout | from json | get bookmark } catch { "" }
 }

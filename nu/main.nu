@@ -170,6 +170,14 @@ def "main deploy" [--dry, --build-only, --no-check] {
   }
   step "prepare"
   site prepare (plugin current-registration)
+  if $cloudflare and $mode == "deploy" {
+    # Where the database stands before this build's migrations run. None on a first deploy.
+    let bookmark = (site d1-bookmark)
+    if ($bookmark | is-not-empty) {
+      print $"  the database before this deploy is Time Travel bookmark ($bookmark)"
+      print $"  to go back to it: cd site; fnox exec -- pnpm exec wrangler d1 time-travel restore (site d1-name) --bookmark=($bookmark)"
+    }
+  }
   step $mode
   let rc = (site ship $mode)
   if $rc != 0 { fail $"($mode) failed" }
@@ -195,23 +203,76 @@ def "main rollback" [] {
   main doctor --url $env.DEPLOY_URL
 }
 
-# Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment.
-def "main snapshot" [--url: string] {
+# The backup a site package is not: the database itself — users, tokens and plugin data included —
+# and, locally, the media beside it. A deployment's is its D1: a Time Travel bookmark and a dump.
+def backup [] {
+  let wrangler = "cd site; fnox exec -- pnpm exec wrangler"
+  if (setting EMDASH_URL | is-empty) {
+    let was_running = (daemon-running $env.SITE_DAEMON)
+    let dir = (backup-local-data "site" | path relative-to $env.ROOT)
+    if $was_running { site restart }
+    ok $"database and media → ($dir)"
+    print "    everything the local site stores. NOT the key in site/.env that reads secret plugin"
+    print "    settings — keep a copy of that somewhere else."
+    print $"    to put it back: mise run restore -- ($dir) --confirm"
+    return
+  }
+  if not (on-cloudflare) {
+    fail "a Node deployment's database is a file on its host, which the harness cannot reach" "there: stop the server, then copy data.db with data.db-wal and data.db-shm, and uploads/, together"
+  }
+  let name = (site d1-name)
+  let bookmark = (site d1-bookmark)
+  if ($bookmark | is-empty) { fail $"Cloudflare gave no Time Travel bookmark for ($name)" $"see why: ($wrangler) d1 time-travel info ($name)" }
+  let dir = (backup-dir $name)
+  let dump = ($dir | path join "database.sql")
+  site wrangler d1 export $name --remote --output $dump
+  let notes = [
+    $"($name), as it was at (date now | format date '%Y-%m-%dT%H:%M:%S%:z') — ($env.EMDASH_URL), EmDash ($env.EMDASH_VERSION)"
+    ""
+    "Back to that moment, in place — the whole database. Stop writes first, and deploy the build that matches:"
+    $"  ($wrangler) d1 time-travel restore ($name) --bookmark=($bookmark)"
+    ""
+    "Or from the dump — into a NEW, EMPTY database, never the existing one; then point the binding at it:"
+    $"  ($wrangler) d1 execute <new-database> --remote --file=($dump)"
+    ""
+    "NOT in either: the media bucket, and EMDASH_ENCRYPTION_KEY. Copy the bucket with any S3 client:"
+    "  aws s3 sync s3://<bucket> ./media --endpoint-url https://<account-id>.r2.cloudflarestorage.com"
+  ]
+  $notes | str join (char nl) | save ($dir | path join "restore.txt")
+  ok $"bookmark and dump → ($dir | path relative-to $env.ROOT)"
+  for line in $notes { print $"    ($line)" }
+}
+
+# Save the site — schema, content and media — as a .emdash package. --database takes a real backup
+# instead: the database itself. --url does either for a deployment.
+def "main snapshot" [--url: string, --database] {
   target $url
+  if $database { backup; return }
   let dest = ($env.RUN_DIR | path join "snapshots" $"(date now | format date '%Y%m%d-%H%M%S').emdash")
   mkdir ($dest | path dirname)
   emdash site export --output $dest
   ok $"saved → ($dest)"
   print "    a site package: schema, content and media. NOT users, tokens, plugin data or secrets —"
-  print "    for those, back up the database itself. It does carry authors' emails: keep it private."
+  print "    for those: mise run snapshot -- --database. It does carry authors' emails: keep it private."
 }
 
 # Restore a snapshot into an EMPTY site. Shows the plan; --confirm executes exactly that plan.
-# --wipe empties the LOCAL database first, so a local restore is one command.
+# --wipe empties the LOCAL database first, so a local restore is one command. Given a backup
+# directory instead of a package, it puts that database and media back in place of the local ones.
 def "main restore" [package: string, --confirm, --wipe, --url: string] {
   target $url
   let pkg = ($package | path expand)
   if not ($pkg | path exists) { fail $"no such package: ($pkg)" }
+  if ($pkg | path type) == "dir" {
+    if (setting EMDASH_URL | is-not-empty) { fail "a backup directory goes back into the local site" "for a deployment, follow the restore.txt beside its dump" }
+    if not $confirm { print "  this REPLACES the local database and media with that copy — add --confirm"; return }
+    step "replace the local database and media"
+    restore-local-data $pkg
+    # dev, not a bare restart: a copy taken on another EmDash needs that version installed with it.
+    main dev
+    ok "restored — users, tokens and plugin data are as they were then"
+    return
+  }
   if $wipe {
     if (setting EMDASH_URL | is-not-empty) { fail "--wipe only empties the local site" }
     if not $confirm { fail "--wipe destroys the local database — pass --confirm as well" }
@@ -223,12 +284,21 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
   }
   let analysis = (emdash-result site import $pkg --analyze --json)
   if $analysis.exit_code != 0 {
-    fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" "the target must be empty — locally, add: --wipe --confirm"
+    let hint = (if (setting EMDASH_URL | is-empty) { "the target must be empty — add: --wipe --confirm" } else { "a deployment must be set up and hold no entries, and DEPLOY_TOKEN be a token it accepts — or sign in: mise run emdash -- login --url <deployment>" })
+    fail $"the package cannot be imported here: ($analysis.stdout | str trim) ($analysis.stderr | str trim)" $hint
   }
   let planned = ($analysis.stdout | from json)
   if ($planned | get -o plan | is-empty) {
-    if ($planned | get -o state) == "complete" { ok "this package is already imported here"; return }
-    fail $"no import plan came back: ($planned | to json --raw)"
+    let state = ($planned | get -o state | default "")
+    if $state == "complete" { ok "this package is already imported here"; return }
+    # No plan and no error: an import of this package was cut off while it was writing. (One cut
+    # off earlier — uploading, analysing — is picked up by the analysis above.)
+    if ($planned | get -o operationId | is-empty) { fail $"no import plan came back: ($planned | to json --raw)" }
+    if not $confirm { print "  an import of this package was started here and never finished — add --confirm to finish it"; return }
+    step "finish the interrupted import"
+    emdash site import resume $planned.operationId
+    ok "restored — check it: mise run doctor"
+    return
   }
   print ($planned.plan.counts | transpose what count | where count > 0 | table --index false)
   let blockers = ($planned.plan | get -o blockers | default [])
@@ -395,6 +465,10 @@ def "main verify" [--full, --restore] {
     step "snapshot, wipe, restore"
     main snapshot
     main restore (ls ($env.RUN_DIR | path join "snapshots") | sort-by modified | last | get name) --wipe --confirm
+    main doctor
+    step "back up the database, put it back"
+    main snapshot --database
+    main restore (ls ($env.RUN_DIR | path join "backups") | sort-by modified | last | get name) --confirm
     main doctor
   }
   print $"✓ verified on ($nu.os-info.name) ($nu.os-info.arch)(if $full { ' — site, checks, doctor, plugins, snapshot, build' } else { ' — site, checks, doctor' })"

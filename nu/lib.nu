@@ -152,13 +152,47 @@ export def has-devdb []: nothing -> bool {
   }
 }
 
+# Everything the local site stores: the database with its -wal and -shm, and the uploaded media. On
+# Cloudflare that is miniflare's state — D1 and R2 together; on Node, the SQLite file and uploads/.
+def local-data []: nothing -> list<string> {
+  if (on-cloudflare) { [($env.SITE_DIR | path join ".wrangler" "state")] } else {
+    ["data.db" "data.db-shm" "data.db-wal" "uploads"] | each {|name| $env.SITE_DIR | path join $name }
+  }
+}
+
 # Delete the local database and uploads. The site recreates them, seeded, when it next starts.
 export def wipe-local-data [] {
   rm -f ($env.RUN_DIR | path join "seed-applied.txt")
-  if (on-cloudflare) {
-    rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
-  } else {
-    for name in ["data.db" "data.db-shm" "data.db-wal" "uploads"] { rm -rf ($env.SITE_DIR | path join $name) }
+  for path in (local-data) { rm -rf $path }
+}
+
+# A new directory under run/backups/, named for what it holds and when.
+export def backup-dir [label: string]: nothing -> string {
+  let dir = ($env.RUN_DIR | path join "backups" $"($label)-(date now | format date '%Y%m%d-%H%M%S')")
+  mkdir $dir
+  $dir
+}
+
+# Stop the site and copy its data into a new backup directory, which is returned. Stopped, because
+# a running site keeps committed changes in the -wal file and may be mid-write. The caller restarts.
+export def backup-local-data [label: string]: nothing -> string {
+  if not (has-devdb) { fail "no local database yet" "run: mise run dev" }
+  daemon-stop $env.SITE_DAEMON
+  let dest = (backup-dir $label)
+  for path in (local-data | where {|p| $p | path exists }) { cp -r $path $dest }
+  $dest
+}
+
+# Stop the site and put such a copy back in place of its data. The caller restarts.
+export def restore-local-data [dir: string] {
+  let saved = (local-data | each {|path| {from: ($dir | path join ($path | path basename)), to: $path} })
+  if ($saved | where {|s| $s.from | path exists } | is-empty) {
+    fail $"($dir) holds no copy of this site's data" "a backup is a directory made by: mise run snapshot -- --database"
+  }
+  daemon-stop $env.SITE_DAEMON
+  for item in $saved {
+    rm -rf $item.to
+    if ($item.from | path exists) { cp -r $item.from $item.to }
   }
 }
 
