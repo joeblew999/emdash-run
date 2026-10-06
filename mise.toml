@@ -163,7 +163,7 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # -----------------------------------------------------------------------------
 
 [tasks."check"]
-description = "Everything that must pass before a commit — lint, format, tests, plugin checks, mapping"
+description = "Everything that must pass before a commit — lint, formatting, plugin checks"
 depends = ["repo:check", "plugin:typecheck", "plugin:audit"]
 
 [tasks."check:deployed"]
