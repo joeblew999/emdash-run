@@ -25,6 +25,8 @@ if (Test-Path mise.toml) {
   }
 } else {
   Copy-Item nu/project.example.toml mise.toml
+  # Trust first: mise will not touch a config it has not been told to trust.
+  mise trust --all -q
   if ($env:EMDASH_TEMPLATE) { mise set "TEMPLATE=$($env:EMDASH_TEMPLATE)"; mise fmt }
   Write-Host "  ok mise.toml - your settings; edit it any time, then: mise run dev"
 }

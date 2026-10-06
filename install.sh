@@ -24,6 +24,8 @@ if [ -f mise.toml ]; then
   fi
 else
   cp nu/project.example.toml mise.toml
+  # Trust first: mise will not touch a config it has not been told to trust.
+  mise trust --all -q
   if [ -n "$TEMPLATE_CHOICE" ]; then mise set "TEMPLATE=$TEMPLATE_CHOICE"; mise fmt; fi
   echo "  ✓ mise.toml — your settings; edit it any time, then: mise run dev"
 fi
