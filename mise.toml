@@ -15,6 +15,25 @@
 #
 # Never keep a second copy of the task list in any of them — duplicated lists drift.
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# CHECKS — RUN THESE. Do not reason about whether this file is correct; ask it.
+#
+#   mise run check       everything before a commit — lint, formatting, the skills, the files that
+#                        must agree, and the nushell check below. It composes them.
+#   mise run repo:nu     nushell's OWN CHECKER over every task body in this file. Bodies live
+#                        inside TOML, so nothing parses them until they run: a typo stays invisible
+#                        until someone happens to hit that path. `nu --ide-check` reports parse
+#                        errors, type mismatches and unknown variables, and does NOT resolve
+#                        externals (`^cmd`, a bare `pnpm`), so it raises no false alarms.
+#                        It has already caught a `&&` — not a nushell operator — and a command
+#                        wrapped across two lines. Both tasks had never been run and could not
+#                        have worked.
+#   mise run repo:sync   every `mise run <task>` in pitchfork.toml names a task that exists.
+#   mise run doctor      the LIVE state: the site's database, plugin consistency, repo:verify.
+#   mise run site:check  the site type-checks, including that astro.config.mjs loads.
+#
+# Edited a task?      mise run repo:nu      Touched a daemon?  mise run repo:sync
+# -----------------------------------------------------------------------------
 #
 # Model: the host site is an official EmDash template (starter-cloudflare) copied
 # into .src/site. It consumes the *published* `emdash` npm package, and the two official
@@ -71,9 +90,7 @@ fnox           = "1.36.0"
 "npm:oxlint"          = "1.86.0"
 "npm:oxfmt"           = "0.71.0"
 "npm:oxlint-tsgolint" = "7.0.2003"
-# Test runner for the repo's own scripts (`tests/*.test.mjs`). Matches the version the
-# sandboxed plugin already uses, so there is one vitest in the story, not two.
-"npm:vitest"          = "5.0.3"# The sandboxed-plugin CLI (binary `emdash-plugin`). Scheduled here rather than borrowed from
+# The sandboxed-plugin CLI (binary `emdash-plugin`). Scheduled here rather than borrowed from
 # whichever plugin happens to have it in node_modules — that borrowing meant `plugin:login`,
 # `plugin:whoami` and friends could not be ordinary tasks. Version matches what the plugins
 # declare, so there is still exactly one CLI in the story.
@@ -128,9 +145,9 @@ PLUGINS_DIR     = "{{config_root}}/plugins"
 # Where `mise run deploy` ships to, and what `check:deployed` then verifies.
 DEPLOY_URL      = "https://emdash-run.gedw99.workers.dev"
 
-# Runtime output dirs (both gitignored)
-LOGS_DIR        = "{{config_root}}/logs"   # pitchfork daemon logs
-RUN_DIR         = "{{config_root}}/run"    # generated tokens (token-admin.txt, token-admin.env, token-user.txt)
+# Generated output, gitignored: the MCP token, site snapshots, and the temp files the nushell
+# check writes.
+RUN_DIR         = "{{config_root}}/run"
 
 # Optional daemons — the single place these addresses are defined. Scripts read them;
 # pitchfork.toml's ready_http is static and repeats the port (it cannot read mise env).
@@ -265,7 +282,16 @@ print "→ content, the model_id join, and snapshot drift"
 [tasks."release"]
 description = "Everything a sandboxed-plugin release needs — audit + typecheck, then validate, build, bundle"
 depends = ["plugin:audit", "plugin:typecheck"]
-run = "mise run plugin:validate && mise run plugin:build && mise run plugin:bundle"
+run = """
+# No `&&` in nushell — and a failing external command does not abort the body either, so each step
+# is checked. (`repo:nu` caught the `&&`; it had never been run.)
+^mise run plugin:validate
+if $env.LAST_EXIT_CODE != 0 { exit 1 }
+^mise run plugin:build
+if $env.LAST_EXIT_CODE != 0 { exit 1 }
+^mise run plugin:bundle
+if $env.LAST_EXIT_CODE != 0 { exit 1 }
+"""
 
 [tasks."content:set"]
 description = "Set fields on a live entry: read its rev, update, print the result"
@@ -443,8 +469,7 @@ print "→ astro check (the site, and that its config loads)"
 ^pnpm --dir $site exec astro check
 let astro = $env.LAST_EXIT_CODE
 print "→ tsc --checkJs astro.config.mjs (the types astro check does not see)"
-^pnpm --dir $site exec tsc --noEmit --ignoreConfig --allowJs --checkJs
-  --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs
+^pnpm --dir $site exec tsc --noEmit --ignoreConfig --allowJs --checkJs --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs
 let tsc = $env.LAST_EXIT_CODE
 # Restarted regardless of the result, so a failing check does not also cost you the site.
 ^mise run site:_resume -- $paused
@@ -912,6 +937,51 @@ if $failed > 0 {
 print $"✓ repo:verify passed — ($checks_final | length) checks"
 '''
 
+[tasks."repo:nu"]
+description = "Parse and type-check every task body with nushell's own checker — a broken body should fail here, not when someone runs it"
+run = """
+# nushell can check itself: `nu --ide-check <limit> <file>` reports parse errors, type mismatches
+# and unknown variables as `diagnostic` entries. (Entries of type `hint` are just inferred types —
+# ignore them.) Externals are not resolved, so `^cmd` and a bare `pnpm` produce no false alarm.
+#
+# Each body is written to a file and checked, because a body only ever lives inside mise.toml and
+# is otherwise not parsed until it runs. This is the check that catches the `(text)`-inside-an-
+# interpolated-string bug at commit time: `(s)` reads as a variable, so `problem(s)` is a static
+# "Variable not found" instead of a failure at 2am.
+let cfg = (open $"($env.ROOT)/mise.toml")
+let scratch = $"($env.RUN_DIR)/nucheck"
+mkdir $scratch
+mut problems = []
+mut checked = 0
+mut index = 0
+for name in ($cfg.tasks | columns) {
+  let body = ($cfg.tasks | get $name | get -o run)
+  if ($body | is-empty) { continue }
+  $index = $index + 1
+  let file = $"($scratch)/($index).nu"
+  $body | save --force $file
+  let found = (
+    ^nu --ide-check 200 $file
+    | complete
+    | get stdout
+    | lines
+    | where {|l| $l | str starts-with '{' }
+    | each {|l| $l | from json }
+    | where {|d| ($d | get -o type) == "diagnostic" }
+  )
+  for d in $found {
+    $problems = ($problems | append $"($name): ($d | get -o message)")
+  }
+  $checked = $checked + 1
+}
+if ($problems | is-not-empty) {
+  print $"✗ nushell rejected ($problems | length) of ($checked) task bodies:"
+  for problem in $problems { print $"  - ($problem)" }
+  exit 1
+}
+print $"  ✓ ($checked) task bodies parse and type-check"
+"""
+
 [tasks."repo:sync"]
 description = "Fail if the files that must agree have drifted — every daemon in pitchfork.toml must name a task that exists"
 run = """
@@ -956,10 +1026,13 @@ let skills = $env.LAST_EXIT_CODE
 print "→ repo:sync (the files that must agree)"
 ^mise run repo:sync
 let sync = $env.LAST_EXIT_CODE
+print "→ repo:nu (every task body parses and type-checks)"
+^mise run repo:nu
+let nucheck = $env.LAST_EXIT_CODE
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $sync] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]

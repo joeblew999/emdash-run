@@ -17,6 +17,19 @@ is orientation only.
 Never keep a second copy of the task list anywhere; duplicated lists drift from the tasks they
 describe.
 
+## Checks — run them, don't reason about them
+
+- `mise run check` — everything before a commit; it composes the rest.
+- `mise run repo:nu` — **nushell's own checker** over every task body in `mise.toml`. Task bodies
+  live inside TOML, so nothing parses them until they run: a typo stays invisible until someone
+  happens to hit that path. `nu --ide-check` reports parse errors, type mismatches and unknown
+  variables, and does not resolve externals, so `^cmd` and a bare `pnpm` raise no false alarm.
+  It has already caught a `&&` (not a nushell operator) and a command wrapped across two lines —
+  both tasks had never been run and could not have worked.
+- `mise run repo:sync` — every `mise run <task>` in `pitchfork.toml` names a task that exists.
+- `mise run doctor` — the live state: the site's database, plugin consistency, `repo:verify`.
+- `mise run site:check` — the site type-checks, including that `astro.config.mjs` loads.
+
 ## Rules
 
 - **Prefer mise tasks over raw commands.** If a task exists for what you are doing, use it
