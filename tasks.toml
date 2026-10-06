@@ -1,0 +1,16 @@
+# The stages of working on an EmDash site — one task each. A project gets them with one line:
+#   [task_config]
+#   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
+# Each stage runs EmDash's own commands in order; stages/*.mjs is only the glue between them.
+
+[start]
+description = "I want to work on this site: makes it if there is none, installs, starts it, signs you in"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+usage = 'arg "[args]" var=#true'
+run = 'node "{{ env.MISE_TASK_DIR }}/stages/start.mjs"'
+
+[emdash]
+description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+usage = 'arg "[args]" var=#true'
+run = 'node "{{ env.MISE_TASK_DIR }}/stages/emdash.mjs"'
