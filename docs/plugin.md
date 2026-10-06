@@ -7,7 +7,6 @@ composed into tasks, so a plugin goes from nothing to running inside a live EmDa
 mise run plugin:new -- <name>      scaffold → fit → install → validate → typecheck → test → build
                                    → load into the site → the running site calls it
 mise run plugin:probe -- <name>    call a plugin's route on the RUNNING site (default: hello)
-mise run plugin:dev -- <name>      rebuild on change (official: emdash-plugin dev)
 mise run plugin:remove -- <name>   take it out: directory, the site's copy, the registration
 mise run plugin:roundtrip          new, then remove, with a throwaway plugin — leaving nothing behind
 ```

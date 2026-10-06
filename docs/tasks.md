@@ -9,16 +9,6 @@ Everything that must hold before a commit. --fix repairs formatting and generate
 ### Arguments
 - **`[args]…`**
 
-## `content:set`
-
-Set fields on a live entry — e.g: mise run content:set -- pages about '{"title":"About us"}'
-
-
-- **Usage:** `content:set [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `deploy`
 
 Check, build, deploy to Cloudflare, then verify what is live. --dry builds without deploying
@@ -89,32 +79,12 @@ Open the admin in a browser, signed in
 ### Arguments
 - **`[args]…`**
 
-## `plugin:dev`
-
-Rebuild a plugin on change
-
-
-- **Usage:** `plugin:dev [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `plugin:new`
 
 Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it
 
 
 - **Usage:** `plugin:new [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `plugin:probe`
-
-Ask the running site to call a plugin's route — proof it is loaded, not just built
-
-
-- **Usage:** `plugin:probe [args]…`
 
 ### Arguments
 - **`[args]…`**
@@ -135,36 +105,6 @@ Remove a plugin and bring the site back up without it
 
 
 - **Usage:** `plugin:remove [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `plugin:roundtrip`
-
-Prove the plugin toolchain end to end with a throwaway plugin: scaffold, load, call, remove
-
-
-- **Usage:** `plugin:roundtrip [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `registry:down`
-
-Stop the local registry — the site goes back to the hosted one
-
-
-- **Usage:** `registry:down [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `registry:up`
-
-Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)
-
-
-- **Usage:** `registry:up [args]…`
 
 ### Arguments
 - **`[args]…`**
@@ -209,16 +149,6 @@ Put the previous deployment back, then verify what is live
 ### Arguments
 - **`[args]…`**
 
-## `schema:diff`
-
-Compare the repo's content model with the running site's, or a deployment's with --url
-
-
-- **Usage:** `schema:diff [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `seed:export`
 
 Export the running site's model and content as a seed, to review against the project's
@@ -235,16 +165,6 @@ First time here: create site/ from the template (once), install, then bring the 
 
 
 - **Usage:** `setup [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `skills`
-
-The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allows no symlinks
-
-
-- **Usage:** `skills [args]…`
 
 ### Arguments
 - **`[args]…`**
@@ -295,26 +215,6 @@ Does this project work on THIS machine? Site up, check, doctor. --full adds a pl
 
 
 - **Usage:** `verify [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `verify:linux`
-
-The same verification in a clean Linux container with only git and mise. Needs docker
-
-
-- **Usage:** `verify:linux [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `verify:template`
-
-Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data and a plugin
-
-
-- **Usage:** `verify:template [args]…`
 
 ### Arguments
 - **`[args]…`**

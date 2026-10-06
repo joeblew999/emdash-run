@@ -4,7 +4,6 @@ use lib.nu *
 use site.nu
 use plugin.nu
 use checks.nu
-use registry.nu
 
 # The linter and formatter for plugin code, at the versions pinned in harness.toml. oxlint's
 # type-aware mode needs its companion package beside it, and the two must move together.
@@ -76,7 +75,6 @@ def "main status" [] {
   print $"  site      (if $site_up { $'running at (site-url)' } else { 'stopped — run: mise run dev' })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
   print $"  sources   (site source-heads | str join ', ')"
-  print $"  registry  (if (answers $'(registry-url)/health') { $'local, at (registry-url)' } else { 'hosted' })"
   print $"  deployed  (if ($live | is-empty) { 'no DEPLOY_URL set' } else if (answers $live) { $'($live) answers' } else { $'($live) does not answer' })"
 }
 
@@ -104,26 +102,31 @@ def "main report" [] {
 }
 
 # Everything that must hold before a commit. --fix repairs what can be repaired; --site also
-# type-checks the site, without touching a running one.
+# type-checks the site, without touching a running one. A project checks what is the project's —
+# its settings and its plugins. The harness's tests of itself run only where the harness is
+# developed: the repo that holds its installer.
 def "main check" [--fix, --site] {
   let nu_dir = ($env.ROOT | path join "nu")
   let paths = (plugin code-paths)
+  let own = ($env.ROOT | path join "install.sh" | path exists)
   cd $env.ROOT
   if $fix {
     ^mise fmt
     if ($paths | is-not-empty) { format ...$paths }
-    ^mise generate task-docs --output docs/tasks.md
+    if $own { ^mise generate task-docs --output docs/tasks.md }
   }
   def passes [block: closure]: nothing -> list<string> { if (code $block) == 0 { [] } else { ["failed — see the output above"] } }
-  let results = [
+  let harness = (if not $own { [] } else { [
     {check: "nushell modules parse and type-check", problems: (checks nu-problems $nu_dir)}
     {check: "tasks, commands and daemons agree", problems: (checks task-problems (harness-file) ($nu_dir | path join "main.nu"))}
     {check: "the checkers catch planted faults", problems: (checks selftest-problems)}
     {check: "task arguments reach commands", problems: (checks argument-problems)}
     {check: "unit tests", problems: (passes { ^nu --no-config-file ($nu_dir | path join "tests.nu") })}
     {check: "mise accepts the task definitions", problems: ((if (^mise tasks validate | complete).exit_code == 0 { [] } else { ["mise rejects a task definition — run: mise tasks validate"] }))}
-    {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
     {check: "docs/tasks.md matches the tasks", problems: (if (checks docs-current) { [] } else { ["out of date — run: mise run check -- --fix"] })}
+  ] })
+  let results = $harness | append [
+    {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
     {check: "no symlinks", problems: (checks symlinks)}
     {check: "plugins are consistent", problems: (plugin audit)}
     {check: "plugin code lints", problems: (if ($paths | is-empty) { [] } else { passes { lint --type-aware --deny-warnings ...$paths } })}
@@ -158,7 +161,7 @@ def "main doctor" [--url: string] {
       if $migrations.exit_code != 0 { fail "the deployed database's migrations do not match this build" ($migrations.stderr | str trim) }
     }
     step "content model"
-    main schema diff
+    if not (checks schema-diff) { fail "the live content model is not the repo's" }
   }
   step "live state"
   if not (checks verify) { fail "the site does not match the repo" }
@@ -351,9 +354,6 @@ def "main plugin new" [name: string] {
   print $"✓ ($name) is live — edit plugins/($name)/src/plugin.ts, then: mise run dev"
 }
 
-# Rebuild a plugin on change (official: emdash-plugin dev).
-def "main plugin dev" [name: string] { ^pnpm --dir (plugin dir-of $name) exec emdash-plugin dev }
-
 # Ask the RUNNING site to call a plugin's route — proof it is loaded, not just built.
 def "main plugin probe" [name: string, route: string = "hello"] { plugin probe $name $route }
 
@@ -382,18 +382,11 @@ def "main plugin release" [name?: string] {
   print "✓ bundled — publish with: mise run emdash-plugin -- publish --manifest plugins/<name>"
 }
 
-# Set fields on a live entry: reads its revision, updates, publishes. --url targets a deployment.
-def "main content set" [collection: string, entry: string, json: string, --url: string] {
-  target $url
+# Set fields on an entry of the running site: read its revision, update, publish.
+def set-entry [collection: string, entry: string, json: string] {
   let rev = (emdash-json content get $collection $entry | get -o _rev | default "")
   if ($rev | is-empty) { fail $"no revision for ($collection)/($entry)" }
   emdash content update $collection $entry $"--rev=($rev)" --data $json
-}
-
-# Compare the repo's content model with the running site's, or with a deployment's (--url).
-def "main schema diff" [--url: string] {
-  target $url
-  if not (checks schema-diff) { exit 1 }
 }
 
 # Export the running site's model and content as a seed, to compare with the project's.
@@ -401,37 +394,6 @@ def "main seed export" [] {
   let dest = ($env.RUN_DIR | path join "seed.live.json")
   emdash export-seed --database (devdb) --with-content=all | save -f $dest
   ok "exported → run/seed.live.json — compare it with site/seed/seed.json"
-}
-
-# Start the local plugin registry and point the site at it. Builds the EmDash monorepo the first time.
-def "main registry up" [] {
-  let line = "registry: process.env.EMDASH_REGISTRY_URL,"
-  if not (site enable-local-registry) {
-    fail "site/astro.config.mjs passes no registry to EmDash, and is not shaped like a template's" $"add to its emdash\({ … }) options, beside a sandboxRunner:  ($line)"
-  }
-  step "prepare the registry"
-  registry prepare
-  ^mise daemons start registry
-  if not (wait-for $"(registry-url)/health" 120) {
-    print --stderr (daemon-log registry)
-    fail "the registry did not answer within 120s" "its last log lines are above"
-  }
-  step "fill the registry from the published plugins — the label replay takes a few minutes"
-  registry admin "/_admin/backfill"
-  registry admin "/_admin/labels/replay"
-  site restart
-  # EmDash tells its admin which registry to ask; that is the one the site uses.
-  let token = (open --raw ($env.RUN_DIR | path join "token-admin.txt") | str trim)
-  let used = (request GET $"(site-url)/_emdash/api/manifest" --headers {Authorization: $"Bearer ($token)"} | get -o body.data.registry.aggregatorUrl | default "none")
-  if $used != (registry-url) { fail $"the registry is up at (registry-url), but the site uses ($used)" $"site/astro.config.mjs must hold:  ($line)" }
-  ok $"registry at (registry-url) — the site now discovers plugins from it"
-}
-
-# Stop the local registry and point the site back at the hosted one.
-def "main registry down" [] {
-  daemon-stop "registry" $env.REGISTRY_PORT
-  site restart
-  ok "registry stopped — the site uses the hosted registry"
 }
 
 # Take a newer harness from emdash-run: nu/ and the harness mise config are replaced wholesale —
@@ -549,7 +511,7 @@ def "main verify template" [template: string, --full, --from: string] {
 def "main upgrade-probe" [step: string] {
   let page = (emdash-json content list pages | get items.0.slug)
   if $step == "mark" {
-    main content set pages $page '{"title":"survived"}'
+    set-entry pages $page '{"title":"survived"}'
   } else if (emdash-json content get pages $page | get data.title) != "survived" {
     fail "the entry edited beforehand is not there afterwards"
   } else { ok "the entry edited beforehand is still there" }
@@ -576,13 +538,11 @@ def "main source" [name: string = "emdash"] { site clone-source $name }
 # The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
 def --wrapped "main emdash" [...args: string] { emdash ...$args }
 def --wrapped "main emdash-plugin" [...args: string] { plugin cli ...$args }
-def --wrapped "main skills" [...args: string] { dlx [$"skills@($env.SKILLS_VERSION)"] skills ...$args }
 
 # Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.
 def --wrapped "main args" [...args: string] { print ($args | to json --raw) }
 
-# What the daemons run. Not for typing: `mise run dev` and `mise run registry:up` start them.
+# What the site daemon runs. Not for typing: `mise run dev` starts it.
 def "main daemon site" [] { site serve }
-def "main daemon registry" [] { registry serve }
 
 def main [] { print "run a task: mise tasks ls" }

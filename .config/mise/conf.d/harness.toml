@@ -22,7 +22,6 @@ HARNESS_REPO = "https://github.com/joeblew999/emdash-run"
 OXLINT_VERSION = "1.86.0"
 TSGOLINT_VERSION = "7.0.2003"
 OXFMT_VERSION = "0.71.0"
-SKILLS_VERSION = "1.7.0"
 # Defaults for every optional project setting. mise.toml wins over this file, so a project's values
 # replace these — and a setting the project leaves out is EMPTY here rather than inherited from
 # whatever shell ran the task (another project's seed and checks, in the case that found this).
@@ -43,7 +42,6 @@ EMDASH_REPO = "https://github.com/emdash-cms/emdash"
 # sites run side by side — which is what lets several people, or agents, work at once.
 SITE_PORT = "4321"
 SITE_DAEMON = "site"
-REGISTRY_PORT = "8788" # the optional local plugin registry's — overridable the same way
 # The site's own emdash CLI on PATH, so the CLI and the site cannot drift apart.
 _.path = ["{{config_root}}/site/node_modules/.bin"]
 # The admin token `dev` mints, as EMDASH_MCP_TOKEN — .mcp.json reads it.
@@ -120,12 +118,9 @@ description = "Open the admin in a browser, signed in"
 extends = "harness"
 description = "Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it"
 
-[tasks."plugin:dev"]
-extends = "harness"
-description = "Rebuild a plugin on change"
-
 [tasks."plugin:probe"]
 extends = "harness"
+hide = true
 description = "Ask the running site to call a plugin's route — proof it is loaded, not just built"
 
 [tasks."plugin:remove"]
@@ -134,31 +129,16 @@ description = "Remove a plugin and bring the site back up without it"
 
 [tasks."plugin:roundtrip"]
 extends = "harness"
+hide = true
 description = "Prove the plugin toolchain end to end with a throwaway plugin: scaffold, load, call, remove"
 
 [tasks."plugin:release"]
 extends = "harness"
 description = "Validate, typecheck, test, build and bundle plugins — everything short of publishing"
 
-[tasks."content:set"]
-extends = "harness"
-description = "Set fields on a live entry — e.g: mise run content:set -- pages about '{\"title\":\"About us\"}'"
-
-[tasks."schema:diff"]
-extends = "harness"
-description = "Compare the repo's content model with the running site's, or a deployment's with --url"
-
 [tasks."seed:export"]
 extends = "harness"
 description = "Export the running site's model and content as a seed, to review against the project's"
-
-[tasks."registry:up"]
-extends = "harness"
-description = "Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)"
-
-[tasks."registry:down"]
-extends = "harness"
-description = "Stop the local registry — the site goes back to the hosted one"
 
 [tasks.upgrade]
 extends = "harness"
@@ -170,6 +150,7 @@ description = "Does this project work on THIS machine? Site up, check, doctor. -
 
 [tasks."verify:template"]
 extends = "harness"
+hide = true
 description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter. --from 1.0.1 proves an EmDash upgrade keeps the data and a plugin"
 
 [tasks.upgrade-probe]
@@ -178,6 +159,7 @@ hide = true
 
 [tasks."verify:linux"]
 extends = "harness"
+hide = true
 description = "The same verification in a clean Linux container with only git and mise. Needs docker"
 
 [tasks.source]
@@ -192,10 +174,6 @@ description = "The official emdash CLI — e.g: mise run emdash -- schema list"
 extends = "harness"
 description = "The official plugin CLI — e.g: mise run emdash-plugin -- login"
 
-[tasks.skills]
-extends = "harness"
-description = "The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allows no symlinks"
-
 [tasks.args]
 extends = "harness"
 hide = true
@@ -204,17 +182,8 @@ hide = true
 extends = "harness"
 hide = true
 
-[tasks."daemon:registry"]
-extends = "harness"
-hide = true
-
 # Values here reach pitchfork verbatim — mise does not expand templates in [daemons].
 [daemons.site]
 run = "mise run daemon:site"
 dir = "."
 auto = ["start", "stop"]
-
-[daemons.registry]
-run = "mise run daemon:registry"
-dir = "."
-auto = ["stop"]

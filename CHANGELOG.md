@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Fewer tasks: 22 where there were 32.** `mise tasks ls` now lists the flows and the two official
+  CLIs. Gone: `registry:up` and `registry:down` (the local plugin registry — it built the EmDash
+  monorepo and edited the site's committed config; the hosted registry is what a site uses),
+  `plugin:dev`, `content:set`, `schema:diff` and `skills` (each one line around a CLI that
+  `mise run emdash --` or `mise run emdash-plugin --` already runs). Hidden, still runnable:
+  `plugin:probe`, `plugin:roundtrip`, `verify:template`, `verify:linux`.
+- **`check` in a project checks the project.** The harness's tests of itself — its modules, its
+  planted faults, argument passing, unit tests — run only in the repo where the harness is
+  developed. A project's `check` is its settings and its plugins: seven checks, not fourteen.
 - **`dev` leaves a running site alone.** It restarts the server only when something changed that
   the server cannot pick up by itself — `mise.toml`, the harness, the site's `package.json`,
   lockfile, `astro.config.mjs`, `wrangler.jsonc`, `.env` or `.dev.vars`, a plugin — or when it is

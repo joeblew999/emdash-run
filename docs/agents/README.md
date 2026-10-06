@@ -15,7 +15,7 @@ which of those lessons a check now enforces.
   mise loads it alongside `mise.toml`. A consumer repo never edits it; `mise run upgrade` replaces
   it together with `nu/`. So nothing project-specific may ever go in it, or in `nu/`.
 - **`nu/`** — the logic, in nushell. `main.nu` has one command per task; `lib.nu`, `site.nu`,
-  `plugin.nu`, `checks.nu` and `registry.nu` hold what they are made of; `task.nu` hands a task its
+  `plugin.nu` and `checks.nu` hold what they are made of; `task.nu` hands a task its
   arguments; `tests.nu` tests the pure parts. Read [`nushell.md`](nushell.md) before editing any of it.
 - **`site/`** — the project's own site: pages, config, seed. `setup` creates it once from the
   template; the harness never overwrites it. It is where a real site is built.

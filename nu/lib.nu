@@ -22,9 +22,6 @@ export def code [block: closure]: nothing -> int {
 # SITE_PORT in mise.local.toml must get a URL that follows it.
 export def site-url []: nothing -> string { $"http://localhost:($env.SITE_PORT)" }
 
-# Where the optional local plugin registry answers. It follows REGISTRY_PORT the same way.
-export def registry-url []: nothing -> string { $"http://localhost:($env.REGISTRY_PORT)" }
-
 # The harness-owned mise config: tools, tasks, daemons.
 export def harness-file []: nothing -> string { $env.ROOT | path join ".config" "mise" "conf.d" "harness.toml" }
 

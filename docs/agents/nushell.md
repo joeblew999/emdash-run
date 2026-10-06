@@ -10,7 +10,7 @@ harness.toml     [tasks.deploy]  usage = 'arg "[args]" var=#true'
                                  run = "nu --no-config-file {{config_root}}/nu/task.nu deploy"
 nu/task.nu       reads the task's arguments from mise and runs main.nu with them
 nu/main.nu       def "main deploy" [--dry, --build-only, --no-check] { … }     one per task
-nu/site.nu  plugin.nu  checks.nu  registry.nu                                  what flows are made of
+nu/site.nu  plugin.nu  checks.nu                                               what flows are made of
 nu/lib.nu        shared helpers — anything two flows need
 nu/tests.nu      unit tests for the pure functions
 ```
@@ -50,7 +50,7 @@ nu/tests.nu      unit tests for the pure functions
 | `emdash-in DIR` | the EmDash installed in the site or a plugin, `""` before an install |
 | `files-in DIR PATTERN` | files matching a glob, safe on Windows paths. `check` fails on a bare `glob` outside `lib.nu` |
 | `daemon-running`, `daemon-stop`, `answers`, `port-taken` | daemons and "is anything listening". `daemon-stop` returns only when the daemon's port is free |
-| `site-url`, `registry-url` | where the site and the local registry answer — they follow `SITE_PORT` and `REGISTRY_PORT` |
+| `site-url` | where the site answers — it follows `SITE_PORT` |
 
 ## Portable, by construction
 

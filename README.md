@@ -156,7 +156,7 @@ mise run verify                   does it all work on this machine? what CI runs
 mise run report                   something broke? prints what to paste into an issue
 ```
 
-Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 32;
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 22;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
 
 ## Back up, and move content
@@ -215,10 +215,7 @@ Run `mise run dev` when you change settings, the seed, or a plugin. Commit `site
 
 ```
 mise run plugin:new -- my-plugin      scaffold (official CLI), install, test, build, load, call it
-mise run plugin:dev -- my-plugin      rebuild on change
-mise run plugin:probe -- my-plugin    ask the running site to call it
 mise run plugin:release               validate, typecheck, test, build, bundle
-mise run plugin:roundtrip             prove the whole toolchain with a throwaway plugin
 ```
 
 It works on a new project with no setup: the first `plugin:new` switches on plugin loading in your

@@ -243,9 +243,9 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | `secrets generate`, `fingerprint` | Passthrough only |
 | `login`, `logout`, `whoami` | Passthrough only. The `--url` flows use `DEPLOY_TOKEN`, or what `login` stored (see [A14](#assumptions)) |
 | `content list`, `get` | `doctor` (the `VERIFY_*` checks) |
-| `content update` | `content:set` |
+| `content update` | Passthrough only |
 | `content create`, `delete`, `publish`, `unpublish`, `schedule`, `restore`, `translations` | Passthrough only |
-| `schema list`, `get` | `schema:diff`, `doctor --url` |
+| `schema list`, `get` | `doctor`, `doctor --url` |
 | `schema create`, `delete`, `add-field`, `remove-field` | Passthrough only |
 | `media *`, `search`, `taxonomy *`, `menu *` | Passthrough only |
 | `site export` | `snapshot` |
@@ -261,7 +261,7 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 |---|---|
 | `init` | `plugin:new` |
 | `validate`, `build` | `plugin:new`, `dev` (build), `plugin:release` |
-| `dev` | `plugin:dev` — rebuilds only; the site still needs `mise run dev` to pick it up |
+| `dev` | Passthrough only — it rebuilds; the site still needs `mise run dev` to pick it up |
 | `bundle` | `plugin:release` |
 | `publish`, `login`, `logout`, `whoami`, `switch`, `search`, `info`, `update-package`, `profile setup`, `release *` | Passthrough only |
 
@@ -279,7 +279,7 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 | Roll back | `rollback` (the Worker only — see [A7](#assumptions)) |
 | Disaster-recovery backup | `snapshot -- --database`. Locally and on Node: a copy of the database and media, restored by `restore -- <directory>` — run. For a Cloudflare deployment: Time Travel bookmark and `wrangler d1 export` — written from the docs, **not yet run against a deployment** |
 | Upgrade EmDash | Change `EMDASH_VERSION`, run `dev`: database copied, packages and plugins re-pinned in place, the updating notes that changed and the template comparison printed |
-| Registry (local aggregator) | `registry:up`, `registry:down` |
+| Registry | The hosted one. Search it: `mise run emdash-plugin -- search <words>` |
 | MCP | `dev` mints the token; `.mcp.json` reads it |
 | Skills | `dev` vendors them from `.src/emdash/skills` at the tag of `EMDASH_VERSION` |
 | Secrets, email, auth providers, i18n, object cache | Project config; no flow |
@@ -324,14 +324,8 @@ numbers did not survive.
   missing argument, missing seed file, unreachable host — all exit 1. Every `content`/`schema`
   command ends its `catch` with `process.exit(1)` (`core:cli/commands/content.ts:103-105`,
   `schema.ts:27-29`). The real exit-0 cases are [upstream](#to-report-upstream).
-- **A4 — `registry:up` "points the site at it".** `serve` (`nu/site.nu`) sets `EMDASH_REGISTRY_URL`
-  for the dev server. Core does not read that variable; only the plugin CLI does
-  (`pkg:plugin-cli/src/config.ts:39`), and a template's config has no `registry:` line
-  (`tpl:starter-cloudflare/astro.config.mjs`). **Fixed:** `registry:up` writes
-  `registry: process.env.EMDASH_REGISTRY_URL,` into `site/astro.config.mjs` — unset, EmDash falls
-  back to its hosted default (`core:registry/config.ts:16-27`) — and fails unless the site's
-  manifest then names the local registry. Run on a pristine `starter-cloudflare` config: the
-  admin's Registry page fetched `…/xrpc/…aggregator.searchPackages` from the local aggregator.
+- **A4 — the local registry.** Removed on 2026-10-06 with `registry:up` and `registry:down`: it built
+  the EmDash monorepo and wrote into the site's committed config. A site uses the hosted registry.
 - **A5 — A fresh project gets the Worker Loader switched on** (`configure` calls
   `enable-local-plugins` when `config/` is new). EmDash ships it off because it needs the Workers
   Paid plan (`docs:deployment/plugin-sandbox.mdx:23`). What a free-plan deploy does with the
@@ -521,7 +515,5 @@ relation to the version they are moving to. Ask: tag the templates repo per rele
 - Whether `--url` must come last for `emdash site import` (A2).
 - Anything about Astro or Vite that `nu/` works around — `ASTRO_DEV_BACKGROUND`, clearing
   `node_modules/.vite`, binding `127.0.0.1`. Those are not EmDash's and were not checked.
-- The registry flow (`registry:up`) on a Node.js template, and on Linux or Windows: run on macOS
-  with `starter-cloudflare` only.
 - Whether the Cloudflare template needs a `SESSION` KV namespace declared. This project's
   `wrangler.jsonc` has one; the template has none.
