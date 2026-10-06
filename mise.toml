@@ -6,20 +6,22 @@
 # into .src/site. It consumes the *published* `emdash` npm package, and the two official
 # CLIs are the way to work with it: `emdash` (site) and `emdash-plugin` (plugins).
 #
+# There are no scripts. Every task body is nushell, run by `[task_config] shell` below, so
+# the task IS the implementation — readable in one place, and the same on every platform.
+#
 # Tasks are the interface, and they come in two kinds — the distinction is the point:
 #
 #   PRIMITIVES  one official command or script, nothing invented. Thin on purpose: the
 #               CLI already does this well, so these add only what makes it usable here
-#               (the instance URL, the stored credential, the dev database path).
+#               (the site's own binary on PATH, the working directory the CLI needs, the dev
+#               database path).
 #
 #   WORKFLOWS   the jobs a developer actually does, composed from primitives. "The CLI
 #               provides one-shot commands; a dev wants to wrap many into one." This is
 #               where the value is, and it is what mise is for: `depends` to run parts
-#               in parallel, `usage` for typed arguments, `dir`/`env` for context.
-#
-# Logic still belongs in scripts/*.mjs — but a task that is genuinely a one-liner against
-# an official CLI belongs inline, and ten tasks that merely relay one CLI call each are
-# not coverage, they are noise. Every script in scripts/ is called by a task.
+#               in parallel, `usage` for typed arguments, `dir`/`env` for context,
+#               `sources`/`outputs` to skip work already done, `hide` for a helper that is
+#               not part of the interface.
 
 [settings]
 # Serial task execution — avoids pnpm lockfile conflicts during install
@@ -35,7 +37,7 @@ pitchfork      = "2.29.0"      # process manager for the daemons
 # shell that shifts under you is a bad place to discover that.
 nushell        = "0.116.1"
 # Secrets. `fnox exec -- <cmd>` is how anything needing credentials runs: `site:deploy`,
-# and the `secret()` helper in scripts/lib/exec.mjs that `repo:verify` uses to reach R2.
+# and the R2 cross-checks in `repo:verify`.
 #
 # Declared here rather than left to the global mise config, where it was the only thing
 # providing it — so a fresh clone on another machine had no fnox, and both of those paths
@@ -551,8 +553,11 @@ run = """
 # The authoritative page is "evolve a deployed site's schema" — through the API, NOT a seed: a seed
 # only participates in first-time bootstrap, so deploying a changed one against an existing database
 # does nothing. This answers "how far behind is the deployment?" without touching it.
-mut urlargs = []
-if ($env.EMDASH_URL? | is-not-empty) { $urlargs = ["--url" $env.EMDASH_URL] }
+# Immutable on purpose: nushell refuses to let a closure capture a `mut` binding, and this list is
+# used inside `each` in repo:verify.
+let url_args = (
+  if ($env.EMDASH_URL? | is-not-empty) { ["--url" $env.EMDASH_URL] } else { [] }
+)
 
 # The CLI prints a banner before its JSON, so cut to the first line that opens with { or [.
 def cli_json [cli_args: list] {
@@ -573,7 +578,7 @@ def cli_json [cli_args: list] {
   }
 }
 
-let listed = (cli_json ["schema" "list" "--json" ...$urlargs])
+let listed = (cli_json ["schema" "list" "--json" ...$url_args])
 # `schema list --json` returns a BARE ARRAY of collections — no envelope. (The `parsed.data ?? parsed`
 # and `listed.items ?? listed.collections ?? listed` fallbacks in the script this replaces were both
 # no-ops on an array, which is why they looked like they were doing something.) Accept either shape,
@@ -589,7 +594,7 @@ let remote_slugs = ($collection_rows | each {|c| $c.slug })
 
 mut remote = {}
 for slug in $remote_slugs {
-  let detail = (cli_json ["schema" "get" $slug "--json" ...$urlargs])
+  let detail = (cli_json ["schema" "get" $slug "--json" ...$url_args])
   let fields = (
     if (($detail | describe) | str starts-with "record") { $detail | get -o fields | default [] }
     else { [] }
@@ -731,7 +736,184 @@ print "Live         https://emdash-run.gedw99.workers.dev"
 
 [tasks."repo:verify"]
 description = "Assert the running site matches what the repo claims (set EMDASH_URL to check a deployment instead) — content, the model_id join, and snapshot drift against real R2 objects"
-run = "node \"{{config_root}}/scripts/lib/verify.mjs\""
+run = '''
+# Every check here exists because the opposite happened and nothing said so: the seed pointed at
+# model paths that exist in no bucket; brep_file / step_file were declared on every entry and null
+# on every entry; `emdash seed` printed success into a database the site never reads.
+#
+# plugin:audit checks the FILES are coherent. This checks the LIVE state agrees with them, which is
+# the part that was missing: every file can be right while the running site is wrong.
+#
+# The R2 checks are the centrepiece — they follow each part's model_id to the real object in the
+# geometry bucket and compare it against the stored snapshot. That is what would have caught the
+# fiction on its first run rather than six commits later.
+# Immutable on purpose: nushell refuses to let a closure capture a `mut` binding, and this list is
+# used inside `each` in repo:verify.
+let url_args = (
+  if ($env.EMDASH_URL? | is-not-empty) { ["--url" $env.EMDASH_URL] } else { [] }
+)
+
+# A credential from fnox, the single source of truth. The ambient environment wins, so a caller
+# already inside `fnox exec` pays nothing. `printenv` takes the NAME as an argument, which avoids
+# building a shell string with a `$` in it. Empty rather than fatal: a missing credential is a
+# finding to report, not a crash.
+def secret [name: string] {
+  let ambient = ($env | get -o $name)
+  if ($ambient | is-not-empty) { $ambient } else {
+    let result = (^fnox exec -- printenv $name | complete)
+    if $result.exit_code == 0 { $result.stdout | str trim } else { "" }
+  }
+}
+
+# The RAW parsed value. The envelopes differ per command — `content list` wraps its items in a
+# top-level `items`, while `content get` IS the entry, with its own `data` holding the field values
+# — so unwrapping here would hand back the wrong level.
+def cli_json [cli_args: list] {
+  let lines = (^emdash ...$cli_args | complete).stdout | lines
+  let start = ($lines | enumerate | where {|l|
+    ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
+  } | get -o index | first)
+  $lines | skip $start | str join (char nl) | from json
+}
+
+def report [ok: bool, label: string, detail: string] {
+  let glyph = (if $ok { "✓" } else { "✗" })
+  let suffix = (if ($detail | is-empty) { "" } else { $" — ($detail)" })
+  print $"  ($glyph) ($label)($suffix)"
+}
+
+let site_url = $env.SITE_URL
+let account = (secret "CLOUDFLARE_ACCOUNT_ID")
+let token = (secret "CLOUDFLARE_API_TOKEN")
+let bucket = ($env.GEOMETRY_BUCKET? | default "cad-documents")
+mut checks = []
+
+# ── 1. the site answers at all ───────────────────────────────────────────────
+# Retried on purpose: config:apply writes files Vite watches (astro.config.mjs, wrangler.jsonc,
+# seed/seed.json), so the dev server restarts underneath you and a verify straight afterwards races
+# it. One attempt reports "fetch failed" for what is really "not ready yet" — a false alarm that
+# teaches people to ignore the check. The site binds IPv6-only, so localhost is the right host.
+mut status = ""
+for _ in 0..40 {
+  let probe = (^curl -sS -o /dev/null -w "%{http_code}" --max-time 2 $site_url | complete)
+  if $probe.exit_code == 0 {
+    $status = ($probe.stdout | str trim)
+    break
+  }
+  sleep 500ms
+}
+if ($status | is-empty) or (($status | into int) >= 500) {
+  let detail = (if ($status | is-empty) { "no response, gave up after 20s" } else { $status })
+  report false "site responds" $detail
+  print ""
+  print "✗ the site is not up — run: mise run repo:apply"
+  exit 1
+}
+report true "site responds" $status
+$checks = ($checks | append true)
+
+# ── 2. read the content through the official CLI ─────────────────────────────
+# This used to fetch the raw API endpoint with a token read out of run/token-admin.txt. `emdash
+# content list` is the documented way to read content from an instance and it resolves auth itself,
+# so the raw endpoint and the hand-held token both went.
+mut parts = []
+mut data_ok = false
+try {
+  let listed = (cli_json ["content" "list" "parts" "--json" ...$url_args])
+  # `content list` is SLIM — it carries no `data` — so each entry is fetched with `content get`.
+  # That matters more than it looks: given only the slim list every part has no data, so nothing
+  # resolved and nothing mismatched, and the R2 checks PASSED VACUOUSLY. A check that passes
+  # because it read nothing is worse than one that fails, hence this guard.
+  $parts = (($listed | get -o items | default []) | each {|item|
+    cli_json ["content" "get" "parts" $item.slug "--json" ...$url_args]
+  })
+  let fetched = $parts
+  let with_data = ($fetched | where {|part| ($part | get -o data) | is-not-empty } | length)
+  $data_ok = ($with_data == ($fetched | length)) and ($with_data > 0)
+  report $data_ok "content get returns data" $"($with_data) of ($fetched | length) entries"
+} catch {|err|
+  report false "content get returns data" $err.msg
+}
+$checks = ($checks | append $data_ok)
+
+let parts_final = $parts
+if ($parts_final | is-not-empty) {
+  if ($account | is-empty) or ($token | is-empty) {
+    let missing = (if ($account | is-empty) { "CLOUDFLARE_ACCOUNT_ID" } else { "CLOUDFLARE_API_TOKEN" })
+    report false "R2 cross-check" $"cannot run, ($missing) is unset"
+    $checks = ($checks | append false)
+  } else {
+    let limit = ($env.VERIFY_MODEL_LIMIT? | default "5" | into int)
+    let samples = ($parts_final | first $limit)
+
+    let missing_join = (
+      $parts_final
+      | where {|part| ($part | get -o data | default {} | get -o model_id) | is-empty }
+      | each {|part| $part.slug }
+    )
+    let join_ok = ($missing_join | is-empty)
+    let join_detail = (if $join_ok { $"($parts_final | length) parts" } else { $missing_join | str join ", " })
+    report $join_ok "every part declares a model_id" $join_detail
+    $checks = ($checks | append $join_ok)
+
+    mut unresolved = []
+    mut drift = []
+    for part in $samples {
+      let id = ($part | get -o data | default {} | get -o model_id)
+      if ($id | is-empty) { continue }
+      let body = (mktemp)
+      let url = $"https://api.cloudflare.com/client/v4/accounts/($account)/r2/buckets/($bucket)/objects/models/($id)/manifest.json"
+      let code = (
+        ^curl -sS -o $body -w "%{http_code}" -H $"Authorization: Bearer ($token)" $url
+        | complete
+        | get stdout
+        | str trim
+      )
+      if (($code | into int) >= 400) {
+        $unresolved = ($unresolved | append $"($id) ($code)")
+        continue
+      }
+      let manifest = (open $body | from json)
+      let snapshot = ($part | get -o data | default {} | get -o geometry_meta | default {})
+      # The snapshot must equal the live manifest, field for field. Drift means the entry describes
+      # a model that has since changed — or never matched at all.
+      let pairs = [
+        ["model_name" ($manifest | get -o name)]
+        ["objects" ($manifest | get -o objectCount)]
+        ["model_version" ($manifest | get -o version)]
+        ["model_updated" ($manifest | get -o updatedAt)]
+      ]
+      for pair in $pairs {
+        let key = ($pair | first)
+        let live = ($pair | last)
+        let stored = ($snapshot | get -o $key)
+        if ($stored != $live) {
+          $drift = ($drift | append $"($part.slug)/($id): ($key) is ($stored), live is ($live)")
+        }
+      }
+    }
+
+    let resolve_ok = ($unresolved | is-empty)
+    let resolve_detail = (if $resolve_ok { $"($samples | length) models" } else { $unresolved | str join ", " })
+    report $resolve_ok $"model_id resolves in ($bucket)" $resolve_detail
+    $checks = ($checks | append $resolve_ok)
+
+    let drift_ok = ($drift | is-empty)
+    let drift_detail = (if $drift_ok { $"($samples | length) models" } else { $drift | first 6 | str join "; " })
+    report $drift_ok "stored snapshot matches the live manifest" $drift_detail
+    $checks = ($checks | append $drift_ok)
+  }
+}
+
+let checks_final = $checks
+let failed = ($checks_final | where {|result| not $result } | length)
+print ""
+if $failed > 0 {
+  print $"✗ repo:verify failed — ($failed) of ($checks_final | length) checks"
+  exit 1
+}
+print $"✓ repo:verify passed — ($checks_final | length) checks"
+'''
 
 [tasks."repo:check"]
 description = "Lint + formatting over the plugins (oxlint --type-aware, oxfmt), and that the committed skills match the site's"
@@ -1303,16 +1485,152 @@ run = "emdash-plugin update-package"
 
 [tasks."skills:sync"]
 description = "Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code"
-run = "node \"{{config_root}}/scripts/skills.mjs\" sync"
+run = """
+# The EmDash skills live in TWO places, for two reasons:
+#
+#   .github/skills/<name>/   COMMITTED, and the one that matters. VS Code Copilot reads
+#                           .github/skills/, and skills are discovered when a session STARTS.
+#                           .claude/skills/ is gitignored, so on a fresh clone the link does not
+#                           exist yet — and an agent that starts before anyone has run skills:sync
+#                           has no EmDash knowledge at all. That is not hypothetical: it happened,
+#                           and a whole session went into rediscovering export-seed, site import and
+#                           the file-vs-D1 trap while those skills sat on disk unread.
+#
+#   .claude/skills/emdash    a SYMLINK, for Claude Code. Deliberately not committed: it points into
+#                           gitignored .src/, so it would be broken on any other clone.
+let site = $env.SITE_DIR
+let vendor = $"($env.ROOT)/.github/skills"
+let shipped = (
+  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
+  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
+  else { null }
+)
+if ($shipped | is-empty) {
+  print $"  ⚠ no shipped skills found in ($site), looked for .claude/skills and .agents/skills"
+  exit 0
+}
+
+let names = (ls $shipped | where type == dir | get name | each {|p| $p | path basename } | sort)
+rm -rf $vendor
+mkdir $vendor
+for name in $names { cp -r $"($shipped)/($name)" $"($vendor)/($name)" }
+print $"  ✓ ($names | length) EmDash skills vendored → .github/skills — committed"
+
+# A RELATIVE target on purpose: the link lives at .claude/skills/emdash, so the target is always
+# ../../.src/site/... — an absolute one would break on any other clone.
+mkdir $"($env.ROOT)/.claude/skills"
+let rel = (
+  if ($shipped | str contains ".agents/") { "../../.src/site/.agents/skills" }
+  else { "../../.src/site/.claude/skills" }
+)
+rm -rf $"($env.ROOT)/.claude/skills/emdash"
+if ($nu.os-info.name == "windows") {
+  ^cmd /c mklink /J $"($env.ROOT)/.claude/skills/emdash" $rel | complete | ignore
+} else {
+  ^ln -sfn $rel $"($env.ROOT)/.claude/skills/emdash"
+}
+print $"  ✓ .claude/skills/emdash → ($rel)"
+"""
 
 [tasks."skills:check"]
 description = "Fail if the committed .github/skills/ copy has drifted from the skills the site ships"
-run = "node \"{{config_root}}/scripts/skills.mjs\" check"
+run = """
+# Drift happens when the template or EMDASH_VERSION changes, and the failure mode is silent — an
+# agent reads a stale skill and confidently does the wrong thing.
+def hash_tree [dir: string] {
+  mut acc = {}
+  if ($dir | path exists) {
+    for file in (glob $"($dir)/**/*") {
+      if (($file | path type) == "file") {
+        $acc = ($acc | upsert ($file | path relative-to $dir) (open --raw $file | hash sha256))
+      }
+    }
+  }
+  $acc
+}
+
+let site = $env.SITE_DIR
+let vendor = $"($env.ROOT)/.github/skills"
+let shipped = (
+  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
+  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
+  else { null }
+)
+if ($shipped | is-empty) {
+  print "  ⚠ no shipped skills to compare against — run: mise run site:setup"
+  exit 0
+}
+
+let shipped_hashes = (hash_tree $shipped)
+let vendored_hashes = (hash_tree $vendor)
+let shipped_keys = ($shipped_hashes | columns)
+let vendored_keys = ($vendored_hashes | columns)
+mut problems = []
+
+for path in $shipped_keys {
+  if not ($path in $vendored_keys) {
+    $problems = ($problems | append $"missing from .github/skills: ($path)")
+  } else if (($vendored_hashes | get $path) != ($shipped_hashes | get $path)) {
+    $problems = ($problems | append $"differs: ($path)")
+  }
+}
+for path in $vendored_keys {
+  if not ($path in $shipped_keys) {
+    $problems = ($problems | append $"not shipped by the site: ($path)")
+  }
+}
+
+if ($problems | is-not-empty) {
+  print $"✗ skills:check — .github/skills has drifted from ($shipped | path relative-to $env.ROOT):"
+  for problem in ($problems | first 20) { print $"  - ($problem)" }
+  print "  fix: mise run skills:sync"
+  exit 1
+}
+print $"  ✓ ($vendored_keys | length) vendored skill files match the site's"
+"""
 
 [tasks."skills:add-all"]
 description = "Install the standard skill set for this project (run once after init)"
 wait_for = ["site:setup"]
-run = "node \"{{config_root}}/scripts/skills.mjs\" add-all"
+depends = ["skills:sync"]
+run = """
+# The skills CLI has no "restrict agents" flag, so it also writes other agents' directories.
+^skills add kinoward/agent-skills/mise-guide --yes --agents "Claude Code"
+for dir in [".crush" ".goose" ".cursor" ".augment" ".continue" ".codebuddy"] {
+  rm -rf $"($env.ROOT)/($dir)"
+}
+print "  ✓ non-Claude agent dirs removed"
+"""
+
+# The rest of the skills CLI. These were subcommands of the deleted script that no task ever
+# exposed, so they could not be run at all — the same shape of bug as the plugin relay.
+[tasks."skills:list"]
+description = "list installed skills (official)"
+run = "skills list"
+
+[tasks."skills:find"]
+description = "search for skills (official)"
+run = "skills find"
+
+[tasks."skills:add"]
+description = "install a skill — e.g: mise run skills:add -- owner/repo/skill"
+run = "skills add --yes --agents \"Claude Code\""
+
+[tasks."skills:remove"]
+description = "remove a skill (official)"
+run = "skills remove --yes"
+
+[tasks."skills:remove-all"]
+description = "remove every installed skill (official)"
+run = "skills remove --all --yes"
+
+[tasks."skills:update"]
+description = "update installed skills (official)"
+run = "skills update"
+
+[tasks."skills:restore"]
+description = "reinstall skills from skills-lock.json (official: skills experimental_install)"
+run = "skills experimental_install"
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
