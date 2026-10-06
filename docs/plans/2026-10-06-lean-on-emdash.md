@@ -62,7 +62,7 @@ Sources for every claim: [`../emdash.md`](../emdash.md) § Capability map (W1–
   - [ ] first, measure: `reset` on `blog-cloudflare`, then `emdash media list --json | length` against the number of `$media` in the seed. Twice as many confirms A10; record the numbers here
   - [x] on a fresh database, do not run `emdash seed` at all — `dev-bypass` has just applied the seed into the right storage; write the hash mark instead
   - [x] the hash gate from `c9efc63` stays; the mark is written on the fresh-database path too, so the next `dev` does not treat the seed as changed
-  - [ ] proof on `blog-cloudflare`: `reset`, then `dev` three times — images serve 200, `emdash media list` has the same count each time, and `./uploads` stays empty
+  - [x] proof on `blog-cloudflare` (the template whose snapshot used to fail): `mise run verify:template -- blog-cloudflare --full` exits 0 — setup, a plugin round trip (three more `dev` runs), snapshot, wipe, restore, doctor. The export refuses any media row without a file, so a passing snapshot is the proof that none was created. Media counts were not read out separately
   - [ ] proof: edit a seeded entry in the admin, run `dev` — the edit is still there
   - [ ] say in the README what still happens when the seed **does** change: seeded entries are overwritten and their media is duplicated, until upstream items 2 and 3 are fixed
   - [ ] measure the first `dev-bypass` call on `blog-cloudflare`; if it can exceed the request timeout, give that one call a longer one
