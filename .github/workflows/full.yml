@@ -1,10 +1,9 @@
-# The full verification. Runs when a version is tagged, and a release is published ONLY if every
-# job here passes: every OS, Cloudflare and Node.js, the whole dev loop, and the installers a new
-# dev actually runs. Everything is `mise run …` — the same commands as on a laptop.
+# The full cross-platform verification: every OS, Cloudflare and Node.js, the whole dev loop, and
+# the installers. It is slow (about 15 jobs), so it is NOT part of a push or a release. Run it by
+# hand when the cross-platform layer itself changes — nu/task.nu, nu/lib.nu, the installers, the
+# workflows — or before a release that touches them:   gh workflow run "full verification"
 name: full verification
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 env:
   MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -77,22 +76,3 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           mise run status
           mise run doctor
-
-  # Only a tag that passed everything above becomes a release.
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [verify, install]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: harness
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          awk -v v="## $version" 'index($0, v) == 1 {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
-          gh release create "$GITHUB_REF_NAME" emdash-harness.tar.gz --title "emdash-run $version" --notes-file notes.md

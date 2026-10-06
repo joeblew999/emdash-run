@@ -59,8 +59,10 @@ lesson is enforced by a check, it says so — those cannot regress quietly. The 
 - **Local first; CI is not the edit loop.** `mise run check` (seconds), `mise run verify -- --full`,
   `verify:template -- starter --full`, `verify:linux`. A push runs only `check` on three OSes; a
   release tag runs everything. Push once per finished piece of work.
-- **A release is a tag.** The `full verification` workflow publishes it only if every job passes.
-  Never create one by hand.
+- **A release is a tag, and must be cheap.** The harness is a small tarball. Gating every release
+  on a 15-job matrix turned a one-minute act into a quarter of an hour, six times in one day, and
+  tied all other work to CI. A tag now runs the fast check and publishes; the full matrix is run by
+  hand when the cross-platform layer changes.
 - **Do not wait in the foreground.** A CI run, a container, a slow install: start it in the
   background, or hand it to an agent with a read-only brief, and keep working.
 - **Agents need boundaries.** Give each one the files it may touch and say who owns the running

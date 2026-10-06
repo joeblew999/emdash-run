@@ -41,20 +41,19 @@ which of those lessons a check now enforces.
   the harness runs are the ones mise installs, the site's own `emdash`, plus git and docker — the
   `PORTABLE` list in `nu/checks.nu` — and `check` fails on any other. Do not say a platform
   works until `mise run verify` has run on it; CI runs it on all three.
-- **CI is not a second system, and not the test loop.** Verify locally: `mise run check`, then
-  `mise run verify -- --full`, `verify:template -- starter --full` for Node.js, `verify:linux` for a
-  clean Linux. A push runs only `mise run check` on the three OSes. The full matrix — every OS,
-  both platforms, the installers — runs on a release tag. Push once per finished piece of work, not
-  per commit, and never add a CI-only step.
+- **CI is not a second system, and not the test loop.** Verify locally. A push runs only
+  `mise run check` on the three OSes; a tag publishes; the full matrix is manual. Push once per
+  finished piece of work, and never add a CI-only step.
 - **No symlinks.** git writes the target path into a file on Windows. Copy instead; `check` fails
   on one.
 - **Comments say what; docs say why.** A comment is a line or three. History goes in git.
 - **Plugins are scaffolded, not hand-written:** `mise run plugin:new -- <name>`. See
   [`../plugin.md`](../plugin.md).
-- **Releasing is a tag.** Bump `HARNESS_VERSION` in `harness.toml`, add a `## x.y.z` section to
-  `CHANGELOG.md`, commit, then `git tag vx.y.z && git push origin main vx.y.z`. The `full
-  verification` workflow runs everything on every OS and both platforms, runs the installers, and
-  publishes the release with its tarball **only if all of it passes**. Never create a release by hand.
+- **Releasing is a tag, and it is fast.** Bump `HARNESS_VERSION` in `harness.toml`, add a
+  `## x.y.z` section to `CHANGELOG.md`, commit, `git tag vx.y.z && git push origin main vx.y.z`. The
+  `release` workflow runs `mise run check` and publishes the tarball — about a minute. Verify
+  locally first (`mise run verify -- --full`). Run the slow `full verification` workflow by hand
+  only when the cross-platform layer changed. Never create a release by hand, and never tag to test.
 - **Plans live in `docs/plans/`** — read the active one before structural changes.
 
 ## The checks

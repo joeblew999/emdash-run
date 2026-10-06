@@ -100,7 +100,7 @@ development needs neither.
 **Something broke?** `mise run report` prints your versions, status and recent site log — paste it
 into [a new issue](https://github.com/joeblew999/emdash-run/issues/new/choose).
 
-## Fully verified — before every release
+## Fully verified
 
 [![full verification](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/full.yml)
 
@@ -124,9 +124,10 @@ each end in a `doctor` pass on the deployment.
 
 - **On every push and pull request** ([`verify`](.github/workflows/verify.yml)): `mise run check`
   on all three OSes — seconds. It is what catches a portability slip.
-- **On every release tag** ([`full verification`](.github/workflows/full.yml)): the whole table
-  above, 12 verification jobs, plus one that packages the tarball. The release is created by that
-  workflow's last job — which only runs if all of them pass.
+- **The whole table above** ([`full verification`](.github/workflows/full.yml)) is run by hand when
+  the cross-platform layer changes — it is about 15 jobs, so it is not spent on every release.
+- **A release** ([`release`](.github/workflows/release.yml)) is a tag: the fast check, then the
+  tarball is published. About a minute.
 - **On your machine**: `mise run verify -- --full` runs the same flow on your project's template;
   `mise run verify:template -- starter --full` runs it on a Node.js one.
 

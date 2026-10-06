@@ -286,7 +286,7 @@ export def serve [] {
   if (answers $"($env.REGISTRY_URL)/health") { $env.EMDASH_REGISTRY_URL = $env.REGISTRY_URL }
   # Bound to IPv4 on purpose. Astro's default listens on [::1] only, and on Linux `localhost`
   # resolves to 127.0.0.1 first — so the emdash CLI was refused there while curl worked.
-  ^pnpm --dir $env.SITE_DIR dev --host 127.0.0.1
+  ^pnpm --dir $env.SITE_DIR dev --host 127.0.0.1 --port $env.SITE_PORT
 }
 
 # Type-check the site: astro check loads the config, tsc checks the config's types. Both re-run

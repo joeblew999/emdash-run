@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.1 — 2026-10-06
+
+The first published release of the 0.6 line; 0.6.0 was tagged and never published.
+
+- **Two sites side by side.** `SITE_PORT` (default 4321) sets the dev server's port; give a second
+  checkout its own in `mise.local.toml`.
+- **A release is fast.** A tag runs the fast check and publishes — about a minute. The full
+  cross-platform matrix is a manual workflow, for when the cross-platform layer changes.
+- The installers trust the new config before changing it: choosing a template (`| sh -s -- blog`)
+  failed on any machine that was not CI.
+- `verify` installs a fresh clone's site instead of assuming it.
+
 ## 0.6.0 — 2026-10-06
 
 - **Your site is yours: `site/`.** `setup` creates it once from the template and the harness never

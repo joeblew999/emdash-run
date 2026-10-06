@@ -1,0 +1,26 @@
+# A release is a tag. This runs the fast check, packages the harness, and publishes — about a
+# minute. The harness is a 30 KB tarball; proving it everywhere is `full verification`, run by hand
+# when it is needed, and `mise run verify -- --full` locally before tagging.
+name: release
+on:
+  push:
+    tags: ["v*"]
+env:
+  MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - run: mise run check
+      - run: git archive --format=tar.gz -o emdash-harness.tar.gz HEAD nu .config/mise/conf.d/harness.toml .githooks .oxlintrc.json .oxfmtrc.json
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="## $version" 'index($0, v) == 1 {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" emdash-harness.tar.gz --title "emdash-run $version" --notes-file notes.md
