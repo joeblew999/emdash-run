@@ -229,9 +229,22 @@ export def configure [registration: string] {
 
 # Get the seed into the RUNNING site's database, updating entries that already exist. The site's
 # own first-request seeding skips anything that exists, so edits to the seed never land without this.
+# Only when the seed has CHANGED since it was last applied to this database. Re-applying an
+# unchanged seed would overwrite edits made in the admin with the seed's values, and — until
+# emdash#3919 is fixed — insert a duplicate media row for every image in it, every time.
 export def apply-seed [] {
-  emdash seed seed/seed.json --database (devdb) --on-conflict=update
+  let seed = (site-file "seed" "seed.json")
+  let mark = ($env.RUN_DIR | path join "seed-applied.txt")
+  let db = (devdb)
+  let now = $"(open --raw $seed | hash sha256) ($db)"
+  if ($mark | path exists) and (open --raw $mark | str trim) == $now {
+    ok "seed unchanged since it was last applied"
+    return
+  }
+  emdash seed seed/seed.json --database $db --on-conflict=update
   if (on-cloudflare) { uploads-to-r2 }
+  mkdir $env.RUN_DIR
+  $now | save --force $mark
 }
 
 # `emdash seed` always writes a seed's media files to ./uploads — right for Node, where the site

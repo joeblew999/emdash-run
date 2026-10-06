@@ -328,6 +328,10 @@ def "main registry up" [] {
   step "prepare the registry"
   registry prepare
   ^mise daemons start registry
+  if not (wait-for $"($env.REGISTRY_URL)/health" 120) {
+    print --stderr ((^mise daemons logs registry | complete).stdout | lines | last 30 | str join (char nl))
+    fail "the registry did not answer within 120s" "its last log lines are above"
+  }
   # A fresh registry is empty: ingest published plugins, then build the projection reads go through.
   registry admin "/_admin/backfill"
   registry admin "/_admin/labels/replay"
@@ -393,7 +397,10 @@ def "main verify" [--full] {
 def "main verify template" [template: string, --full] {
   # A fresh directory every time: on Windows a just-stopped site can still hold its files open,
   # so neither reusing nor deleting a previous run's directory is safe.
-  let dir = ($nu.temp-dir | path join "emdash-run-verify" $"($template)-(random chars --length 6)")
+  let scratch = ($nu.temp-dir | path join "emdash-run-verify")
+  # Earlier runs' directories, best effort: Windows may still hold one open.
+  if ($scratch | path exists) { for old in (ls $scratch | get name) { try { rm -rf $old } } }
+  let dir = ($scratch | path join $"($template)-(random chars --length 6)")
   let was_running = (daemon-running $env.SITE_DAEMON)
   mkdir ($dir | path join ".config" "mise" "conf.d")
   cp -r ($env.ROOT | path join "nu") ($dir | path join "nu")

@@ -112,6 +112,7 @@ export def devdb []: nothing -> string {
 
 # Delete the local database and uploads. The site recreates them, seeded, when it next starts.
 export def wipe-local-data [] {
+  rm -f ($env.RUN_DIR | path join "seed-applied.txt")
   if (on-cloudflare) {
     rm -rf ($env.SITE_DIR | path join ".wrangler" "state")
   } else {
@@ -142,7 +143,10 @@ export def with-site-paused [block: closure]: nothing -> int {
   if $was_running { daemon-stop $env.SITE_DAEMON }
   let rc = (code $block)
   rm -rf ($env.SITE_DIR | path join "node_modules" ".vite") ($env.SITE_DIR | path join ".astro")
-  if $was_running { ^mise daemons start $env.SITE_DAEMON }
+  if $was_running {
+    ^mise daemons start $env.SITE_DAEMON
+    if not (wait-for $env.SITE_URL 90) { print "  ⚠ the site was restarted but is not answering yet — see: mise run logs" }
+  }
   $rc
 }
 
@@ -173,6 +177,16 @@ export def request [
 # on a joined path: a glob pattern treats `\` as an escape, and `path join` produces `\` on Windows.
 export def files-in [dir: string, pattern: string, --exclude: list<string> = []]: nothing -> list<string> {
   glob $"($dir | str replace --all '\' '/')/($pattern)" --exclude $exclude
+}
+
+# Wait, for a bounded time, until something answers at the URL. Every wait in the harness goes
+# through this: nothing may wait without a limit.
+export def wait-for [url: string, seconds: int]: nothing -> bool {
+  for _ in 1..$seconds {
+    if (answers $url) { return true }
+    sleep 1sec
+  }
+  false
 }
 
 # True when something answers at the URL without an error status.

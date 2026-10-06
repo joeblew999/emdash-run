@@ -234,7 +234,7 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 |---|---|
 | `init` | Not covered, not needed: the dev server migrates and seeds |
 | `seed --validate` | `dev`, `setup`, `deploy` (in `configure`) |
-| `seed` (apply) | `dev`, `setup` — every run, with `--on-conflict=update` |
+| `seed` (apply) | `dev`, `setup` — with `--on-conflict=update`, when the seed changed or the database is new |
 | `export-seed` | `seed:export` (local only) |
 | `doctor` | `doctor` (local only) |
 | `migrate --status` | `doctor --url`, so also `deploy` and `rollback`. Cloudflare only |
@@ -285,84 +285,91 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
 
 ### Where the harness works around EmDash
 
+The harness described here is 0.4.2 plus the seed-hash change that was in the working tree on
+2026-10-06. Its code is cited by **function name**: `nu/` changed twice while this was written and
+line numbers did not survive.
+
 | # | workaround | why it exists | does EmDash offer a proper way? |
 |---|---|---|---|
-| W1 | `uploads-to-r2` — moves seeded media from `./uploads` into local R2 (`nu/site.nu:237-253`) | `emdash seed` hard-codes `LocalStorage` (`core:cli/commands/seed.ts:202-209`) | **For the first apply, yes**: the runtime seeds through the configured storage (`core:astro/routes/api/setup/dev-bypass.ts:66-70`). For `update`, no — [upstream](#to-report-upstream) |
-| W2 | `mint-token` — session cookie, list tokens, delete, create (`nu/site.nu:269-287`) | A token is shown once | **Yes.** `POST …/setup/dev-bypass?token=1` returns a fresh `admin` token and drops the old one (`dev-bypass.ts:146-168`) |
-| W3 | `devdb` — finds Miniflare's D1 file under `.wrangler/state/v3/d1/` (`nu/lib.nu:103-116`) | `seed`, `export-seed`, `doctor` only open a SQLite file | No. EmDash's own docs reach local D1 through `wrangler d1 execute --local` (`docs:deployment/core-migrations.mdx:209-213`). The path is Miniflare's, not a contract |
-| W4 | `plugin fit` — rewrites the scaffold's `emdash` and `plugin-test` versions, removes links (`nu/plugin.nu:111-123`) | The scaffold asks for `emdash >=0.12.0 <1.0.0` and `plugin-test ^0.1.0` (`pkg:plugin-cli/src/init/templates.ts:255-261`) | No — [upstream](#to-report-upstream). The links have no off switch (`pkg:plugin-cli/src/init/scaffold.ts:101-105,228-251`) |
-| W5 | `plugin link` — copies each plugin into the site's `node_modules` (`nu/plugin.nu:54-64`) | The repo allows no symlinks | The documented way is `pnpm add file:../plugin` in the site (`docs:plugins/creating-plugins/your-first-plugin.mdx:184-188`). Whether that suits Windows and the no-symlink rule is [unverified](#unverified) |
-| W6 | `clone-templates` + `copy-template` (`nu/site.nu:28-51`) | — | `pnpm create emdash … --template cloudflare:starter --yes --no-install` does it, and also writes the encryption key (`pkg:create-emdash/src/flags.ts:258-290`). It fetches the same unpinned branch |
-| W7 | `enable-local-plugins` — string edits to the config (`nu/site.nu:154-185`) | Templates ship without a sandbox runner | Only the `wrangler.jsonc` half: `create-emdash --sandboxed-plugins` (`pkg:create-emdash/src/utils.ts:126-162`) |
-| W8 | `emdash-json` skips "progress lines" and treats "no JSON" as failure (`nu/lib.nu:83-94`) | See [A3](#assumptions) | Not needed at 1.1.0: with `--json` or a pipe, everything but the result goes to stderr (`core:cli/output.ts:13-19`). Ran: stdout starts with `[` / `{` |
-| W9 | `url-flag` puts `--url` last (`nu/lib.nu:77-81`) | See [A2](#assumptions) | Not needed for `schema list` and `content list` (ran) |
-| W10 | `sync-skills` copies the template's skills (`nu/checks.nu:137-146`) | Agents need them in git | `skills add emdash-cms/skills`, `skills update` (`docs:agent-skills.mdx:34,80`), or `.src/emdash/skills/` at the matching tag |
-| W11 | `install` adds `@emdash-cms/sandbox-workerd` + `workerd` and allows its build on Node (`nu/site.nu:60-66`) | Node templates do not ship the runner and set `workerd: false` (`tpl:starter/pnpm-workspace.yaml`) | This **is** the proper way (`docs:deployment/plugin-sandbox.mdx:82-88`) |
-| W12 | `schema-diff` (`nu/checks.nu:244-269`) | — | EmDash has no diff command. Keep |
+| W1 | `uploads-to-r2` in `nu/site.nu` — moves seeded media from `./uploads` into local R2 | `emdash seed` hard-codes `LocalStorage` (`core:cli/commands/seed.ts:202-209`) | **For the first apply, yes**: the runtime seeds through the configured storage (`core:astro/routes/api/setup/dev-bypass.ts:66-70`). For `update`, no — [upstream](#to-report-upstream) |
+| W2 | `mint-token` in `nu/site.nu` — session cookie, list tokens, delete, create | A token is shown once | **Yes.** `POST …/setup/dev-bypass?token=1` returns a fresh `admin` token and drops the old one (`dev-bypass.ts:146-168`) |
+| W3 | `devdb` in `nu/lib.nu` — finds Miniflare's D1 file under `.wrangler/state/v3/d1/` | `seed`, `export-seed`, `doctor` only open a SQLite file | No. EmDash's own docs reach local D1 through `wrangler d1 execute --local` (`docs:deployment/core-migrations.mdx:209-213`). The path is Miniflare's, not a contract |
+| W4 | `fit` in `nu/plugin.nu` — rewrites the scaffold's `emdash` and `plugin-test` versions, removes links | The scaffold asks for `emdash >=0.12.0 <1.0.0` and `plugin-test ^0.1.0` (`pkg:plugin-cli/src/init/templates.ts:255-261`) | No — [upstream](#to-report-upstream). The links have no off switch (`pkg:plugin-cli/src/init/scaffold.ts:101-105,228-251`) |
+| W5 | `link` in `nu/plugin.nu` — copies each plugin into the site's `node_modules` | The repo allows no symlinks | The documented way is `pnpm add file:../plugin` in the site (`docs:plugins/creating-plugins/your-first-plugin.mdx:184-188`). Whether that suits Windows and the no-symlink rule is [unverified](#unverified) |
+| W6 | `clone-templates` + `copy-template` in `nu/site.nu` | — | `pnpm create emdash … --template cloudflare:starter --yes --no-install` does it, and also writes the encryption key (`pkg:create-emdash/src/flags.ts:258-290`). It fetches the same unpinned branch |
+| W7 | `enable-local-plugins` in `nu/site.nu` — string edits to the config | Templates ship without a sandbox runner | Only the `wrangler.jsonc` half: `create-emdash --sandboxed-plugins` (`pkg:create-emdash/src/utils.ts:126-162`) |
+| W8 | `emdash-json` in `nu/lib.nu` scans stdout for the line where JSON starts | It once saw progress lines before the payload | Not needed at 1.1.0: with `--json` or a pipe, everything but the result goes to stderr (`core:cli/output.ts:13-19`). Ran: stdout starts with `[` / `{`. Harmless |
+| W9 | ~~`url-flag` put `--url` last~~ | — | **Removed in 0.4.2.** Flows set `EMDASH_URL`, which the CLI reads (`core:cli/client-factory.ts:38-40`) |
+| W10 | `sync-skills` in `nu/checks.nu` copies the template's skills | Agents need them in git | `skills add emdash-cms/skills`, `skills update` (`docs:agent-skills.mdx:34,80`), or `.src/emdash/skills/` at the matching tag |
+| W11 | `install` in `nu/site.nu` adds `@emdash-cms/sandbox-workerd` + `workerd` and allows its build on Node | Node templates do not ship the runner and set `workerd: false` (`tpl:starter/pnpm-workspace.yaml`) | This **is** the proper way (`docs:deployment/plugin-sandbox.mdx:82-88`) |
+| W12 | `schema-diff` in `nu/checks.nu` | — | EmDash has no diff command. Keep |
 
 <a id="assumptions"></a>
 ### Assumptions in `nu/` that the source contradicts or does not guarantee
 
 **Contradicted**
 
-- **A1 — `restore --wipe` assumes a restarted site is empty.** `restart` waits by calling
-  `setup/dev-bypass` (`nu/site.nu:261`), which seeds **content** by default
-  (`dev-bypass.ts:61-70`). Any entry in a seeded collection blocks an import
-  (`core:transfer/domain.ts:120-131`). Ran, read-only: the local site's
-  `/_emdash/api/admin/transfer/capabilities` reports `empty: false` with `collection_has_entries`
-  for `pages`, `posts`, `parts`, `projects`, `assemblies`. Predicted: `restore … --wipe --confirm`
-  fails with "the plan has blockers" on any template whose seed has content. `restore` itself was
-  not run. The fix is in EmDash already: `dev-bypass?content=0`.
-- **A2 — "The CLI only accepts `--url` as the LAST argument"** (`nu/lib.nu:77`). Ran
-  `schema list --url … --json` and `content list --url … pages --json`: both exit 0 with JSON.
-  Not tested for `site import`, which reads raw positionals (`core:cli/commands/site.ts:447-456`).
-- **A3 — "the CLI … reports errors as text while still exiting 0"** (`nu/lib.nu:84`). Not at 1.1.0
-  for the commands the harness uses. Ran: unknown entry, unknown collection, unknown command,
+- **A1 — `restore --wipe` assumes a restarted site is empty.** `restart` (`nu/site.nu`) waits by
+  calling `setup/dev-bypass`, which seeds **content** by default (`dev-bypass.ts:61-70`). Any entry
+  in a seeded collection blocks an import (`core:transfer/domain.ts:120-131`). Ran, read-only: the
+  local site's `/_emdash/api/admin/transfer/capabilities` reports `empty: false` with
+  `collection_has_entries` for `pages`, `posts`, `parts`, `projects`, `assemblies`. Predicted:
+  `restore … --wipe --confirm` fails with "the plan has blockers" on any template whose seed has
+  content. `restore` itself was not run. The fix is in EmDash already: `dev-bypass?content=0`.
+- **A2 — ~~"The CLI only accepts `--url` as the LAST argument."~~ Fixed in 0.4.2.** For the record:
+  ran `schema list --url … --json` and `content list --url … pages --json`; both exit 0 with JSON.
+- **A3 — ~~"The CLI reports errors as text while still exiting 0."~~ Comment corrected in 0.4.2.**
+  For the record: ran six failing invocations — unknown entry, unknown collection, unknown command,
   missing argument, missing seed file, unreachable host — all exit 1. Every `content`/`schema`
   command ends its `catch` with `process.exit(1)` (`core:cli/commands/content.ts:103-105`,
   `schema.ts:27-29`). The real exit-0 cases are [upstream](#to-report-upstream).
-- **A4 — `registry:up` "points the site at it".** It sets `EMDASH_REGISTRY_URL` for the dev server
-  (`nu/site.nu:318`). Core does not read that variable; only the plugin CLI does
+- **A4 — `registry:up` "points the site at it".** `serve` (`nu/site.nu`) sets `EMDASH_REGISTRY_URL`
+  for the dev server. Core does not read that variable; only the plugin CLI does
   (`pkg:plugin-cli/src/config.ts:39`). It works in this repo only because
   `config/site.astro.config.mjs` passes it to `registry:` by hand. A config made from a template has
   no `registry:` line (`tpl:starter-cloudflare/astro.config.mjs`), so there `registry:up` changes
   nothing.
-- **A5 — A fresh project gets the Worker Loader switched on** (`nu/site.nu:173,224`). EmDash ships
-  it off because it needs the Workers Paid plan (`docs:deployment/plugin-sandbox.mdx:23`). What a
-  free-plan deploy does with the binding is [unverified](#unverified).
-- **A6 — `doctor --url` "checks core migrations"** with `migrate --status` (`nu/main.nu:144`).
+- **A5 — A fresh project gets the Worker Loader switched on** (`configure` calls
+  `enable-local-plugins` when `config/` is new). EmDash ships it off because it needs the Workers
+  Paid plan (`docs:deployment/plugin-sandbox.mdx:23`). What a free-plan deploy does with the
+  binding is [unverified](#unverified).
+- **A6 — `doctor --url` "checks core migrations"** with `emdash migrate --status` (`main doctor`).
   `--status` exits 0 whatever it finds (`docs:reference/cli.mdx:120`). The check cannot fail.
   `--check` is the one that can.
 - **A7 — `rollback` then `doctor` "verifies what is live".** A Worker rollback does not reverse a
   migration (`docs:deployment/core-migrations.mdx:251`), and the status it prints is computed from
   the **local** build's manifest, not from the Worker that is now live (`:16`).
-- **A8 — The template at `main` matches `EMDASH_VERSION`** (`nu/site.nu:29`). The checkout's head
+- **A8 — The template at `main` matches `EMDASH_VERSION`** (`clone-templates`). The checkout's head
   is "sync templates from emdash v1.0.1" while the site runs 1.1.0. The monorepo's own
   `templates/starter-cloudflare` at `emdash@1.1.0` differs in four page files. The vendored skills
   are the template's, so they are 1.0.1 too: 11 files differ from `.src/emdash/skills/`.
   (`git -C .src/templates log -1`; `diff -rq`.)
-- **A9 — `snapshot` is a backup** ("treat it like a database backup", `nu/main.nu:195`;
+- **A9 — `snapshot` is a backup** ("treat it like a database backup", `main snapshot`;
   "Backup that restores", `CHANGELOG.md`). It is a site package: no users, API tokens, plugin data
   or secrets, and it restores only into an empty site (`docs:guides/backups.mdx:155-158`).
 
 **Not guaranteed**
 
-- **A10 — `dev` re-applies the seed with `update` every run** (`nu/site.nu:233`). That replaces the
-  `data` of every seeded entry and rebuilds every seeded menu and widget area
-  (`docs:themes/seed-files.mdx:503,557,638`): edits made in the local admin to seeded entries do
-  not survive `mise run dev`. It also downloads every `$media` again and adds a media row each time
-  (`core:seed/apply.ts:856-863,2310,2389`).
-- **A11 — `emdash seed` writes to a database the dev server has open.** `apply-seed` runs after
-  `restart` (`nu/main.nu:25-26`), so two processes write Miniflare's SQLite file. EmDash documents
-  `seed` for "a local SQLite database" (`docs:reference/cli.mdx:84`) and says nothing of this.
+- **A10 — The CLI seed pass still runs on a fresh database, and whenever the seed changes.**
+  `apply-seed` (`nu/site.nu`) now skips an unchanged seed, which ends the growth on every `dev`.
+  Two cases remain. On a fresh database `restart` has just seeded content and media through
+  `dev-bypass`; the CLI pass then runs with `update`, downloads every `$media` a second time and
+  repoints the entries at the new rows — one orphaned set per fresh database
+  (`core:seed/apply.ts:856-863,2310,2389`). Predicted, not run. And when the seed does change,
+  `update` replaces the `data` of **every** seeded entry and rebuilds every seeded menu and widget
+  area, not only the ones that changed (`docs:themes/seed-files.mdx:503,557,638`).
+- **A11 — `emdash seed` writes to a database the dev server has open.** `refresh` (`nu/main.nu`)
+  calls `apply-seed` after `restart`, so two processes write Miniflare's SQLite file. EmDash
+  documents `seed` for "a local SQLite database" (`docs:reference/cli.mdx:84`) and says nothing of
+  this.
 - **A12 — `merge-seeds` drops the project's lists when the template has the same key.** `menus`,
   `widgetAreas`, `settings`, and every key it does not name — `blockTypes`, `relations`, `bylines`,
-  `redirects`, `sections` — are "the template's, falling back to the project's"
-  (`nu/site.nu:89-91,135-143`). They are lists of independent items in the seed format
+  `redirects`, `sections` — are "the template's, falling back to the project's" (`pick`, in
+  `merge-seeds`). They are lists of independent items in the seed format
   (`docs:themes/seed-files.mdx:35-74`). A project's redirects vanish on a template that has any.
-- **A13 — `devdb` takes the first `.sqlite` it finds** (`nu/lib.nu:108`). Right for one D1 binding.
-- **A14 — `EMDASH_TOKEN` is unset on purpose** (`harness.toml:61`). Then the `--url` flows can only
-  authenticate from `emdash login`, an interactive device flow
+- **A13 — `devdb` takes the first `.sqlite` it finds.** Right for one D1 binding.
+- **A14 — `EMDASH_TOKEN` is unset on purpose** (`EMDASH_TOKEN = false` in `harness.toml`). Then the
+  `--url` flows can only authenticate from `emdash login`, an interactive device flow
   (`core:cli/client-factory.ts:56-61`). EmDash's answer for CI is a token in `EMDASH_TOKEN`
   (`docs:deployment/schema-evolution.mdx:52`). That mise's `false` unsets it is this repo's claim,
   not checked here.
@@ -370,23 +377,37 @@ Four different things, easily confused: `docs:guides/site-transfer.mdx:16-24`
   (`pkg:create-emdash/src/index.ts:413-421`); the harness copies the template instead, so none
   exists locally and `deploy` sets none. Without it, operations on encrypted plugin settings fail
   closed (`docs:deployment/secrets.mdx:29`). This project loads two plugins.
-- **A16 — "publish with: `mise run emdash-plugin -- publish`"** (`nu/main.nu:302`). `publish` reads
-  `./emdash-plugin.jsonc` from the current directory unless given `--manifest <dir>`
+- **A16 — "publish with: `mise run emdash-plugin -- publish`"** (`main plugin release`). `publish`
+  reads `./emdash-plugin.jsonc` from the current directory unless given `--manifest <dir>`
   (`pkg:plugin-cli/src/commands/publish.ts:118-120`). The hint needs `--manifest plugins/<name>`.
   EmDash also says to run repeated commands with the plugin's own pinned CLI, not `dlx`
   (`docs:plugins/creating-plugins/cli.mdx:20`).
-- **A17 — Installs are not reproducible.** Only `emdash` and `@emdash-cms/cloudflare` are pinned
-  (`nu/site.nu:56-59`). `copy-template` deletes the site and its lockfile (`nu/site.nu:46`), and
-  `.src/` is ignored, so Astro, the adapters, `workerd` and every plugin package re-resolve on each
-  `setup`.
+- **A17 — Installs are not reproducible.** `install` (`nu/site.nu`) pins only `emdash` and
+  `@emdash-cms/cloudflare`. `copy-template` deletes the site and its lockfile, and `.src/` is
+  ignored, so Astro, the adapters, `workerd` and every plugin package re-resolve on each `setup`.
+
+### What to do about it
+
+Three plans, each stating what it verified and what it guesses:
+
+- [`plans/2026-10-06-lean-on-emdash.md`](plans/2026-10-06-lean-on-emdash.md) — delete what EmDash
+  already does; make `restore` true (W1, W2, W5, W8, A1, A4, A10, A12, A16).
+- [`plans/2026-10-06-emdash-upgrade.md`](plans/2026-10-06-emdash-upgrade.md) — upgrading EmDash as
+  one flow (A8, A17, W10).
+- [`plans/2026-10-06-deploy-on-knowledge.md`](plans/2026-10-06-deploy-on-knowledge.md) — the
+  sandbox default, the encryption key, a migration check that can fail, honest rollback and backup
+  (A5–A7, A9, A14, A15).
 
 ---
 
 ## To report upstream
 
-Each is against `emdash@1.1.0`. Line numbers are in that tag.
+Each is against `emdash@1.1.0`. Line numbers are in that tag. Items 1–3 were filed while this was
+being written — `docs/plans/done/2026-10-06-platforms.md` records them as emdash#3918 (types) and
+emdash#3919 (seed media); the issues themselves were not opened from here to check. What follows
+for those three is the root cause and what a fix needs, to add to the issues. Items 4–7 are new.
 
-### 1. `emdash types` writes a file that does not type-check
+### 1. `emdash types` writes a file that does not type-check (filed: emdash#3918)
 
 `GET /_emdash/api/schema?format=typescript` emits a fixed header that imports only
 `PortableTextBlock` (`packages/core/src/astro/routes/api/schema/index.ts:57-62`), then calls
@@ -405,7 +426,7 @@ the three types — `BylineSummary` is missing from the note
 
 Fix: build the header in the route the way `generateTypesFile` does.
 
-### 2. `emdash seed` ignores the site's storage
+### 2. `emdash seed` ignores the site's storage (filed: emdash#3919)
 
 `packages/core/src/cli/commands/seed.ts:202-209` always constructs `LocalStorage` on
 `--uploads-dir` (default `./uploads`). On a site configured with `r2()` or `s3()` the media rows
@@ -416,7 +437,7 @@ them. The runtime paths pass `emdash.storage`
 Reproduce: a `blog-cloudflare` project; `emdash seed seed/seed.json --database <miniflare d1>`; open
 Media in the admin.
 
-### 3. `emdash seed --on-conflict=update` duplicates media on every run
+### 3. `emdash seed --on-conflict=update` duplicates media on every run (filed: emdash#3919)
 
 For an existing entry, `update` calls `resolveReferences` again
 (`packages/core/src/seed/apply.ts:856-863`). `resolveMedia` only consults a cache that lives for one

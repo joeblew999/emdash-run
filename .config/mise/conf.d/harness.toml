@@ -260,4 +260,3 @@ auto = ["start", "stop"]
 run = "mise run daemon:registry"
 dir = "."
 auto = ["stop"]
-ready_http = "http://localhost:8788/xrpc/com.emdashcms.experimental.aggregator.searchPackages?limit=1"
