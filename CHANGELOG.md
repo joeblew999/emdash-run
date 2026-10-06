@@ -12,7 +12,15 @@
   other program, on `/dev/null`, and on a Windows-unsafe glob.
 - New: `mise run verify` (does it work on this machine), `verify:template -- <template>`,
   `verify:linux` (a clean container).
+- **Task arguments work on Windows.** mise does not append a task's arguments to its command there,
+  so `plugin:new -- demo` arrived with no `demo`. Every task now receives them through mise's
+  `usage` mechanism, which behaves the same on all three OSes — and `check` sends spaces, JSON,
+  a quote and a flag through and requires them back intact.
+- **CI answers fast.** `check` runs alone per OS (about 10–30 seconds); the site verifications run
+  in parallel beside it. All of it is `mise run …` — nothing is CI-only.
 - `install.sh` takes a template: `… | sh -s -- starter`.
+- Not yet run by anyone: the PowerShell installer script itself (`install.ps1`). The harness it
+  installs is proven on Windows by CI.
 
 ## 0.2.2 — 2026-10-06
 

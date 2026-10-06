@@ -6,7 +6,9 @@ tasks, and `mise.toml` is the project's settings.
 ## Shape
 
 ```
-harness.toml     [tasks.deploy]  run = "nu --no-config-file {{config_root}}/nu/main.nu deploy"
+harness.toml     [tasks.deploy]  usage = 'arg "[args]" var=#true'
+                                 run = "nu --no-config-file {{config_root}}/nu/task.nu deploy"
+nu/task.nu       reads the task's arguments from mise and runs main.nu with them
 nu/main.nu       def "main deploy" [--dry, --build-only, --no-check] { … }     one per task
 nu/site.nu  plugin.nu  checks.nu  registry.nu                                  what flows are made of
 nu/lib.nu        shared helpers — anything two flows need
@@ -17,7 +19,9 @@ nu/tests.nu      unit tests for the pure functions
   `mise run check -- --fix`. `check` fails if a task names a command that does not exist, or a
   command has no task.
 - **Arguments are nushell's.** Positional parameters, `--flags` and `--help` come from the `def`
-  signature; `mise run plugin:new -- my-plugin` passes them straight through. No `usage` blocks.
+  signature. They reach it through `task.nu`, not by mise appending them — on Windows mise does not
+  append. So every task carries the same line, `usage = 'arg "[args]" var=#true'`, and `check`
+  fails on a task without it. Never write a task whose `run` expects appended arguments.
 - **Settings are environment variables**, set by mise from PROJECT SETTINGS: `$env.SITE_DIR`,
   `$env.EMDASH_VERSION`. Use `setting NAME` for an optional one — it returns `""` when unset.
 - **A function that can be pure, is** — records in, records out, no files — and gets a test in

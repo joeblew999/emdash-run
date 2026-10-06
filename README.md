@@ -32,6 +32,8 @@ curl -fsSL https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.
 # Windows (PowerShell)
 irm https://raw.githubusercontent.com/joeblew999/emdash-run/main/install.ps1 | iex
 ```
+<sub>The harness is proven on Windows by CI. This PowerShell installer script is new — if it trips,
+the four manual commands below do the same thing, and [tell us](https://github.com/joeblew999/emdash-run/issues/3).</sub>
 
 That is the whole install. It fetches the harness, gives you a `mise.toml` of settings, installs the
 toolchain, builds a site from an official template, starts it, checks it, and prints:
