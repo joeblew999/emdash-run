@@ -74,10 +74,21 @@ fnox           = "1.36.0"
 # external binary. See the note on `run_windows` further down for the one platform-specific case.
 [task_config]
 shell = "nu --no-config-file -c"
+# The CLI looks for a project root — a package.json — for commands like `migrate`, `schema` and
+# `content`. The repo root has none; the SITE is the project, and it is also where `astro check`
+# and a production build have to run. So it is the default here, once, instead of a `dir = ` line
+# on every task that happens to call the CLI. A task that needs to run elsewhere overrides it
+# (registry:* runs in the aggregator, plugin:init in plugins/).
+dir = "{{config_root}}/.src/site"
 
 [env]
 # Project root (where this mise.toml lives)
 ROOT            = "{{config_root}}"
+
+# The code we own, for lint and formatting: the plugins, since there are no scripts any more.
+# Absolute, so the path does not depend on a task's working directory. `:`-separated because an
+# env var is a string.
+CODE_PATHS      = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
 
 # Gitignored working checkouts (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md)
 SRC_DIR         = "{{config_root}}/.src"
@@ -161,6 +172,152 @@ _.file          = "{{config_root}}/run/token-admin.env"
 # The jobs a developer actually does, each composed from primitives below. This is the
 # point of the file: one command for one job, not a relay of a single CLI call.
 # -----------------------------------------------------------------------------
+
+# The ONE place that reads JSON back from the CLI. It owns three things so no caller repeats them:
+#
+#   --url       the CLI accepts it only as the LAST argument (anywhere else and it prints its help),
+#               and it comes from EMDASH_URL — so targeting a deployment is one environment variable.
+#   the banner  the CLI writes progress lines before its payload, so the payload is found by
+#               locating the first line that opens with `{` or `[`.
+#   the parse   callers receive JSON text and pipe it through `from json`.
+#
+# The argument is one string rather than a variadic because mise VALIDATES a declared signature:
+# extra bare words are rejected outright rather than appended, so a variadic is not available.
+[tasks."emdash:_json"]
+hide = true
+usage = 'arg "<args>" help="emdash arguments as one string, e.g. \"content list parts --json\""'
+run = """
+let args = ($env.usage_args | split row ' ')
+let url = ($env.EMDASH_URL? | default "")
+let full = (if ($url | is-not-empty) { $args | append ["--url" $url] } else { $args })
+let lines = (^emdash ...$full | complete).stdout | lines
+let start = ($lines | enumerate | where {|l|
+  ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
+} | get -o index | first)
+$lines | skip $start | str join (char nl)
+"""
+
+# EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
+# localhost without a passkey. A curl cookie jar carries it — so nothing hand-assembles a Cookie
+# header — and the jar lives at a fixed path, so callers need not capture any output.
+[tasks."mcp:_login"]
+hide = true
+run = """
+mkdir $"($env.RUN_DIR)"
+^curl -sS -o /dev/null -c $"($env.RUN_DIR)/.mcp-cookies" -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
+if $env.LAST_EXIT_CODE != 0 {
+  print --stderr "✗ could not reach the site — is it running? mise run repo:apply"
+  exit 1
+}
+"""
+
+# Where the site ships its EmDash skills: `.claude/skills` first, `.agents/skills` as the fallback.
+# Prints the path, or nothing when the site has not been set up yet.
+[tasks."skills:_shipped"]
+hide = true
+run = """
+let site = $env.SITE_DIR
+print (
+  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
+  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
+  else { "" }
+)
+"""
+
+# A plugin is a directory under plugins/ with a package.json. Defined once, so the five tasks that
+# sweep plugins/ cannot disagree about what counts as one.
+[tasks."plugin:_dirs"]
+hide = true
+run = """
+print (
+  ls ($env.PLUGINS_DIR)
+  | get name
+  | to json --raw
+)
+"""
+
+# Fails with the list of what does exist, so a typo says what you probably meant. Both callers used
+# to spell this out for themselves.
+[tasks."plugin:_require"]
+hide = true
+usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
+run = """
+if not ($"($env.PLUGINS_DIR)/($env.usage_plugin)" | path exists) {
+  print --stderr $"✗ no such plugin: ($env.usage_plugin)"
+  let available = (^mise run plugin:_dirs | from json | each {|p| $p | path basename } | str join ' ')
+  print --stderr $"  available: ($available)"
+  exit 1
+}
+"""
+
+# The dev-server daemon, stopped and put back around anything that re-runs the Vite optimizer in
+# .src/site (a production build, `astro check`). Re-hashing the `deps_ssr/*?v=…` URLs under a
+# running server makes it serve stale ones and return 500s — clearing the on-disk caches is not
+# enough, because the stale module graph is held in memory. Prints one word for site:_resume.
+[tasks."site:_pause"]
+hide = true
+run = """
+let listed = (^pitchfork list | complete)
+let running = (($listed.stdout | lines) | any {|l|
+  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
+})
+if $running { ^pitchfork stop emdash | complete | ignore }
+print (if $running { "running" } else { "stopped" })
+"""
+
+[tasks."site:_resume"]
+hide = true
+usage = 'arg "<state>" help="what site:_pause printed: running | stopped"'
+run = """
+if ($env.usage_state == "running") {
+  print "  → restarting the dev server (it holds a stale module graph)"
+  ^pitchfork start emdash
+}
+"""
+
+# The dev server's ACTUAL database, as a path a file-based CLI can read.
+#
+# EmDash's file-based commands (`doctor`, `seed`, `export-seed`) all default to `./data.db`, which a
+# Cloudflare site never uses — the dev server reads miniflare's D1 under `.wrangler/state/v3/d1`.
+# So the default silently reports on the WRONG database: `emdash doctor` announced "no users" while
+# the real one had one, and `emdash seed` printed "Seed applied successfully" into a file the site
+# never reads. Prints the path, or exits non-zero having said why on stderr.
+[tasks."site:_devdb"]
+hide = true
+run = """
+let d1 = $"($env.SITE_DIR)/.wrangler/state/v3/d1/miniflare-D1DatabaseObject"
+let found = (
+  if ($d1 | path exists) {
+    ls $d1
+    | get name
+    | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) }
+  } else { [] }
+)
+if ($found | is-empty) {
+  print --stderr "✗ no local D1 yet — run: mise run repo:apply"
+  exit 1
+}
+print ($found | first)
+"""
+
+# A symlink, or a junction on Windows. Node used to paper over that difference; it is spelled out
+# once here instead of in every caller. `ln -sfn` stores the target string verbatim, so a RELATIVE
+# target stays relative to the link — which is what keeps a committed config link portable.
+[tasks."fs:_link"]
+hide = true
+usage = """
+arg "<target>" help="what the link points at"
+arg "<link>" help="path of the link to create"
+"""
+run = """
+rm -rf $env.usage_link
+mkdir ($env.usage_link | path dirname)
+if ($nu.os-info.name == "windows") {
+  ^cmd /c mklink /J $env.usage_link $env.usage_target | complete | ignore
+} else {
+  ^ln -sfn $env.usage_target $env.usage_link
+}
+"""
 
 [tasks."check"]
 description = "Everything that must pass before a commit — lint, formatting, plugin checks"
@@ -312,7 +469,6 @@ print "  ✓ config applied to .src/site"
 
 [tasks."site:dev"]
 description = "Run the site dev server on :4321 — called by pitchfork, do not run directly"
-dir = "{{config_root}}/.src/site"
 run = "pnpm dev"
 
 # Astro 7 auto-backgrounds itself when it detects an agent / non-TTY parent
@@ -354,11 +510,7 @@ run = """
 # inside .src/site, re-hashing the `deps_ssr/*?v=…` URLs a running server is already serving.
 # Leaving a site that is up and broken is worse than a check that takes 30s.
 let site = $env.SITE_DIR
-let listed = (^pitchfork list | complete)
-let was_running = (($listed.stdout | lines) | any {|l|
-  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
-})
-if $was_running { ^pitchfork stop emdash | complete | ignore }
+let paused = (^mise run site:_pause | str trim)
 print "→ astro check (the site, and that its config loads)"
 ^pnpm --dir $site exec astro check
 let astro = $env.LAST_EXIT_CODE
@@ -367,31 +519,15 @@ print "→ tsc --checkJs astro.config.mjs (the types astro check does not see)"
   --moduleResolution bundler --module esnext --target es2022 --skipLibCheck astro.config.mjs
 let tsc = $env.LAST_EXIT_CODE
 # Restarted regardless of the result, so a failing check does not also cost you the site.
-if $was_running {
-  print "→ restarting the site"
-  ^pitchfork start emdash
-}
+^mise run site:_resume -- $paused
 if $astro != 0 or $tsc != 0 { exit 1 }
 """
 
 [tasks."site:doctor"]
 description = "Diagnose the site's real D1 — database health and scheduler wiring (emdash doctor, pointed at the dev database)"
-# It invokes the CLI, which looks for a project root — the repo root has no package.json.
-dir = "{{config_root}}/.src/site"
 run = """
-# `emdash doctor` defaults to ./data.db, which a Cloudflare site never uses — it would diagnose
-# an empty file and report "no users" on a healthy site. Point it at the D1 the dev server reads.
-let dir = $"($env.SITE_DIR)/.wrangler/state/v3/d1/miniflare-D1DatabaseObject"
-if not ($dir | path exists) {
-  print "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
-let db = (
-  ls $dir
-  | where {|f| ($f.name | str ends-with '.sqlite') and (not ($f.name | str ends-with 'metadata.sqlite')) }
-  | get name
-  | first
-)
+let db = (^mise run site:_devdb | str trim)
+if ($db | is-empty) { exit 1 }
 print $"  → diagnosing ($db | path relative-to $env.SITE_DIR)"
 ^emdash doctor -d $db
 """
@@ -495,7 +631,6 @@ print $"  ✓ seed → .src/site/seed/seed.json — ($content | columns | length
 
 [tasks."seed:validate"]
 description = "Validate the merged site seed — EmDash silently skips an invalid one"
-dir = "{{config_root}}/.src/site"
 run = "^emdash seed --validate seed/seed.json"
 
 # `emdash seed <file>` writes a FILE database (`-d`, default `./data.db`), and the dev server does
@@ -505,41 +640,22 @@ run = "^emdash seed --validate seed/seed.json"
 # entries land rather than being skipped.
 [tasks."seed:apply"]
 description = "Get the seed into the RUNNING dev site, in place — existing entries are UPDATED, nothing is wiped"
-dir = "{{config_root}}/.src/site"
 run = """
-let d1 = ".wrangler/state/v3/d1/miniflare-D1DatabaseObject"
-if not ($d1 | path exists) {
-  print "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
-let dbs = (ls $d1 | get name | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) })
-if ($dbs | is-empty) {
-  print "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
-let db = ($dbs | first)
-print $"→ emdash seed → ($db | path relative-to $d1)  with on-conflict=update"
+let db = (^mise run site:_devdb | str trim)
+if ($db | is-empty) { exit 1 }
+print $"→ emdash seed → ($db | path relative-to $env.SITE_DIR)  with on-conflict=update"
 ^emdash seed seed/seed.json --database $db --on-conflict=update
 print "✓ seed applied — then: mise run repo:verify"
 """
 
 [tasks."seed:export"]
 description = "Export the running dev site's model + content as a seed (official: emdash export-seed)"
-dir = "{{config_root}}/.src/site"
 run = """
-let d1 = ".wrangler/state/v3/d1/miniflare-D1DatabaseObject"
-if not ($d1 | path exists) {
-  print "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
-let dbs = (ls $d1 | get name | where {|n| ($n | str ends-with '.sqlite') and (not ($n | str ends-with 'metadata.sqlite')) })
-if ($dbs | is-empty) {
-  print "✗ no local D1 yet — run: mise run repo:apply"
-  exit 1
-}
+let db = (^mise run site:_devdb | str trim)
+if ($db | is-empty) { exit 1 }
 # Written to a SEPARATE file, never over config/cad.seed.json: that one is hand-maintained and is
 # the source of truth, so overwriting it with an export would turn a review into a replacement.
-^emdash export-seed --database ($dbs | first) --with-content=all
+^emdash export-seed --database $db --with-content=all
   | save -f $"($env.ROOT)/config/seed.live.json"
 print "✓ exported the live model → config/seed.live.json"
 print "  compare it with config/cad.seed.json — it is not written over it on purpose."
@@ -547,38 +663,8 @@ print "  compare it with config/cad.seed.json — it is not written over it on p
 
 [tasks."seed:from-remote"]
 description = "Diff a live instance's content model against the repo's seed (read-only; set EMDASH_URL for a deployment)"
-# The CLI looks for a project root, and the repo root has no package.json.
-dir = "{{config_root}}/.src/site"
 run = """
-# The authoritative page is "evolve a deployed site's schema" — through the API, NOT a seed: a seed
-# only participates in first-time bootstrap, so deploying a changed one against an existing database
-# does nothing. This answers "how far behind is the deployment?" without touching it.
-# Immutable on purpose: nushell refuses to let a closure capture a `mut` binding, and this list is
-# used inside `each` in repo:verify.
-let url_args = (
-  if ($env.EMDASH_URL? | is-not-empty) { ["--url" $env.EMDASH_URL] } else { [] }
-)
-
-# The CLI prints a banner before its JSON, so cut to the first line that opens with { or [.
-def cli_json [cli_args: list] {
-  let lines = (^emdash ...$cli_args | complete).stdout | lines
-  let start = ($lines | enumerate | where {|l|
-    ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
-  } | get -o index | first)
-  let parsed = ($lines | skip $start | str join (char nl) | from json)
-  # The envelope differs per command, so unwrap it the way the script this replaces did
-  # (`parsed.data ?? parsed`) — but only for a record: `get` against a list is a cell-path error,
-  # and `schema list --json` returns a bare array.
-  # Only a RECORD carries the envelope; anything else is the payload. (`describe` reports a table,
-  # not a list, for an array of objects — which is what `schema list` returns.)
-  if (($parsed | describe) | str starts-with "record") {
-    $parsed | get -o data | default $parsed
-  } else {
-    $parsed
-  }
-}
-
-let listed = (cli_json ["schema" "list" "--json" ...$url_args])
+let listed = (^mise run emdash:_json -- "schema list --json" | from json)
 # `schema list --json` returns a BARE ARRAY of collections — no envelope. (The `parsed.data ?? parsed`
 # and `listed.items ?? listed.collections ?? listed` fallbacks in the script this replaces were both
 # no-ops on an array, which is why they looked like they were doing something.) Accept either shape,
@@ -594,7 +680,7 @@ let remote_slugs = ($collection_rows | each {|c| $c.slug })
 
 mut remote = {}
 for slug in $remote_slugs {
-  let detail = (cli_json ["schema" "get" $slug "--json" ...$url_args])
+  let detail = (^mise run emdash:_json -- $"schema get ($slug) --json" | from json)
   let fields = (
     if (($detail | describe) | str starts-with "record") { $detail | get -o fields | default [] }
     else { [] }
@@ -747,12 +833,6 @@ run = '''
 # The R2 checks are the centrepiece — they follow each part's model_id to the real object in the
 # geometry bucket and compare it against the stored snapshot. That is what would have caught the
 # fiction on its first run rather than six commits later.
-# Immutable on purpose: nushell refuses to let a closure capture a `mut` binding, and this list is
-# used inside `each` in repo:verify.
-let url_args = (
-  if ($env.EMDASH_URL? | is-not-empty) { ["--url" $env.EMDASH_URL] } else { [] }
-)
-
 # A credential from fnox, the single source of truth. The ambient environment wins, so a caller
 # already inside `fnox exec` pays nothing. `printenv` takes the NAME as an argument, which avoids
 # building a shell string with a `$` in it. Empty rather than fatal: a missing credential is a
@@ -763,17 +843,6 @@ def secret [name: string] {
     let result = (^fnox exec -- printenv $name | complete)
     if $result.exit_code == 0 { $result.stdout | str trim } else { "" }
   }
-}
-
-# The RAW parsed value. The envelopes differ per command — `content list` wraps its items in a
-# top-level `items`, while `content get` IS the entry, with its own `data` holding the field values
-# — so unwrapping here would hand back the wrong level.
-def cli_json [cli_args: list] {
-  let lines = (^emdash ...$cli_args | complete).stdout | lines
-  let start = ($lines | enumerate | where {|l|
-    ($l.item | str starts-with '{') or ($l.item | str starts-with '[')
-  } | get -o index | first)
-  $lines | skip $start | str join (char nl) | from json
 }
 
 def report [ok: bool, label: string, detail: string] {
@@ -819,13 +888,13 @@ $checks = ($checks | append true)
 mut parts = []
 mut data_ok = false
 try {
-  let listed = (cli_json ["content" "list" "parts" "--json" ...$url_args])
+  let listed = (^mise run emdash:_json -- "content list parts --json" | from json)
   # `content list` is SLIM — it carries no `data` — so each entry is fetched with `content get`.
   # That matters more than it looks: given only the slim list every part has no data, so nothing
   # resolved and nothing mismatched, and the R2 checks PASSED VACUOUSLY. A check that passes
   # because it read nothing is worse than one that fails, hence this guard.
   $parts = (($listed | get -o items | default []) | each {|item|
-    cli_json ["content" "get" "parts" $item.slug "--json" ...$url_args]
+    ^mise run emdash:_json -- $"content get parts ($item.slug) --json" | from json
   })
   let fetched = $parts
   let with_data = ($fetched | where {|part| ($part | get -o data) | is-not-empty } | length)
@@ -922,7 +991,7 @@ run = """
 # no root package.json. `--deny-warnings` is what makes a warning mean something rather than scroll
 # past. Targets are explicit rather than `.`: oxfmt also rewrites TOML and Markdown, and prose
 # (docs/) and generated files gain nothing from that except unreviewable diffs.
-let targets = ["plugins/plat-trunk/src" "plugins/plat-trunk-sandboxed/src" "plugins/plat-trunk-sandboxed/tests"]
+let targets = ($env.CODE_PATHS | split row ":")
 print "→ oxlint --type-aware --deny-warnings"
 ^oxlint --type-aware --deny-warnings ...$targets
 let lint = $env.LAST_EXIT_CODE
@@ -941,7 +1010,7 @@ if ([$lint $fmt $skills] | any {|code| $code != 0 }) { exit 1 }
 [tasks."repo:format"]
 description = "Apply formatting to the plugins — the fix for a failing repo:check"
 run = """
-^oxfmt ...["plugins/plat-trunk/src" "plugins/plat-trunk-sandboxed/src" "plugins/plat-trunk-sandboxed/tests"]
+^oxfmt ...($env.CODE_PATHS | split row ":")
 exit $env.LAST_EXIT_CODE
 """
 
@@ -951,32 +1020,12 @@ exit $env.LAST_EXIT_CODE
 # MCP — tokens for the EmDash MCP server
 # -----------------------------------------------------------------------------
 
-# EmDash's admin API authenticates with a session cookie, and `setup/dev-bypass` hands one out on
-# localhost without a passkey. A curl cookie jar carries it, so none of this has to hand-assemble a
-# Cookie header — which is most of what the deleted scripts were doing.
-[tasks."mcp:_session"]
-hide = true
-run = """
-let jar = (mktemp)
-^curl -sS -o /dev/null -c $jar -X POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass"
-if $env.LAST_EXIT_CODE != 0 {
-  print "✗ could not reach the site — is it running? mise run repo:apply"
-  exit 1
-}
-print $jar
-"""
-
 [tasks."mcp:token-admin"]
 description = "Create admin MCP token → run/token-admin.txt + run/token-admin.env"
 run = """
 let base = $env.SITE_URL
-let jar = (mktemp)
-# dev-bypass is idempotent: it creates the dev user, applies migrations and marks setup complete.
-^curl -sS -o /dev/null -c $jar -X POST $"($base)/_emdash/api/setup/dev-bypass"
-if $env.LAST_EXIT_CODE != 0 {
-  print "✗ could not reach the site — is it running? mise run repo:apply"
-  exit 1
-}
+^mise run mcp:_login
+let jar = $"($env.RUN_DIR)/.mcp-cookies"
 let api = [$"-b" $jar "-H" "X-EmDash-Request: 1" "-H" "content-type: application/json"]
 # Idempotent, because this runs on every `repo:apply`: an old token with this name is revoked
 # first. EmDash shows a token's secret only once, so re-creating is the only way to get one back.
@@ -995,7 +1044,6 @@ if ($token | is-empty) {
   print $"✗ token creation failed: ($created | to json --raw)"
   exit 1
 }
-mkdir $"($env.RUN_DIR)"
 $"($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.txt"
 # _.file loads this into the environment for the EmDash MCP server (as EMDASH_MCP_TOKEN).
 $"EMDASH_MCP_TOKEN=($token)(char nl)" | save -f $"($env.RUN_DIR)/token-admin.env"
@@ -1006,12 +1054,8 @@ print "✓ Token saved → run/token-admin.txt"
 description = "Revoke every API token from the local database (the token file is regenerated by repo:apply)"
 run = """
 let base = $env.SITE_URL
-let jar = (mktemp)
-^curl -sS -o /dev/null -c $jar -X POST $"($base)/_emdash/api/setup/dev-bypass"
-if $env.LAST_EXIT_CODE != 0 {
-  print "✗ could not reach the site — is it running? mise run repo:apply"
-  exit 1
-}
+^mise run mcp:_login
+let jar = $"($env.RUN_DIR)/.mcp-cookies"
 let api = [$"-b" $jar "-H" "X-EmDash-Request: 1"]
 let items = (^curl -sS ...$api $"($base)/_emdash/api/admin/api-tokens" | from json | get -o data.items | default [])
 if ($items | is-empty) { print "No API tokens to revoke."; exit 0 }
@@ -1036,8 +1080,6 @@ print "✓ revoked — run: mise run mcp:token-admin"
 # somewhere else.
 [tasks."site:migrate"]
 description = "Report EmDash CORE migration status for the DEPLOYED D1 (read-only, Cloudflare creds via fnox — no admin token)"
-# It invokes the CLI, which looks for a project root — the repo root has no package.json.
-dir = "{{config_root}}/.src/site"
 run = '''
 let raw = (open --raw $"($env.ROOT)/config/site.wrangler.jsonc")
 let hits = ($raw | parse --regex '"database_name"\s*:\s*"(?<name>[^"]+)"')
@@ -1062,11 +1104,7 @@ let mode = $env.usage_mode
 # A production build must use the HOSTED registry, so drop the dev override set in [env].
 hide-env EMDASH_REGISTRY_URL
 let site = $env.SITE_DIR
-let listed = (^pitchfork list | complete)
-let was_running = (($listed.stdout | lines) | any {|l|
-  ($l | str trim | str starts-with 'emdash-run/emdash') and ($l | str contains 'running')
-})
-if $was_running { ^pitchfork stop emdash | complete | ignore }
+let paused = (^mise run site:_pause | str trim)
 let rc = (match $mode {
   "build" => {
     ^pnpm --dir $site build
@@ -1087,10 +1125,7 @@ let rc = (match $mode {
 # A production build leaves .vite/.astro in a state `astro dev` cannot reuse, so clean up either way.
 rm -rf $"($site)/node_modules/.vite"
 rm -rf $"($site)/.astro"
-if $was_running {
-  print "  → restarting the dev server (the build invalidated its module graph)"
-  ^pitchfork start emdash
-}
+^mise run site:_resume -- $paused
 if $rc != 0 { exit $rc }
 print "→ dev server needs a restart: mise run repo:apply"
 """
@@ -1136,13 +1171,9 @@ usage = '''
 arg "<plugin>" help="Plugin directory name under plugins/"
 '''
 run = """
+^mise run plugin:_require -- $env.usage_plugin
 let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
-if not ($dir | path exists) {
-  print $"✗ no such plugin: ($env.usage_plugin)"
-  print $"  available: (ls ($env.PLUGINS_DIR) | get name | each {|p| $p | path basename } | str join ' ')"
-  exit 1
-}
-# Must run IN the plugin being watched, hence --dir rather than the task's own `dir`.
+# Must run IN the plugin being watched.`
 ^pnpm --dir $dir exec emdash-plugin dev
 """
 
@@ -1154,12 +1185,8 @@ depends = ["plugin:audit", "plugin:typecheck", "plugin:validate"]
 description = "Install deps for one plugin"
 usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
 run = """
+^mise run plugin:_require -- $env.usage_plugin
 let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
-if not ($dir | path exists) {
-  print $"✗ no such plugin: ($env.usage_plugin)"
-  print $"  available: (ls ($env.PLUGINS_DIR) | get name | each {|p| $p | path basename } | str join ' ')"
-  exit 1
-}
 print $"→ pnpm install in ($env.usage_plugin)"
 ^pnpm --dir $dir install
 """
@@ -1170,7 +1197,7 @@ wait_for = ["site:setup"]
 sources = ["plugins/*/package.json"]
 outputs = ["plugins/*/node_modules/.modules.yaml"]
 run = """
-for dir in (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) }) {
+for dir in (^mise run plugin:_dirs | from json) {
   print $"→ pnpm install in ($dir | path basename)"
   ^pnpm --dir $dir install
 }
@@ -1183,19 +1210,11 @@ run = """
 # symlinked in — which keeps edits live with no rebuild step.
 let node_modules = $"($env.SITE_DIR)/node_modules"
 mkdir $node_modules
-let dirs = (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) })
+let dirs = (^mise run plugin:_dirs | from json)
 for dir in $dirs {
   let pkg = ((open $"($dir)/package.json") | get -o name | default ($dir | path basename))
   let dest = $"($node_modules)/($pkg)"
-  mkdir ($dest | path dirname)
-  rm -rf $dest
-  # `ln -sfn` on unix. Windows needs a junction, which `ln` cannot make — Node used to paper over
-  # that difference, so it is spelled out here rather than assumed.
-  if ($nu.os-info.name == "windows") {
-    ^cmd /c mklink /J $dest $dir | complete | ignore
-  } else {
-    ^ln -sfn $dir $dest
-  }
+  ^mise run fs:_link -- $dir $dest
   print $"  ✓ linked ($pkg)"
 }
 """
@@ -1217,9 +1236,7 @@ run = """
 let script = $env.usage_script
 let only = $env.usage_plugin?
 let dirs = (
-  ls ($env.PLUGINS_DIR)
-  | get name
-  | where {|p| ($"($p)/package.json" | path exists) }
+  (^mise run plugin:_dirs | from json)
   | where {|p| ($only | is-empty) or (($p | path basename) == $only) }
 )
 mut ran = 0
@@ -1280,7 +1297,7 @@ def version_at [path: string] {
   if ($path | path exists) { open $path | get -o version } else { null }
 }
 let site_emdash = (version_at $"($env.SITE_DIR)/node_modules/emdash/package.json")
-let dirs = (ls ($env.PLUGINS_DIR) | get name | where {|p| ($"($p)/package.json" | path exists) })
+let dirs = (^mise run plugin:_dirs | from json)
 mut failures = []
 
 for abs in $dirs {
@@ -1500,11 +1517,7 @@ run = """
 #                           gitignored .src/, so it would be broken on any other clone.
 let site = $env.SITE_DIR
 let vendor = $"($env.ROOT)/.github/skills"
-let shipped = (
-  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
-  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
-  else { null }
-)
+let shipped = (^mise run skills:_shipped | str trim)
 if ($shipped | is-empty) {
   print $"  ⚠ no shipped skills found in ($site), looked for .claude/skills and .agents/skills"
   exit 0
@@ -1523,12 +1536,7 @@ let rel = (
   if ($shipped | str contains ".agents/") { "../../.src/site/.agents/skills" }
   else { "../../.src/site/.claude/skills" }
 )
-rm -rf $"($env.ROOT)/.claude/skills/emdash"
-if ($nu.os-info.name == "windows") {
-  ^cmd /c mklink /J $"($env.ROOT)/.claude/skills/emdash" $rel | complete | ignore
-} else {
-  ^ln -sfn $rel $"($env.ROOT)/.claude/skills/emdash"
-}
+^mise run fs:_link -- $rel $"($env.ROOT)/.claude/skills/emdash"
 print $"  ✓ .claude/skills/emdash → ($rel)"
 """
 
@@ -1551,11 +1559,7 @@ def hash_tree [dir: string] {
 
 let site = $env.SITE_DIR
 let vendor = $"($env.ROOT)/.github/skills"
-let shipped = (
-  if ($"($site)/.claude/skills" | path exists) { $"($site)/.claude/skills" }
-  else if ($"($site)/.agents/skills" | path exists) { $"($site)/.agents/skills" }
-  else { null }
-)
+let shipped = (^mise run skills:_shipped | str trim)
 if ($shipped | is-empty) {
   print "  ⚠ no shipped skills to compare against — run: mise run site:setup"
   exit 0
@@ -1647,133 +1651,114 @@ run = "skills experimental_install"
 description = "Run the official emdash CLI with any arguments — e.g: mise run emdash:cli -- schema get parts"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash"
 
 [tasks."emdash:help"]
 description = "the official emdash help — for one command: mise run emdash:cli -- <cmd> --help"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash --help"
 
 [tasks."emdash:init"]
 description = "initialize a database from the template config (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash init"
 
 [tasks."emdash:types"]
 description = "generate TypeScript types from the schema (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash types"
 
 [tasks."emdash:doctor"]
 description = "check database health and scheduler wiring (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash doctor"
 
 [tasks."emdash:seed"]
 description = "apply a seed file to a database (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash seed"
 
 [tasks."emdash:export-seed"]
 description = "export a database's schema + content as a seed (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash export-seed"
 
 [tasks."emdash:migrate"]
 description = "check or apply deployment-managed migrations (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash migrate"
 
 [tasks."emdash:secrets"]
 description = "generate or fingerprint an EmDash encryption key (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash secrets"
 
 [tasks."emdash:login"]
 description = "log in to an instance — prints a URL and a code you approve by hand"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash login"
 
 [tasks."emdash:logout"]
 description = "log out of an instance"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash logout"
 
 [tasks."emdash:whoami"]
 description = "show the current user and auth method"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash whoami"
 
 [tasks."emdash:content"]
 description = "list/get/create/update/delete/publish/schedule content (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash content"
 
 [tasks."emdash:schema"]
 description = "list/get/create/delete collections and add/remove fields (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash schema"
 
 [tasks."emdash:media"]
 description = "list/upload/get/delete media, or repair-usage (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash media"
 
 [tasks."emdash:search"]
 description = "full-text search across content (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash search"
 
 [tasks."emdash:taxonomy"]
 description = "list taxonomies and terms, add a term (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash taxonomy"
 
 [tasks."emdash:menu"]
 description = "list menus, or get one with its items (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash menu"
 
 [tasks."emdash:site"]
 description = "export/import a whole site as a .emdash package (official)"
 # The CLI looks for a project root (a package.json) for several commands, including
 # `migrate`. The repo root has none — the site is the project.
-dir = "{{config_root}}/.src/site"
 run = "emdash site"
 
 # -----------------------------------------------------------------------------
