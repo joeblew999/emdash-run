@@ -1,156 +1,84 @@
-# Plugin Design Notes
+# Plugins
 
-## What the plugin is
-
-A thin EmDash plugin that adds a geometry preview widget to the Parts content editor.
-Max (industrial designer) sees geometry stats inline when editing a part — without being an admin.
-
-## How EmDash plugins work (two surfaces)
-
-**Sandboxed (server-side)**
-Runs in a Dynamic Worker isolate. Has a capability manifest.
-Used for hooks (`content:afterSave` etc), KV storage, Block Kit admin pages.
-Cannot talk to internal CF Workers — only declared external hostnames.
-
-**Admin React bundle (browser-side)**
-Plain React components. NOT sandboxed. No capability restrictions.
-Can fetch anything. Registered as an editor panel on the `parts` collection.
-This is where our geometry preview lives.
-
-## Our plugin
+This repo ships **no plugin of its own**. It ships the way to make one: the official CLI,
+composed into tasks, so a plugin goes from nothing to running inside a live EmDash in one command.
 
 ```
-plugins/plat-trunk/
-  package.json      @plat-trunk/emdash-plugin
-  src/
-    index.ts        descriptor factory (native) + createPlugin runtime
-    admin/
-      index.tsx     React geometry preview panel (contentEditorPanels)
+mise run plugin:new -- <name>      scaffold → fit → install → validate → typecheck → test → build
+                                   → load into the site → the running site calls it
+mise run plugin:probe -- <name>    call a plugin's route on the RUNNING site (default: hello)
+mise run plugin:dev -- <name>      rebuild on change (official: emdash-plugin dev)
+mise run plugin:remove -- <name>   take it out: directory, the site's copy, the registration
+mise run plugin:roundtrip          all of the above with a throwaway plugin, leaving nothing behind
 ```
 
-### What the widget does
+`plugin:roundtrip` is the answer to "does plugin development work against this EmDash, today?".
+Run it after changing `EMDASH_VERSION`, the plugin CLI version, or the template.
 
-Field: `geometry_meta` (type: json) on the `parts` collection
-Widget id: `plat-trunk:preview`
+## What happens, and which tool does it
 
-Receives the JSON field value (vertex/face/edge counts, bounding box, volume, validation
-status, model path) and renders it as a label/value grid.
-
-**It makes no network calls.** This section used to claim it "fetches geometry
-thumbnail/stats from `cad.ubuntusoftware.net`" — it does not, and never has. There is no
-`fetch`, no `XMLHttpRequest` and no `ctx.http` anywhere in either plugin; the hostname
-appeared only in prose. The panel renders what is stored on the entry and nothing else.
-
-### What the widget does NOT do
-
-No geometry processing. No WASM. No CRDT. No writes to plat-trunk. No fetching.
-Read-only display of the entry's stored fields.
-
-## Status
-- **Done.** `plugins/plat-trunk/src/index.ts` — native descriptor + `createPlugin`
-- **Done.** `plugins/plat-trunk/src/admin/index.tsx` — `contentEditorPanels` geometry panel
-- **Done.** Registered in `config/site.astro.config.mjs` as `platTrunkPlugin()`
-- **Done.** `plugins/plat-trunk-sandboxed` — the same panel as a sandboxed plugin: Block Kit
-  from the private `editor/geometry` route, declared via `admin.editorPanels`, reading the
-  saved part through capability-gated `ctx.content`
-- **Verified.** Both panels render on the same Part in the admin — the native `<dl>` expanded
-  with the seeded values, the sandboxed panel alongside it (collapsed, as sandboxed panels
-  start closed and call their route only when opened)
-- **Verified.** The dev server logs
-  `Loaded sandboxed plugin plat-trunk-sandboxed:0.1.0 with capabilities: [content:read]`
-
-## Next step
-
-See [`plans/2026-10-05-panel-live-geometry.md`](plans/2026-10-05-panel-live-geometry.md).
-In short: the **validation badge** can be driven by `geometry_meta.validation`, which the
-entries already store, and the **deep link** needs a URL pattern rather than an API — only
-**live** stats need the geometry worker. And that worker is not reachable:
-`ubuntusoftware.net` resolves over Cloudflare NS, but `cad.ubuntusoftware.net` has no DNS
-record at all, so no call could succeed even once written.
-
-## Publishing — native vs sandboxed
-This plugin is **native**: it ships as an npm package and is installed into the site
-(`plugins: []` in `astro.config`). There is no registry-publish step for it.
-
-Publishing to the registry is the **sandboxed** flow and lives in a *different* package:
-`@emdash-cms/plugin-cli` (binary `emdash-plugin`), which requires an `emdash-plugin.jsonc`
-manifest. The site's own `emdash` CLI has **no** `plugin` command.
-
-```bash
-pnpm dlx @emdash-cms/plugin-cli init my-plugin    # scaffold (one-off)
-pnpm add -D @emdash-cms/plugin-cli                # then use the pinned copy
-pnpm exec emdash-plugin validate | bundle | publish | login <handle>
-```
-
-See `.claude/skills/emdash/creating-plugins` (shipped with the site).
-
-## The two models, side by side
-
-We run **both**, deliberately. The harness exists to evaluate EmDash, so implementing the
-same panel two ways is the finding. `plugins/plat-trunk` is native;
-`plugins/plat-trunk-sandboxed` is the scaffolded sandboxed twin (`emdash-plugin init`).
-
-One constraint is worth stating before the table, because it is easy to design past:
-**sandboxed plugins are D1-only.** The sandbox plugin bridge talks to a D1 binding directly,
-independent of the configured database adapter, so a Node.js or PostgreSQL deployment cannot
-run them at all. Since this repo chose Cloudflare + D1, both models are available here — but
-the sandboxed one is not portable to the other deployment target, which is a real limitation
-of the model and not just of our setup.
-
-| | native (`plugins/plat-trunk`) | sandboxed (`plugins/plat-trunk-sandboxed`) |
+| step | tool | task |
 |---|---|---|
-| Registered as | `plugins: [platTrunkPlugin()]` | `sandboxed: [platTrunkSandboxed]` + `sandboxRunner` |
-| Import | a **factory call** — `platTrunkPlugin()` | the package **root**, as-is (no call). `/sandbox` is the entrypoint the root's descriptor names, not something you import |
-| Manifest | none | `emdash-plugin.jsonc` — `capabilities` / `allowedHosts` / `storage` are a consent contract |
-| Code shape | a React component the host imports | `SandboxedPlugin`: `routes` + hooks the host invokes |
-| UI | `contentEditorPanels` → React `<dl>` | `admin.editorPanels` → a private route returning Block Kit (`fields` is the two-column grid) |
-| Panel behaviour | renders with the editor | collapses until opened, then calls the route |
-| Reading the entry | `entry.data` handed to the component | `routeCtx.ui.entry` (host-attested) → `ctx.content.get(collection, id)` |
-| Build | none — the host compiles the source | `emdash-plugin build` → `dist/{index,plugin}.mjs` + `manifest.json` |
-| Test | none | `@emdash-cms/plugin-test`: `createPluginTestHost()` → `invokeRoute(…)`, `createPluginRuntimeTestHost()` → `admin.loadEditorPanel(…)`, both through EmDash's production sandbox |
-| Privileges | whatever the host has | only what the manifest declares — here just `content:read` |
-| Release | npm only | registry + npm with provenance; changing the trust contract **requires** a version bump |
-| Ships browser code | yes | **no** — the host renders the blocks |
+| scaffold | `emdash-plugin init` | `plugin:init` |
+| fit to this site | this repo | `plugin:_fit` |
+| install | `pnpm install` | `plugin:install` |
+| validate the manifest | `emdash-plugin validate` | `plugin:validate` |
+| typecheck | `tsc --noEmit` | `plugin:typecheck` |
+| test, through EmDash's sandbox | `vitest` + `@emdash-cms/plugin-test` | `plugin:test` |
+| build | `emdash-plugin build` | `plugin:build` |
+| register with the site | this repo | `plugin:_register` (run by `config:apply`) |
+| copy into the site | this repo | `plugin:link` |
+| restart the site | mise daemons | `repo:apply` |
+| prove the site runs it | this repo | `plugin:probe` |
+| bundle for release | `emdash-plugin bundle` | `plugin:bundle` |
 
-The scaffold also gave us things we had nowhere: a passing test through the sandbox harness,
-`vitest.config.ts`, and `skills/creating-plugins/SKILL.md` with `.claude/skills` +
-`.claude/CLAUDE.md` copies — the same AGENTS.md pattern we chose independently.
+Everything the official CLI does, it does. The three steps marked "this repo" are the ones the CLI
+leaves to you, and they are where the time used to go.
 
-## Known limitations of the panel
+## What the scaffold needs fixing — `plugin:_fit`
 
-Reading `creating-plugins/references/admin-ui.md` confirmed the saved-entry implementation is
-correct — private route, host-attested `routeCtx.ui.entry`, capability-gated `ctx.content`, and
-`createPluginRuntimeTestHost().admin` as the test boundary — but it also named two limits worth
-stating rather than discovering later:
+`emdash-plugin init` writes a plugin for a site that is not this one:
 
-- **The panel shows SAVED values only, and cannot show unsaved edits.** `panel_load` never
-  carries draft data, by design. Reading unsaved fields needs `admin.editor-draft:read` plus an
-  explicit interaction (a button or form submit), because the host only attaches a draft
-  snapshot after the editor asks for one. So an editor who changes `geometry_meta` and has not
-  saved sees the panel's old values. That is the host's safety model, not a bug in our panel —
-  but it is a real UX consequence, and the fix would be an explicit "recompute from unsaved"
-  action rather than anything implicit.
-- **A `secret` settings field needs `EMDASH_ENCRYPTION_KEY`, and fails closed without it.** The
-  docs are explicit that missing, wrong, or tampered key material fails closed. This repo has no
-  encryption key in **either** environment (see [`plans/2026-10-05-live-content.md`](plans/2026-10-05-live-content.md)),
-  so nothing is broken today — but the first `secret` setting will not work until that is set.
-  `emdash secrets generate` is the documented way to create one.
+- **It will not run without a terminal.** It exits with "Non-interactive setup requires:
+  --publisher, --author-name, --security-email or --security-url". `plugin:init` passes them from
+  `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR` and `PLUGIN_SECURITY_URL` in PROJECT SETTINGS.
+- **It asks for EmDash 0.x.** `emdash: ">=0.12.0 <1.0.0"` installs 0.x while the site runs 1.x, so
+  the scaffold's green test is evidence about a different CMS. Pinned to `EMDASH_VERSION`;
+  `plugin:audit` fails on any drift afterwards.
+- **Its `@emdash-cms/plugin-test` range predates EmDash 1.x.** Set to the current release.
+- **It pins `packageManager`.** mise provides pnpm, so the pin is dropped.
+- **It creates three symlinks** (`.agents/skills`, `.claude/skills`, `.claude/CLAUDE.md`). This
+  repo allows none — `repo:check` fails on one — and the skills are vendored at the repo root.
 
-## What actually bit us
+## How the site finds a local plugin
 
-All four were files lying about the setup, not missing features:1. **The scaffolder targets EmDash 0.x.** It wrote `emdash: ">=0.12.0 <1.0.0"` and installed
-   **0.42.0** while the site runs **1.1.0** — so its green test proved nothing about our stack.
-   Pinned to `^1.1.0` before trusting anything it said.
-2. **The capability is `content:read`.** A stale comment inside emdash's own `plugin-types`
-   says `read:content`; the documented name is what the bundle-time check enforces.
-3. **The import is the package root.** Importing `/sandbox` directly hands EmDash the
-   implementation and it refuses: *Plugin "undefined" uses the native format and cannot be
-   placed in `sandboxed: []`*.
-4. **`plugin:link` alone is not enough** — the descriptor points at a built bundle, so
-   `plugin:build` has to run before the site resolves it. It now runs in `repo:apply`.
+`config:apply` generates `.src/site/local-plugins.mjs` from `plugins/`, and the site's
+`astro.config.mjs` spreads it into `sandboxed: []`. A directory is registered when it has an
+`emdash-plugin.jsonc`. Nothing is edited by hand, so adding or removing a plugin cannot leave the
+config pointing at something that is not there.
 
-And one that hid the rest: the **native** plugin had `validate` / `build` / `bundle` / `test`
-scripts pointing at the sandboxed CLI, with no manifest and no tests to run them. They went
-unnoticed until the plugin sweep became generic, where one of them broke `repo:apply`.
+Two details that cost a session each to learn:
 
-Tracked in [`plans/2026-10-05-plugin-sandbox-model.md`](plans/2026-10-05-plugin-sandbox-model.md).
+- **The site imports the package root, not `/sandbox`.** `emdash-plugin build` generates a
+  descriptor at the root that names `<pkg>/sandbox` as its entrypoint. Importing `/sandbox` hands
+  EmDash the implementation and it refuses: *Plugin "undefined" uses the native format*.
+- **Build before link.** The descriptor points at the built bundle, so copying an unbuilt plugin
+  leaves the site importing a file that does not exist. `repo:apply` runs them in that order, and
+  `plugin:audit` fails on an unbuilt one.
+
+## Limits worth knowing before you design a plugin
+
+- **Sandboxed plugins are D1-only.** The sandbox bridge talks to a D1 binding directly, so a
+  Node.js or PostgreSQL deployment cannot run them. This harness is Cloudflare + D1.
+- **The capability is `content:read`, not `read:content`.** The manifest's `capabilities`,
+  `allowedHosts` and `storage` are a consent contract: changing them requires a version bump.
+- **An editor panel sees saved values only.** Unsaved edits need `admin.editor-draft:read` and an
+  explicit interaction.
+- **A `secret` setting needs `EMDASH_ENCRYPTION_KEY`** and fails closed without it
+  (`mise run emdash:secrets`).
+- **Native plugins** — trusted React code the host imports — are not scaffolded by the CLI and are
+  not auto-registered here. Add one to `config/site.astro.config.mjs` by hand.
+- **Publishing needs your own publisher identity.** Replace `PLUGIN_PUBLISHER` and run
+  `mise run plugin:login` before `plugin:release`.
+
+The authoritative reference is the vendored skill: `.github/skills/creating-plugins/`.

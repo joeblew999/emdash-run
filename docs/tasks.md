@@ -228,7 +228,7 @@ show details about a single package (official) — e.g: mise run plugin:info -- 
 
 ## `plugin:init`
 
-Scaffold a new sandboxed plugin (official) — then: mise run plugin:new -- <name>
+Scaffold a new sandboxed plugin (official: emdash-plugin init) — the first step of plugin:new, which is what you want
 
 
 - **Usage:** `plugin:init <name>`
@@ -272,13 +272,26 @@ log out of the plugin registry, revoking the publisher session (official)
 
 ## `plugin:new`
 
-Scaffold a new sandboxed plugin, then install and validate it
+Scaffold a plugin with the official CLI, fit it to this site, load it into the running site, and prove the site can call it
 
 
 - **Usage:** `plugin:new <name>`
 
 ### Arguments
-- **`<name>`** — New plugin name
+- **`<name>`** — New plugin name — the directory under plugins/ and the plugin's slug
+
+## `plugin:probe`
+
+Ask the RUNNING site to call a plugin's route — proof it is loaded, not just built
+
+
+- **Usage:** `plugin:probe <plugin> [route]`
+
+### Arguments
+- **`<plugin>`** — Plugin directory name under plugins/
+- **`[route]`** — Route to call
+
+  **Default:** `hello`
 
 ## `plugin:profile`
 
@@ -291,6 +304,22 @@ manage the plugin package profile (official)
 - **Usage:** `plugin:release`
 
 manage delegated release intents (official)
+
+## `plugin:remove`
+
+Remove a local plugin — its directory, its copy in the site, and its registration — then bring the site back up
+
+
+- **Usage:** `plugin:remove <plugin>`
+
+### Arguments
+- **`<plugin>`** — Plugin directory name under plugins/
+
+## `plugin:roundtrip`
+
+- **Usage:** `plugin:roundtrip`
+
+Prove the plugin toolchain end to end with a throwaway plugin: scaffold → load → the site calls it → remove
 
 ## `plugin:search`
 
@@ -426,8 +455,6 @@ Everything a sandboxed-plugin release needs — audit + typecheck, then validate
 
 ## `repo:apply`
 
-- Depends: config:apply, plugin:build, plugin:link, plugin:typecheck, plugin:audit, skills:sync
-
 - **Usage:** `repo:apply`
 
 Apply config, rebuild + link plugins, re-seed, restart the site, refresh the token — run after every change
@@ -476,6 +503,12 @@ One-time init after site:setup — plugin deps + the EmDash skills
 
 Parse and type-check every task body with nushell's own checker — a broken body should fail here, not when someone runs it
 
+## `repo:selftest`
+
+- **Usage:** `repo:selftest`
+
+Prove the checkers can fail: plant a known fault in a copy of mise.toml and require each checker to catch it
+
 ## `repo:sync`
 
 - **Usage:** `repo:sync`
@@ -493,6 +526,19 @@ Print every URL this project serves
 - **Usage:** `repo:verify`
 
 Assert the running site matches what the repo claims (set EMDASH_URL to check a deployment instead) — content, the model_id join, and snapshot drift against real R2 objects
+
+## `restore`
+
+Restore a snapshot into an EMPTY site — shows the import plan; add --confirm to execute it (official: emdash site import)
+
+
+- **Usage:** `restore [--confirm] <package>`
+
+### Arguments
+- **`<package>`** — A .emdash package written by `mise run snapshot`
+
+### Flags
+- **`--confirm`** — Execute the plan. Without it the plan is only shown
 
 ## `schema:diff`
 

@@ -44,7 +44,7 @@
 # WRITTEN TO BE REUSED. This harness is not specific to this site: the tasks are built on the two
 # official CLIs and the official template layout, and every value that names a project lives in the
 # PROJECT SETTINGS block at the top of [env] — template, EmDash version, deploy URL, daemon name,
-# the project's own seed, the code to lint, and the collection/field/bucket that `repo:verify`
+# the project's own seed, and the collection/field/bucket that `repo:verify`
 # asserts. Point those at another EmDash project and the flows work unchanged.
 #
 # Tasks are the interface, and they come in two kinds — the distinction is the point:
@@ -162,9 +162,13 @@ SEED_FILE = "{{config_root}}/config/cad.seed.json"
 SEED_ORDER = "projects:assemblies:parts"
 SEED_LABEL = "CAD"
 
-# The code you own, for lint and formatting. Absolute, so it does not depend on a task's working
-# directory; `:`-separated because an env var is a string.
-CODE_PATHS = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
+# Who a scaffolded plugin says it is from. `emdash-plugin init` refuses to run non-interactively
+# without these, and a task is never interactive. The publisher is an Atmosphere handle or DID: the
+# placeholder is enough to scaffold, validate, build, test and LOAD a plugin locally, and is only
+# wrong the day you publish one — replace it with yours before `plugin:release`.
+PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
+PLUGIN_AUTHOR = "joeblew999"
+PLUGIN_SECURITY_URL = "https://github.com/joeblew999/emdash-run/security/advisories/new"
 
 # What `repo:verify` asserts about the RUNNING site: a collection whose entries carry a field that
 # names an object in an R2 bucket, and a stored snapshot of that object's manifest. The checks are
@@ -235,6 +239,7 @@ EMDASH_TOKEN = false
 #   mise run check       before a commit — lint, formatting, the repo's checks, plugin types and tests
 #   mise run deploy      ship it: build, deploy to Cloudflare, then VERIFY what is live
 #   mise run snapshot    save the whole site — schema AND content — as a .emdash package
+#   mise run restore     put a snapshot back into an empty site (shows the plan; --confirm executes)
 #   mise run doctor      diagnose: the site's database, the plugins, and the running site's state
 #
 # Against a deployment:  export EMDASH_URL=https://…  then `mise run check:deployed`
@@ -306,6 +311,69 @@ mkdir ($dest | path dirname)
 ^emdash site export --output $dest ...$extra
 print $"✓ saved → ($dest)"
 print "  it carries every entry plus authors' email addresses — treat it like a database backup."
+"""
+
+[tasks."restore"]
+description = "Restore a snapshot into an EMPTY site — shows the import plan; add --confirm to execute it (official: emdash site import)"
+usage = """
+arg "<package>" help="A .emdash package written by `mise run snapshot`"
+flag "--confirm" help="Execute the plan. Without it the plan is only shown"
+"""
+run = """
+# The other half of `snapshot`, and proven: a wiped local site restored from a package passes
+# `repo:verify` with no seed applied. The official import is two steps on purpose — analyze, then
+# execute exactly the plan that was reviewed — and this keeps them: the digest printed by the
+# analysis is the one executed, so nothing runs that was not shown.
+#
+# The target must be EMPTY (the API refuses otherwise: TRANSFER_TARGET_NOT_EMPTY). Locally that is
+# `mise run site:reset`, then start the site, then this. Set EMDASH_URL to restore a deployment.
+let pkg = ($env.usage_package | path expand)
+if not ($pkg | path exists) {
+  print --stderr $"✗ no such package: ($pkg)"
+  exit 1
+}
+let url = ($env.EMDASH_URL? | default "")
+let extra = (if ($url | is-not-empty) { ["--url" $url] } else { [] })
+let analysis = (^emdash site import $pkg --analyze --json ...$extra | complete)
+let start = ($analysis.stdout | str index-of '{')
+if $analysis.exit_code != 0 or $start < 0 {
+  print --stderr "✗ the package could not be analyzed against this site:"
+  print --stderr ($"($analysis.stdout)($analysis.stderr)" | str trim)
+  exit 1
+}
+let planned = ($analysis.stdout | str substring $start.. | from json)
+# The CLI reports a refusal as JSON and still exits 0, so the error has to be looked for.
+if ($planned | get -o error | is-not-empty) {
+  print --stderr $"✗ ($planned.error.message)"
+  print --stderr "  empty the local site first: mise run site:reset, then start it again"
+  exit 1
+}
+# No plan comes back in two cases: this exact package was already imported here (the operation is
+# reported as complete, receipt included), or something this task does not know how to read.
+if ($planned | get -o plan | is-empty) {
+  let state = ($planned | get -o state | default "unknown")
+  if $state == "complete" {
+    print "✓ this package is already imported into this site — nothing to do"
+    exit 0
+  }
+  print --stderr $"✗ no import plan came back, state is ($state):"
+  print --stderr ($planned | to json)
+  exit 1
+}
+let blockers = ($planned.plan | get -o blockers | default [])
+print $"→ plan ($planned.planDigest)"
+print ($planned.plan.counts | transpose what count | where count > 0 | table --index false)
+for warning in ($planned.plan | get -o warnings | default []) { print $"  ⚠ ($warning | to json --raw)" }
+if ($blockers | is-not-empty) {
+  for blocker in $blockers { print --stderr $"  ✗ ($blocker | to json --raw)" }
+  exit 2
+}
+if not ($env.usage_confirm? | default "false" | into bool) {
+  print "  nothing imported — re-run with --confirm to execute this plan"
+  exit 0
+}
+^emdash site import $pkg --plan $planned.planDigest --confirm ...$extra
+print "✓ restored — check it: mise run repo:verify"
 """
 
 [tasks."doctor"]
@@ -478,6 +546,7 @@ if not ($"($env.SITE_DIR)/package.json" | path exists) {
 }
 cp $"($env.ROOT)/config/site.astro.config.mjs" $"($env.SITE_DIR)/astro.config.mjs"
 cp $"($env.ROOT)/config/site.wrangler.jsonc" $"($env.SITE_DIR)/wrangler.jsonc"
+^mise run plugin:_register
 ^mise run seed:build
 ^mise run seed:validate
 print "  ✓ config applied to .src/site"
@@ -832,15 +901,15 @@ run = "print '✓ init done — run: mise run repo:apply'"
 
 [tasks."repo:apply"]
 description = "Apply config, rebuild + link plugins, re-seed, restart the site, refresh the token — run after every change"
-depends = [
-  "config:apply",
-  "plugin:build",
-  "plugin:link",
-  "plugin:typecheck",
-  "plugin:audit",
-  "skills:sync",
-]
 run = """
+# In order, in the body: build must come before link (a sandboxed plugin's descriptor points at
+# its built bundle), and `depends` does not promise an order.
+^mise run config:apply
+^mise run plugin:build
+^mise run plugin:link
+^mise run plugin:typecheck
+^mise run plugin:audit
+^mise run skills:sync
 # Stop ONLY the site: the optional daemons (registry, plugins-site) must survive, because the
 # site's plugin discovery points at the local registry while it is running.
 ^mise daemons stop $env.SITE_DAEMON | complete | ignore
@@ -1056,7 +1125,7 @@ print $"✓ repo:verify passed — ($checks_final | length) checks"
 [tasks."repo:nu"]
 dir = "{{config_root}}"
 description = "Parse and type-check every task body with nushell's own checker — a broken body should fail here, not when someone runs it"
-run = """
+run = '''
 # nushell can check itself: `nu --ide-check <limit> <file>` reports parse errors, type mismatches
 # and unknown variables as `diagnostic` entries. (Entries of type `hint` are just inferred types —
 # ignore them.) Externals are not resolved, so `^cmd` and a bare `pnpm` produce no false alarm.
@@ -1069,7 +1138,8 @@ run = """
 # `par-each`, because each check is a separate `nu` process and there are ~120 of them: serially
 # this was ~6s of process spawns, and the work is embarrassingly parallel. Each iteration gets its
 # own scratch file so the parallel branches cannot collide.
-let cfg = (open $"($env.ROOT)/mise.toml")
+# MISE_TOML lets repo:selftest point this at a copy with a fault planted in it.
+let cfg = (open ($env.MISE_TOML? | default $"($env.ROOT)/mise.toml"))
 let scratch = $"($env.RUN_DIR)/nucheck"
 rm -rf $scratch
 mkdir $scratch
@@ -1095,6 +1165,25 @@ let problems = (
   | flatten
 )
 rm -rf $scratch
+# The one trap `nu --ide-check` cannot see. Inside `$"..."` a bracketed bare word is a
+# subexpression, so `problem(s)` RUNS a command called `s` — and since an unknown command might be
+# an external program, the checker accepts it and it fails only when that line executes. It has
+# bitten three times here. A subexpression that is a single lowercase word is almost never meant,
+# so it is flagged; spell a real one with its arguments, or phrase the message without brackets.
+let bracket_traps = (
+  $bodies
+  | each {|task|
+    $task.body
+    | parse --regex '(?s)\$"(?<text>[^"]*)"'
+    | get text
+    | each {|text| $text | parse --regex '\((?<word>[a-z]+)\)' | get word }
+    | flatten
+    | uniq
+    | each {|word| $"($task.name): `\(($word)\)` inside an interpolated string runs a command named ($word)" }
+  }
+  | flatten
+)
+let problems = ($problems | append $bracket_traps)
 if ($problems | is-not-empty) {
   # `error make`, not `print` + `exit`: nushell formats it, and it is a real failure rather than
   # something that looks like output.
@@ -1106,7 +1195,7 @@ if ($problems | is-not-empty) {
   }
 }
 print $"  ✓ ($bodies | length) task bodies parse and type-check"
-"""
+'''
 
 [tasks."pre-commit"]
 dir = "{{config_root}}"
@@ -1157,7 +1246,7 @@ run = """
 # run `plugins-site:up`, which was not a task at all. `nu --ide-check` cannot see this (it is a
 # string), and mise cannot either.
 let refs = (
-  (open --raw $"($env.ROOT)/mise.toml")
+  (open --raw ($env.MISE_TOML? | default $"($env.ROOT)/mise.toml"))
   | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
   | get task
   | uniq
@@ -1173,6 +1262,52 @@ if ($missing | is-not-empty) {
 print $"  ✓ all ($refs | length) `mise run` references resolve"
 """
 
+[tasks."repo:selftest"]
+dir = "{{config_root}}"
+description = "Prove the checkers can fail: plant a known fault in a copy of mise.toml and require each checker to catch it"
+run = '''
+# A check that cannot fail is worse than none, and "it passed" says nothing unless it could have
+# failed. So each checker is run against a COPY of this file with one fault planted — every fault
+# is one that has really happened here — and the checker must exit non-zero. The real file is
+# never touched.
+let dir = $"($env.RUN_DIR)/selftest"
+rm -rf $dir
+mkdir $dir
+let original = (open --raw $"($env.ROOT)/mise.toml")
+let quotes = ('"' | fill --character '"' --width 3)
+
+def planted [original: string, quotes: string, body: string] {
+  [$original "" '[tasks."selftest:planted"]' $"run = ($quotes)" $body $quotes ""] | str join (char nl)
+}
+
+# The last two are assembled from pieces, so this body does not itself contain what it plants.
+let cases = [
+  {checker: "repo:nu", fault: "a POSIX operator nushell does not have", body: "print 'a' && print 'b'"}
+  {checker: "repo:nu", fault: "a variable that was never defined", body: "print $never_defined"}
+  {checker: "repo:nu", fault: "brackets inside an interpolated string", body: (['let n = 2; print $' '"found ($n) problem' '(s)' '"'] | str join)}
+  {checker: "repo:sync", fault: "a call to a task that does not exist", body: (["^mise" "run" "selftest:no-such-task"] | str join " ")}
+]
+let missed = (
+  $cases
+  | enumerate
+  | each {|case|
+    let file = $"($dir)/($case.index).toml"
+    planted $original $quotes $case.item.body | save --force $file
+    let res = (with-env {MISE_TOML: $file} { ^mise run $case.item.checker | complete })
+    if $res.exit_code == 0 { $"($case.item.checker) passed a file with ($case.item.fault)" } else {
+      print $"  ✓ ($case.item.checker) catches ($case.item.fault)"
+      null
+    }
+  }
+  | compact
+)
+rm -rf $dir
+if ($missed | is-not-empty) {
+  error make {msg: $"a checker missed a planted fault:
+($missed | str join (char nl))"}
+}
+'''
+
 [tasks."repo:check"]
 dir = "{{config_root}}"
 description = "Lint and formatting over the plugins, that the committed skills match the site's, and that the files which must agree have not drifted"
@@ -1181,20 +1316,23 @@ run = """
 # no root package.json. `--deny-warnings` is what makes a warning mean something rather than scroll
 # past. Targets are explicit rather than `.`: oxfmt also rewrites TOML and Markdown, and prose
 # (docs/) and generated files gain nothing from that except unreviewable diffs.
-let targets = ($env.CODE_PATHS | split row ":")
+let targets = (^mise run plugin:_code | from json)
 # A failing external ABORTS a nushell body. Each check therefore runs inside `try` and hands back
 # its exit code, so one run shows every problem instead of stopping at the first.
 def code [block: closure] { try { do $block; 0 } catch {|err| $err | get -o exit_code | default 1 } }
+# No local plugins is a normal state, not a failure: both tools error when given no paths.
 print "→ oxlint --type-aware --deny-warnings"
-let lint = (code { ^oxlint --type-aware --deny-warnings ...$targets })
+let lint = (if ($targets | is-empty) { print "  ✓ no plugin code to lint"; 0 } else { code { ^oxlint --type-aware --deny-warnings ...$targets } })
 print "→ oxfmt --check"
-let fmt = (code { ^oxfmt --check ...$targets })
+let fmt = (if ($targets | is-empty) { print "  ✓ no plugin code to format"; 0 } else { code { ^oxfmt --check ...$targets } })
 print "→ skills:check (the committed EmDash skills match the site's)"
 let skills = (code { ^mise run skills:check })
 print "→ repo:sync (every task this file names exists)"
 let sync = (code { ^mise run repo:sync })
 print "→ repo:nu (every task body parses and type-checks)"
 let nucheck = (code { ^mise run repo:nu })
+print "→ repo:selftest (the two checkers above catch a planted fault)"
+let selftest = (code { ^mise run repo:selftest })
 print "→ mise tasks validate (mise's own checks on the task definitions, usage specs included)"
 let tasks_ok = (code { ^mise tasks validate })
 print "→ mise fmt --check (mise.toml is formatted by mise's own formatter)"
@@ -1216,7 +1354,7 @@ if $nolinks != 0 {
 } else {
   print "  ✓ none"
 }
-if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok $nolinks] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck $selftest $tasks_ok $misefmt $docs_ok $nolinks] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
@@ -1225,7 +1363,8 @@ description = "Apply formatting to the plugins — the fix for a failing repo:ch
 run = """
 # mise formats its own config — oxfmt does not touch TOML, so `mise.toml` went unchecked.
 ^mise --cd $env.ROOT fmt
-^oxfmt ...($env.CODE_PATHS | split row ":")
+let targets = (^mise run plugin:_code | from json)
+if ($targets | is-not-empty) { ^oxfmt ...$targets }
 """
 
 # -----------------------------------------------------------------------------
@@ -1368,19 +1507,151 @@ run = "mise run site:_deploy -- deploy"
 # -----------------------------------------------------------------------------
 
 [tasks."plugin:new"]
-description = "Scaffold a new sandboxed plugin, then install and validate it"
+dir = "{{config_root}}"
+description = "Scaffold a plugin with the official CLI, fit it to this site, load it into the running site, and prove the site can call it"
 usage = """
-arg "<name>" help="New plugin name"
+arg "<name>" help="New plugin name — the directory under plugins/ and the plugin's slug"
 """
 run = """
+# The whole round trip in one command, each step the official tool: scaffold, install, validate,
+# typecheck, test, build — then `repo:apply` registers and links it and restarts the site, and
+# `plugin:probe` asks the RUNNING site to call it. When this prints ✓ the plugin is live.
 let name = $env.usage_name
-print "→ scaffold"
+if ($"($env.PLUGINS_DIR)/($name)" | path exists) {
+  print --stderr $"✗ plugins/($name) already exists — remove it first: mise run plugin:remove -- ($name)"
+  exit 1
+}
+print "→ scaffold (emdash-plugin init)"
 ^mise run plugin:init -- $name
-print "→ dependencies"
+print "→ fit the scaffold to this site"
+^mise run plugin:_fit -- $name
+print "→ install"
 ^mise run plugin:install -- $name
-print "→ validate the generated manifest"
-^mise run plugin:validate -- $name
-print $"✓ ($name) is ready — try: mise run plugin:dev -- ($name)"
+for step in [validate typecheck test build] {
+  print $"→ ($step)"
+  ^mise run plugin:_sweep -- $step $name
+}
+print "→ load it into the site"
+^mise run repo:apply
+print "→ ask the running site to call it"
+^mise run plugin:probe -- $name
+print $"✓ ($name) is live — edit plugins/($name)/src/plugin.ts, then: mise run repo:apply"
+"""
+
+# What the scaffold gets wrong for a site that is not the one its authors had in mind. Each line
+# is a fault that was hit here, and each one looked like "plugins do not work":
+#
+#   emdash          the scaffold asks for `>=0.12.0 <1.0.0` and installs 0.x, while the site runs
+#                   $EMDASH_VERSION — so its passing test says nothing about this site. Pinned to
+#                   the site's version (plugin:audit fails on any drift).
+#   plugin-test     the scaffold's range predates emdash 1.x; set to the current release.
+#   packageManager  a pin on whichever pnpm ran the scaffold. mise provides pnpm, so it is dropped,
+#                   the same way site:sync drops the template's.
+#   symlinks        `.agents/skills`, `.claude/skills` and `.claude/CLAUDE.md` are links. This repo
+#                   allows none (repo:check fails on one), and the skills are already vendored at
+#                   the repo root.
+[tasks."plugin:_fit"]
+dir = "{{config_root}}"
+hide = true
+usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
+run = """
+^mise run plugin:_require -- $env.usage_plugin
+let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
+let test_version = (^pnpm view @emdash-cms/plugin-test version | str trim)
+let pkg = (
+  open $"($dir)/package.json"
+  | reject -o packageManager
+  | upsert peerDependencies {|p| $p | get -o peerDependencies | default {} | upsert emdash $"^($env.EMDASH_VERSION)" }
+  | upsert devDependencies {|p|
+    $p | get -o devDependencies | default {}
+    | upsert emdash $env.EMDASH_VERSION
+    | upsert "@emdash-cms/plugin-test" $"^($test_version)"
+  }
+)
+$pkg | to json --tabs 1 | save --force $"($dir)/package.json"
+rm -rf $"($dir)/.agents" $"($dir)/.claude"
+print $"  ✓ emdash ($env.EMDASH_VERSION), plugin-test ($test_version), no symlinks"
+"""
+
+[tasks."plugin:probe"]
+dir = "{{config_root}}"
+description = "Ask the RUNNING site to call a plugin's route — proof it is loaded, not just built"
+usage = """
+arg "<plugin>" help="Plugin directory name under plugins/"
+arg "[route]" help="Route to call" default="hello"
+"""
+run = '''
+# Building, testing and linking a plugin all pass without the site ever loading it. This goes
+# through the front door: the plugin's route on the live site, with the admin token, and it fails
+# unless the site answers `success`. The scaffold ships a `hello` route, which is the default.
+^mise run plugin:_require -- $env.usage_plugin
+let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
+let slugs = (open --raw $"($dir)/emdash-plugin.jsonc" | parse --regex '"slug"\s*:\s*"(?<slug>[^"]+)"')
+if ($slugs | is-empty) {
+  print --stderr $"✗ no slug in plugins/($env.usage_plugin)/emdash-plugin.jsonc"
+  exit 1
+}
+let slug = ($slugs | first | get slug)
+let token_file = $"($env.RUN_DIR)/token-admin.txt"
+if not ($token_file | path exists) {
+  print --stderr "✗ no admin token — run: mise run repo:apply"
+  exit 1
+}
+let token = (open --raw $token_file | str trim)
+let url = $"($env.SITE_URL)/_emdash/api/plugins/($slug)/($env.usage_route)"
+let res = (
+  ^curl -sS -X POST
+    -H $"Authorization: Bearer ($token)"
+    -H "content-type: application/json"
+    -H "X-EmDash-Request: 1"
+    -d "{}"
+    $url
+  | complete
+)
+let body = (try { $res.stdout | from json } catch { null })
+if $res.exit_code != 0 or ($body | describe | str starts-with "record") == false or ($body | get -o success) != true {
+  print --stderr $"✗ the site did not run ($slug)/($env.usage_route):"
+  print --stderr ($"($res.stdout)($res.stderr)" | str trim)
+  exit 1
+}
+print $"  ✓ the site ran ($slug)/($env.usage_route) → ($body | get -o data | to json --raw)"
+'''
+
+[tasks."plugin:remove"]
+dir = "{{config_root}}"
+description = "Remove a local plugin — its directory, its copy in the site, and its registration — then bring the site back up"
+usage = 'arg "<plugin>" help="Plugin directory name under plugins/"'
+run = """
+^mise run plugin:_require -- $env.usage_plugin
+let dir = $"($env.PLUGINS_DIR)/($env.usage_plugin)"
+let pkg = (open $"($dir)/package.json" | get -o name | default $env.usage_plugin)
+rm -rf $dir
+# The copy plugin:link made. Left behind, the site would keep resolving a plugin that is gone.
+rm -rf $"($env.SITE_DIR)/node_modules/($pkg)"
+print $"  ✓ removed plugins/($env.usage_plugin)"
+^mise run repo:apply
+"""
+
+[tasks."plugin:roundtrip"]
+dir = "{{config_root}}"
+description = "Prove the plugin toolchain end to end with a throwaway plugin: scaffold → load → the site calls it → remove"
+run = """
+# The check for "can I develop a plugin against THIS EmDash, with THESE tools, today". It runs the
+# official CLI's whole path and leaves nothing behind. Not part of `check`: it installs packages
+# and restarts the site twice, so it takes a couple of minutes.
+let name = "harness-probe"
+if ($"($env.PLUGINS_DIR)/($name)" | path exists) {
+  print "→ a previous run left the probe behind — removing it"
+  ^mise run plugin:remove -- $name
+}
+^mise run plugin:new -- $name
+^mise run plugin:remove -- $name
+let left = (open --raw $"($env.SITE_DIR)/local-plugins.mjs")
+if ($left | str contains $name) {
+  print --stderr "✗ the probe is still registered with the site after removal"
+  exit 1
+}
+print "✓ plugin round trip — scaffolded, loaded, called by the running site, removed"
 """
 
 [tasks."plugin:dev"]
@@ -1480,7 +1751,9 @@ for dir in $dirs {
     $ran = $ran + 1
   }
 }
-if $ran == 0 {
+if ($dirs | is-empty) and ($only | is-empty) {
+  print $"  ✓ no local plugins — nothing to ($script)"
+} else if $ran == 0 {
   print $"✗ no plugin declares a ($script) script — see docs/plugin.md"
   exit 1
 }
@@ -1691,11 +1964,20 @@ print $"  ✓ ($packages | length) packages → docs/plugin-catalog/"
 '''
 
 [tasks."plugin:init"]
-description = "Scaffold a new sandboxed plugin (official) — then: mise run plugin:new -- <name>"
+description = "Scaffold a new sandboxed plugin (official: emdash-plugin init) — the first step of plugin:new, which is what you want"
 usage = 'arg "<name>" help="New plugin name"'
 # Scaffolds a NEW plugin, so it must run in plugins/ itself.
 dir = "{{config_root}}/plugins"
-run = "^emdash-plugin init $env.usage_name"
+run = """
+# The flags are not optional: without a TTY the CLI exits with "Non-interactive setup requires:
+# --publisher, --author-name, --security-email or --security-url", and a task has no TTY. As a bare
+# `emdash-plugin init <name>` this task could never have worked.
+(^emdash-plugin init $env.usage_name
+  --publisher $env.PLUGIN_PUBLISHER
+  --author-name $env.PLUGIN_AUTHOR
+  --security-url $env.PLUGIN_SECURITY_URL
+  --package-manager pnpm)
+"""
 
 # These were tasks that could never work: plugin.mjs documented them as subcommands but had no
 # `case` for any of them, so each one fell through to `default` and printed "unknown subcommand".
@@ -2150,11 +2432,61 @@ print (
 dir = "{{config_root}}"
 hide = true
 run = """
+# A directory WITH a package.json — so plugins/README.md, or a half-scaffolded directory, is not
+# mistaken for a plugin. No plugins at all is a normal state and prints an empty list.
 print (
-  ls ($env.PLUGINS_DIR)
-  | get name
+  if ($env.PLUGINS_DIR | path exists) {
+    ls $env.PLUGINS_DIR
+    | where type == dir
+    | get name
+    | where {|dir| $"($dir)/package.json" | path exists }
+  } else { [] }
   | to json --raw
 )
+"""
+
+# The code this repo owns, for lint and formatting: each plugin's src/ and tests/, where they exist.
+# Discovered rather than listed, so scaffolding a plugin does not mean editing a setting.
+[tasks."plugin:_code"]
+dir = "{{config_root}}"
+hide = true
+run = """
+print (
+  ^mise run plugin:_dirs
+  | from json
+  | each {|dir| [$"($dir)/src" $"($dir)/tests"] }
+  | flatten
+  | where {|path| $path | path exists }
+  | to json --raw
+)
+"""
+
+# The site learns about local plugins from ONE generated module, imported by astro.config.mjs.
+# Registration used to be a hand edit of that config — an import and an array entry per plugin —
+# which is exactly the step a scaffold-and-go round trip cannot have. A plugin is registered when
+# it has an `emdash-plugin.jsonc` (the official CLI's sandboxed format): its package ROOT is
+# imported as-is, which is the descriptor `emdash-plugin build` generates.
+[tasks."plugin:_register"]
+dir = "{{config_root}}"
+hide = true
+run = """
+let plugins = (
+  ^mise run plugin:_dirs
+  | from json
+  | where {|dir| $"($dir)/emdash-plugin.jsonc" | path exists }
+  | each {|dir| open $"($dir)/package.json" | get name }
+  | sort
+)
+let imports = ($plugins | enumerate | each {|p| $"import local($p.index) from ($p.item | to json);" })
+let names = ($plugins | enumerate | each {|p| $"local($p.index)" } | str join ", ")
+let body = (
+  ["// GENERATED by `mise run plugin:_register` from plugins/ — do not edit."]
+  | append $imports
+  | append $"export const sandboxed = [($names)];"
+  | str join (char nl)
+)
+$"($body)(char nl)" | save --force $"($env.SITE_DIR)/local-plugins.mjs"
+print $"  ✓ ($plugins | length) local plugins registered with the site"
 """
 
 # Fails with the list of what does exist, so a typo says what you probably meant. Both callers used

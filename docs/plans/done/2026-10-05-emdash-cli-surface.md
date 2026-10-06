@@ -1,17 +1,32 @@
 # 2026-10-05 — Use more of the emdash CLI
 
-**Status:** active — **3 of 4 done**, 3 steps left
+**Status:** done — closed 2026-10-06
 
-## Where this stands (2026-10-06)
+## Closing note (2026-10-06)
 
-Every CLI command is now a task (`emdash:*`), and the composed ones are `site:doctor`,
-`site:migrate`, `snapshot`, `seed:export`, `schema:diff`, `content:set`. What is left:
+Every CLI command is a task (`emdash:*`); the composed ones are `site:doctor`, `site:migrate`,
+`snapshot`, `restore`, `seed:export`, `schema:diff`, `content:set`. The three steps that were left:
 
-- [ ] **`site:doctor` fails loudly** — prove it by breaking the local database and watching it exit non-zero
-- [ ] **Report the `emdash types` missing import upstream** — the generated `.emdash/types.ts` does not compile (details below)
-- [ ] **Prove `snapshot` restores** — `mise run snapshot` writes the package and the README names it as the backup; an import into an empty site has never been run
+- [x] **`site:doctor` fails loudly** — pointed `emdash doctor` at a file that is not a database: `ERROR 1 issues found`, exit 1, and a non-zero exit aborts the task. A database with no users is only a *warning* and exits 0 ("All critical checks passed (1 warnings)") — that is the CLI's own severity call, and it is left alone.
+- [x] **Prove `snapshot` restores** — wiped the local D1, imported the package, and `repo:verify` passed 5 of 5 with **no seed applied**: the content came from the package. That became `mise run restore -- <package>` (plan only; `--confirm` executes), which was then run through the same wipe-and-restore round trip. It refuses a non-empty site and reports an already-imported package as nothing to do.
+- [ ] **Report the `emdash types` bug upstream** — **not filed; the report is below, ready to paste.** Still present in `emdash@1.1.0` (the latest published), and no existing issue matches. Filing is a public post under the owner's GitHub account, so it is left for them.
 
-Dropped: generating site-side types. The site already gets correct types from `emdash-env.d.ts`.
+### Upstream report — `emdash types` writes a file that does not compile
+
+> **`emdash types` generates `.emdash/types.ts` with unresolved type names**
+>
+> `emdash@1.1.0`. Run `emdash types` against a site with any collection. The generated
+> `.emdash/types.ts` references `BylineSummary`, `ContentBylineCredit` and `TaxonomyTerm` but
+> imports only `PortableTextBlock`:
+>
+> ```ts
+> import type { PortableTextBlock } from "emdash";
+> ```
+>
+> `tsc --noEmit .emdash/types.ts` reports `TS2304: Cannot find name 'BylineSummary'` (and the other
+> two) once per collection — 15 errors for 5 collections. The auto-generated `emdash-env.d.ts`
+> describes the same shapes and imports all four names from `"emdash"`, so the fix is the import
+> line in the `types` command.
 
 ---
 
@@ -53,7 +68,7 @@ this repo currently does by hand, or not at all.
 - [x] **`emdash migrate` → understand production migrations** — answered
   - [x] **it can read the DEPLOYED D1, and it needs no admin token.** `emdash migrate --status --d1 <name>` authenticates with the Cloudflare credentials (fnox), not the site's API — so migration state is inspectable even while every content command is blocked on auth. Added as `site:migrate` (read-only).
   - [x] **production is fully current**: `Known applied: 001_initial … 091_redirect_artifacts`, `Pending: none`, `Unknown applied: none`. So production's problem is **not** migrations.
-  - [x] **and this is orthogonal to our schema work.** The docs are explicit that core migrations "do not add or remove your collections, fields, or taxonomies" — so a clean migration state says nothing about the missing `model_id` field. The API path in [`live-content`](done/2026-10-05-live-content.md) still stands.
+  - [x] **and this is orthogonal to our schema work.** The docs are explicit that core migrations "do not add or remove your collections, fields, or taxonomies" — so a clean migration state says nothing about the missing `model_id` field. The API path in [`live-content`](2026-10-05-live-content.md) still stands.
   - [x] the count is 90, not 91: the manifest's name list skips `010` (`009_user_disabled` → `011_sections`), which matches `site:doctor`'s "90 applied, none pending".
   - [x] `Target fingerprint: 2ac649bc7d22b10d34535e4b63ec6cb65d4ca7e594caf386e4af49753d41c48a` — required for a noninteractive apply (`--expected-target-fingerprint`), which is how a deploy would apply the exact build manifest ahead of traffic instead of relying on runtime auto-migration.
   - [x] local `--check --database <sqlite>` refuses with "A valid Cloudflare account ID is required for D1 migrations" — the command is D1-oriented, so local migration state is best read from `site:doctor` instead.

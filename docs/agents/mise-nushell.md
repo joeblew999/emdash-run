@@ -13,7 +13,7 @@ machine.
   wrapper — mise already provides the argument parser (`usage`), the working directory (`dir`), the
   runner, and `sources`/`outputs` for skipping work already done.
 - **mise is for configuration and composition; nushell is for logic.**
-  - shared *data* → `[env]` (`CODE_PATHS`, `DEPLOY_URL`), or `[task_config]` (`shell`, `dir`)
+  - shared *data* → `[env]` (`SEED_FILE`, `DEPLOY_URL`), or `[task_config]` (`shell`, `dir`)
   - shared *logic* → a hidden helper task (`hide = true`), called as `mise run ns:_helper`
   - the flows a human types live at the top; helpers live at the end under their own banner
 - **A hidden helper owns one concern.** The ones here: `emdash:_json` (the only thing that talks
@@ -46,6 +46,11 @@ It has already caught, in tasks that had never been run:
 - `&&` — **not a nushell operator**;
 - a command wrapped across two lines — **a parse error**;
 - `let nu = …` — `nu` is not a usable variable name.
+
+**`mise run repo:selftest` proves the checkers can fail.** It plants one known fault at a time in a
+copy of `mise.toml` — a `&&`, an undefined variable, `problem(s)`, a call to a task that does not
+exist — and requires `repo:nu` or `repo:sync` to reject it. `repo:check` runs it, so a checker that
+goes blind fails the commit. Its first run found that `problem(s)` was not being caught at all.
 
 **`usage` specs are checked by `mise tasks validate`.** A malformed one is reported there, naming
 the task (verified on mise 2026.10.2 by planting one: `mise tasks validate` and `mise tasks info`
@@ -139,10 +144,11 @@ way, and it is the first thing to try when a mise command behaves oddly inside a
 
 - **Environment variables are `$env.VAR`**, never `$VAR`. Usage arguments included:
   `$env.usage_<name>`.
-- **Inside `$"...($x)..."`, parentheses are subexpressions.** A literal `(text)` is parsed as a
-  command: `token(s)` fails as "Command `s` not found", and `problem(s)` is a *static* "Variable not
-  found". Phrase messages without brackets. (A bare `(committed)` is not caught — it looks like an
-  external command.)
+- **Inside `$"...($x)..."`, parentheses are subexpressions.** A literal `(text)` is run as a
+  command: `token(s)` fails as "Command `s` not found" — at run time, on the line that prints it.
+  `nu --ide-check` does **not** catch this (an unknown command might be an external program), and
+  this file used to claim it did. `repo:nu` has its own rule for it: a bracketed single lowercase
+  word inside an interpolated string is flagged. Phrase messages without brackets.
 - **A regex in a double-quoted string is a parse error** (`unrecognized escape sequence '\s'`).
   Regexes go in single quotes. In TOML, a block containing `\s` needs `'''`, because `"""`
   rejects the escape.

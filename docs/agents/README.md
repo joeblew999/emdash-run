@@ -33,6 +33,10 @@ Full list with the reasoning behind each: **`mise-nushell.md`** (in this folder)
   variables, and does not resolve externals, so `^cmd` and a bare `pnpm` raise no false alarm.
   It has already caught a `&&` (not a nushell operator) and a command wrapped across two lines —
   both tasks had never been run and could not have worked.
+- `mise run repo:selftest` — plants known faults in a copy of `mise.toml` and requires the checkers to
+  catch them. A checker that cannot fail is worse than none; `check` runs this.
+- `mise run plugin:roundtrip` — scaffolds a throwaway plugin with the official CLI, loads it, has the
+  running site call it, and removes it. Run it after changing the EmDash or plugin CLI version.
 - `mise run repo:docs` — `docs/tasks.md` is up to date (it is generated from the tasks).
 - `mise run repo:hooks` — point git at the committed hooks in `.githooks/` (once per clone).
 - `mise run doctor` — the live state: the site's database, plugin consistency, `repo:verify`.
@@ -102,7 +106,7 @@ same on every machine.
 The harness is meant to work on **any** EmDash project, not just this one. Everything that names a
 project lives in the **PROJECT SETTINGS** block at the top of `[env]` in `mise.toml`: the template,
 the EmDash version, the deploy URL, the site's pitchfork daemon name, the project's own seed file,
-the code to lint, and the collection/field/bucket that `repo:verify` asserts. Nothing in a task body
+and the collection/field/bucket that `repo:verify` asserts. Nothing in a task body
 hardcodes a site — so pointing that block at another project is the whole port.
 
 ## Layout
