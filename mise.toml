@@ -1065,20 +1065,20 @@ description = "Regenerate docs/tasks.md from the tasks — the fix for a failing
 run = "^mise --cd $env.ROOT generate task-docs --output docs/tasks.md"
 
 [tasks."repo:sync"]
-description = "Fail if a daemon in [daemons] names a task that does not exist — mise does not check this"
+description = "Fail if any `mise run <task>` in this file names a task that does not exist — neither nushell nor mise checks this"
 run = """
 # Every daemon's `run` is `mise run <task>`, and mise does NOT check the task exists — `mise tasks
 # run, and every one of its `run` lines is `mise run <task>`. A name there that is not a task here
 # is a daemon that cannot start — which is exactly how the registry's web UI sat broken, running a
 # task nobody had written. Both files carry a note about this at the top; this is the enforcement.
+# EVERY `mise run <task>` in the file, not just the ones in [daemons]: a body that calls a task
+# which does not exist is the same failure, and it has happened here — `repo:urls` once told you to
+# run `plugins-site:up`, which was not a task at all. `nu --ide-check` cannot see this (it is a
+# string), and mise cannot either.
 let refs = (
-  (open $"($env.ROOT)/mise.toml")
-  | get -o daemons
-  | default {}
-  | values
-  | each {|daemon| $daemon | get -o run | default "" }
-  | where {|cmd| $cmd | str starts-with "mise run " }
-  | each {|cmd| $cmd | str replace "mise run " "" | split row " " | first }
+  (open --raw $"($env.ROOT)/mise.toml")
+  | parse --regex 'mise run (?<task>[a-z][a-z0-9:_-]*)'
+  | get task
   | uniq
 )
 mut missing = []
@@ -1086,10 +1086,10 @@ for ref in $refs {
   if (^mise tasks info $ref | complete).exit_code != 0 { $missing = ($missing | append $ref) }
 }
 if ($missing | is-not-empty) {
-  print $"✗ [daemons] names tasks that do not exist: ($missing | str join ', ')"
-  exit 1
+  # `error make`, like repo:nu — a real failure, not output that reads like a message.
+  error make {msg: $"this file calls tasks that do not exist: ($missing | str join ', ')"}
 }
-print $"  ✓ all ($refs | length) daemon tasks exist"
+print $"  ✓ all ($refs | length) `mise run` references resolve"
 """
 
 [tasks."repo:check"]

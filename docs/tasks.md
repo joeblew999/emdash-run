@@ -480,7 +480,7 @@ Parse and type-check every task body with nushell's own checker — a broken bod
 
 - **Usage:** `repo:sync`
 
-Fail if a daemon in [daemons] names a task that does not exist — mise does not check this
+Fail if any `mise run <task>` in this file names a task that does not exist — neither nushell nor mise checks this
 
 ## `repo:urls`
 
