@@ -47,6 +47,12 @@ Full list with the reasoning behind each: **`mise-nushell.md`** (in this folder)
   `mise daemons start|stop|status|logs`. The site daemon runs the `site:dev` task; the name is the
   `SITE_DAEMON` setting, and every task that touches it goes through `mise daemons` rather than
   calling pitchfork directly.
+- **Never create a symlink.** git cannot make one on Windows — it writes the target *path* into the
+  file instead — so a committed symlink arrives as a file containing the word `AGENTS.md` for anyone
+  who clones there. It is the same class of problem as a bashism: fine here, broken on another
+  machine, and this repo uses nushell so that it is not. Copy instead — `plugin:link` and
+  `skills:sync` both do — and `repo:check` fails if one appears. `.src/` is excluded from that
+  check on purpose: it is generated, and EmDash's own tooling links inside it.
 - **Dogfood: run it and read the output.** Reasoning about a change is not validation.
   Never call something done without executing it and looking at the result.
 - **After a change, `mise run repo:apply`.** It is the quick end-to-end check — re-applies
@@ -147,8 +153,8 @@ The one rule that matters: **never edit anything under `.src/`** — it is gener
 `references/` tree). Read them before working on EmDash; they cover the CLI, the seed and
 export formats, the database layout, and the plugin model.
 
-- They are vendored rather than symlinked because **skills are discovered when a session
-  starts**. A symlink lives in `.claude/skills/`, which is gitignored, so on a fresh clone it
+- They are vendored rather than left in `.src/` because **skills are discovered when a session
+  starts**. `.claude/skills/` is gitignored, so on a fresh clone it
   does not exist yet — and an agent that starts before anyone runs `skills:sync` has *no*
   EmDash knowledge and will rediscover `export-seed`, `site import` and the file-vs-D1
   database trap by trial and error. That is not a hypothetical: it happened.

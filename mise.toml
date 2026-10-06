@@ -175,7 +175,7 @@ EMDASH_DIR = "{{config_root}}/.src/emdash"       # optional emdash monorepo clon
 TEMPLATES_REPO = "https://github.com/emdash-cms/templates"
 EMDASH_REPO = "https://github.com/emdash-cms/emdash"
 
-# Local plugins under development — symlinked into the site's node_modules by plugin:link
+# Local plugins under development — copied into the site's node_modules by plugin:link
 PLUGINS_DIR = "{{config_root}}/plugins"
 
 # Generated output, gitignored: the MCP token, site snapshots, and the temp files the nushell
@@ -1124,10 +1124,25 @@ let misefmt = $env.LAST_EXIT_CODE
 print "→ repo:docs (docs/tasks.md is what the tasks actually are)"
 ^mise run repo:docs
 let docs_ok = $env.LAST_EXIT_CODE
+print "→ no symlinks (a link is a broken file on a Windows checkout)"
+# git cannot make a symlink on Windows, so it writes the TARGET PATH into the file instead — a
+# committed symlink is a file containing the word `AGENTS.md` for anyone who clones there. This repo
+# is nushell so that it behaves the same everywhere; a link undoes that.
+#
+# `.src/` is excluded on purpose: it is generated, gitignored, and EmDash's own tooling links inside
+# it (the site ships `.claude/skills` as a link to `.agents/skills`). We never create one.
+let committed_links = (^git -C $env.ROOT ls-files -s | complete).stdout | lines | where {|l| $l | str starts-with "120000" }
+let on_disk_links = (^find $env.ROOT -type l -not -path "*/node_modules/*" -not -path "*/.src/*" -not -path "*/.git/*" | complete).stdout | lines | where {|l| $l | is-not-empty }
+let nolinks = (if (($committed_links | is-empty) and ($on_disk_links | is-empty)) { 0 } else { 1 })
+if $nolinks != 0 {
+  print $"  ✗ symlinks: ($committed_links | append $on_disk_links | str join ', ')"
+} else {
+  print "  ✓ none"
+}
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok $nolinks] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
@@ -1329,18 +1344,31 @@ for dir in (^mise run plugin:_dirs | from json) {
 """
 
 [tasks."plugin:link"]
-description = "Symlink all local plugins into the site's node_modules so the dev server can load them"
+description = "Copy all local plugins into the site's node_modules so the dev server can load them"
 run = """
-# Plugins live in plugins/ but the site resolves them from its own node_modules, so they are
-# symlinked in — which keeps edits live with no rebuild step.
+# Plugins live in plugins/ but the site resolves them from its own node_modules, so each one is
+# COPIED in as a real directory. Not a symlink: a link is a cross-platform liability (a Windows
+# checkout turns one into a file containing the target path), and this repo is nushell precisely so
+# it behaves the same everywhere.
+#
+# The plugin's own node_modules is skipped — it is large, and the SITE's tree is what should resolve
+# the plugin's imports. `repo:apply` runs plugin:build then this, so an edit is one command away.
 let node_modules = $"($env.SITE_DIR)/node_modules"
 mkdir $node_modules
 let dirs = (^mise run plugin:_dirs | from json)
 for dir in $dirs {
   let pkg = ((open $"($dir)/package.json") | get -o name | default ($dir | path basename))
   let dest = $"($node_modules)/($pkg)"
-  ^mise run fs:_link -- $dir $dest
-  print $"  ✓ linked ($pkg)"
+  rm -rf $dest
+  mkdir ($dest | path dirname)
+  mkdir $dest
+  # Copy the ENTRIES, not the directory: nushell's `cp -r` PRESERVES a symlink where the system `cp`
+  # follows it, so copying a directory wholesale can reproduce a link inside it. node_modules is
+  # skipped by name — it is large, and the site's own tree should resolve the plugin's imports.
+  for entry in (ls $dir | get name | where {|p| ($p | path basename) != "node_modules" }) {
+    cp -r $entry $"($dest)/($entry | path basename)"
+  }
+  print $"  ✓ copied ($pkg)"
 }
 """
 
@@ -1626,7 +1654,7 @@ run = "emdash-plugin update-package"
 # -----------------------------------------------------------------------------
 
 [tasks."skills:sync"]
-description = "Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code"
+description = "Vendor the site's EmDash skills into .github/skills/ (committed) + copy them for Claude Code"
 run = """
 # The EmDash skills live in TWO places, for two reasons:
 #
@@ -1638,8 +1666,8 @@ run = """
 #                           and a whole session went into rediscovering export-seed, site import and
 #                           the file-vs-D1 trap while those skills sat on disk unread.
 #
-#   .claude/skills/emdash    a SYMLINK, for Claude Code. Deliberately not committed: it points into
-#                           gitignored .src/, so it would be broken on any other clone.
+#   .claude/skills/emdash    a COPY, for Claude Code. Deliberately not committed: it is generated
+#                           from gitignored .src/, so it would be wrong on any other clone.
 let site = $env.SITE_DIR
 let vendor = $"($env.ROOT)/.github/skills"
 let shipped = (^mise run skills:_shipped | str trim)
@@ -1654,15 +1682,16 @@ mkdir $vendor
 for name in $names { cp -r $"($shipped)/($name)" $"($vendor)/($name)" }
 print $"  ✓ ($names | length) EmDash skills vendored → .github/skills — committed"
 
-# A RELATIVE target on purpose: the link lives at .claude/skills/emdash, so the target is always
-# ../../.src/site/... — an absolute one would break on any other clone.
+# A real COPY, not a symlink — same reason as plugin:link. `.claude/` is gitignored, so this is
+# regenerated by `skills:sync` on every apply and costs nothing to throw away.
+# Copy the entries for the same reason: the site ships `.claude/skills` as a symlink to its
+# `.agents/skills`, and nushell's `cp -r` would faithfully reproduce that link rather than its
+# contents.
 mkdir $"($env.ROOT)/.claude/skills"
-let rel = (
-  if ($shipped | str contains ".agents/") { "../../.src/site/.agents/skills" }
-  else { "../../.src/site/.claude/skills" }
-)
-^mise run fs:_link -- $rel $"($env.ROOT)/.claude/skills/emdash"
-print $"  ✓ .claude/skills/emdash → ($rel)"
+rm -rf $"($env.ROOT)/.claude/skills/emdash"
+mkdir $"($env.ROOT)/.claude/skills/emdash"
+for name in $names { cp -r $"($shipped)/($name)" $"($env.ROOT)/.claude/skills/emdash/($name)" }
+print $"  ✓ ($names | length) skills copied → .claude/skills/emdash"
 """
 
 [tasks."skills:check"]
@@ -2101,25 +2130,6 @@ if ($found | is-empty) {
   exit 1
 }
 print ($found | first)
-"""
-
-# A symlink, or a junction on Windows. Node used to paper over that difference; it is spelled out
-# once here instead of in every caller. `ln -sfn` stores the target string verbatim, so a RELATIVE
-# target stays relative to the link — which is what keeps a committed config link portable.
-[tasks."fs:_link"]
-hide = true
-usage = """
-arg "<target>" help="what the link points at"
-arg "<link>" help="path of the link to create"
-"""
-run = """
-rm -rf $env.usage_link
-mkdir ($env.usage_link | path dirname)
-if ($nu.os-info.name == "windows") {
-  ^cmd /c mklink /J $env.usage_link $env.usage_target | complete | ignore
-} else {
-  ^ln -sfn $env.usage_target $env.usage_link
-}
 """
 
 # -----------------------------------------------------------------------------

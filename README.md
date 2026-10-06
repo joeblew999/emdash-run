@@ -43,7 +43,7 @@ already done, and `[daemons]` for the processes; nushell does the work.
 mise.toml    the tasks, in two kinds: PRIMITIVES (one official CLI command, nothing invented)
              and WORKFLOWS (the jobs a developer does, composed from them)
 config/      our config — astro.config, wrangler.jsonc, and this project's own seed
-plugins/     local plugins, symlinked into the site so edits are live
+plugins/     local plugins, copied into the site by plugin:link
 .src/        gitignored checkouts: templates/, site/, emdash/ (on demand)
 docs/        agents/ (how to work here), tasks.md (generated), why.md, plugin.md, auth.md
 .githooks/   the committed pre-commit hook — `mise run repo:hooks` points git at it

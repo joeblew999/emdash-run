@@ -114,7 +114,7 @@ of the model and not just of our setup.
 
 The scaffold also gave us things we had nowhere: a passing test through the sandbox harness,
 `vitest.config.ts`, and `skills/creating-plugins/SKILL.md` with `.claude/skills` +
-`.claude/CLAUDE.md` symlinks — the same AGENTS.md pattern we chose independently.
+`.claude/CLAUDE.md` copies — the same AGENTS.md pattern we chose independently.
 
 ## Known limitations of the panel
 

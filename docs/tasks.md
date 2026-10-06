@@ -256,7 +256,7 @@ Install deps for all plugins in plugins/
 
 - **Usage:** `plugin:link`
 
-Symlink all local plugins into the site's node_modules so the dev server can load them
+Copy all local plugins into the site's node_modules so the dev server can load them
 
 ## `plugin:login`
 
@@ -694,7 +694,7 @@ reinstall skills from skills-lock.json (official: skills experimental_install)
 
 - **Usage:** `skills:sync`
 
-Vendor the site's EmDash skills into .github/skills/ (committed) + symlink them for Claude Code
+Vendor the site's EmDash skills into .github/skills/ (committed) + copy them for Claude Code
 
 ## `skills:update`
 

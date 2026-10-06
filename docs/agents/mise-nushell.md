@@ -18,7 +18,7 @@ machine.
   - the flows a human types live at the top; helpers live at the end under their own banner
 - **A hidden helper owns one concern.** The ones here: `emdash:_json` (the only thing that talks
   JSON to the CLI), `site:_devdb` (which database is the dev one), `site:_pause`/`_resume`,
-  `plugin:_dirs`/`_require`, `mcp:_login`, `skills:_shipped`, `fs:_link`, `plugin:_sweep`,
+  `plugin:_dirs`/`_require`, `mcp:_login`, `skills:_shipped`, `plugin:_sweep`,
   `site:_deploy`, `registry:_admin`.
 - **`hide = true` hides a task — a leading `_` in the name does NOT.** And hidden tasks do not
   appear in `mise tasks ls`, so when you are checking whether one exists, grep the *file*.
