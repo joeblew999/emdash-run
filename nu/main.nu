@@ -290,7 +290,6 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
     if (setting EMDASH_URL | is-not-empty) { fail "--wipe only empties the local site" }
     if not $confirm { fail "--wipe destroys the local database — pass --confirm as well" }
     step "wipe the local database"
-    daemon-stop $env.SITE_DAEMON
     wipe-local-data
     # Empty: a site that already has entries cannot receive a package.
     site restart --empty
@@ -323,7 +322,6 @@ def "main restore" [package: string, --confirm, --wipe, --url: string] {
 
 # Wipe the local database and uploads, and bring the site back up on its seed. Your site/ stays.
 def "main reset" [] {
-  daemon-stop $env.SITE_DAEMON
   wipe-local-data
   main dev
 }
@@ -487,9 +485,14 @@ def "main verify" [--full, --restore] {
     main snapshot
     main restore (ls ($env.RUN_DIR | path join "snapshots") | sort-by modified | last | get name) --wipe --confirm
     main doctor
-    step "back up the database, put it back"
+    # An entry is edited first, and the database wiped after the backup: a restore that put
+    # nothing back would leave a freshly seeded site, without the edit.
+    step "back up the database, wipe, put it back"
+    main upgrade-probe mark
     main snapshot --database
+    wipe-local-data
     main restore (ls ($env.RUN_DIR | path join "backups") | sort-by modified | last | get name) --confirm
+    main upgrade-probe find
     main doctor
   }
   print $"✓ verified on ($nu.os-info.name) ($nu.os-info.arch)(if $full { ' — site, checks, doctor, plugins, snapshot, build' } else { ' — site, checks, doctor' })"
@@ -541,15 +544,16 @@ def "main verify template" [template: string, --full, --from: string] {
   print $"✓ the harness works on the ($template) template"
 }
 
-# The two halves of an upgrade proof: `mark` writes a recognisable title into the first page,
-# `find` fails unless it is still there. Run by verify:template --from, around the upgrade.
+# The two halves of a "the data survived" proof: `mark` writes a recognisable title into the first
+# page, `find` fails unless it is still there. Run by verify:template --from around an upgrade, and
+# by verify --restore around a backup, a wipe and a restore.
 def "main upgrade-probe" [step: string] {
-  let page = (emdash-json content list pages | get items.0)
+  let page = (emdash-json content list pages | get items.0.slug)
   if $step == "mark" {
-    emdash content update pages $page.slug $"--rev=(emdash-json content get pages $page.slug | get _rev)" --data '{"title":"survived the upgrade"}'
-  } else if (emdash-json content get pages $page.slug | get data.title) != "survived the upgrade" {
-    fail "the entry edited before the upgrade is not there after it"
-  } else { ok "the entry edited before the upgrade is still there" }
+    main content set pages $page '{"title":"survived"}'
+  } else if (emdash-json content get pages $page | get data.title) != "survived" {
+    fail "the entry edited beforehand is not there afterwards"
+  } else { ok "the entry edited beforehand is still there" }
 }
 
 # The same verification on a clean Linux machine: a container with only git and mise, and a fresh

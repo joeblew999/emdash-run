@@ -43,7 +43,7 @@ nu/tests.nu      unit tests for the pure functions
 | `target $url` | aim the rest of a flow at a deployment: sets `EMDASH_URL`, and `EMDASH_TOKEN` from `DEPLOY_TOKEN` |
 | `on-cloudflare` | true when the template runs on Cloudflare (it ships a `wrangler.jsonc`), false on Node.js |
 | `devdb` | the dev server's real database file, on either platform |
-| `wipe-local-data` | delete the local database and uploads |
+| `wipe-local-data` | stop the site and delete the local database and uploads |
 | `backup-local-data LABEL`, `restore-local-data DIR` | stop the site and copy its database and media into `run/backups/`, or back. The caller restarts |
 | `with-site-paused { … }` | stop the dev server around a build, and put it back whatever happens |
 | `request` | one HTTP request: `{status, body, cookies}`, never throws |

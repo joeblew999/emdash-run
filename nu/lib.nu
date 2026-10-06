@@ -168,8 +168,9 @@ def local-data []: nothing -> list<string> {
   }
 }
 
-# Delete the local database and uploads. The site recreates them, seeded, when it next starts.
+# Stop the site and delete its database and uploads. It recreates them, seeded, when it next starts.
 export def wipe-local-data [] {
+  daemon-stop $env.SITE_DAEMON
   rm -f ($env.RUN_DIR | path join "seed-applied.txt")
   for path in (local-data) { rm -rf $path }
 }
