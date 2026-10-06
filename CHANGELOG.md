@@ -38,9 +38,11 @@ The first release meant for other repos. Everything below was run, not reasoned 
 - A stale `EMDASH_TOKEN` or `EMDASH_REGISTRY_URL` in the shell silently broke every CLI call.
 - Plugin discovery pointed at a local registry that is not part of the default flow.
 
-### Not proven
+### Known limits
 
-- A machine with nothing installed: `setup` is proven on a fresh clone, on a machine that already
-  had the tools cached.
-- Windows.
-- `logs -- --deployed` and `plugin:dev` are long-running and were not exercised end to end.
+- **`snapshot` fails on the blog template locally** with `TRANSFER_MEDIA_BLOB_MISSING`: its seed
+  declares sample media whose files are not in local storage. `starter-cloudflare` is unaffected.
+- **Targeting a deployment is a flag, not a variable**: `doctor -- --url <url>`, `snapshot -- --url`,
+  `schema:diff -- --url`. An exported `EMDASH_URL` is ignored on purpose.
+- **Windows is unproven.** The logic is nushell and nothing uses a symlink, but nobody has run it there.
+- `plugin:dev` is a file watcher and was not exercised end to end.
