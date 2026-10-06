@@ -11,7 +11,7 @@ Found while shipping 0.1.0 to 0.4.2. Each is something that worked on the day an
 - [x] **No unbounded waits anywhere.** Every wait goes through `wait-for` (`nu/lib.nu`), which has a limit.
   - [x] `[daemons.registry]` has no `ready_http`; `registry:up` waits 120 seconds and fails with the registry's log
   - [x] `with-site-paused` waits up to 90 seconds for the site it restarted and warns if it is not answering
-  - [ ] prove it: point the readiness URL at a dead port and confirm each flow fails within its limit, with the log
+  - [x] proven in `nu/tests.nu`: `wait-for` on a dead port returns false within its limit, and a request to it reports status 0 instead of throwing
 - [ ] **Why did the dev server stop answering?** After a plugin was loaded and Vite reloaded, `GET /` never came back on a macOS runner (once in three runs). The retry hides it; the cause is unknown.
   - [ ] reproduce locally by looping `plugin:roundtrip`; capture the site log when it happens
   - [ ] report upstream (Astro or EmDash) if it reproduces
