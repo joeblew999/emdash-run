@@ -252,16 +252,23 @@ def uploads-to-r2 [] {
   }
 }
 
-# (Re)start the dev server and wait until it has migrated and answers.
+# (Re)start the dev server and wait until it has migrated and answers — for a bounded time. The
+# daemon has no readiness check of its own on purpose: `mise daemons start` waits on one forever,
+# and a dev server that came up but never answered once hung a release run for fifteen minutes.
+# So the start returns at once and THIS loop decides, tries once more, then fails with the log.
 export def restart [] {
-  daemon-stop $env.SITE_DAEMON
-  rm -rf (site-file "node_modules" ".vite")
-  ^mise daemons start $env.SITE_DAEMON
-  for _ in 1..60 {
-    if (request POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass").status in 200..399 { return }
-    sleep 1sec
+  for attempt in 1..2 {
+    daemon-stop $env.SITE_DAEMON
+    rm -rf (site-file "node_modules" ".vite")
+    ^mise daemons start $env.SITE_DAEMON
+    for _ in 1..90 {
+      if (request POST $"($env.SITE_URL)/_emdash/api/setup/dev-bypass" --timeout 5sec).status in 200..399 { return }
+      sleep 1sec
+    }
+    if $attempt == 1 { print "  the site did not answer in 90s — restarting it once more" }
   }
-  fail "the site did not answer within 60s" "see: mise run logs"
+  print --stderr ((^mise daemons logs $env.SITE_DAEMON | complete).stdout | lines | last 30 | str join (char nl))
+  fail "the site did not answer after two starts" "the last lines of its log are above; more: mise run logs"
 }
 
 # Mint the admin API token the MCP server and `plugin:probe` use. Idempotent: the previous one is

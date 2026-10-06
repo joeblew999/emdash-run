@@ -21,7 +21,7 @@ jobs:
           - { name: Node.js, run: "verify:template starter --full" }
     name: ${{ matrix.platform.name }} · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
@@ -48,7 +48,7 @@ jobs:
         template: [starter-cloudflare, starter]
     name: install ${{ matrix.template }} · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5

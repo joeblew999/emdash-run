@@ -1,5 +1,10 @@
-# The same commands a dev runs locally, on every OS and both platforms we claim to support.
-# Nothing is CI-only: mise installs the toolchain here exactly as it does on a laptop.
+# The fast answer on every push: the harness holds together on every OS — modules, tasks, task
+# arguments, the self-test, unit tests. Seconds, not minutes. It is `mise run check`, the same
+# command the git hook runs locally.
+#
+# The site verifications (every OS, Cloudflare and Node.js, installers) are NOT run on a push:
+# run them locally with `mise run verify -- --full`, and they run in full before every release —
+# see full.yml.
 name: verify
 on:
   push:
@@ -8,14 +13,12 @@ on:
   pull_request:
     paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
-# A newer push makes the older run pointless.
 concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 env:
   MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 jobs:
-  # The fast answer, in well under a minute: the harness holds together, and task arguments arrive.
   check:
     strategy:
       fail-fast: false
@@ -27,17 +30,3 @@ jobs:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
       - run: mise run check
-  # The full answer, in parallel: a site comes up and passes doctor — on Cloudflare and on Node.js.
-  verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        run: ["verify", "verify:template starter"]
-    name: ${{ matrix.run }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v5
-      - run: mise run ${{ matrix.run }}

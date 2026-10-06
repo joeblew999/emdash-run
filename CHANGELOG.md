@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2 — 2026-10-06
+
+- **A site that will not answer can no longer hang a flow.** Starting the dev server waited on its
+  readiness check with no time limit; a release run sat for fifteen minutes on it. `dev` now waits
+  90 seconds, restarts once, and then fails showing the site's log.
+- **Two checks that could not fail now can**: the task-definition check swallowed its exit code,
+  and the portability rule missed programs called without `^`. `check` plants both faults on itself.
+- `--url` handling is simpler: the EmDash CLI reads `EMDASH_URL` itself.
+- Comments and `docs/auth.md` corrected against EmDash's source.
+
 ## 0.4.1 — 2026-10-06
 
 - **Seeded images work on Cloudflare templates.** `emdash seed` writes a seed's media to `./uploads`,
