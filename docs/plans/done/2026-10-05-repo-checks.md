@@ -10,7 +10,7 @@ The checks exist and block: `mise run check` runs lint, format, `repo:nu`, `repo
 What this plan built that **no longer exists**: `repo:test` and its 10 vitest tests of the seed
 merge. They were deleted with `scripts/` when the merge became a nushell task body. The merge was
 shown byte-identical at the time, but nothing tests it now — carried forward in
-[`harness-gaps`](../2026-10-06-harness-gaps.md).
+[`harness-gaps`](2026-10-06-harness-gaps.md).
 
 ---
 

@@ -118,6 +118,12 @@ shell = "nu --no-config-file -c"
 # and a production build have to run. So it is the default here, once, instead of a `dir = ` line
 # on every task that happens to call the CLI. A task that needs to run elsewhere overrides it
 # (registry:* runs in the aggregator, plugin:init in plugins/).
+#
+# The cost of that default: `.src/site` does not exist on a fresh clone, and mise cannot even START
+# a task whose working directory is missing — it fails with "No such file or directory" before the
+# body runs. So every task that must work BEFORE the site exists (the bootstrap, the repo's own
+# checks, the skills) sets `dir = "{{config_root}}"`. A new task that does not call the emdash CLI
+# should do the same.
 dir = "{{config_root}}/.src/site"
 
 [env]
@@ -260,11 +266,18 @@ EMDASH_TOKEN = false
 # -----------------------------------------------------------------------------
 
 [tasks."setup"]
+dir = "{{config_root}}"
 description = "First time here: clone the template, install the site, apply our config, install the plugins, vendor the skills, then bring it up"
-depends = ["site:setup", "repo:init"]
-run = "mise run repo:apply"
+# A body, not `depends`: these are strictly ordered — the plugins and skills need the site that
+# site:setup creates — and `depends` does not promise an order.
+run = """
+^mise run site:setup
+^mise run repo:init
+^mise run repo:apply
+"""
 
 [tasks."dev"]
+dir = "{{config_root}}"
 description = "Start working — bring the site up on the current config, seed and plugins, then print where everything is"
 depends = ["repo:apply"]
 run = "mise run repo:urls"
@@ -301,6 +314,7 @@ depends = ["site:doctor", "plugin:audit"]
 run = "mise run repo:verify"
 
 [tasks."check"]
+dir = "{{config_root}}"
 description = "Everything that must pass before a commit — lint, formatting, the repo's own checks, and the plugins' types, structure and tests"
 depends = [
   "repo:check",
@@ -367,6 +381,7 @@ run = "mise run seed:from-remote"
 # -----------------------------------------------------------------------------
 
 [tasks."src:clone-templates"]
+dir = "{{config_root}}"
 description = "Clone or update emdash-cms/templates into .src/templates"
 run = """
 mkdir $"($env.SRC_DIR)"
@@ -380,6 +395,7 @@ print $"  ✓ templates @ (^git -C $env.TEMPLATES_DIR rev-parse --short HEAD | s
 """
 
 [tasks."src:clone-emdash"]
+dir = "{{config_root}}"
 description = "Clone or update the emdash monorepo at tag emdash@$EMDASH_VERSION into .src/emdash — on demand"
 run = """
 let tag = $"emdash@($env.EMDASH_VERSION)"
@@ -399,11 +415,17 @@ print $"  ✓ emdash @ ($tag) → ($env.EMDASH_DIR)"
 # -----------------------------------------------------------------------------
 
 [tasks."site:setup"]
+dir = "{{config_root}}"
 description = "One-time: clone templates → copy site → install → apply config"
-depends = ["site:install", "config:apply"]
-run = "echo '✓ setup done — run: mise run repo:init'"
+depends = ["site:install"]
+run = """
+# config:apply runs here, after the install, rather than beside it in `depends`: it needs the site.
+^mise run config:apply
+print "✓ site set up — next: mise run repo:init"
+"""
 
 [tasks."site:sync"]
+dir = "{{config_root}}"
 description = "Copy $TEMPLATE into .src/site (pristine copy; drops the template's packageManager pin)"
 depends = ["src:clone-templates"]
 run = """
@@ -426,6 +448,7 @@ print $"  ✓ site ← ($env.TEMPLATE)"
 """
 
 [tasks."site:install"]
+dir = "{{config_root}}"
 description = "Install site deps + the first-party plugins the site config registers"
 depends = ["site:sync"]
 run = """
@@ -637,6 +660,7 @@ print $"  ✓ seed → ($dest | path basename) — ($content | columns | length)
 """
 
 [tasks."seed:test"]
+dir = "{{config_root}}"
 description = "Run the seed merge over fixtures and fail unless the output is exactly tests/seed/expected.json"
 run = """
 # The merge decides what the site's content model IS, and its rules are not uniform (see
@@ -769,6 +793,7 @@ if ([$only_local $only_remote $type_diff] | any {|group| $group | is-not-empty }
 """
 
 [tasks."site:reset"]
+dir = "{{config_root}}"
 description = "⚠ Wipe local D1/miniflare state (loses all content) — then run: mise run repo:apply"
 run = """
 rm -rf $"($env.SITE_DIR)/.wrangler/state"
@@ -776,6 +801,7 @@ print "Done — run: mise run repo:apply"
 """
 
 [tasks."site:clean"]
+dir = "{{config_root}}"
 description = "⚠ Wipe .src/site — then run: mise run site:setup → init → apply"
 run = """
 ^mise daemons stop $env.SITE_DAEMON | complete | ignore
@@ -784,6 +810,7 @@ print "✓ Wiped .src/site — run: mise run site:setup"
 """
 
 [tasks."site:regen"]
+dir = "{{config_root}}"
 description = "⚠ Wipe all of .src (templates + site) and re-clone templates"
 run = """
 ^mise daemons stop -a | complete | ignore
@@ -798,8 +825,9 @@ print "✓ Wiped .src — run: mise run site:setup → init → apply"
 # -----------------------------------------------------------------------------
 
 [tasks."repo:init"]
-description = "One-time init after site:setup — plugin deps + skills"
-depends = ["plugin:install-all", "skills:add-all"]
+dir = "{{config_root}}"
+description = "One-time init after site:setup — plugin deps + the EmDash skills"
+depends = ["plugin:install-all", "skills:sync"]
 run = "print '✓ init done — run: mise run repo:apply'"
 
 [tasks."repo:apply"]
@@ -844,6 +872,7 @@ print "✓ apply done"
 """
 
 [tasks."repo:urls"]
+dir = "{{config_root}}"
 description = "Print every URL this project serves"
 run = """
 print "Host site"
@@ -1025,6 +1054,7 @@ print $"✓ repo:verify passed — ($checks_final | length) checks"
 '''
 
 [tasks."repo:nu"]
+dir = "{{config_root}}"
 description = "Parse and type-check every task body with nushell's own checker — a broken body should fail here, not when someone runs it"
 run = """
 # nushell can check itself: `nu --ide-check <limit> <file>` reports parse errors, type mismatches
@@ -1079,10 +1109,12 @@ print $"  ✓ ($bodies | length) task bodies parse and type-check"
 """
 
 [tasks."pre-commit"]
+dir = "{{config_root}}"
 description = "What the git pre-commit hook runs. mise passes the staged files as STAGED"
 run = "mise run check"
 
 [tasks."repo:hooks"]
+dir = "{{config_root}}"
 description = "Point git at the committed hooks in .githooks — run once per clone"
 run = """
 # Committed hooks, not .git/hooks: a hook that only exists on one machine is a hook nobody else
@@ -1092,6 +1124,7 @@ print "  ✓ core.hooksPath = .githooks — the checks now run on every commit"
 """
 
 [tasks."repo:docs"]
+dir = "{{config_root}}"
 description = "Fail if docs/tasks.md has drifted from the tasks — it is generated, never hand-edited"
 run = """
 # Generated from this file by mise (`mise generate task-docs`), so it cannot become a second copy
@@ -1107,11 +1140,13 @@ print "  ✓ docs/tasks.md matches the tasks"
 """
 
 [tasks."repo:docs:write"]
+dir = "{{config_root}}"
 description = "Regenerate docs/tasks.md from the tasks — the fix for a failing repo:docs"
 # `--cd` because tasks run in .src/site, where `--output docs/tasks.md` would write to the wrong tree.
 run = "^mise --cd $env.ROOT generate task-docs --output docs/tasks.md"
 
 [tasks."repo:sync"]
+dir = "{{config_root}}"
 description = "Fail if any `mise run <task>` in this file names a task that does not exist — neither nushell nor mise checks this"
 run = """
 # Every daemon's `run` is `mise run <task>`, and mise does NOT check the task exists — `mise tasks
@@ -1139,6 +1174,7 @@ print $"  ✓ all ($refs | length) `mise run` references resolve"
 """
 
 [tasks."repo:check"]
+dir = "{{config_root}}"
 description = "Lint and formatting over the plugins, that the committed skills match the site's, and that the files which must agree have not drifted"
 run = """
 # The same tools and flags the emdash monorepo uses, taken from mise [tools] because this repo has
@@ -1184,6 +1220,7 @@ if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt $docs_ok $nolinks] | a
 """
 
 [tasks."repo:format"]
+dir = "{{config_root}}"
 description = "Apply formatting to the plugins — the fix for a failing repo:check"
 run = """
 # mise formats its own config — oxfmt does not touch TOML, so `mise.toml` went unchecked.
@@ -1373,6 +1410,7 @@ print $"→ pnpm install in ($env.usage_plugin)"
 """
 
 [tasks."plugin:install-all"]
+dir = "{{config_root}}"
 description = "Install deps for all plugins in plugins/"
 wait_for = ["site:setup"]
 sources = ["plugins/*/package.json"]
@@ -1695,6 +1733,7 @@ run = "emdash-plugin update-package"
 # -----------------------------------------------------------------------------
 
 [tasks."skills:sync"]
+dir = "{{config_root}}"
 description = "Vendor the site's EmDash skills into .github/skills/ (committed) + copy them for Claude Code"
 run = """
 # The EmDash skills live in TWO places, for two reasons:
@@ -1736,6 +1775,7 @@ print $"  ✓ ($names | length) skills copied → .claude/skills/emdash"
 """
 
 [tasks."skills:check"]
+dir = "{{config_root}}"
 description = "Fail if the committed .github/skills/ copy has drifted from the skills the site ships"
 run = """
 # Drift happens when the template or EMDASH_VERSION changes, and the failure mode is silent — an
@@ -1788,46 +1828,43 @@ if ($problems | is-not-empty) {
 print $"  ✓ ($vendored_keys | length) vendored skill files match the site's"
 """
 
-[tasks."skills:add-all"]
-description = "Install the standard skill set for this project (run once after init)"
-wait_for = ["site:setup"]
-depends = ["skills:sync"]
-run = """
-# The skills CLI has no "restrict agents" flag, so it also writes other agents' directories.
-^skills add kinoward/agent-skills/mise-guide --yes --agents "Claude Code"
-for dir in [".crush" ".goose" ".cursor" ".augment" ".continue" ".codebuddy"] {
-  rm -rf $"($env.ROOT)/($dir)"
-}
-print "  ✓ non-Claude agent dirs removed"
-"""
-
-# The rest of the skills CLI. These were subcommands of the deleted script that no task ever
-# exposed, so they could not be run at all — the same shape of bug as the plugin relay.
+# The skills CLI, for a skill this PROJECT needs beyond the EmDash ones above. None is installed
+# today, and the mise skills are deliberately not: they are machine-level (~/.claude/skills), because
+# every repo uses mise — a repo adds only what is specific to it.
 [tasks."skills:list"]
+dir = "{{config_root}}"
 description = "list installed skills (official)"
 run = "skills list"
 
 [tasks."skills:find"]
+dir = "{{config_root}}"
 description = "search for skills (official)"
 run = "skills find"
 
 [tasks."skills:add"]
+dir = "{{config_root}}"
 description = "install a skill — e.g: mise run skills:add -- owner/repo/skill"
-run = "skills add --yes --agents \"Claude Code\""
+# `--copy`: the CLI's default is a symlink from .claude/skills into .agents/skills, and this repo
+# allows no symlinks — `repo:check` fails on one.
+run = "skills add --copy --yes --agents \"Claude Code\""
 
 [tasks."skills:remove"]
+dir = "{{config_root}}"
 description = "remove a skill (official)"
 run = "skills remove --yes"
 
 [tasks."skills:remove-all"]
+dir = "{{config_root}}"
 description = "remove every installed skill (official)"
 run = "skills remove --all --yes"
 
 [tasks."skills:update"]
+dir = "{{config_root}}"
 description = "update installed skills (official)"
 run = "skills update"
 
 [tasks."skills:restore"]
+dir = "{{config_root}}"
 description = "reinstall skills from skills-lock.json (official: skills experimental_install)"
 run = "skills experimental_install"
 # -----------------------------------------------------------------------------
@@ -2096,6 +2133,7 @@ if $login.exit_code != 0 {
 # Where the site ships its EmDash skills: `.claude/skills` first, `.agents/skills` as the fallback.
 # Prints the path, or nothing when the site has not been set up yet.
 [tasks."skills:_shipped"]
+dir = "{{config_root}}"
 hide = true
 run = """
 let site = $env.SITE_DIR
@@ -2109,6 +2147,7 @@ print (
 # A plugin is a directory under plugins/ with a package.json. Defined once, so the five tasks that
 # sweep plugins/ cannot disagree about what counts as one.
 [tasks."plugin:_dirs"]
+dir = "{{config_root}}"
 hide = true
 run = """
 print (

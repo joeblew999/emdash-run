@@ -464,11 +464,11 @@ Point git at the committed hooks in .githooks — run once per clone
 
 ## `repo:init`
 
-- Depends: plugin:install-all, skills:add-all
+- Depends: plugin:install-all, skills:sync
 
 - **Usage:** `repo:init`
 
-One-time init after site:setup — plugin deps + skills
+One-time init after site:setup — plugin deps + the EmDash skills
 
 ## `repo:nu`
 
@@ -537,8 +537,6 @@ Run the seed merge over fixtures and fail unless the output is exactly tests/see
 Validate the merged site seed — EmDash silently skips an invalid one
 
 ## `setup`
-
-- Depends: site:setup, repo:init
 
 - **Usage:** `setup`
 
@@ -632,7 +630,7 @@ Open admin UI in browser via dev-bypass (runs migrations + seed; skips passkey a
 
 ## `site:setup`
 
-- Depends: site:install, config:apply
+- Depends: site:install
 
 - **Usage:** `site:setup`
 
@@ -651,14 +649,6 @@ Copy $TEMPLATE into .src/site (pristine copy; drops the template's packageManage
 - **Usage:** `skills:add`
 
 install a skill — e.g: mise run skills:add -- owner/repo/skill
-
-## `skills:add-all`
-
-- Depends: skills:sync
-
-- **Usage:** `skills:add-all`
-
-Install the standard skill set for this project (run once after init)
 
 ## `skills:check`
 

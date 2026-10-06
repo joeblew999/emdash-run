@@ -1,6 +1,6 @@
 # 2026-10-06 — Harness gaps found by running it
 
-**Status:** active — **4 of 5 done**
+**Status:** done — closed 2026-10-06, **5 of 5**
 
 Found on 2026-10-06 by running every check and planting failures. The ones that were bugs are
 already fixed (a failing build left the site down; `site:_pause` never paused; a stale
@@ -20,6 +20,18 @@ already fixed (a failing build left the site down; `site:_pause` never paused; a
 - [x] **`repo:verify` leaves temp files** — one `mktemp` per model, never removed — and crashes
   rather than reports if `curl` returns no status code.
   - [x] the manifest is read from curl's output, so nothing is written to disk, and a curl that cannot connect is reported as `<id> unreachable`. Verified on the passing path (5 of 5); the unreachable branch has not been exercised
-- [ ] **A fresh clone has never been proven.** `mise run setup` on a machine with nothing installed
+- [x] **A fresh clone has never been proven.** `mise run setup` on a machine with nothing installed
   is the README's first promise.
-  - [ ] run it in a clean checkout and record the result here
+  - [x] run it in a clean checkout and record the result here — **it could not work, and now does.**
+    Every task defaulted to running in `.src/site`, which a fresh clone does not have, so mise
+    failed to start the first task ("No such file or directory") before any body ran. The
+    bootstrap, the repo's own checks and the skills tasks now run from the repo root, and `setup`
+    runs its three steps in order. In a clean clone: `mise run setup`, `check` and `doctor` all
+    exit 0, and the tree is left clean.
+  - [x] found on the way: `skills add` links `.claude/skills/mise-guide` into `.agents/skills`, so a
+    freshly set-up clone failed its own no-symlink check. The per-repo mise skill is gone — the mise
+    skills are machine-level — and `skills:add` copies.
+
+Caveat on "nothing installed": the clone was made on this machine, so mise's tools and pnpm's store
+were already cached, and the Cloudflare credentials `doctor` needs were in fnox. A truly bare
+machine is still unproven.

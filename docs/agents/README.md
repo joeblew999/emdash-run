@@ -163,7 +163,10 @@ export formats, the database layout, and the plugin model.
   copy (kept for Claude Code; gitignored, because it is generated from `.src/`). `apply` runs it.
 - `mise run skills:check` fails if the committed copy has drifted from what the site ships.
   `repo:check` runs it.
-- Separately, `skills add`-installed skills (currently just `mise-guide`) are **not** vendored
-  — they are reproducible from `skills-lock.json` via `mise run skills:add-all`.
+- **The mise skills are machine-level, not this repo's.** `mise-tasks` and `mise-configuration` live
+  in `~/.claude/skills/` and load in every repo, because every repo uses mise. A repo adds only what
+  is specific to it — here, the EmDash skills above. Nothing is installed from `skills-lock.json`
+  today; `mise run skills:add -- owner/repo/skill` is there if the project ever needs one, and it
+  copies rather than links.
 
 **Schema references:** https://mise.jdx.dev/schema/mise.json · https://pitchfork.jdx.dev/schema.json
