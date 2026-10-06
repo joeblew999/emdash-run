@@ -6,17 +6,6 @@
       "headers": {
         "Authorization": "Bearer ${EMDASH_MCP_TOKEN}"
       }
-    },
-    "playwright": {
-      "type": "stdio",
-      "command": "mise",
-      "args": [
-        "exec",
-        "--",
-        "pnpm",
-        "dlx",
-        "@playwright/mcp@latest"
-      ]
     }
   }
 }

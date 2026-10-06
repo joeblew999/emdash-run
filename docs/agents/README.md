@@ -70,14 +70,16 @@ which of those lessons a check now enforces.
 
 ## Tools
 
-- **MCP servers** (`.mcp.json`): `emdash` — content, schema, media, taxonomy on the running site,
-  authenticated by the token `dev` mints; `playwright` — the admin UI in a real browser.
-- **Playwright and the admin:** use `browser_run_code_unsafe` with
-  `page.setViewportSize({ width: 1400, height: 4000 })`; the default window cannot scroll, so
-  anything below the fold is unclickable. Sign in through
-  `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. A saved-entry plugin panel loads through
-  the host — `POST /_emdash/api/content/<collection>/<id>/plugin-extensions/<plugin-id>` — not
-  through the plugin's own route.
+- **MCP servers:** `emdash` (`.mcp.json`) — content, schema, media, taxonomy on the running site,
+  authenticated by the token `dev` mints.
+- **A browser:** Playwright, configured once per machine (user scope) as headless and isolated, so
+  several agents can each drive their own browser without fighting over one window:
+  `claude mcp add --scope user playwright -- mise exec node@24 -- npx -y @playwright/mcp@latest --headless --isolated`.
+  Prefer `curl` for "is it server-rendered" proofs; use the browser for the admin UI. Sign in
+  through `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. Set a tall viewport
+  (`page.setViewportSize({ width: 1400, height: 4000 })`) before clicking below the fold. A
+  saved-entry plugin panel loads through the host —
+  `POST /_emdash/api/content/<collection>/<id>/plugin-extensions/<plugin-id>`.
 - **EmDash skills** are vendored at `.github/skills/` (`building-emdash-site`, `creating-plugins`,
   `emdash-cli`) so they exist on a fresh clone. Read them before working on EmDash itself. `dev`
   refreshes them from the site; `check` fails if they drift.
