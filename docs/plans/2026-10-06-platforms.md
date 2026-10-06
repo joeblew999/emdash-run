@@ -7,9 +7,9 @@
 ## Items
 
 - [x] **`doctor` on Linux** — fixed in 0.2.0. The dev server listened on `[::1]` only, and on Linux `localhost` resolves to `127.0.0.1` first, so the emdash CLI was refused while curl worked. It binds `127.0.0.1` now.
-  - [x] in a clean Debian arm64 container, from the published one-line installer: install, `status`, `check`, `doctor` exit 0
+  - [x] in a clean Debian arm64 container, from the published one-line installer (0.2.2): install, `status`, `check`, `doctor`, `plugin:roundtrip`, `snapshot`, `deploy --dry` and `report` all exit 0
 - [x] **Say what a bare Linux needs** — the README names `libatomic1` for minimal Debian; the container run installs exactly that
-- [ ] **Windows** — the logic is nushell and nothing uses a symlink, but it has never been run there
+- [ ] **Windows** — the logic is nushell and nothing uses a symlink, but it has never been run there. Asked for in [issue #3](https://github.com/joeblew999/emdash-run/issues/3); `install.ps1` is the installer
   - [x] the one call known to be wrong there is gone: the symlink check used the `find` program, which on Windows is a text search. It uses nushell's `glob` now. No other POSIX-only program is called — what remains external is `git`, `curl`, `pnpm`, `mise`
   - [ ] `setup`, `dev`, `check`, `doctor` on a Windows machine; the unknowns are the daemon manager (pitchfork) and the local Workers runtime, not nushell
 - [ ] **`snapshot` on the blog template** — fails locally with `TRANSFER_MEDIA_BLOB_MISSING`: the seed declares sample media whose files are not in local storage
