@@ -379,9 +379,10 @@ def "main verify" [--full] {
 # checkout's harness with that template and runs `verify` in it. This is how the Node.js path is
 # proven from a repo whose own project is on Cloudflare — CI runs it with `starter`.
 def "main verify template" [template: string, --full] {
-  let dir = ($nu.temp-dir | path join "emdash-run-verify" $template)
+  # A fresh directory every time: on Windows a just-stopped site can still hold its files open,
+  # so neither reusing nor deleting a previous run's directory is safe.
+  let dir = ($nu.temp-dir | path join "emdash-run-verify" $"($template)-(random chars --length 6)")
   let was_running = (daemon-running $env.SITE_DAEMON)
-  rm -rf $dir
   mkdir ($dir | path join ".config" "mise" "conf.d")
   cp -r ($env.ROOT | path join "nu") ($dir | path join "nu")
   cp (harness-file) ($dir | path join ".config" "mise" "conf.d" "harness.toml")
@@ -400,7 +401,7 @@ def "main verify template" [template: string, --full] {
   do { cd $dir; ^mise daemons stop --all | complete | ignore }
   if $was_running { ^mise daemons start $env.SITE_DAEMON }
   if $rc != 0 { fail $"the harness does not verify on the ($template) template" $"the project is left in ($dir)" }
-  rm -rf $dir
+  try { rm -rf $dir }
   print $"✓ the harness works on the ($template) template"
 }
 
