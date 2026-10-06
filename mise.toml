@@ -988,40 +988,47 @@ run = """
 # is otherwise not parsed until it runs. This is the check that catches the `(text)`-inside-an-
 # interpolated-string bug at commit time: `(s)` reads as a variable, so `problem(s)` is a static
 # "Variable not found" instead of a failure at 2am.
+#
+# `par-each`, because each check is a separate `nu` process and there are ~120 of them: serially
+# this was ~6s of process spawns, and the work is embarrassingly parallel. Each iteration gets its
+# own scratch file so the parallel branches cannot collide.
 let cfg = (open $"($env.ROOT)/mise.toml")
-# One scratch file, cleared first and removed at the end — an earlier version wrote one file per
-# body and left 116 of them behind on every run.
 let scratch = $"($env.RUN_DIR)/nucheck"
 rm -rf $scratch
 mkdir $scratch
-let file = $"($scratch)/body.nu"
-mut problems = []
-mut checked = 0
-for name in ($cfg.tasks | columns) {
-  let body = ($cfg.tasks | get $name | get -o run)
-  if ($body | is-empty) { continue }
-  $body | save --force $file
-  let found = (
-    ^nu --ide-check 200 $file
-    | complete
-    | get stdout
+let bodies = (
+  $cfg.tasks
+  | columns
+  | each {|name| {name: $name, body: ($cfg.tasks | get $name | get -o run | default "")} }
+  | where {|task| $task.body | is-not-empty }
+)
+let problems = (
+  $bodies
+  | enumerate
+  | par-each {|item|
+    let file = $"($scratch)/($item.index).nu"
+    $item.item.body | save --force $file
+    (^nu --ide-check 200 $file | complete).stdout
     | lines
-    | where {|l| $l | str starts-with '{' }
-    | each {|l| $l | from json }
-    | where {|d| ($d | get -o type) == "diagnostic" }
-  )
-  for d in $found {
-    $problems = ($problems | append $"($name): ($d | get -o message)")
+    | where {|line| $line | str starts-with '{' }
+    | each {|line| $line | from json }
+    | where {|diag| ($diag | get -o type) == "diagnostic" }
+    | each {|diag| $"($item.item.name): ($diag | get -o message)" }
   }
-  $checked = $checked + 1
-}
+  | flatten
+)
 rm -rf $scratch
 if ($problems | is-not-empty) {
-  print $"✗ nushell rejected ($problems | length) of ($checked) task bodies:"
-  for problem in $problems { print $"  - ($problem)" }
-  exit 1
+  # `error make`, not `print` + `exit`: nushell formats it, and it is a real failure rather than
+  # something that looks like output.
+  # `msg` only: a `label` needs a `span`, and a bare one is rejected with "missing required
+  # columns". The detail goes in the message.
+  error make {
+    msg: $"nushell rejected ($problems | length) of ($bodies | length) task bodies:
+($problems | str join (char nl))"
+  }
 }
-print $"  ✓ ($checked) task bodies parse and type-check"
+print $"  ✓ ($bodies | length) task bodies parse and type-check"
 """
 
 [tasks."pre-commit"]

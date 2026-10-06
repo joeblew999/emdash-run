@@ -163,6 +163,35 @@ way, and it is the first thing to try when a mise command behaves oddly inside a
 - A failing external with `^` still sets `LAST_EXIT_CODE`; `| complete | ignore` is how to tolerate
   one on purpose.
 
+## What nushell gives us that mise cannot
+
+mise composes; nushell does the work. The parts actually in use:
+
+- **`nu --ide-check`** — nushell type-checks itself, so task bodies are *checked* rather than
+  discovered. That is `repo:nu`.
+- **`par-each`** — every body is a separate `nu` process, so ~120 of them serially is seconds of
+  process spawns. Parallel, the whole check is **0.34s**. Each branch writes its own scratch file
+  so they cannot collide.
+- **`error make`** — a real failure, formatted, exit non-zero, instead of a `print` that looks like
+  output. `repo:nu` reports `nushell rejected 1 of 121 task bodies: _probe_bad: Variable not
+  found.` A bare `label` needs a `span` and is rejected with "missing required columns", so put the
+  detail in `msg`.
+- **`complete`** — run a command and keep stdout, stderr and the exit code separately. Every helper
+  that returns a value uses it, because mise's own banner goes to stderr and stdout stays clean.
+- **`$env.LAST_EXIT_CODE`** — there is no `set -e`, so this is how a failing external is noticed.
+- **`upsert` / `get -o` / `describe` / `str starts-with`** — the shape of the data is checked
+  rather than assumed. `describe` says `table` for an array of objects, which is what silently
+  broke a guard once.
+
+Available and deliberately unused, so you know they exist:
+
+- **`std/assert`** — nushell's test framework. There is nothing to test in isolation while the
+  logic lives inside task bodies; it would need that logic extracted into a nushell module first.
+- **`std/log`** — levelled, timestamped logging. Task output is `print "→ …"` on purpose: a task is
+  read by a human in a terminal.
+- **`nu --lsp`** — an editor can talk to nushell directly, so you get inline diagnostics for task
+  bodies while editing `mise.toml`, rather than only at `repo:nu`.
+
 ## Editing `mise.toml` safely
 
 - **A regex that runs to the next `"""` can eat tasks.** `\[tasks\."X"\][\s\S]*?\n"""` looks
