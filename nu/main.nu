@@ -105,7 +105,7 @@ def "main report" [] {
 }
 
 # Everything that must hold before a commit. --fix repairs what can be repaired; --site also
-# type-checks the site, which restarts it.
+# type-checks the site, without touching a running one.
 def "main check" [--fix, --site] {
   let nu_dir = ($env.ROOT | path join "nu")
   let paths = (plugin code-paths)

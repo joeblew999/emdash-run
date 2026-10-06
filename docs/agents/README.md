@@ -61,7 +61,7 @@ which of those lessons a check now enforces.
 | command | what it tells you |
 |---|---|
 | `mise run check` | the harness holds together: modules parse, tasks and commands agree, checkers catch planted faults, task arguments arrive, unit tests, formatting, generated docs, skills, no symlinks, plugins |
-| `mise run check -- --site` | also type-checks the site (it restarts it) |
+| `mise run check -- --site` | also type-checks the site — a running site is not touched |
 | `mise run doctor` | the **running** site matches the repo: database health, plugins, content, and the settings-driven cross-checks |
 | `mise run doctor -- --url <url>` | the same for a deployment: core migrations (Cloudflare), content model, content |
 | `mise run verify` | does it work on this machine: site up, check, doctor — what CI runs on every OS. `--full` adds plugins, snapshot, build |

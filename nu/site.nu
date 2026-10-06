@@ -355,11 +355,13 @@ export def serve [] {
   ^pnpm --dir $env.SITE_DIR dev --host 127.0.0.1 --port $env.SITE_PORT
 }
 
-# Type-check the site: astro check loads the config, tsc checks the config's types. Both re-run
-# the Vite optimizer, so the dev server is paused around them.
+# Type-check the site: astro check for the pages, tsc for the config's types. A running dev server
+# is not touched: it keeps the generated types current, so astro's own sync — which re-runs the Vite
+# optimizer under it — is skipped.
 export def typecheck []: nothing -> int {
-  with-site-paused {
-    ^pnpm --dir $env.SITE_DIR exec astro check
+  let sync = (if (daemon-running $env.SITE_DAEMON) { ["--noSync"] } else { [] })
+  code {
+    ^pnpm --dir $env.SITE_DIR exec astro check ...$sync
     (^pnpm --dir $env.SITE_DIR exec tsc --noEmit --ignoreConfig --allowJs --checkJs --moduleResolution bundler
       --module esnext --target es2022 --skipLibCheck (site-file "astro.config.mjs"))
   }
