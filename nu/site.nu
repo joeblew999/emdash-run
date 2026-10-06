@@ -14,6 +14,17 @@ def checkout [repo: string, dir: string, ref: string] {
   }
 }
 
+# What the harness generates must not be committed. Adds any missing line to the project's .gitignore.
+export def ensure-ignored [] {
+  let file = ($env.ROOT | path join ".gitignore")
+  let have = (if ($file | path exists) { open --raw $file | lines } else { [] })
+  let missing = ([".src/" "/run/" "node_modules/" "/.claude/skills/" "/config/seed.live.json"] | where {|line| not ($line in $have) })
+  if ($missing | is-not-empty) {
+    $"($missing | str join (char nl))(char nl)" | save --append $file
+    ok $".gitignore ← ($missing | str join ' ')"
+  }
+}
+
 export def clone-templates [] {
   checkout $env.TEMPLATES_REPO $env.TEMPLATES_DIR "main"
   ok $"templates @ (^git -C $env.TEMPLATES_DIR rev-parse --short HEAD | str trim)"
@@ -106,16 +117,23 @@ export def merge-seeds [base: record, project: record, order: list<string>, labe
   )
   let name = (if ($label | is-empty) { $site_name } else { $"($site_name) + ($label)" })
 
-  {}
-  | insert '$schema' (pick '$schema' "")
-  | insert version (pick version "1")
-  | insert meta ($base_meta | upsert name $name | upsert description $description)
-  | insert settings (pick settings {})
-  | insert collections (union ($project | get -o collections | default []) ($base | get -o collections | default []) "slug")
-  | insert taxonomies (union ($project | get -o taxonomies | default []) ($base | get -o taxonomies | default []) "name")
-  | insert menus (pick menus [])
-  | insert widgetAreas (pick widgetAreas [])
-  | insert content $content
+  let merged = (
+    {}
+    | insert '$schema' (pick '$schema' "")
+    | insert version (pick version "1")
+    | insert meta ($base_meta | upsert name $name | upsert description $description)
+    | insert settings (pick settings {})
+    | insert collections (union ($project | get -o collections | default []) ($base | get -o collections | default []) "slug")
+    | insert taxonomies (union ($project | get -o taxonomies | default []) ($base | get -o taxonomies | default []) "name")
+    | insert menus (pick menus [])
+    | insert widgetAreas (pick widgetAreas [])
+    | insert content $content
+  )
+  # Every other top-level key a seed carries — bylines, redirects, whatever a template adds next —
+  # passes through: the template's, falling back to the project's. Dropping an unknown key silently
+  # broke the blog template, whose posts reference bylines.
+  ($base | columns) | append ($project | columns) | uniq | where {|key| not ($key in ($merged | columns)) }
+  | reduce --fold $merged {|key, acc| $acc | insert $key (pick $key null) }
 }
 
 # Does the project's site config load local plugins? plugin:new needs it to.

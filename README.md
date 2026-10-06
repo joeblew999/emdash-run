@@ -39,7 +39,8 @@ mise run emdash -- <anything>     the official CLI
 ## How it is put together
 
 ```
-mise.toml    settings and task names — 230 lines
+mise.toml    your project's settings — 40 lines
+.config/mise/conf.d/harness.toml   the harness: tools, tasks, daemons
 nu/          the logic, in nushell: one command per task, shared helpers, unit tests
 config/      our site config and this project's seed, applied over the template by `dev`
 plugins/     local plugins — empty until you run plugin:new
@@ -51,12 +52,32 @@ Everything is built on the two official CLIs and the official template. The harn
 what they leave to you: getting config and a seed into a template, loading a plugin into a running
 site, checking that what is live matches the repo.
 
-## Pointing it at your own project
+## Use it in your own repo
 
-Every value that names a project is in the **PROJECT SETTINGS** block of `mise.toml`: the template,
-the EmDash version, the deploy URL, your seed, who your plugins are from, and what `doctor` should
-assert about your content. Each `doctor` setting is optional — leave it empty and that check is
-skipped. `nu/` never names a project.
+Everyone here uses mise, so the harness arrives as mise config. In your repo:
+
+```sh
+curl -fsSL https://github.com/joeblew999/emdash-run/releases/latest/download/emdash-harness.tar.gz | tar xz
+cp nu/project.example.toml mise.toml      # then edit it: your template, your seed, your checks
+mise trust --all
+mise run setup
+```
+
+That gives you three things, with a hard line between what is yours and what is the harness's:
+
+| | whose | what |
+|---|---|---|
+| `mise.toml` | **yours** | PROJECT SETTINGS — about 40 lines, the only place a project is named |
+| `config/` | **yours** | your site config and seed; `setup` starts you from the template's own |
+| `.config/mise/conf.d/harness.toml`, `nu/` | the harness's | tools, tasks, daemons and the logic |
+
+`mise run upgrade` replaces the harness's half from this repo (`-- v0.2.0` for a tag) and leaves
+yours alone. Proven on a second project — a different template, no seed of its own.
+
+To develop plugins, your `config/site.astro.config.mjs` has to load them: import
+`{ sandboxed as localSandboxed }` from `"./local-plugins.mjs"`, pass
+`sandboxed: [...localSandboxed], sandboxRunner: sandbox()` to `emdash()`, and enable the
+`worker_loaders` binding in `config/site.wrangler.jsonc`. `plugin:new` tells you if it is missing.
 
 ## Where to look
 

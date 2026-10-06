@@ -28,10 +28,15 @@ assert equal $alone.meta.name "Starter" "no label leaves the site name alone"
 assert equal ($alone.collections | get slug) ($template.collections | get slug) "no project seed keeps the template's collections"
 assert equal ($alone.content.posts | length) 2 "no project seed keeps the template's content"
 
+# Keys the merge does not know about pass through instead of being dropped.
+let extra = (site merge-seeds ($template | insert bylines [{id: "byline-editorial"}]) ($project | insert redirects [{from: "/a"}]) $order "CAD")
+assert equal $extra.bylines [{id: "byline-editorial"}] "an unknown key in the template's seed survives"
+assert equal $extra.redirects [{from: "/a"}] "an unknown key in the project's seed survives"
+
 # Plugin registration.
 assert equal (plugin registration []) "// GENERATED from plugins/ by the harness — do not edit.\n/** @type {any[]} */\nexport const sandboxed = [];\n" "no plugins is an empty list"
 let two = (plugin registration ["zeta" "@scope/alpha"])
 assert ($two | str contains 'import local0 from "@scope/alpha";') "plugins are imported in sorted order"
 assert ($two | str contains 'export const sandboxed = [local0, local1];') "every plugin is registered"
 
-print "  ✓ 15 unit tests"
+print "  ✓ 17 unit tests"

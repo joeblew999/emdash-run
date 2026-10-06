@@ -6,12 +6,15 @@ whether it makes the harness more reusable or more trustworthy.
 
 ## How it is built
 
-- **`mise.toml`** — settings and task names. Everything that names a project is in the PROJECT
-  SETTINGS block. Nothing else in the repo should.
+- **`mise.toml`** — the project's settings, and nothing else. It is the only file that names a
+  project.
+- **`.config/mise/conf.d/harness.toml`** — the harness's mise config: tools, task names, daemons.
+  mise loads it alongside `mise.toml`. A consumer repo never edits it; `mise run upgrade` replaces
+  it together with `nu/`. So nothing project-specific may ever go in it, or in `nu/`.
 - **`nu/`** — the logic, in nushell. `main.nu` has one command per task; `lib.nu`, `site.nu`,
   `plugin.nu`, `checks.nu` and `registry.nu` hold what they are made of; `tests.nu` tests the pure
   parts. Read [`nushell.md`](nushell.md) before editing any of it.
-- **`config/`** — our site config, copied over the template by `mise run dev`.
+- **`config/`** — the project's site config and seed, copied over the template by `mise run dev`.
 - **`.src/`** — gitignored checkouts: the template, the site, the EmDash source. **Never edit
   anything under `.src/`** — it is overwritten. Change `config/` or `nu/` and run `mise run dev`.
 

@@ -24,12 +24,13 @@ def refresh [] {
 
 # First time on a machine: template, install, config, hooks — then bring the site up.
 def "main setup" [] {
+  site ensure-ignored
   step "template"
   site clone-templates
   site copy-template
   step "install"
   site install
-  ^git -C $env.ROOT config core.hooksPath .githooks
+  if ($env.ROOT | path join ".githooks" | path exists) { ^git -C $env.ROOT config core.hooksPath .githooks }
   refresh
   site urls
 }

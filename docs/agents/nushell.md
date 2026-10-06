@@ -1,18 +1,19 @@
 # Working in `nu/`
 
-The logic of every task is nushell, in `nu/`. `mise.toml` only names the tasks.
+The logic of every task is nushell, in `nu/`. `.config/mise/conf.d/harness.toml` only names the
+tasks, and `mise.toml` is the project's settings.
 
 ## Shape
 
 ```
-mise.toml        [tasks.deploy]  run = "nu --no-config-file {{config_root}}/nu/main.nu deploy"
+harness.toml     [tasks.deploy]  run = "nu --no-config-file {{config_root}}/nu/main.nu deploy"
 nu/main.nu       def "main deploy" [--dry, --build-only, --no-check] { … }     one per task
 nu/site.nu  plugin.nu  checks.nu  registry.nu                                  what flows are made of
 nu/lib.nu        shared helpers — anything two flows need
 nu/tests.nu      unit tests for the pure functions
 ```
 
-- **Adding a flow:** write `def "main <name>"` in `main.nu`, add the task to `mise.toml`, run
+- **Adding a flow:** write `def "main <name>"` in `main.nu`, add the task to `harness.toml`, run
   `mise run check -- --fix`. `check` fails if a task names a command that does not exist, or a
   command has no task.
 - **Arguments are nushell's.** Positional parameters, `--flags` and `--help` come from the `def`
@@ -47,7 +48,7 @@ nu/tests.nu      unit tests for the pure functions
   `emdash-json`.
 - **EmDash's file commands default to `./data.db`**, which a Cloudflare site never uses. `doctor`,
   `seed` and `export-seed` must be given `devdb`, or they report on an empty file.
-- **`EMDASH_TOKEN` and `EMDASH_REGISTRY_URL` are unset in `mise.toml` on purpose.** The CLIs read
+- **`EMDASH_TOKEN` and `EMDASH_REGISTRY_URL` are unset in `harness.toml` on purpose.** The CLIs read
   them, and a stale value from an old shell silently redirects every call.
 - **A closure cannot capture a `mut`.** Copy it into a `let` first.
 - **`insert` errors on an existing column; `upsert` overwrites.**
