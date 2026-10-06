@@ -538,7 +538,6 @@ def "main verify linux" [] {
 def "main source" [name: string = "emdash"] { site clone-source $name }
 
 # The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
-def --wrapped "main emdash" [...args: string] { emdash ...$args }
 def --wrapped "main emdash-plugin" [...args: string] { plugin cli ...$args }
 
 # Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.

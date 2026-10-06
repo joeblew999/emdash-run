@@ -14,7 +14,9 @@ export const port = process.env.SITE_PORT ?? "4321";
 export const url = `http://localhost:${port}`;
 const windows = process.platform === "win32";
 
-export const step = (text) => console.log(`→ ${text}`);
+const began = Date.now();
+// Each step says how far into the stage it started, so a slow one shows itself.
+export const step = (text) => console.log(`→ ${text}  (+${Math.round((Date.now() - began) / 1000)}s)`);
 export const ok = (text) => console.log(`  ✓ ${text}`);
 export function fail(text, hint) {
 	console.error(`✗ ${text}`);
@@ -78,7 +80,8 @@ export function stopServer() {
 	return true;
 }
 export async function startServer() {
-	if (serverPid() !== null && (await answers(url))) return false;
+	// Whoever started it, a site that answers on this project's port is left alone.
+	if (await answers(url)) return false;
 	stopServer();
 	mkdirSync(runDir, { recursive: true });
 	const log = openSync(join(runDir, "site.log"), "w");

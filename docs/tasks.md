@@ -109,6 +109,16 @@ Remove a plugin and bring the site back up without it
 ### Arguments
 - **`[args]…`**
 
+## `prove`
+
+Do the stages really work, from nothing, on this machine? Runs them in a throwaway project. --git <url> <ref> fetches them the way a real project does
+
+
+- **Usage:** `prove [args]…`
+
+### Arguments
+- **`[args]…`**
+
 ## `reset`
 
 Start the local site again from its seed. Wipes the local database; your site/ is untouched
@@ -149,6 +159,16 @@ Save the site's content as a package. --database backs up everything, users incl
 ### Arguments
 - **`[args]…`**
 
+## `start`
+
+I want to work on this site: makes it if there is none, installs, starts it, signs you in
+
+
+- **Usage:** `start [args]…`
+
+### Arguments
+- **`[args]…`**
+
 ## `status`
 
 What is running, and on which versions
@@ -158,6 +178,12 @@ What is running, and on which versions
 
 ### Arguments
 - **`[args]…`**
+
+## `stop`
+
+- **Usage:** `stop`
+
+Stop the site this project's start started
 
 ## `upgrade`
 

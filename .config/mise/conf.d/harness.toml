@@ -170,10 +170,6 @@ extends = "harness"
 hide = true
 description = "Clone or update a reference checkout under .src/ for reading: emdash (the default — EmDash's source at the version the site runs), templates, or emdashcms.com (EmDash's own production site)"
 
-[tasks.emdash]
-extends = "harness"
-description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
-
 [tasks.emdash-plugin]
 extends = "harness"
 description = "The plugin registry, through the official plugin CLI — e.g: mise run emdash-plugin -- search translate"

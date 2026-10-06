@@ -28,3 +28,8 @@ PLUGIN_SECURITY_URL = "https://github.com/joeblew999/emdash-run/security/advisor
 # What `doctor` asserts about live content: this collection has entries, and they carry data.
 # Empty skips the check.
 VERIFY_COLLECTION = "posts"
+
+# The stage tasks — start, emdash, stop, prove — come from tasks.toml, as they do in any project.
+# Here it is the file beside this one; elsewhere it is one line naming this repo at a tag.
+[task_config]
+includes = ["tasks.toml"]

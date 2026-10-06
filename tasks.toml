@@ -14,3 +14,14 @@ description = "Anything else in EmDash, through its official CLI — e.g: mise r
 tools = { node = "26.10.0", pnpm = "12.9.1" }
 usage = 'arg "[args]" var=#true'
 run = 'node "{{ env.MISE_TASK_DIR }}/stages/emdash.mjs"'
+
+[stop]
+description = "Stop the site this project's start started"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = 'node "{{ env.MISE_TASK_DIR }}/stages/stop.mjs"'
+
+[prove]
+description = "Do the stages really work, from nothing, on this machine? Runs them in a throwaway project. --git <url> <ref> fetches them the way a real project does"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+usage = 'arg "[args]" var=#true'
+run = 'node "{{ env.MISE_TASK_DIR }}/stages/prove.mjs"'
