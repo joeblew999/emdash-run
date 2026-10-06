@@ -60,7 +60,7 @@ which of those lessons a check now enforces.
 
 | command | what it tells you |
 |---|---|
-| `mise run check` | the harness holds together: modules parse, tasks and commands agree, checkers catch planted faults, task arguments arrive, unit tests, formatting, generated docs, skills, no symlinks, plugins |
+| `mise run check` | the harness holds together: modules parse, tasks and commands agree, checkers catch planted faults, task arguments arrive, unit tests, formatting, generated docs, no symlinks, plugins |
 | `mise run check -- --site` | also type-checks the site — a running site is not touched |
 | `mise run doctor` | the **running** site matches the repo: database health, plugins, content, and the settings-driven cross-checks |
 | `mise run doctor -- --url <url>` | the same for a deployment: core migrations (Cloudflare), content model, content |
@@ -84,5 +84,5 @@ which of those lessons a check now enforces.
   `emdash-cli`) so they exist on a fresh clone. Read them before working on EmDash itself. `dev`
   refreshes them from EmDash's source at the version the site is pinned to (`.src/emdash/skills`) —
   not from the template's copy in `site/`, which stays at whatever the template was synced from.
-  `check` fails if they drift, wherever that source is checked out.
+  Nothing checks them: after an EmDash upgrade, commit what `dev` changed there.
 - **mise skills are machine-level** (`~/.claude/skills/`), not this repo's.

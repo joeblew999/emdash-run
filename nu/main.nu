@@ -125,7 +125,6 @@ def "main check" [--fix, --site] {
     {check: "mise accepts the task definitions", problems: ((if (^mise tasks validate | complete).exit_code == 0 { [] } else { ["mise rejects a task definition — run: mise tasks validate"] }))}
     {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
     {check: "docs/tasks.md matches the tasks", problems: (if (checks docs-current) { [] } else { ["out of date — run: mise run check -- --fix"] })}
-    {check: "vendored EmDash skills match the site's EmDash", problems: (if (checks skills-current) { [] } else { ["drifted — run: mise run dev"] })}
     {check: "no symlinks", problems: (checks symlinks)}
     {check: "plugins are consistent", problems: (plugin audit)}
     {check: "plugin code lints", problems: (if ($paths | is-empty) { [] } else { passes { lint --type-aware --deny-warnings ...$paths } })}

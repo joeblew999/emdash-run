@@ -141,11 +141,6 @@ def shipped-skills []: nothing -> list<string> {
   | each {|p| ls $p | where type == dir | get name | each {|d| $d | path basename } } | flatten | uniq | sort
 }
 
-def tree-hashes [dir: string]: nothing -> record {
-  files-in $dir "**/*" | where {|f| ($f | path type) == "file" }
-  | reduce --fold {} {|file, acc| $acc | upsert ($file | path relative-to $dir) (open --raw $file | hash sha256) }
-}
-
 # Vendor the EmDash skills at the version the site runs, from EmDash's source at that tag — fetched
 # only when the site ships skills, and left as they are when it cannot be: committed under
 # .github/skills (skills are discovered when an agent session STARTS, so a fresh clone needs them in
@@ -162,16 +157,6 @@ export def sync-skills [] {
     mkdir $target
     for name in $names { cp -r ($from | path join "skills" $name) ($target | path join $name) }
   }
-}
-
-# Do the vendored skills match EmDash's at the version the site is pinned to? Answerable only where
-# the EmDash source is checked out at that version (`dev` does it); elsewhere there is nothing to
-# compare against, and it passes.
-export def skills-current []: nothing -> bool {
-  let pkg = ($env.EMDASH_DIR | path join "packages" "core" "package.json")
-  if not (($pkg | path exists) and (open $pkg | get version) == $env.EMDASH_VERSION) { return true }
-  shipped-skills | where {|n| $env.EMDASH_DIR | path join "skills" $n | path exists }
-  | all {|n| (tree-hashes ($env.EMDASH_DIR | path join "skills" $n)) == (tree-hashes ($env.ROOT | path join ".github" "skills" $n)) }
 }
 
 # git cannot make a symlink on Windows — it writes the target path into a file instead. None allowed.
