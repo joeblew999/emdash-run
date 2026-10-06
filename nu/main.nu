@@ -59,6 +59,8 @@ def "main setup" [] {
 
 # Bring the site up on the current config, seed and plugins. Run it after any change.
 def "main dev" [] {
+  # The first time on a machine there is nothing installed yet: do all of it.
+  if (site installed-version | is-empty) { main setup; return }
   refresh
   site urls
 }
@@ -71,7 +73,7 @@ def "main status" [] {
   print $"  harness   ($env.HARNESS_VERSION)"
   let lag = (site template-lag)
   print $"  template  ($env.TEMPLATE)(if ($lag | is-empty) { '' } else { $' — ($lag)' })"
-  print $"  emdash    (site installed-version | default --empty 'not installed — run: mise run setup')"
+  print $"  emdash    (site installed-version | default --empty 'not installed — run: mise run dev')"
   print $"  site      (if $site_up { $'running at (site-url)' } else { 'stopped — run: mise run dev' })"
   print $"  plugins   (if ($plugins | is-empty) { 'none — make one: mise run plugin:new -- <name>' } else { $plugins | str join ', ' })"
   print $"  sources   (site source-heads | str join ', ')"

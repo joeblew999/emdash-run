@@ -156,7 +156,7 @@ mise run verify                   does it all work on this machine? what CI runs
 mise run report                   something broke? prints what to paste into an issue
 ```
 
-Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 22;
+Each task is a **flow** — one command for a whole job. `mise tasks ls` lists all 18;
 [`docs/tasks.md`](docs/tasks.md) is the same list. Add `-- --help` to any of them.
 
 ## Back up, and move content

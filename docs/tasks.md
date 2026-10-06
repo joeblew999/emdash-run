@@ -1,6 +1,6 @@
 ## `check`
 
-Everything that must hold before a commit. --fix repairs formatting and generated docs; --site also type-checks the site
+Before a commit: is the project sound? --fix repairs formatting; --site also type-checks the site
 
 
 - **Usage:** `check [args]…`
@@ -11,7 +11,7 @@ Everything that must hold before a commit. --fix repairs formatting and generate
 
 ## `deploy`
 
-Check, build, deploy to Cloudflare, then verify what is live. --dry builds without deploying
+Go live: check, build, ship to Cloudflare, then verify what is live. --dry builds without shipping
 
 
 - **Usage:** `deploy [args]…`
@@ -21,7 +21,7 @@ Check, build, deploy to Cloudflare, then verify what is live. --dry builds witho
 
 ## `dev`
 
-Bring the site up on the current config, seed and plugins — run it after any change
+Start working. Brings the site up — the first time it also creates and installs it. Run it again after you change settings or a plugin; page edits reload by themselves
 
 
 - **Usage:** `dev [args]…`
@@ -31,7 +31,7 @@ Bring the site up on the current config, seed and plugins — run it after any c
 
 ## `doctor`
 
-Is the running site what the repo says it is? --url <deployment> checks a deployed one
+Is the running site healthy, and what the repo says it is? --url <deployment> asks a live one
 
 
 - **Usage:** `doctor [args]…`
@@ -41,7 +41,7 @@ Is the running site what the repo says it is? --url <deployment> checks a deploy
 
 ## `emdash`
 
-The official emdash CLI — e.g: mise run emdash -- schema list
+Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts
 
 
 - **Usage:** `emdash [args]…`
@@ -51,7 +51,7 @@ The official emdash CLI — e.g: mise run emdash -- schema list
 
 ## `emdash-plugin`
 
-The official plugin CLI — e.g: mise run emdash-plugin -- login
+The plugin registry, through the official plugin CLI — e.g: mise run emdash-plugin -- search translate
 
 
 - **Usage:** `emdash-plugin [args]…`
@@ -61,7 +61,7 @@ The official plugin CLI — e.g: mise run emdash-plugin -- login
 
 ## `logs`
 
-Follow the site's logs. --deployed follows the live Worker
+Follow the site's log. --deployed follows the live site
 
 
 - **Usage:** `logs [args]…`
@@ -71,7 +71,7 @@ Follow the site's logs. --deployed follows the live Worker
 
 ## `open`
 
-Open the admin in a browser, signed in
+Open the admin in your browser, signed in
 
 
 - **Usage:** `open [args]…`
@@ -81,7 +81,7 @@ Open the admin in a browser, signed in
 
 ## `plugin:new`
 
-Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it
+Make a new plugin and load it into the running site — e.g: mise run plugin:new -- my-plugin
 
 
 - **Usage:** `plugin:new [args]…`
@@ -91,7 +91,7 @@ Scaffold a plugin with the official CLI, fit it to this site, load it, and have 
 
 ## `plugin:release`
 
-Validate, typecheck, test, build and bundle plugins — everything short of publishing
+Get your plugins ready to publish: validate, test, build, bundle
 
 
 - **Usage:** `plugin:release [args]…`
@@ -109,19 +109,9 @@ Remove a plugin and bring the site back up without it
 ### Arguments
 - **`[args]…`**
 
-## `report`
-
-Something broke? Prints your versions, status and recent site log, ready to paste into an issue
-
-
-- **Usage:** `report [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `reset`
 
-Wipe the local database and uploads, then bring the site back up on its seed. Your site/ is untouched
+Start the local site again from its seed. Wipes the local database; your site/ is untouched
 
 
 - **Usage:** `reset [args]…`
@@ -131,7 +121,7 @@ Wipe the local database and uploads, then bring the site back up on its seed. Yo
 
 ## `restore`
 
-Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it (or finishes an interrupted one), --wipe empties the local site first. Given a backup directory, puts that database back
+Put a snapshot or a backup back. Shows the plan; --confirm does it; --wipe empties the local site first
 
 
 - **Usage:** `restore [args]…`
@@ -141,7 +131,7 @@ Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it (or
 
 ## `rollback`
 
-Put the previous deployment back, then verify what is live
+Undo the last deploy
 
 
 - **Usage:** `rollback [args]…`
@@ -149,29 +139,9 @@ Put the previous deployment back, then verify what is live
 ### Arguments
 - **`[args]…`**
 
-## `seed:export`
-
-Export the running site's model and content as a seed, to review against the project's
-
-
-- **Usage:** `seed:export [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `setup`
-
-First time here: create site/ from the template (once), install, then bring the site up
-
-
-- **Usage:** `setup [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `snapshot`
 
-Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --database backs up the database itself instead. --url does either for a deployment
+Save the site's content as a package. --database backs up everything, users included. --url takes it from a live site
 
 
 - **Usage:** `snapshot [args]…`
@@ -179,19 +149,9 @@ Save the site — schema, content and media — as a .emdash package (not users,
 ### Arguments
 - **`[args]…`**
 
-## `source`
-
-Clone or update a reference checkout under .src/ for reading: emdash (the default — EmDash's source at the version the site runs), templates, or emdashcms.com (EmDash's own production site)
-
-
-- **Usage:** `source [args]…`
-
-### Arguments
-- **`[args]…`**
-
 ## `status`
 
-What is running, and on what: harness, template, EmDash, site, plugins, deployment
+What is running, and on which versions
 
 
 - **Usage:** `status [args]…`
@@ -201,7 +161,7 @@ What is running, and on what: harness, template, EmDash, site, plugins, deployme
 
 ## `upgrade`
 
-Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml with the latest release, then runs check. -- <tag> or -- main picks another
+Take a newer version of these tasks. -- main takes the development branch
 
 
 - **Usage:** `upgrade [args]…`
@@ -211,7 +171,7 @@ Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml with the
 
 ## `verify`
 
-Does this project work on THIS machine? Site up, check, doctor. --full adds a plugin round trip, a snapshot and a build; --restore also wipes the local database and restores it
+Prove everything works on this machine: site up, check, doctor. --full adds plugins, a snapshot and a build
 
 
 - **Usage:** `verify [args]…`

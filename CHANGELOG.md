@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- **Fewer tasks: 22 where there were 32.** `mise tasks ls` now lists the flows and the two official
+- **`dev` is the one way in.** The first time it creates and installs the site as well; `setup`
+  still exists for the installer. `mise run emdash -- <command> --help` works (the flag was lost).
+- **Fewer tasks: 18 where there were 32**, each described by the job it does. `mise tasks ls` now lists the flows and the two official
   CLIs. Gone: `registry:up` and `registry:down` (the local plugin registry — it built the EmDash
   monorepo and edited the site's committed config; the hosted registry is what a site uses),
   `plugin:dev`, `content:set`, `schema:diff` and `skills` (each one line around a CLI that

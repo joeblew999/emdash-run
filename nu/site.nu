@@ -133,7 +133,7 @@ export def installed-version []: nothing -> string { emdash-in $env.SITE_DIR }
 # install in place. The site, and its data, stay.
 export def sync-version [] {
   let have = (installed-version)
-  if ($have | is-empty) { fail "site/ is not installed" "run: mise run setup" }
+  if ($have | is-empty) { fail "site/ is not installed" "run: mise run dev" }
   if $have == $env.EMDASH_VERSION { return }
   step $"EmDash ($have) → ($env.EMDASH_VERSION)"
   version-set | ignore
@@ -209,7 +209,7 @@ export def enable-local-plugins []: nothing -> bool {
 # What `dev` makes sure of before the site starts: an encryption key, the generated plugin
 # registration, and a seed EmDash will accept — it silently skips an invalid one.
 export def prepare [registration: string] {
-  if not (site-file "package.json" | path exists) { fail "there is no site/ yet" "run: mise run setup" }
+  if not (site-file "package.json" | path exists) { fail "there is no site/ yet" "run: mise run dev" }
   ensure-key
   # Written only when it differs: the config imports it, and a touched file reloads the server.
   if not (holds (site-file "local-plugins.mjs") $registration) { $registration | save --force (site-file "local-plugins.mjs") }

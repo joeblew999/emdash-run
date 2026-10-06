@@ -63,60 +63,62 @@ run = "nu --no-config-file {{config_root}}/nu/task.nu"
 
 [tasks.setup]
 extends = "harness"
+hide = true
 description = "First time here: create site/ from the template (once), install, then bring the site up"
 
 [tasks.dev]
 extends = "harness"
-description = "Bring the site up on the current config, seed and plugins — run it after any change"
+description = "Start working. Brings the site up — the first time it also creates and installs it. Run it again after you change settings or a plugin; page edits reload by themselves"
 
 [tasks.status]
 extends = "harness"
-description = "What is running, and on what: harness, template, EmDash, site, plugins, deployment"
+description = "What is running, and on which versions"
 
 [tasks.report]
 extends = "harness"
+hide = true
 description = "Something broke? Prints your versions, status and recent site log, ready to paste into an issue"
 
 [tasks.check]
 extends = "harness"
-alias = "pre-commit"                                                                                                                     # what the git hook runs
-description = "Everything that must hold before a commit. --fix repairs formatting and generated docs; --site also type-checks the site"
+alias = "pre-commit"                                                                                              # what the git hook runs
+description = "Before a commit: is the project sound? --fix repairs formatting; --site also type-checks the site"
 
 [tasks.doctor]
 extends = "harness"
-description = "Is the running site what the repo says it is? --url <deployment> checks a deployed one"
+description = "Is the running site healthy, and what the repo says it is? --url <deployment> asks a live one"
 
 [tasks.deploy]
 extends = "harness"
-description = "Check, build, deploy to Cloudflare, then verify what is live. --dry builds without deploying"
+description = "Go live: check, build, ship to Cloudflare, then verify what is live. --dry builds without shipping"
 
 [tasks.rollback]
 extends = "harness"
-description = "Put the previous deployment back, then verify what is live"
+description = "Undo the last deploy"
 
 [tasks.snapshot]
 extends = "harness"
-description = "Save the site — schema, content and media — as a .emdash package (not users, tokens or plugin data). --database backs up the database itself instead. --url does either for a deployment"
+description = "Save the site's content as a package. --database backs up everything, users included. --url takes it from a live site"
 
 [tasks.restore]
 extends = "harness"
-description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it (or finishes an interrupted one), --wipe empties the local site first. Given a backup directory, puts that database back"
+description = "Put a snapshot or a backup back. Shows the plan; --confirm does it; --wipe empties the local site first"
 
 [tasks.reset]
 extends = "harness"
-description = "Wipe the local database and uploads, then bring the site back up on its seed. Your site/ is untouched"
+description = "Start the local site again from its seed. Wipes the local database; your site/ is untouched"
 
 [tasks.logs]
 extends = "harness"
-description = "Follow the site's logs. --deployed follows the live Worker"
+description = "Follow the site's log. --deployed follows the live site"
 
 [tasks.open]
 extends = "harness"
-description = "Open the admin in a browser, signed in"
+description = "Open the admin in your browser, signed in"
 
 [tasks."plugin:new"]
 extends = "harness"
-description = "Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it"
+description = "Make a new plugin and load it into the running site — e.g: mise run plugin:new -- my-plugin"
 
 [tasks."plugin:probe"]
 extends = "harness"
@@ -134,19 +136,20 @@ description = "Prove the plugin toolchain end to end with a throwaway plugin: sc
 
 [tasks."plugin:release"]
 extends = "harness"
-description = "Validate, typecheck, test, build and bundle plugins — everything short of publishing"
+description = "Get your plugins ready to publish: validate, test, build, bundle"
 
 [tasks."seed:export"]
 extends = "harness"
+hide = true
 description = "Export the running site's model and content as a seed, to review against the project's"
 
 [tasks.upgrade]
 extends = "harness"
-description = "Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml with the latest release, then runs check. -- <tag> or -- main picks another"
+description = "Take a newer version of these tasks. -- main takes the development branch"
 
 [tasks.verify]
 extends = "harness"
-description = "Does this project work on THIS machine? Site up, check, doctor. --full adds a plugin round trip, a snapshot and a build; --restore also wipes the local database and restores it"
+description = "Prove everything works on this machine: site up, check, doctor. --full adds plugins, a snapshot and a build"
 
 [tasks."verify:template"]
 extends = "harness"
@@ -164,15 +167,16 @@ description = "The same verification in a clean Linux container with only git an
 
 [tasks.source]
 extends = "harness"
+hide = true
 description = "Clone or update a reference checkout under .src/ for reading: emdash (the default — EmDash's source at the version the site runs), templates, or emdashcms.com (EmDash's own production site)"
 
 [tasks.emdash]
 extends = "harness"
-description = "The official emdash CLI — e.g: mise run emdash -- schema list"
+description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
 
 [tasks.emdash-plugin]
 extends = "harness"
-description = "The official plugin CLI — e.g: mise run emdash-plugin -- login"
+description = "The plugin registry, through the official plugin CLI — e.g: mise run emdash-plugin -- search translate"
 
 [tasks.args]
 extends = "harness"
