@@ -48,7 +48,7 @@ export def nu-problems [dir: string]: nothing -> list<string> {
 
 # The subcommands main.nu defines.
 def commands [main: string]: nothing -> list<string> {
-  open --raw $main | parse --regex '(?m)^def "main (?<cmd>[^"]+)"' | get cmd
+  open --raw $main | parse --regex '(?m)^def (?:--wrapped )?"main (?<cmd>[^"]+)"' | get cmd
 }
 
 # mise.toml and the module must agree: every task runs a subcommand that exists, every subcommand
@@ -58,7 +58,7 @@ export def task-problems [toml: string, main: string]: nothing -> list<string> {
   let defined = (commands $main)
   let tasks = ($cfg.tasks | transpose name def)
   let called = ($tasks | each {|t|
-    let hits = ($t.def | get -o run | default "" | parse --regex 'main\.nu (?<cmd>[a-z][a-z -]*[a-z])$')
+    let hits = ($t.def | get -o run | default "" | parse --regex 'task\.nu (?<cmd>[a-z][a-z -]*[a-z])$')
     if ($hits | is-empty) { null } else { {task: $t.name, cmd: ($hits | first | get cmd)} }
   } | compact)
   let missing = ($called | where {|c| not ($c.cmd in $defined) } | each {|c| $"task ($c.task) runs `($c.cmd)`, which main.nu does not define" })
@@ -68,7 +68,19 @@ export def task-problems [toml: string, main: string]: nothing -> list<string> {
     let ref = ($d.def.run | parse --regex 'mise run (?<task>\S+)' | get -o task.0 | default "")
     if ($ref in $names) { null } else { $"daemon ($d.name) runs `mise run ($ref)`, which is not a task" }
   } | compact)
-  $missing | append $orphans | append $daemons
+  # Without a usage spec mise appends the arguments itself — and on Windows, drops them.
+  let no_usage = ($tasks | where {|t| ($t.def | get -o usage | default "") != 'arg "[args]" var=#true' } | each {|t| $"task ($t.name) has no usage spec — its arguments would be dropped on Windows" })
+  $missing | append $orphans | append $daemons | append $no_usage
+}
+
+# Do a task's arguments arrive, intact? Asked through mise itself, because that is where they were
+# lost: on Windows mise does not append arguments to a command, so every task declares a `usage`
+# spec and task.nu reads them from the environment. Spaces, JSON, quotes and flags must survive.
+export def argument-problems []: nothing -> list<string> {
+  let sent = ["alpha" "two words" '{"k":1}' "it's" "--flag"]
+  let result = (^mise run args ...$sent | complete)
+  let got = ($result.stdout | lines | where {|l| $l | str starts-with "[" } | get -o 0 | default "")
+  if $got == ($sent | to json --raw) { [] } else { [$"sent ($sent | to json --raw) and the command received ($got) ($result.stderr | lines | last 2 | str join ' ')"] }
 }
 
 # A check that cannot fail is worse than none. Each fault below has really happened here; it is
@@ -96,7 +108,7 @@ export def selftest-problems []: nothing -> list<string> {
   rm -rf $scratch
   mkdir $scratch
   let planted = ($scratch | path join "mise.toml")
-  $"(open --raw $toml)(char nl)[tasks.planted](char nl)run = \"nu main.nu no such command\"(char nl)" | save $planted
+  $"(open --raw $toml)(char nl)[tasks.planted](char nl)run = \"nu task.nu no such command\"(char nl)" | save $planted
   let task_missed = (if (task-problems $planted ($nu_dir | path join "main.nu") | is-empty) { ["the task check passed a task that runs a missing command"] } else { [] })
   rm -rf $scratch
   $nu_missed | append $task_missed

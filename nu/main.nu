@@ -101,6 +101,7 @@ def "main check" [--fix, --site] {
     {check: "nushell modules parse and type-check", problems: (checks nu-problems $nu_dir)}
     {check: "tasks, commands and daemons agree", problems: (checks task-problems (harness-file) ($nu_dir | path join "main.nu"))}
     {check: "the checkers catch planted faults", problems: (checks selftest-problems)}
+    {check: "task arguments reach commands", problems: (checks argument-problems)}
     {check: "unit tests", problems: (passes { ^nu --no-config-file ($nu_dir | path join "tests.nu") })}
     {check: "mise accepts the task definitions", problems: (passes { ^mise tasks validate | ignore })}
     {check: "mise.toml is formatted", problems: (passes { ^mise fmt --check })}
@@ -420,6 +421,14 @@ def "main verify linux" [] {
 
 # Clone the EmDash source at the version the site runs, into .src/emdash, for reading.
 def "main source" [] { site clone-emdash }
+
+# The official CLIs, any arguments. Wrapped, so flags go to the CLI rather than being parsed here.
+def --wrapped "main emdash" [...args: string] { emdash ...$args }
+def --wrapped "main emdash-plugin" [...args: string] { ^emdash-plugin ...$args }
+def --wrapped "main skills" [...args: string] { ^skills ...$args }
+
+# Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.
+def --wrapped "main args" [...args: string] { print ($args | to json --raw) }
 
 # What the daemons run. Not for typing: `mise run dev` and `mise run registry:up` start them.
 def "main daemon site" [] { site serve }

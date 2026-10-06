@@ -21,6 +21,41 @@ export def code [block: closure]: nothing -> int {
 # The harness-owned mise config: tools, tasks, daemons.
 export def harness-file []: nothing -> string { $env.ROOT | path join ".config" "mise" "conf.d" "harness.toml" }
 
+# Split a shell-quoted string into its arguments — what mise puts in `usage_args`. POSIX quoting:
+# single quotes are literal, double quotes allow backslash escapes, a backslash escapes one character.
+export def split-args [text: string]: nothing -> list<string> {
+  mut out = []
+  mut word = ""
+  mut in_word = false
+  mut mode = "plain"
+  mut escaped = false
+  for ch in ($text | split chars) {
+    if $escaped {
+      $word += $ch
+      $escaped = false
+      $in_word = true
+    } else if $mode == "single" {
+      if $ch == "'" { $mode = "plain" } else { $word += $ch }
+    } else if $mode == "double" {
+      if $ch == '"' { $mode = "plain" } else if $ch == '\' { $escaped = true } else { $word += $ch }
+    } else if $ch == "'" {
+      $mode = "single"
+      $in_word = true
+    } else if $ch == '"' {
+      $mode = "double"
+      $in_word = true
+    } else if $ch == '\' {
+      $escaped = true
+    } else if $ch == " " {
+      if $in_word { $out = ($out | append $word); $word = ""; $in_word = false }
+    } else {
+      $word += $ch
+      $in_word = true
+    }
+  }
+  if $in_word { $out | append $word } else { $out }
+}
+
 # A value from the environment, or "" when it is unset. Settings are optional by design.
 export def setting [name: string]: nothing -> string {
   $env | get -o $name | default "" | into string

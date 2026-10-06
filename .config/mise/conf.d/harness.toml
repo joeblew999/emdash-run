@@ -60,152 +60,194 @@ _.file = "{{config_root}}/run/token-admin.env"
 EMDASH_TOKEN = false
 EMDASH_REGISTRY_URL = false
 
+# Every task runs one command in nu/main.nu, through nu/task.nu, and declares the same `usage`
+# spec: that is how its arguments reach it on every OS (mise does not append them on Windows).
+# `check` fails if a task is missing either.
 # ── flows ───────────────────────────────────────────────────────────────────────────────────
 
 [tasks.setup]
+usage = 'arg "[args]" var=#true'
 description = "First time here: clone the template, install, apply config, then bring the site up"
-run = "nu --no-config-file {{config_root}}/nu/main.nu setup"
+run = "nu --no-config-file {{config_root}}/nu/task.nu setup"
 
 [tasks.dev]
+usage = 'arg "[args]" var=#true'
 description = "Bring the site up on the current config, seed and plugins — run it after any change"
-run = "nu --no-config-file {{config_root}}/nu/main.nu dev"
+run = "nu --no-config-file {{config_root}}/nu/task.nu dev"
 
 [tasks.status]
+usage = 'arg "[args]" var=#true'
 description = "What is running, and on what: harness, template, EmDash, site, plugins, deployment"
-run = "nu --no-config-file {{config_root}}/nu/main.nu status"
+run = "nu --no-config-file {{config_root}}/nu/task.nu status"
 
 [tasks.report]
+usage = 'arg "[args]" var=#true'
 description = "Something broke? Prints your versions, status and recent site log, ready to paste into an issue"
-run = "nu --no-config-file {{config_root}}/nu/main.nu report"
+run = "nu --no-config-file {{config_root}}/nu/task.nu report"
 
 [tasks.check]
+usage = 'arg "[args]" var=#true'
 description = "Everything that must hold before a commit. --fix repairs formatting and generated docs; --site also type-checks the site"
-run = "nu --no-config-file {{config_root}}/nu/main.nu check"
+run = "nu --no-config-file {{config_root}}/nu/task.nu check"
 
 [tasks.doctor]
+usage = 'arg "[args]" var=#true'
 description = "Is the running site what the repo says it is? --url <deployment> checks a deployed one"
-run = "nu --no-config-file {{config_root}}/nu/main.nu doctor"
+run = "nu --no-config-file {{config_root}}/nu/task.nu doctor"
 
 [tasks.deploy]
+usage = 'arg "[args]" var=#true'
 description = "Check, build, deploy to Cloudflare, then verify what is live. --dry builds without deploying"
-run = "nu --no-config-file {{config_root}}/nu/main.nu deploy"
+run = "nu --no-config-file {{config_root}}/nu/task.nu deploy"
 
 [tasks.rollback]
+usage = 'arg "[args]" var=#true'
 description = "Put the previous deployment back, then verify what is live"
-run = "nu --no-config-file {{config_root}}/nu/main.nu rollback"
+run = "nu --no-config-file {{config_root}}/nu/task.nu rollback"
 
 [tasks.snapshot]
+usage = 'arg "[args]" var=#true'
 description = "Save the whole site — schema and content — as a .emdash package. --url snapshots a deployment"
-run = "nu --no-config-file {{config_root}}/nu/main.nu snapshot"
+run = "nu --no-config-file {{config_root}}/nu/task.nu snapshot"
 
 [tasks.restore]
+usage = 'arg "[args]" var=#true'
 description = "Restore a snapshot into an EMPTY site: shows the plan, --confirm executes it, --wipe empties the local site first"
-run = "nu --no-config-file {{config_root}}/nu/main.nu restore"
+run = "nu --no-config-file {{config_root}}/nu/task.nu restore"
 
 [tasks.reset]
+usage = 'arg "[args]" var=#true'
 description = "Wipe the local database and bring the site back up on the seed. --site / --all wipe more"
-run = "nu --no-config-file {{config_root}}/nu/main.nu reset"
+run = "nu --no-config-file {{config_root}}/nu/task.nu reset"
 
 [tasks.logs]
+usage = 'arg "[args]" var=#true'
 description = "Follow the site's logs. --deployed follows the live Worker"
-run = "nu --no-config-file {{config_root}}/nu/main.nu logs"
+run = "nu --no-config-file {{config_root}}/nu/task.nu logs"
 
 [tasks.open]
+usage = 'arg "[args]" var=#true'
 description = "Open the admin in a browser, signed in"
-run = "nu --no-config-file {{config_root}}/nu/main.nu open"
+run = "nu --no-config-file {{config_root}}/nu/task.nu open"
 
 [tasks."plugin:new"]
+usage = 'arg "[args]" var=#true'
 description = "Scaffold a plugin with the official CLI, fit it to this site, load it, and have the running site call it"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin new"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin new"
 
 [tasks."plugin:dev"]
+usage = 'arg "[args]" var=#true'
 description = "Rebuild a plugin on change"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin dev"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin dev"
 
 [tasks."plugin:probe"]
+usage = 'arg "[args]" var=#true'
 description = "Ask the running site to call a plugin's route — proof it is loaded, not just built"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin probe"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin probe"
 
 [tasks."plugin:remove"]
+usage = 'arg "[args]" var=#true'
 description = "Remove a plugin and bring the site back up without it"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin remove"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin remove"
 
 [tasks."plugin:roundtrip"]
+usage = 'arg "[args]" var=#true'
 description = "Prove the plugin toolchain end to end with a throwaway plugin: scaffold, load, call, remove"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin roundtrip"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin roundtrip"
 
 [tasks."plugin:release"]
+usage = 'arg "[args]" var=#true'
 description = "Validate, typecheck, test, build and bundle plugins — everything short of publishing"
-run = "nu --no-config-file {{config_root}}/nu/main.nu plugin release"
+run = "nu --no-config-file {{config_root}}/nu/task.nu plugin release"
 
 [tasks."content:set"]
+usage = 'arg "[args]" var=#true'
 description = "Set fields on a live entry — e.g: mise run content:set -- parts top-plate '{\"material\":\"Steel\"}'"
-run = "nu --no-config-file {{config_root}}/nu/main.nu content set"
+run = "nu --no-config-file {{config_root}}/nu/task.nu content set"
 
 [tasks."schema:diff"]
+usage = 'arg "[args]" var=#true'
 description = "Compare the repo's content model with the running site's, or a deployment's with --url"
-run = "nu --no-config-file {{config_root}}/nu/main.nu schema diff"
+run = "nu --no-config-file {{config_root}}/nu/task.nu schema diff"
 
 [tasks."seed:export"]
+usage = 'arg "[args]" var=#true'
 description = "Export the running site's model and content as a seed, to review against the project's"
-run = "nu --no-config-file {{config_root}}/nu/main.nu seed export"
+run = "nu --no-config-file {{config_root}}/nu/task.nu seed export"
 
 [tasks."registry:up"]
+usage = 'arg "[args]" var=#true'
 description = "Start the optional local plugin registry and point the site at it (builds the EmDash monorepo the first time)"
-run = "nu --no-config-file {{config_root}}/nu/main.nu registry up"
+run = "nu --no-config-file {{config_root}}/nu/task.nu registry up"
 
 [tasks."registry:down"]
+usage = 'arg "[args]" var=#true'
 description = "Stop the local registry — the site goes back to the hosted one"
-run = "nu --no-config-file {{config_root}}/nu/main.nu registry down"
+run = "nu --no-config-file {{config_root}}/nu/task.nu registry down"
 
 [tasks.upgrade]
+usage = 'arg "[args]" var=#true'
 description = "Take a newer harness: replaces nu/ and .config/mise/conf.d/harness.toml from emdash-run, then runs check. -- <tag> picks a version"
-run = "nu --no-config-file {{config_root}}/nu/main.nu upgrade"
+run = "nu --no-config-file {{config_root}}/nu/task.nu upgrade"
 
 [tasks.verify]
+usage = 'arg "[args]" var=#true'
 description = "Does this project work on THIS machine? Site up, check, doctor — what CI runs on every OS. --full adds a plugin round trip, a snapshot and a build"
-run = "nu --no-config-file {{config_root}}/nu/main.nu verify"
+run = "nu --no-config-file {{config_root}}/nu/task.nu verify"
 
 [tasks."verify:template"]
+usage = 'arg "[args]" var=#true'
 description = "Does the harness work on another template? Builds a throwaway project on it and runs verify — e.g: mise run verify:template -- starter (plain Node.js)"
-run = "nu --no-config-file {{config_root}}/nu/main.nu verify template"
+run = "nu --no-config-file {{config_root}}/nu/task.nu verify template"
 
 [tasks."verify:linux"]
+usage = 'arg "[args]" var=#true'
 description = "The same verification in a clean Linux container with only git and mise. Needs docker"
-run = "nu --no-config-file {{config_root}}/nu/main.nu verify linux"
+run = "nu --no-config-file {{config_root}}/nu/task.nu verify linux"
 
 [tasks.source]
+usage = 'arg "[args]" var=#true'
 description = "Clone the EmDash source at the version the site runs into .src/emdash, for reading"
-run = "nu --no-config-file {{config_root}}/nu/main.nu source"
+run = "nu --no-config-file {{config_root}}/nu/task.nu source"
 
 # ── the official CLIs, any arguments — `-- --help` documents them ────────────────────────────
 
 [tasks.emdash]
+usage = 'arg "[args]" var=#true'
 description = "The official emdash CLI — e.g: mise run emdash -- schema list"
-dir = "{{config_root}}/.src/site"
-run = "emdash"
+run = "nu --no-config-file {{config_root}}/nu/task.nu emdash"
 
 [tasks.emdash-plugin]
+usage = 'arg "[args]" var=#true'
 description = "The official plugin CLI — e.g: mise run emdash-plugin -- login"
-run = "emdash-plugin"
+run = "nu --no-config-file {{config_root}}/nu/task.nu emdash-plugin"
 
 [tasks.skills]
+usage = 'arg "[args]" var=#true'
 description = "The skills CLI — e.g: mise run skills -- list. Add with --copy: this repo allows no symlinks"
-run = "skills"
+run = "nu --no-config-file {{config_root}}/nu/task.nu skills"
 
 # ── not for typing: what the git hook and the daemons run ───────────────────────────────────
 
-[tasks.pre-commit]
+[tasks.args]
+usage = 'arg "[args]" var=#true'
 hide = true
-run = "nu --no-config-file {{config_root}}/nu/main.nu check"
+run = "nu --no-config-file {{config_root}}/nu/task.nu args"
+
+[tasks.pre-commit]
+usage = 'arg "[args]" var=#true'
+hide = true
+run = "nu --no-config-file {{config_root}}/nu/task.nu check"
 
 [tasks."daemon:site"]
+usage = 'arg "[args]" var=#true'
 hide = true
-run = "nu --no-config-file {{config_root}}/nu/main.nu daemon site"
+run = "nu --no-config-file {{config_root}}/nu/task.nu daemon site"
 
 [tasks."daemon:registry"]
+usage = 'arg "[args]" var=#true'
 hide = true
-run = "nu --no-config-file {{config_root}}/nu/main.nu daemon registry"
+run = "nu --no-config-file {{config_root}}/nu/task.nu daemon registry"
 
 # Values here reach pitchfork verbatim — mise does not expand templates in [daemons].
 [daemons.site]
