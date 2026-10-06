@@ -30,6 +30,7 @@ machine.
 | `mise run check` | everything before a commit; composes the rest |
 | `mise run repo:nu` | **nushell's own checker** over every task body |
 | `mise tasks validate` | mise's own checks on the task definitions (composed into `repo:check`) |
+| `mise fmt --check` | `mise.toml` is formatted by mise's own formatter (composed into `repo:check`) |
 | `mise run repo:sync` | a daemon in `pitchfork.toml` naming a task that does not exist |
 | `mise run doctor` | the live state: site database, plugin consistency, `repo:verify` |
 | `mise run site:check` | the site type-checks, including that `astro.config.mjs` loads |
@@ -49,6 +50,16 @@ It has already caught, in tasks that had never been run:
 invoked, so a malformed one fails at *use*, not at check time — `mise tasks ls`, `mise tasks info`
 and `mise tasks validate` all accept a broken spec (verified). Keep usage specs simple, and treat
 the first invocation of a task you just wrote as the check.
+
+**`mise fmt` formats `mise.toml`** — it sorts keys and normalises whitespace. oxfmt does not touch
+TOML, so before this was wired in, the file the whole repo depends on was the one file nothing
+formatted. Run `mise run repo:format` to fix it; `repo:check` fails if it drifts.
+
+**Two mise tools are available and deliberately unused**, so you know they exist: `mise watch`
+(rerun a task when files change — the plugin watch is `plugin:dev` instead) and `mise daemons`
+(manage the pitchfork daemons from mise's own `[daemons]` config). The second would fold
+`pitchfork.toml` into `mise.toml` and remove the whole "files that must agree" problem for it, but
+it is behind `mise settings experimental=true` — not enabled here.
 
 ## mise facts that are not obvious
 

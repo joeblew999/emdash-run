@@ -67,14 +67,14 @@
 jobs = 1
 
 [tools]
-node           = "26.10.0"
-pnpm           = "12.9.1"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
-pitchfork      = "2.29.0"      # process manager for the daemons
+node = "26.10.0"
+pnpm = "12.9.1"      # must match the site's packageManager (emdash@1.1.0 requires 11.9.0)
+pitchfork = "2.29.0" # process manager for the daemons
 # The shell the inline task scripts run under — `[task_config] shell = "nu -c"` below. A real
 # shell with typed values, paths and error handling, so a task body is not a pile of POSIX
 # incantations that only work on macOS and Linux. Pinned exactly: `latest` floats, and a task
 # shell that shifts under you is a bad place to discover that.
-nushell        = "0.116.1"
+nushell = "0.116.1"
 # Secrets. `fnox exec -- <cmd>` is how anything needing credentials runs: `site:deploy`,
 # and the R2 cross-checks in `repo:verify`.
 #
@@ -82,8 +82,8 @@ nushell        = "0.116.1"
 # providing it — so a fresh clone on another machine had no fnox, and both of those paths
 # would fail with a confusing error. Short form on purpose: mise maps `fnox` to
 # `github:jdx/fnox`, which is the same resolution the global config gets.
-fnox           = "1.36.0"
-"npm:skills"   = "1.7.0"       # Claude Code skills manager
+fnox = "1.36.0"
+"npm:skills" = "1.7.0" # Claude Code skills manager
 # Linters + formatter — the same ones the emdash monorepo uses, at the same versions it has
 # installed, so the ecosystem agrees on style AND the toolchain is known-good. Pinned here
 # rather than in a root package.json, because this repo has no root package: mise [tools] is
@@ -93,8 +93,8 @@ fnox           = "1.36.0"
 # oxlint-tsgolint, and a mismatch panics at run time rather than failing cleanly (oxlint
 # 1.86.0 + tsgolint 0.25.0 dies with `panic: unknown rule: no-generated-empty-object-type`).
 # Versions below are read from .src/emdash/node_modules — the pair that works there.
-"npm:oxlint"          = "1.86.0"
-"npm:oxfmt"           = "0.71.0"
+"npm:oxlint" = "1.86.0"
+"npm:oxfmt" = "0.71.0"
 "npm:oxlint-tsgolint" = "7.0.2003"
 # The sandboxed-plugin CLI (binary `emdash-plugin`). Scheduled here rather than borrowed from
 # whichever plugin happens to have it in node_modules — that borrowing meant `plugin:login`,
@@ -128,62 +128,62 @@ dir = "{{config_root}}/.src/site"
 # =============================================================================
 
 # Where this mise.toml lives.
-ROOT                   = "{{config_root}}"
+ROOT = "{{config_root}}"
 
 # Which official template to host — any directory in emdash-cms/templates.
-TEMPLATE               = "starter-cloudflare"
+TEMPLATE = "starter-cloudflare"
 
 # The EmDash version to pin the site to. `site:install` writes exactly this into the site's
 # package.json, for `emdash` and `@emdash-cms/cloudflare`.
-EMDASH_VERSION         = "1.1.0"
+EMDASH_VERSION = "1.1.0"
 
 # Where `mise run deploy` ships, and what `deploy` then verifies.
-DEPLOY_URL             = "https://emdash-run.gedw99.workers.dev"
+DEPLOY_URL = "https://emdash-run.gedw99.workers.dev"
 
 # The pitchfork daemon that runs the site — the name under [daemons.*] in pitchfork.toml.
-SITE_DAEMON            = "emdash"
+SITE_DAEMON = "emdash"
 
 # This project's hand-maintained seed: the source of truth for the content model. The template's
 # demo seed is merged INTO it by `seed:build`, and an export is never written back over it.
-SEED_FILE              = "{{config_root}}/config/cad.seed.json"
+SEED_FILE = "{{config_root}}/config/cad.seed.json"
 
 # The code you own, for lint and formatting. Absolute, so it does not depend on a task's working
 # directory; `:`-separated because an env var is a string.
-CODE_PATHS             = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
+CODE_PATHS = "{{config_root}}/plugins/plat-trunk/src:{{config_root}}/plugins/plat-trunk-sandboxed/src:{{config_root}}/plugins/plat-trunk-sandboxed/tests"
 
 # What `repo:verify` asserts about the RUNNING site: a collection whose entries carry a field that
 # names an object in an R2 bucket, and a stored snapshot of that object's manifest. The checks are
 # generic — these four names are the only domain knowledge in them.
-VERIFY_COLLECTION      = "parts"
-VERIFY_JOIN_FIELD      = "model_id"
-VERIFY_SNAPSHOT_FIELD  = "geometry_meta"
-VERIFY_BUCKET          = "cad-documents"
+VERIFY_COLLECTION = "parts"
+VERIFY_JOIN_FIELD = "model_id"
+VERIFY_SNAPSHOT_FIELD = "geometry_meta"
+VERIFY_BUCKET = "cad-documents"
 
 # =============================================================================
 # DERIVED — the layout below follows the official template; you should not need to change it.
 # =============================================================================
 
 # Gitignored working checkouts (see docs/plans/done/0007-emdash-1.1-templates-src-rework.md)
-SRC_DIR         = "{{config_root}}/.src"
-TEMPLATES_DIR   = "{{config_root}}/.src/templates"   # clone of emdash-cms/templates
-SITE_DIR        = "{{config_root}}/.src/site"        # copy of $TEMPLATE — the host site (:4321)
-SITE_URL        = "http://localhost:4321"            # the host site as a URL — scripts read this, never a literal
-EMDASH_DIR      = "{{config_root}}/.src/emdash"      # optional emdash monorepo clone (on demand)
+SRC_DIR = "{{config_root}}/.src"
+TEMPLATES_DIR = "{{config_root}}/.src/templates" # clone of emdash-cms/templates
+SITE_DIR = "{{config_root}}/.src/site"           # copy of $TEMPLATE — the host site (:4321)
+SITE_URL = "http://localhost:4321"               # the host site as a URL — scripts read this, never a literal
+EMDASH_DIR = "{{config_root}}/.src/emdash"       # optional emdash monorepo clone (on demand)
 
-TEMPLATES_REPO  = "https://github.com/emdash-cms/templates"
-EMDASH_REPO     = "https://github.com/emdash-cms/emdash"
+TEMPLATES_REPO = "https://github.com/emdash-cms/templates"
+EMDASH_REPO = "https://github.com/emdash-cms/emdash"
 
 # Local plugins under development — symlinked into the site's node_modules by plugin:link
-PLUGINS_DIR     = "{{config_root}}/plugins"
+PLUGINS_DIR = "{{config_root}}/plugins"
 
 # Generated output, gitignored: the MCP token, site snapshots, and the temp files the nushell
 # check writes.
-RUN_DIR         = "{{config_root}}/run"
+RUN_DIR = "{{config_root}}/run"
 
 # Optional daemons — the single place these addresses are defined. Scripts read them;
 # pitchfork.toml's ready_http is static and repeats the port (it cannot read mise env).
-REGISTRY_URL     = "http://localhost:8788"
-REGISTRY_PORT    = "8788"
+REGISTRY_URL = "http://localhost:8788"
+REGISTRY_PORT = "8788"
 PLUGINS_SITE_URL = "http://localhost:4330"
 PLUGINS_SITE_PORT = "4330"
 
@@ -194,7 +194,7 @@ EMDASH_REGISTRY_URL = "{{env.REGISTRY_URL}}"
 # The EmDash CLI that ships with the host site — the same version the site runs, so the CLI and
 # the instance cannot drift. On PATH so the emdash:* tasks ARE the official tool with no wrapper
 # around them. (It cannot be a [tools] entry: mise's npm backend refuses a bare unscoped name.)
-_.path          = ["{{config_root}}/.src/site/node_modules/.bin"]
+_.path = ["{{config_root}}/.src/site/node_modules/.bin"]
 # (Re)generated by mcp:token-admin on every apply. The EmDash MCP server reads it.
 #
 # Deliberately NOT named EMDASH_TOKEN. The emdash CLI reads EMDASH_TOKEN as an auth source, and
@@ -202,7 +202,7 @@ _.path          = ["{{config_root}}/.src/site/node_modules/.bin"]
 # remote command send a local token to a deployment and fail with "Token is invalid or expired",
 # which looked exactly like the CLI being unable to read its own stored login. Under its own
 # name the variable reaches the MCP server (see .mcp.json) and nothing else.
-_.file          = "{{config_root}}/run/token-admin.env"
+_.file = "{{config_root}}/run/token-admin.env"
 # -----------------------------------------------------------------------------
 
 # =============================================================================
@@ -757,7 +757,14 @@ run = "print '✓ init done — run: mise run repo:apply'"
 
 [tasks."repo:apply"]
 description = "Apply config, rebuild + link plugins, re-seed, restart the site, refresh the token — run after every change"
-depends = ["config:apply", "plugin:build", "plugin:link", "plugin:typecheck", "plugin:audit", "skills:sync"]
+depends = [
+  "config:apply",
+  "plugin:build",
+  "plugin:link",
+  "plugin:typecheck",
+  "plugin:audit",
+  "skills:sync",
+]
 run = """
 # Stop ONLY the site: the optional daemons (registry, plugins-site) must survive, because the
 # site's plugin discovery points at the local registry while it is running.
@@ -1065,15 +1072,20 @@ let nucheck = $env.LAST_EXIT_CODE
 print "→ mise tasks validate (mise's own checks on the task definitions)"
 ^mise tasks validate
 let tasks_ok = $env.LAST_EXIT_CODE
+print "→ mise fmt --check (mise.toml is formatted by mise's own formatter)"
+^mise --cd $env.ROOT fmt --check
+let misefmt = $env.LAST_EXIT_CODE
 # There is no `set -e` in nushell: a failing external command does not abort the script, so every
 # one of them is collected and the task fails if any did. Running them all also shows you every
 # problem at once instead of stopping at the first.
-if ([$lint $fmt $skills $sync $nucheck $tasks_ok] | any {|code| $code != 0 }) { exit 1 }
+if ([$lint $fmt $skills $sync $nucheck $tasks_ok $misefmt] | any {|code| $code != 0 }) { exit 1 }
 """
 
 [tasks."repo:format"]
 description = "Apply formatting to the plugins — the fix for a failing repo:check"
 run = """
+# mise formats its own config — oxfmt does not touch TOML, so `mise.toml` went unchecked.
+^mise --cd $env.ROOT fmt
 ^oxfmt ...($env.CODE_PATHS | split row ":")
 exit $env.LAST_EXIT_CODE
 """
