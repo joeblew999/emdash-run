@@ -65,12 +65,16 @@ block is the whole port.
 - [`docs/agents/mise-nushell.md`](docs/agents/mise-nushell.md) — writing tasks: mise facts, nushell traps
 - [`docs/tasks.md`](docs/tasks.md) — every task, with its dependencies (generated)
 - [`docs/why.md`](docs/why.md) — why EmDash, and what this is proven to do
-- [`docs/plugin.md`](docs/plugin.md) — the plugin and its admin panel
+- [`docs/plugin.md`](docs/plugin.md) — our own plugins, as a worked example of both kinds
 - [`docs/auth.md`](docs/auth.md) — EmDash's auth model and our token strategy
 - [`docs/plans/`](docs/plans/) — what is left · [`done/`](docs/plans/done/) — closed
 - [`docs/plugin-catalog/`](docs/plugin-catalog/) — generated from the registry
 
-This repo began as a bet for [plat-trunk](https://github.com/plat-trunk), a browser-native CAD
-platform: that EmDash could carry its project, user, file and API layer so plat-trunk stays a
-geometry engine. That bet is what `docs/why.md` is about — and the harness it produced is
-general-purpose.
+**History, not the point.** This started as a bet for [plat-trunk](https://github.com/plat-trunk),
+a browser-native CAD platform: that EmDash could carry its project, user, file and API layer so
+plat-trunk stayed a geometry engine. That is what [`docs/why.md`](docs/why.md) is about.
+
+The plugins in `plugins/` belong to that project. They are kept because they are a working example
+of *both* plugin kinds — native and sandboxed — and because they exercise the plugin tasks end to
+end. **They are secondary.** The harness is the deliverable, and it does not depend on them: point
+the PROJECT SETTINGS block at your own project and delete them.
