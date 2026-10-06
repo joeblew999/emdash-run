@@ -25,13 +25,26 @@ is orientation only.
 
 ## Tasks and scripts
 
-`mise.toml` is the interface; `scripts/*.mjs` are the implementation. Every script in
-`scripts/` is called by a task — so:
+`mise.toml` is the interface; a `scripts/*.mjs` file is the implementation **for the parts that
+are genuinely logic**. Task bodies are written in **nushell** (`[task_config] shell`), not POSIX
+sh, so they work the same on every machine:
 
 - run the task, never the script directly;
-- don't inline non-trivial logic into `mise.toml`; put it in `scripts/` and call it from
-  a task;
-- the mapping is discoverable: `grep -o 'scripts/[^"]*' mise.toml`.
+- **a task body beats a script when the body is a few lines.** `cp`, `rm`, `git`, `pnpm`, `curl`
+  and `emdash` need no wrapper — mise already provides the argument parser (`usage`), the working
+  directory (`dir`) and the runner. A script whose only job is `process.argv[2]` dispatch is a
+  layer mise gives you for free. Five of those were deleted (`registry`, `mcp`, `config`, `repo`,
+  and most of `site`), and eight tasks that relayed to subcommands their script never implemented
+  were fixed — a relay that does not relay is worse than none;
+- **a script earns its place when the logic is real**: parsing EmDash's output, walking
+  `plugins/`, merging and validating a seed, diffing a live site against the repo, deciding
+  whether a build invalidated the dev server's module graph. Those stay in `scripts/`;
+- the mapping is discoverable — `grep -o 'scripts/[^"]*' mise.toml` — and `mise run mise:check`
+  fails if a script is not referenced by a task;
+- nushell specifics that bite: environment variables are `$env.VAR`, including usage arguments
+  (`$env.usage_<name>`); inside `$"...($x)..."` parentheses are **subexpressions**, so a literal
+  `(text)` in a message has to be phrased around it; and there is no `set -e` — a failing external
+  command does not abort the body, so check whichever one you care about.
 
 ## Layout
 
