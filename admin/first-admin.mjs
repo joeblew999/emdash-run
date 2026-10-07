@@ -116,7 +116,10 @@ try {
 		const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 120);
 		console.log(`open: signed in to ${page.url()} — "${title}": ${shown}`);
 		console.log("open: close the window when you are done");
-		await new Promise((r) => browser.on("disconnected", r));
+		// On macOS closing the last window leaves Chrome itself running, so wait for the page to
+		// go as well as for the browser to.
+		await new Promise((r) => (page.on("close", r), browser.on("disconnected", r)));
+		await browser.close().catch(() => {});
 		process.exit(0);
 	}
 	if (page.url().includes("/setup")) {
