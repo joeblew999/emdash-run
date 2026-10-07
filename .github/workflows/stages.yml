@@ -90,6 +90,36 @@ jobs:
           test -d site
           mise run --yes site:delete
           test ! -e site
+      - name: an existing site, laid out the way EmDash does — the project root is the site
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir existing && cd existing && git init -q
+          cat > mise.toml <<EOF
+          [settings]
+          experimental = true
+
+          [tools]
+          node = "26"
+          pnpm = "12"
+
+          [env]
+          SITE_PORT = "4401"
+          SITE_FOLDER = "."
+
+          [task_config]
+          includes = ["git::https://github.com/${{ github.repository }}.git//tasks.toml?ref=${{ github.ref_name }}"]
+          EOF
+          mise trust --quiet
+          mise x -- pnpm dlx create-emdash@latest . --template node:starter --pm pnpm --install --yes --force
+          mise run site:start
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
+          mise run emdash -- whoami
+          # the site is the project: there is nothing to make, and nothing that may be deleted
+          if mise run site:new; then echo "site:new should have refused"; exit 1; fi
+          if mise run --yes site:delete; then echo "site:delete should have refused"; exit 1; fi
+          test -f package.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 http://localhost:4401/)" = 200
+          mise run site:stop
       - name: what the site logged, if anything failed
         if: failure()
         run: mise x node@26.10.0 pnpm@12.9.1 -- pnpm --dir site exec astro dev logs | tail -60 || true

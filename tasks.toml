@@ -6,6 +6,9 @@
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
 #
+# Where the site is: the folder `site` beside mise.toml, or SITE_FOLDER — "." when the site is the
+# project itself, which is how EmDash lays out an existing site.
+#
 # The tools the tasks run — node and pnpm — are the project's: its mise.toml has a [tools] block.
 # Not declared per task here: a step that forgot would silently run on whatever the machine has.
 #
@@ -19,45 +22,45 @@
 ["step:install"]
 hide = true
 description = "The site's packages, as its lockfile pins them"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm install"
 
 ["step:seed"]
 hide = true
 description = "The seed is one EmDash will accept — an invalid one is skipped on first start with no error. For site:check, not site:start: a site with no seed is a valid site, and this fails on one"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec emdash seed --validate"
 
 ["step:key"]
 hide = true
 description = "The key EmDash encrypts plugin secrets with, in the gitignored site/.env — made when there is none, left alone when there is"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec emdash secrets generate --write .env"
 
 ["step:dev"]
 hide = true
 description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
 ["step:up"]
 hide = true
 description = "The site answers and the CLI can reach it — fails when it does not"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
 run = "pnpm exec emdash whoami"
 
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
 ["site:new"]
-description = "A site, once: EmDash's scaffolder makes site/ and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog"
+description = "A site, once: EmDash's scaffolder makes the site folder and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog"
 dir = "{{config_root}}"
 usage = '''
 arg "[template]" help="<platform>:<template>" {
   choices "cloudflare:blog" "cloudflare:starter" "cloudflare:marketing" "cloudflare:portfolio" "node:blog" "node:starter" "node:marketing" "node:portfolio"
 }
 '''
-run = "pnpm dlx create-emdash@latest site --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"
+run = [{ task = "step:own-folder" }, "pnpm dlx create-emdash@latest {{ env.SITE_FOLDER | default(value='site') }} --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"]
 
 ["site:start"]
 description = "I want to work on this site: install, make its key if it has none, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
@@ -65,27 +68,33 @@ run = [{ task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, 
 
 ["site:stop"]
 description = "Stop the site that site:start started"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev stop"
 
 ["site:logs"]
 description = "Follow the running site's log"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev logs --follow"
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
-dir = "{{config_root}}/site"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
 run = "pnpm exec emdash"
 
 ["site:delete"]
-description = "Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database. Asks first — except in CI, where mise answers yes"
-confirm = "Delete site/ and everything in it, including the local database?"
-run = [{ task = "site:stop" }, { task = "step:delete" }]
+description = "Delete this project's site folder — the opposite of site:new. Stops the site first. Everything in it goes, including its local database. Asks first — except in CI, where mise answers yes. Refuses when the site is the project itself"
+confirm = "Delete the site folder and everything in it, including the local database?"
+run = [{ task = "step:own-folder" }, { task = "site:stop" }, { task = "step:delete" }]
+
+["step:own-folder"]
+hide = true
+description = "The site is in a plainly named folder of its own — not the project itself, not a path that leaves it. What site:new and site:delete need before they make or remove one"
+dir = "{{config_root}}"
+run = "{% set f = env.SITE_FOLDER | default(value='site') %}{% if f == '' or f | replace(from='.', to='') != f or f | replace(from='/', to='') != f or f | replace(from=':', to='') != f or f | replace(from=' ', to='') != f or f | replace(from='\\\\', to='') != f %}node -e \"console.error('This needs the site in a plainly named folder of its own. SITE_FOLDER is [{{ f }}]: nothing was made or deleted.'); process.exit(1)\"{% else %}node -e \"\"{% endif %}"
 
 ["step:delete"]
 hide = true
 description = "Remove site/ with a tool that works the same on every OS"
 dir = "{{config_root}}"
-run = "pnpm dlx rimraf site"
+run = [{ task = "step:own-folder" }, "pnpm dlx rimraf {{ env.SITE_FOLDER | default(value='site') }}"]

@@ -59,13 +59,28 @@ Say it as an argument, `mise run site:new -- node:blog`, or set `TEMPLATE = "nod
 `[env]` in your `mise.toml`. With neither you get `cloudflare:blog`. A name that is not in the table
 is refused and nothing is made.
 
+## An existing site
+
+The tasks look for the site in a `site/` folder beside `mise.toml`. An existing EmDash repo usually
+*is* the site — `astro.config.mjs` at its root. Say so, and everything but two tasks works there:
+
+```toml
+[env]
+SITE_FOLDER = "."
+```
+
+`site:start`, `site:stop`, `site:logs` and `emdash` run on it. `site:new` and `site:delete` refuse:
+there is nothing to make, and the folder they would remove is your project. They only ever work on
+a plainly named folder of its own — never `.`, never a path that leaves the project.
+
 ## Settings
 
-Both optional, under `[env]` in your `mise.toml`:
+All optional, under `[env]` in your `mise.toml`:
 
 | setting | default | what it does |
 |---|---|---|
 | `TEMPLATE` | `cloudflare:blog` | what `site:new` makes when it is given no argument |
+| `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
 
 ## What is proven
@@ -79,6 +94,8 @@ empty folder holding only the `mise.toml` above and runs the commands a develope
 - `emdash`, with a flag and with a quoted argument that contains spaces
 - `site:start` again leaves the running site alone; `site:stop` stops it
 - `site:delete` refuses without a yes and deletes with one
+- an existing site at the project root: `site:start` and `emdash` run on it; `site:new` and
+  `site:delete` refuse, and the project is left whole and running
 
 ## What to know
 

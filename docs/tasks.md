@@ -8,7 +8,7 @@ Anything else in EmDash, through its official CLI — e.g: mise run emdash -- co
 
 - **Usage:** `site:delete`
 
-Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database. Asks first — except in CI, where mise answers yes
+Delete this project's site folder — the opposite of site:new. Stops the site first. Everything in it goes, including its local database. Asks first — except in CI, where mise answers yes. Refuses when the site is the project itself
 
 ## `site:logs`
 
@@ -18,7 +18,7 @@ Follow the running site's log
 
 ## `site:new`
 
-A site, once: EmDash's scaffolder makes site/ and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog
+A site, once: EmDash's scaffolder makes the site folder and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog
 
 
 - **Usage:** `site:new [template]`
