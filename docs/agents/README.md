@@ -34,7 +34,6 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `tests/replay.sh` | `mise run test`, `mise run test:full` — writes `docs/status.md` |
 | `mise.toml` | this repo's settings and its own `test` tasks |
 | `site/` | this repo's own site, made by `site:new` |
-| `.src/` | gitignored: EmDash's source and docs, for reading |
 
 ## Rules that came from mistakes
 
@@ -59,5 +58,6 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 
 - Its skills, in any scaffolded site: `site/.agents/skills/` (`emdash-cli`,
   `building-emdash-site`, `creating-plugins`).
-- Its docs: the `emdash-docs` MCP server (`.mcp.json`), or `.src/emdash/docs/` when cloned.
+- Its docs: the `emdash-docs` MCP server (`.mcp.json`). Its source, when you need to read the code:
+  `git clone https://github.com/emdash-cms/emdash .src/emdash` (`.src/` is gitignored).
 - Things in EmDash and wrangler that do not behave as documented: `docs/upstream.md`.
