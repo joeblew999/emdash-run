@@ -62,7 +62,7 @@ For a person: a browser window signed in to the admin of the DEPLOYED site at LI
 
 - **Usage:** `live:ship`
 
-Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it with live:key, then make the first administrator in a browser
+Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it AT ONCE with live:admin, then live:key — until a site has its administrator, whoever opens its admin first becomes it
 
 ## `live:undo`
 

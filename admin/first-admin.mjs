@@ -110,7 +110,12 @@ try {
 		await signInShown.click();
 		await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 60_000 });
 		await savePasskey();
-		console.log(`open: signed in to ${origin}/_emdash/admin — close the window when you are done`);
+		// Say what the window is showing, so a run with nobody watching can be checked.
+		await page.getByText("Dashboard").first().waitFor({ timeout: 60_000 });
+		const title = await page.title();
+		const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 120);
+		console.log(`open: signed in to ${page.url()} — "${title}": ${shown}`);
+		console.log("open: close the window when you are done");
 		await new Promise((r) => browser.on("disconnected", r));
 		process.exit(0);
 	}

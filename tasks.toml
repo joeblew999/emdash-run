@@ -326,7 +326,7 @@ description = "A newer EmDash: updates the site to the latest release, then type
 run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
 
 ["live:ship"]
-description = "Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it with live:key, then make the first administrator in a browser"
+description = "Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it AT ONCE with live:admin, then live:key — until a site has its administrator, whoever opens its admin first becomes it"
 run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
 
 ["live:undo"]
