@@ -5,11 +5,17 @@
 #
 #   bash tests/replay.sh quick            one template, the everyday path — about 2 minutes
 #   bash tests/replay.sh full             both templates, every task that needs no deployment
+#   bash tests/replay.sh full github      the same, with the tasks FETCHED FROM GITHUB (main) — what
+#                                         another developer gets; tests what is pushed, not local edits
+#
+# It always runs as another developer would: a clean environment (none of your shell's variables)
+# and an empty config folder, so it cannot pass because of something saved on this machine.
 #
 # It runs in a temporary folder with one mise.toml that includes this repo's tasks.toml, as a
 # project would. The live: tasks and --live need a deployed site and are not run here.
 set -u
 TIER=${1:-quick}
+FROM=${2:-local}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d)
 # On Windows this runs under Git Bash, whose /d/a/… paths mise (a Windows program) cannot read:
@@ -18,12 +24,26 @@ if command -v cygpath >/dev/null 2>&1; then REPO=$(cygpath -m "$REPO"); WORK=$(c
 OUT=$REPO/docs/status.md
 ROWS=$WORK/rows.txt; : > "$ROWS"
 
+# Another developer's machine: start again with nothing but HOME, PATH and an empty config folder.
+# (Not on Windows, where a program needs more of the environment than that to start at all.)
+if [ -z "${REPLAY_CLEAN:-}" ] && ! command -v cygpath >/dev/null 2>&1; then
+  rm -rf "$WORK"
+  exec env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-xterm}" ${CI:+CI="$CI"} REPLAY_CLEAN=1 bash "$0" "$@"
+fi
+export XDG_CONFIG_HOME=$WORK/config; mkdir -p "$XDG_CONFIG_HOME"
+if [ "$FROM" = github ]; then
+  INCLUDE="git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=${REPLAY_REF:-main}"
+  mise cache clear >/dev/null 2>&1   # mise keeps the first copy it fetched: take the current one
+else
+  INCLUDE=$REPO/tasks.toml
+fi
+
 replay() {
   # Each template gets its own folder, ports and result file, so two can run side by side.
   local T=$1 DEV=$2 PRE=$3 D=$WORK/${1/:/-} SITE=http://localhost:$2 BUILT=http://localhost:$3
   local ROWS=$WORK/rows-${1/:/-}.txt; : > "$ROWS"
   mkdir -p "$D" && cd "$D" && git init -q
-  printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\n[env]\nTEMPLATE = "%s"\nSITE_PORT = "%s"\nPREVIEW_PORT = "%s"\nPLUGIN_PUBLISHER = "did:web:example.com"\nPLUGIN_AUTHOR = "Example Author"\nPLUGIN_SECURITY_EMAIL = "security@example.com"\n[task_config]\nincludes = ["%s/tasks.toml"]\n' "$T" "$DEV" "$PRE" "$REPO" > mise.toml
+  printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\n[env]\nTEMPLATE = "%s"\nSITE_PORT = "%s"\nPREVIEW_PORT = "%s"\nPLUGIN_PUBLISHER = "did:web:example.com"\nPLUGIN_AUTHOR = "Example Author"\nPLUGIN_SECURITY_EMAIL = "security@example.com"\n[task_config]\nincludes = ["%s"]\n' "$T" "$DEV" "$PRE" "$INCLUDE" > mise.toml
   mise trust -q .
   row() { printf '| %s | %s | %s | %s |\n' "$T" "$1" "$2" "$3" >> "$ROWS"; printf '%-4s %-18s %s\n' "$1" "$T" "$2"; }
   ok() { if eval "$2" > "$D/step.log" 2>&1; then row PASS "$1" ""; else row FAIL "$1" "$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160)"; fi; }
@@ -54,7 +74,7 @@ replay() {
     ok "emdash:update"                       'mise run emdash:update'
     ok "site:reset empties the content"      'mise run site:start && mise run --yes site:reset && ! mise run emdash -- content get pages audit --json'
     no "site:reset refuses with nobody to ask" 'env -u MISE_YES -u CI mise run site:reset </dev/null'
-    ok "signin:passkey on a fresh database"  'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); rm -f ~/.config/emdash-run/tokens/localhost_${PRE}_*.json; mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
+    ok "signin:passkey on a fresh database"  'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); rm -f $XDG_CONFIG_HOME/emdash-run/tokens/localhost_${PRE}_*.json; mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
     no "site:delete refuses with nobody to ask" 'env -u MISE_YES -u CI mise run site:delete </dev/null'
   fi
   ok "site:stop, twice"                      'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
@@ -79,6 +99,8 @@ TOOK=$(( $(date +%s) - START ))
   echo
   echo "| | |"; echo "|---|---|"
   echo "| when | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+  echo "| tasks from | $( [ "$FROM" = github ] && echo "**GitHub, \`${REPLAY_REF:-main}\`** at \`$(git ls-remote https://github.com/joeblew999/emdash-run.git "${REPLAY_REF:-main}" | cut -c1-7)\` — what another developer gets" || echo 'the local files' ) |"
+  echo "| run as | another developer: a clean environment and an empty config folder |"
   echo "| tier | $TIER ($( [ "$TIER" = full ] && echo 'both templates, every task that needs no deployment' || echo 'one template, the everyday path' )) |"
   echo "| commit | \`$(git -C "$REPO" rev-parse --short HEAD)\`$( [ -n "$(git -C "$REPO" status --porcelain -- tasks.toml admin tests)" ] && echo ' **plus uncommitted changes**' ) |"
   echo "| machine | $(uname -s) $(uname -m), $(mise --version | head -1 | cut -d' ' -f1) |"

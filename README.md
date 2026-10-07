@@ -166,8 +166,10 @@ All optional, under `[env]` in your `mise.toml`.
 ```
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     every task that needs no deployment, about 5 minutes
+mise run test:published   the same, with the tasks fetched from GitHub — what another developer gets
 ```
 
-Both make their own site in a temporary folder and write [`docs/status.md`](docs/status.md). To
+Each runs as another developer would — a clean environment, an empty config folder, its own site
+in a temporary folder — and writes [`docs/status.md`](docs/status.md). To
 try a task by hand here, `mise run site:new` makes a `site/` (gitignored). The plan is in [`docs/plans/`](docs/plans/); the
 rules for agents are in [`docs/agents/README.md`](docs/agents/README.md).

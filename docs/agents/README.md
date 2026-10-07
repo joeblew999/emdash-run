@@ -8,7 +8,8 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
    — and Astro and wrangler have theirs. Run `--help` before writing a step; if a command exists,
    the step is that command. A script is allowed only where no command exists.
 2. **Know what works from a file.** After any change to `tasks.toml` or `admin/`, run
-   `mise run test` and commit the `docs/status.md` it writes. "It works" means the status file
+   `mise run test` and commit the `docs/status.md` it writes; after a push, `mise run test:published`
+   proves what another developer gets. "It works" means the status file
    says so for this commit.
 3. **Do the whole job in one pass.** When something changes, fix everything it makes stale in the
    same pass: descriptions, README, plan, changelog. Look ahead for what breaks next.
@@ -31,7 +32,7 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `admin/access.mjs` | `signin:access` — Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open` — the only Playwright |
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
-| `tests/replay.sh` | `mise run test`, `mise run test:full` — writes `docs/status.md` |
+| `tests/replay.sh` | `mise run test`, `test:full`, `test:published` (tasks fetched from GitHub) — always in a clean environment; writes `docs/status.md` |
 | `mise.toml` | this repo's settings and its own `test` tasks |
 | `site/` | not in the repo. `mise run site:new` makes one here to try tasks on; it is gitignored |
 

@@ -4,11 +4,13 @@ Written by `tests/replay.sh`. Do not edit: run it again.
 
 | | |
 |---|---|
-| when | 2026-10-07 09:07 UTC |
+| when | 2026-10-07 09:12 UTC |
+| tasks from | the local files |
+| run as | another developer: a clean environment and an empty config folder |
 | tier | quick (one template, the everyday path) |
-| commit | `13dbb00` |
+| commit | `aece096` **plus uncommitted changes** |
 | machine | Darwin arm64, 2026.10.3 |
-| took | 76s |
+| took | 73s |
 | result | 14 passed, **0 failed** |
 
 Not covered by this run: the `live:` tasks and anything with `--live` (they need a deployed site), `plugin:publish`, Windows and Linux, and everything only in the full tier.

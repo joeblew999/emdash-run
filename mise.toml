@@ -35,3 +35,7 @@ run = "bash tests/replay.sh quick"
 [tasks."test:full"]
 description = "Test every task that needs no deployment, on both templates (about 5 minutes). Writes docs/status.md"
 run = "bash tests/replay.sh full"
+
+[tasks."test:published"]
+description = "The full test with the tasks fetched from GitHub (main) — what another developer gets. Run it after a push"
+run = "bash tests/replay.sh full github"
