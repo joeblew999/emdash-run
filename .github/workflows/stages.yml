@@ -1,0 +1,77 @@
+# The stages, proven the way a project gets them: an EMPTY folder whose mise.toml has one line
+# naming this repo. On macOS, Linux and Windows, on a Cloudflare and a Node.js template.
+#
+# The steps below are the commands a developer types, in order — nothing else. The glue around them
+# (make the folder, ask the site a question) is bash, which every runner has; the stages themselves
+# run under mise's own shell for each OS, which is what is being proven.
+name: stages
+on:
+  push:
+    branches: [main]
+    paths: ["tasks.toml", ".github/workflows/stages.yml"]
+  workflow_dispatch:
+concurrency:
+  group: stages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  from-nothing:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        template: ["cloudflare:blog", "node:starter"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ runner.temp }}/project
+    env:
+      SITE: http://localhost:4400
+    steps:
+      - uses: jdx/mise-action@v5
+        with:
+          install: false
+      - name: a project that is one mise.toml
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir project && cd project && git init -q
+          cat > mise.toml <<EOF
+          [settings]
+          experimental = true
+
+          [env]
+          TEMPLATE = "${{ matrix.template }}"
+          SITE_PORT = "4400"
+
+          [task_config]
+          includes = ["git::https://github.com/${{ github.repository }}.git//tasks.toml?ref=${{ github.ref_name }}"]
+          EOF
+          mise trust --quiet
+          mise tasks ls
+      - run: mise run site:new
+      - run: mise run site:start
+      - name: the site answers, and EmDash's sign-in link sets it up
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 $SITE/)" = 200
+          curl -fsS --max-time 300 -X POST "$SITE/_emdash/api/setup/dev-bypass" -o /dev/null
+      - name: the CLI stage, with a flag and with a quoted argument
+        run: |
+          mise run emdash -- schema --help | grep -q add-field
+          mise run emdash -- content create pages --draft --slug from-ci --data '{"title":"Two words, one argument"}'
+          mise run emdash -- content get pages from-ci --json | grep -q 'Two words, one argument'
+      - name: start again leaves it alone; stop stops it
+        run: |
+          mise run site:start
+          mise run site:stop
+          sleep 3
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 $SITE/ || true)" != 200
+      - name: delete refuses without a yes, and deletes with one
+        run: |
+          if mise run site:delete </dev/null; then echo "deleted without being asked"; exit 1; fi
+          test -d site
+          mise run --yes site:delete
+          test ! -e site
+      - name: what the site logged, if anything failed
+        if: failure()
+        run: mise x node@26.10.0 pnpm@12.9.1 -- pnpm --dir site exec astro dev logs | tail -60 || true
