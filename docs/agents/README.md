@@ -32,7 +32,10 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 7. **No CI unless the owner says.** The workflow runs by hand or on a release tag only.
 8. **These are test sites.** Do not switch things off or add security guards while the owner is
    exploring; security is a later job, with the owner.
-9. **Keep it short.** Task descriptions are one line. Docs are for someone who wants to use the
+9. **Every task is safe to run again**, and the test proves it by running it twice. A doc that says
+   "once" is describing a defect in the task: fix the task. Where the answer depends on what is
+   on disk — which mise cannot see — `admin/again.mjs` asks.
+10. **Keep it short.** Task descriptions are one line. Docs are for someone who wants to use the
    tasks, not a record of how they were made.
 
 ## How it is built
@@ -43,6 +46,7 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `admin/token.mjs` | `signin:token` — an administrator and an API token written to the site's database |
 | `admin/access.mjs` | `signin:access` — Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open` — the only Playwright |
+| `admin/again.mjs` | what makes `site:new`, `site:delete` and `plugin:new` safe to run again |
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
 | `tests/replay.sh` | the test, at two levels: `test` (quick) and `test:full` (everything, the deployed-site tasks included). Each step names the task it tests |
 | `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |

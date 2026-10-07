@@ -7,6 +7,8 @@
 #   bash tests/replay.sh quick     one template, the everyday tasks — about a minute
 #   bash tests/replay.sh full      EVERYTHING: both templates, then the tasks that act on a
 #                                  deployed site
+# ONE TASK: add its name — `mise run test -- signin:token` — and the test runs the steps up to and
+# including that task's, then stops the site and cleans up. For working on one task.
 # TEST_FROM=github before either fetches the tasks from GitHub (main) instead of the local files:
 # what another developer gets.
 #
@@ -21,6 +23,7 @@
 # would hide them.
 set -u
 TIER=${1:-quick}
+ONLY=${2:-}
 FROM=${TEST_FROM:-local}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d)
@@ -50,6 +53,10 @@ fi
 # One step: the task it tests, what it shows, the command. `no` is a step that must refuse.
 step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   local verdict detail=""
+  # one task asked for: once its steps are done, only the clean-up still runs
+  if [ -n "$ONLY" ]; then
+    if [ "$2" = "$ONLY" ]; then REACHED=1; elif [ "${REACHED:-}" = 1 ] && [ "$2" != site:stop ] && [ "$2" != site:delete ]; then return; fi
+  fi
   if eval "$4" > "$D/step.log" 2>&1; then [ "$1" = ok ] && verdict=PASS || { verdict=FAIL; detail="it should have refused"; }
   else [ "$1" = no ] && verdict=PASS || { verdict=FAIL; detail=$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160); }; fi
   printf '%s|%s|%s|%s|%s|%s\n' "$2" "$W" "$3" "$verdict" "$detail" "$1" >> "$ROWS"
@@ -74,7 +81,9 @@ local_site() { # $1 = template  $2 = dev port  $3 = built port
   project "$WORK/$W" "$T" "$2" "$3"
   no site:start     "with no site, says so and stops"        'mise run site:start'
   ok site:new       "makes the site"                          'mise run site:new'
+  ok site:new       "run again: the site is left alone"       'mise run site:new 2>&1 | grep -q "already a site"'
   ok site:start     "starts the dev site"                     'mise run site:start'
+  ok site:start     "run again: it is already running"        'mise run site:start'
   ok site:start     "the dev site answers; dev sign-in works" 'test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 $SITE/)" = 200 && curl -fsS -X POST $SITE/_emdash/api/setup/dev-bypass -o /dev/null'
   ok site:logs      "shows the dev site log"            '(mise run site:logs > logs.txt 2>&1 & p=$!; sleep 5; kill $p 2>/dev/null; pkill -f "astro dev logs" 2>/dev/null; true); grep -q . logs.txt'
   ok emdash         "a quoted JSON argument arrives whole"    "mise run emdash -- content create pages --draft --slug audit --data '{\"title\":\"Two words, one argument\"}' && mise run emdash -- content get pages audit --json | grep -q 'Two words, one argument'"
@@ -85,6 +94,7 @@ local_site() { # $1 = template  $2 = dev port  $3 = built port
   ok model:sync     "records an added field in .emdash/"      'mise run emdash -- schema add-field pages subtitle --type string --label Subtitle && mise run model:sync && grep -q subtitle site/.emdash/schema.json'
   ok site:preview   "serves the built site; dev sign-in is off there" 'mise run site:preview && test "$(curl -s -o /dev/null -w "%{http_code}" $BUILT/_emdash/api/setup/dev-bypass)" = 403'
   ok signin:token   "the CLI is an administrator of the built site" 'mise run signin:token && mise run emdash -- whoami --preview 2>&1 | grep -qi "admin"'
+  ok signin:token   "run again: still an administrator"       'mise run signin:token && mise run emdash -- whoami --preview 2>&1 | grep -qi "admin"'
   ok emdash         "--preview writes to the built site"      "mise run emdash -- content create pages --preview --slug built --data '{\"title\":\"On the built site\"}'"
   if [ "$TIER" = full ]; then
     ok signin:token "starts the built site when it is stopped" 'mise run site:stop && mise run signin:token && mise run emdash -- schema list --preview | grep -q slug'
@@ -93,8 +103,10 @@ local_site() { # $1 = template  $2 = dev port  $3 = built port
     # a window needs a screen: not on a CI runner
     [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (token)" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open 2>&1 | grep -q "open: signed in"'
     ok plugin:new   "scaffolds, tests, builds and adds a plugin" 'mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs && grep -q save-log site/package.json'
+    ok plugin:new   "run again: not scaffolded twice, still builds" 'mise run plugin:new -- save-log 2>&1 | grep -q "already there" && test -f site/plugins/save-log/dist/plugin.mjs'
     ok plugin:check "the plugin passes its checks"            'mise run plugin:check -- save-log'
     ok plugin:add   "adds a package from npm"                 'mise run plugin:add -- @emdash-cms/plugin-forms && grep -q plugin-forms site/package.json'
+    ok plugin:add   "run again: no error"                     'mise run plugin:add -- @emdash-cms/plugin-forms'
     ok plugin:search "finds plugins in the registry"          'mise run plugin:search -- forms | grep -qi "forms"'
     no plugin:publish "asks first, and stops with nobody to answer (a real publish is never run)" 'env -u MISE_YES -u CI mise run plugin:publish -- save-log </dev/null'
     ok plugin       "passes any command to the plugin CLI"    'mise run plugin -- --help | grep -qi "search"'
@@ -108,6 +120,7 @@ local_site() { # $1 = template  $2 = dev port  $3 = built port
   fi
   ok site:stop      "stops both sites; twice is fine"         'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
   ok site:delete    "removes the site folder"                 '(cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run --yes site:delete && test ! -e site'
+  ok site:delete    "run again: nothing to delete"            'mise run --yes site:delete 2>&1 | grep -q "nothing to delete"'
   cd "$REPO"
 }
 
@@ -124,7 +137,9 @@ live_site() {
   ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access 2>&1 | tee access.txt | grep -q "access: application"'
   STAMP=shipped-$(date +%s)
   ok live:ship      "deploys; the site answers with the change" "printf '<p>%s</p>\n' $STAMP > site/src/pages/zz-shipped.astro && mise run live:ship && curl -fsS \$LIVE_URL_/zz-shipped | grep -q $STAMP"
+  ok signin:access  "run again: changes nothing"              'mise run signin:access 2>&1 | grep -q "already"'
   ok signin:token   "--live: the CLI is an administrator of the deployed site" 'mise run signin:token -- --live && mise run emdash -- whoami --live 2>&1 | grep -qi "admin"'
+  ok signin:token   "--live, run again: still an administrator" 'mise run signin:token -- --live && mise run emdash -- whoami --live 2>&1 | grep -qi "admin"'
   ok emdash         "--live reads and writes the deployed site" "mise run emdash -- schema list --live | grep -q slug && mise run emdash -- content create pages --live --slug test-\$(date +%s) --data '{\"title\":\"Made by the test\"}'"
   ok model:sync     "--live records the deployed model"       'mise run model:sync -- --live && test -f site/.emdash/schema.json'
   ok content:pull   "downloads the deployed site as a package" 'mise run content:pull && ls site/backups/*.emdash'

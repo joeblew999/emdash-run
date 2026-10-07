@@ -39,7 +39,7 @@ In the order you use them. This table is written by the test, from the order it 
 
 | | task | what it does | tested |
 |---|---|---|---|
-| 1 | `site:new` | Make a new site. Template: mise run site:new \-\- node:blog (default cloudflare:blog) | yes |
+| 1 | `site:new` | Make a new site. Template: mise run site:new \-\- node:blog (default cloudflare:blog). A site that is already there is left alone | yes |
 | 2 | `site:start` | Start the dev site in the background (port 4321). EmDash signs you in by itself | yes |
 | 3 | `site:logs` | Follow the dev site's log | yes |
 | 4 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
@@ -48,7 +48,7 @@ In the order you use them. This table is written by the test, from the order it 
 | 7 | `site:preview` | Build the site and serve it locally (port 4322) — behaves like a deployed site | yes |
 | 8 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
 | 9 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
-| 10 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new \-\- &lt;name&gt; | yes |
+| 10 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds and re-adds it | yes |
 | 11 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
 | 12 | `plugin:add` | Add a plugin from npm. mise run plugin:add \-\- &lt;package&gt; | yes |
 | 13 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
@@ -57,7 +57,7 @@ In the order you use them. This table is written by the test, from the order it 
 | 16 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
 | 17 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
 | 18 | `site:stop` | Stop the dev site and the built site | yes |
-| 19 | `site:delete` | Delete the site folder. Asks first | yes |
+| 19 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
 
 **On the deployed site**
 
@@ -150,12 +150,13 @@ never in the repo.
 
 ## Deploying
 
-For a site on Cloudflare. Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+For a site on Cloudflare. You need to be signed in to Cloudflare (`mise x -- pnpm dlx wrangler login`).
+Every task here is safe to run again:
 
 ```
-mise run signin:access                once: Cloudflare Access in front of the admin
+mise run signin:access                Cloudflare Access in front of the admin
 mise run live:ship                    check, deploy, wait for it to answer
-mise run signin:token -- --live       once: the CLI is signed in
+mise run signin:token -- --live       the CLI is signed in to the deployed site
 mise run live:logs
 mise run live:undo                    back to the previous version
 mise run live:backup
@@ -167,7 +168,7 @@ Access but not change it. For that one task, make an API token in the Cloudflare
 Edit**, and store it with [fnox](https://fnox.jdx.dev), which the task reads by itself:
 
 ```
-fnox init                             once per machine
+fnox init                             if this machine has no fnox config yet
 fnox set CLOUDFLARE_API_TOKEN         it asks for the value
 ```
 
@@ -203,6 +204,10 @@ All optional, under `[env]` in your `mise.toml`.
 
 ## Good to know
 
+- **Every task is safe to run again.** `site:new` leaves a site that is there alone, `site:start`
+  leaves a running one running, `signin:token` replaces its own token, `plugin:new` does not
+  scaffold twice, `site:delete` with no site has nothing to delete. The test runs each of them
+  twice.
 - `site:reset`, `site:delete` and `plugin:publish` ask first. In CI nothing asks.
 - `plugin:new` and `plugin:add` stop the site; start it again afterwards.
 - `content:pull` and `live:backup` write to `backups/` in the site. Keep it out of git.

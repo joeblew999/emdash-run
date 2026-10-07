@@ -7,12 +7,13 @@ nav_order: 8
 
 # Deploying
 
-For a site on Cloudflare. Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+For a site on Cloudflare. You need to be signed in to Cloudflare (`mise x -- pnpm dlx wrangler login`).
+Every task here is safe to run again:
 
 ```
-mise run signin:access                once: Cloudflare Access in front of the admin
+mise run signin:access                Cloudflare Access in front of the admin
 mise run live:ship                    check, deploy, wait for it to answer
-mise run signin:token -- --live       once: the CLI is signed in
+mise run signin:token -- --live       the CLI is signed in to the deployed site
 mise run live:logs
 mise run live:undo                    back to the previous version
 mise run live:backup
@@ -24,7 +25,7 @@ Access but not change it. For that one task, make an API token in the Cloudflare
 Edit**, and store it with [fnox](https://fnox.jdx.dev), which the task reads by itself:
 
 ```
-fnox init                             once per machine
+fnox init                             if this machine has no fnox config yet
 fnox set CLOUDFLARE_API_TOKEN         it asks for the value
 ```
 

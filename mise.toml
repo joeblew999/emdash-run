@@ -31,7 +31,7 @@ includes = ["tasks.toml"]
 
 # This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
 [tasks.test]
-description = "Quick test: the everyday tasks from an empty folder, about a minute. Updates docs/status.md"
+description = "Quick test: the everyday tasks from an empty folder, about a minute. One task: mise run test -- signin:token. Updates docs/status.md"
 run = "bash tests/replay.sh quick"
 
 [tasks."test:full"]

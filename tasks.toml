@@ -35,14 +35,14 @@
 # ═══ A SITE ON THIS MACHINE ══════════════════════════════════════════════════════════════════
 
 ["site:new"]
-description = "Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog)"
+description = "Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog). A site that is already there is left alone"
 dir = "{{config_root}}"
 usage = '''
 arg "[template]" help="<platform>:<template>" {
   choices "cloudflare:blog" "cloudflare:starter" "cloudflare:marketing" "cloudflare:portfolio" "node:blog" "node:starter" "node:marketing" "node:portfolio"
 }
 '''
-run = [{ task = "step:own-folder" }, "pnpm dlx create-emdash@latest {{ env.SITE_FOLDER | default(value='site') }} --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"]
+run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" new \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %}"]
 
 ["site:start"]
 description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
@@ -74,9 +74,9 @@ confirm = "Remove this site's local database and uploads, and start again from t
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:start" }]
 
 ["site:delete"]
-description = "Delete the site folder. Asks first"
+description = "Delete the site folder. Asks first. No site is nothing to delete"
 confirm = "Delete the site folder and everything in it, including the local database?"
-run = [{ task = "step:own-folder" }, { task = "step:there" }, { task = "site:stop" }, { task = "step:delete" }]
+run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" delete \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
 
 # ═══ THE ADMIN AND THE REPO ══════════════════════════════════════════════════════════════════
 
@@ -97,13 +97,13 @@ run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" 
 # ═══ PLUGINS ═════════════════════════════════════════════════════════════════════════════════
 
 ["plugin:new"]
-description = "Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name>"
+description = "Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name>. Run again: rebuilds and re-adds it"
 depends = ["step:there", "step:plugin-details"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
 run = [
   { task = "site:stop" },
-  "pnpm dlx @emdash-cms/plugin-cli@latest init {{ usage.name }} --dir plugins/{{ usage.name }} --yes --publisher {{ env.PLUGIN_PUBLISHER | default(value='') }} --author-name \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" --security-email {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }} --package-manager pnpm",
+  "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" plugin \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }} {{ env.PLUGIN_PUBLISHER | default(value='') }} \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }}",
   "pnpm --dir plugins/{{ usage.name }} install",
   "pnpm --dir plugins/{{ usage.name }} run test",
   "pnpm --dir plugins/{{ usage.name }} run build",
@@ -455,9 +455,3 @@ quiet = true
 description = "The site is in a plainly named folder of its own — not the project itself, not a path that leaves it. What site:new and site:delete need before they make or remove one"
 dir = "{{config_root}}"
 run = "{% set f = env.SITE_FOLDER | default(value='site') %}{% if f == '' or f | replace(from='.', to='') != f or f | replace(from='/', to='') != f or f | replace(from=':', to='') != f or f | replace(from=' ', to='') != f or f | replace(from='\\\\', to='') != f %}node -e \"console.error('This needs the site in a plainly named folder of its own. SITE_FOLDER is [{{ f }}]: nothing was made or deleted.'); process.exit(1)\"{% else %}node -e \"\"{% endif %}"
-
-["step:delete"]
-hide = true
-description = "Remove the site folder — Node's own remove, the same on every OS, nothing to download"
-dir = "{{config_root}}"
-run = [{ task = "step:own-folder" }, "node -e \"require('fs').rmSync('{{ env.SITE_FOLDER | default(value='site') }}', { recursive: true, force: true, maxRetries: 5, retryDelay: 500 })\""]
