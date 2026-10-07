@@ -4,11 +4,11 @@ Written by `tests/replay.sh`. Do not edit: run it again.
 
 | | |
 |---|---|
-| when | 2026-10-07 09:04 UTC |
+| when | 2026-10-07 09:07 UTC |
 | tier | quick (one template, the everyday path) |
-| commit | `2370294` **plus uncommitted changes** |
+| commit | `13dbb00` |
 | machine | Darwin arm64, 2026.10.3 |
-| took | 75s |
+| took | 76s |
 | result | 14 passed, **0 failed** |
 
 Not covered by this run: the `live:` tasks and anything with `--live` (they need a deployed site), `plugin:publish`, Windows and Linux, and everything only in the full tier.

@@ -168,5 +168,6 @@ mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     every task that needs no deployment, about 5 minutes
 ```
 
-Both write [`docs/status.md`](docs/status.md). The plan is in [`docs/plans/`](docs/plans/); the
+Both make their own site in a temporary folder and write [`docs/status.md`](docs/status.md). To
+try a task by hand here, `mise run site:new` makes a `site/` (gitignored). The plan is in [`docs/plans/`](docs/plans/); the
 rules for agents are in [`docs/agents/README.md`](docs/agents/README.md).

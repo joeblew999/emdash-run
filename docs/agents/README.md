@@ -33,7 +33,7 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
 | `tests/replay.sh` | `mise run test`, `mise run test:full` — writes `docs/status.md` |
 | `mise.toml` | this repo's settings and its own `test` tasks |
-| `site/` | this repo's own site, made by `site:new` |
+| `site/` | not in the repo. `mise run site:new` makes one here to try tasks on; it is gitignored |
 
 ## Rules that came from mistakes
 

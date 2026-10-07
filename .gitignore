@@ -19,3 +19,6 @@ node_modules/
 
 mise.local.toml
 /.claude/worktrees/
+
+# A site made here with `mise run site:new`, to try the tasks on. Not part of the repo.
+/site/
