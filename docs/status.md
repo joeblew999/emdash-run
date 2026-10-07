@@ -14,7 +14,7 @@ Last run: `—`, tasks from —, commit `—`, 2026-10-07 11:50 UTC, 0s. Each ru
 - `mise run test` — quick: the everyday tasks, one template, about a minute
 - `mise run test:full` — everything: both templates, then the tasks that act on a deployed site
 
-Every test runs as another developer would: a clean environment and an empty config folder. Only macOS so far.
+Every test runs as another developer would: a clean environment and an empty config folder. This page is from a Mac; the same test runs on macOS, Linux and Windows in the `stages` workflow.
 
 ## By task — every task in `tasks.toml`
 

@@ -66,6 +66,7 @@ More than one agent may be working on this machine. So that none disturbs anothe
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
 | `tests/replay.sh` | the test, at two levels: `test` (quick) and `test:full` (everything, the deployed-site tasks included). Each step names the task it tests |
 | `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |
+| `.githooks/pre-commit` | on after `mise run hooks`. Change a task → change its test step and its description in the same commit; the hook refuses the commit otherwise, and rebuilds the README table and `docs/` pages. Never edit those pages by hand, never skip the hook |
 | `docs/_config.yml`, `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | written by charter, the owner's tool: `docs:setup`, `github:labels` |
 | `mise.toml` | this repo's settings and its own `test` tasks |
 | `site/` | not in the repo. The `site:new` task makes one here to try tasks on; it is gitignored |

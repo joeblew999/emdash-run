@@ -232,7 +232,13 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 ```
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
+mise run hooks         once per clone: turns on the commit check
 ```
+
+The commit check keeps three things together. A commit that touches `tasks.toml`, the test or this
+README is refused if a task has no test step, if a test step names a task that is gone, or if the
+pages built from them (the task table above, [`docs/`](docs/)) are out of date — it rebuilds them
+and asks you to add them.
 
 Each runs as another developer would — a clean environment, an empty config folder, its own site
 in a temporary folder — and adds its results to [`docs/status.md`](docs/status.md). To

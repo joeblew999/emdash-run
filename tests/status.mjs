@@ -65,9 +65,12 @@ const out = [];
 out.push("---", "title: What works", "nav_order: 50", "---", "", "# What works", "");
 out.push("Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.", "");
 out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${tasks.length} tasks have no test.**`, "");
-out.push(`Last run: \`${tier}\`, tasks from ${from}, commit \`${commit}\`, ${when}, ${took}s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.`, "");
+// a rebuild is not a run: it keeps the line the last run wrote
+const statusFile = join(repo, "docs", "status.md");
+const lastRun = rebuild && existsSync(statusFile) ? readFileSync(statusFile, "utf8").split("\n").find((l) => l.startsWith("Last run:")) : null;
+out.push(lastRun ?? `Last run: \`${tier}\`, tasks from ${from}, commit \`${commit}\`, ${when}, ${took}s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.`, "");
 out.push("- `mise run test` — quick: the everyday tasks, one template, about a minute", "- `mise run test:full` — everything: both templates, then the tasks that act on a deployed site", "");
-out.push("Every test runs as another developer would: a clean environment and an empty config folder. Only macOS so far.", "");
+out.push("Every test runs as another developer would: a clean environment and an empty config folder. This page is from a Mac; the same test runs on macOS, Linux and Windows in the `stages` workflow.", "");
 out.push("## By task — every task in `tasks.toml`", "");
 out.push("| task | Cloudflare site | Node site | deployed site | |", "|---|---|---|---|---|");
 for (const t of tasks) {
