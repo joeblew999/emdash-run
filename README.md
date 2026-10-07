@@ -4,12 +4,19 @@
 
 **The stages of working on an [EmDash](https://docs.emdashcms.com) site, as a few `mise` tasks.**
 
-Each task is EmDash's own commands in the right order: its scaffolder, its dev server, its CLI.
-There is no script underneath and nothing is copied into your repo.
 
-> Until 2026-10-07 this repo was a nushell harness; release 0.6.1 is that, and is no longer
-> developed (it is kept in [`reference/nushell-harness/`](reference/nushell-harness/)). `v0.7.0` is
-> the first release of what is below. What is coming is in [`docs/plans/`](docs/plans/).
+https://github.com/joeblew999/emdash-run
+
+
+Each task is EmDash's own commands in the right order — its scaffolder, its dev server, its CLI,
+Astro's and wrangler's — and nothing is copied into your repo. Where no command exists, four small
+scripts in [`admin/`](admin/) cover the gap.
+
+**What works right now is a file, not a claim: [`docs/status.md`](docs/status.md)**, written by
+`mise run test` in this repo.
+
+> `v0.7.0` is the last release. Signing in, deploying and `--live` are on `main` and not yet in a
+> release; they have run on macOS only. What is left: [`docs/plans/`](docs/plans/).
 
 ## Use it in your repo
 
@@ -128,7 +135,7 @@ All optional, under `[env]` in your `mise.toml`:
 | `TEMPLATE` | `cloudflare:blog` | what `site:new` makes when it is given no argument |
 | `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
-| `PREVIEW_PORT` | `4322` | the port `site:preview` serves the production build on |
+| `PREVIEW_PORT` | `4322` | the port `site:preview` serves the built site on |
 | `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
 | `ADMIN_EMAIL`, `ADMIN_NAME` | — | who the `signin:` tasks make the deployed site's administrator, and who `signin:access` lets in. Use your own address: a login provider added later links to the account with the same verified address |
 | `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
@@ -136,27 +143,19 @@ All optional, under `[env]` in your `mise.toml`:
 
 ## What is proven
 
-On every push that changes the tasks, [`stages.yml`](.github/workflows/stages.yml) starts from an
-empty folder holding only the `mise.toml` above and runs the commands a developer types — on
-**macOS, Linux and Windows**, on a Cloudflare and on a Node.js template:
+[`docs/status.md`](docs/status.md) is the record: every step of the last test run, pass or fail,
+with the date, the commit and the machine. `mise run test` (about a minute) runs the everyday path
+from an empty folder; `mise run test:full` runs every task that needs no deployment, on a
+Cloudflare and a Node.js template side by side.
 
-- `site:new`, by a setting and by an argument; the right platform comes out; a wrong name is refused
-- `site:start`; the site answers; EmDash's sign-in sets it up
-- `emdash`, with a flag and with a quoted argument that contains spaces
-- `site:start` again leaves the running site alone; `site:stop` stops it
-- `site:delete` refuses without a yes and deletes with one
-- with no site, a task says so plainly
-- `site:check` passes beside the running site and fails on a type error
-- `live:check` rehearses the deploy with no account (Cloudflare)
-- `model:sync` records a model change; `content:pull` brings a package down
-- `plugin:new`, `plugin:check`, `plugin:add`
-- `site:reset` refuses without a yes, and puts the site back on its seed
-- an existing site at the project root: `site:start`, `emdash`, `site:check`, `model:sync` and
-  `site:reset` run on it; `site:new` and `site:delete` refuse, and the project is left whole
-
-By hand, on macOS: a sandboxed plugin made by `plugin:new` answering on a Cloudflare site and on a
-Node.js site once the two lines were added to `astro.config.mjs`; and a package from `content:pull`
-loaded into an empty site with EmDash's two import commands.
+- **macOS:** everything in the status file, on every change.
+- **Linux and Windows:** the tasks in `v0.7.0` passed there
+  ([`stages.yml`](.github/workflows/stages.yml), run 37565911607). What has been added since has
+  not run there. The workflow now runs the same `mise run test:full`, by hand or on a release tag.
+- **A deployed site:** `live:ship`, `live:undo`, `live:logs`, `live:backup`, `signin:access`,
+  `signin:token -- --live`, `signin:open -- --live`, `content:pull` and `model:sync -- --live`
+  were run by hand against one Worker behind Cloudflare Access. They are not in the test: it has
+  no deployed site to use.
 
 ## What to know
 
@@ -195,11 +194,12 @@ loaded into an empty site with EmDash's two import commands.
 
 ## Not here yet
 
-Deploying is built and was proven on a throwaway Worker on macOS; it is not in a release yet.
-The package half of `live:backup`, `content:pull` and `model:sync -- --live` against a real
-deployment wait on a person signing in to it: [`docs/plans/2026-10-07-next.md`](docs/plans/2026-10-07-next.md). How
-the tasks were arrived at, with the EmDash command behind every step and the gaps that are known:
-[`docs/plans/done/2026-10-07-stages.md`](docs/plans/done/2026-10-07-stages.md).
+- A release with everything since `v0.7.0` in it.
+- `signin:token -- --live` for a Node.js site: its deployed database is wherever you host it.
+- `plugin:publish` has never published: it needs a registry login.
+
+The plan: [`docs/plans/2026-10-07-next.md`](docs/plans/2026-10-07-next.md). How the tasks were
+arrived at, with the command behind every step: [`docs/plans/done/`](docs/plans/done/).
 
 ## This repo
 

@@ -14,16 +14,17 @@ REPO=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d)
 OUT=$REPO/docs/status.md
 ROWS=$WORK/rows.txt; : > "$ROWS"
-FAILED=0
 
 replay() {
-  local T=$1 D=$WORK/${1/:/-} SITE=http://localhost:4400 n=0
+  # Each template gets its own folder, ports and result file, so two can run side by side.
+  local T=$1 DEV=$2 PRE=$3 D=$WORK/${1/:/-} SITE=http://localhost:$2 BUILT=http://localhost:$3
+  local ROWS=$WORK/rows-${1/:/-}.txt; : > "$ROWS"
   mkdir -p "$D" && cd "$D" && git init -q
-  printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\n[env]\nTEMPLATE = "%s"\nSITE_PORT = "4400"\nPREVIEW_PORT = "4410"\nPLUGIN_PUBLISHER = "did:web:example.com"\nPLUGIN_AUTHOR = "Example Author"\nPLUGIN_SECURITY_EMAIL = "security@example.com"\n[task_config]\nincludes = ["%s/tasks.toml"]\n' "$T" "$REPO" > mise.toml
+  printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\n[env]\nTEMPLATE = "%s"\nSITE_PORT = "%s"\nPREVIEW_PORT = "%s"\nPLUGIN_PUBLISHER = "did:web:example.com"\nPLUGIN_AUTHOR = "Example Author"\nPLUGIN_SECURITY_EMAIL = "security@example.com"\n[task_config]\nincludes = ["%s/tasks.toml"]\n' "$T" "$DEV" "$PRE" "$REPO" > mise.toml
   mise trust -q .
   row() { printf '| %s | %s | %s | %s |\n' "$T" "$1" "$2" "$3" >> "$ROWS"; printf '%-4s %-18s %s\n' "$1" "$T" "$2"; }
-  ok() { if eval "$2" > "$D/step.log" 2>&1; then row PASS "$1" ""; else FAILED=$((FAILED+1)); row FAIL "$1" "$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160)"; fi; }
-  no() { if eval "$2" > "$D/step.log" 2>&1; then FAILED=$((FAILED+1)); row FAIL "$1" "it should have refused"; else row PASS "$1" ""; fi; }
+  ok() { if eval "$2" > "$D/step.log" 2>&1; then row PASS "$1" ""; else row FAIL "$1" "$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160)"; fi; }
+  no() { if eval "$2" > "$D/step.log" 2>&1; then row FAIL "$1" "it should have refused"; else row PASS "$1" ""; fi; }
 
   no "site:start with no site refuses"       'mise run site:start'
   ok "site:new"                              'mise run site:new'
@@ -40,8 +41,9 @@ replay() {
   if [ "$TIER" = full ]; then
     case $T in cloudflare:*) ok "live:check (hidden, by name)" 'mise run live:check';; esac
     no "content:pull refuses with no LIVE_URL" 'mise run content:pull'
-    ok "content:pull (the built site as LIVE_URL)" 'LIVE_URL=http://localhost:4410 mise run content:pull && ls site/backups/*.emdash'
-    ok "signin:open says what it shows"      '( sleep 25; pkill -f playwright_chromiumdev_profile ) & mise run signin:open 2>&1 | grep -q "open: signed in"'
+    ok "content:pull (the built site as LIVE_URL)" 'LIVE_URL=$BUILT mise run content:pull && ls site/backups/*.emdash'
+    # a window needs a screen: not on a CI runner
+    [ -n "${CI:-}" ] || ok "signin:open says what it shows"      'SIGNIN_OPEN_SECONDS=3 mise run signin:open 2>&1 | grep -q "open: signed in"'
     ok "plugin:new"                          'mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs'
     ok "plugin:check"                        'mise run plugin:check -- save-log'
     ok "plugin:add"                          'mise run plugin:add -- @emdash-cms/plugin-forms && grep -q plugin-forms site/package.json'
@@ -49,16 +51,23 @@ replay() {
     ok "emdash:update"                       'mise run emdash:update'
     ok "site:reset empties the content"      'mise run site:start && mise run --yes site:reset && ! mise run emdash -- content get pages audit --json'
     no "site:reset refuses with nobody to ask" 'env -u MISE_YES -u CI mise run site:reset </dev/null'
-    ok "signin:passkey on a fresh database"  'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); rm -f ~/.config/emdash-run/tokens/localhost_4410_*.json; mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
+    ok "signin:passkey on a fresh database"  'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); rm -f ~/.config/emdash-run/tokens/localhost_${PRE}_*.json; mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
     no "site:delete refuses with nobody to ask" 'env -u MISE_YES -u CI mise run site:delete </dev/null'
   fi
-  ok "site:stop, twice"                      'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:4410/ || true)" != 200'
+  ok "site:stop, twice"                      'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
   ok "site:delete"                           '(cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run --yes site:delete && test ! -e site'
   cd "$REPO"
 }
 
 START=$(date +%s)
-if [ "$TIER" = full ]; then replay cloudflare:blog; replay node:starter; else replay cloudflare:starter; fi
+if [ "$TIER" = full ]; then
+  # side by side: two sites at once is what this machine is comfortable with
+  replay cloudflare:blog 4400 4410 & replay node:starter 4420 4430 & wait
+else
+  replay cloudflare:starter 4400 4410
+fi
+cat "$WORK"/rows-*.txt > "$ROWS"
+FAILED=$(grep -c '| FAIL |' "$ROWS")
 TOOK=$(( $(date +%s) - START ))
 {
   echo "# What works — the last run of \`mise run test${TIER/quick/}\`"

@@ -2,25 +2,30 @@
 
 ## Unreleased
 
-- **Fewer tasks, 23.** `live:key` is gone: `live:ship` sends the site's `.env` as secrets with the
-  deploy. `live:open` is `site:open -- --live`. `site:preview` and `live:check` still run by name
-  but are not listed: they are steps of `site:admin` and `live:ship`.
+Everything here has run on macOS only. `docs/status.md` is the record of the last test run.
 
-- **`site:open`, `live:open`**: a visible browser window signed in to the admin with the passkey
-  the script saved — the way for a person in to a site that `site:admin` or `live:admin` set up.
-
-- **`live:admin`**: the same script for a deployed site — sets it up as `ADMIN_EMAIL`, or signs in
-  with the passkey it saved, and signs the CLI in. Proven against this machine only.
-- `site:admin` no longer opens the default browser, leaves no process behind when it fails, and
-  can sign in again to a site it set up.
-
-- **`site:preview` and `site:admin`**: the production build on this machine, and that build with
-  a first administrator and a signed-in CLI made by a script — no person, no passkey prompt.
-  `site:stop` stops the preview too.
-
-- **Deploying:** `live:ship`, `live:undo`, `live:logs`, `live:key`, `live:backup`, and
-  `model:sync -- --live`. Built from a first deploy done by hand and proven on a throwaway Worker
-  (macOS). No SQL dump: `wrangler d1 export` refuses an EmDash database, locally and deployed.
+- **Signing in**, four ways side by side: `signin:token` (a machine, no browser: an administrator
+  and an EmDash API token written to the site's database — D1 or a Node site's SQLite file),
+  `signin:access` (Cloudflare Access in front of a deployed site's admin, plus a pass for
+  machines), `signin:passkey` and `signin:open` (EmDash's real wizard, and a signed-in window;
+  the only tasks that need Playwright).
+- **One rule for where a task acts:** this machine by default, the deployed site (`LIVE_URL`) with
+  `-- --live` — on `signin:*`, `model:sync` and `emdash`. `emdash -- … --preview` is this
+  machine's built site. Every task prints where it is acting first.
+- **Deploying:** `live:ship` (checks, deploys with the site's `.env` as secrets, waits for the site
+  to answer), `live:undo`, `live:logs`, `live:backup`. No SQL dump: `wrangler d1 export` refuses
+  an EmDash database.
+- **`site:preview`**: the built site on this machine, which signs in the way a deployed one does.
+- **`emdash:update`**: the site on the newest EmDash, type-checked and built.
+- **`mise run test` and `test:full`** in this repo: the tasks from an empty folder, with the result
+  written to `docs/status.md`. The CI workflow runs the same thing, by hand or on a tag.
+- The build is skipped when nothing it is made from has changed. Nothing is downloaded to delete
+  a folder. A task run where there is no site says so.
+- `emdash whoami` behind Cloudflare Access is handled two ways, because EmDash's does not send
+  the Access pass: the token is put in EmDash's own sign-in store, and the `emdash` task answers
+  it when the token is only in the environment.
+- fnox is in this repo's tools: the tasks that change Cloudflare take its token from there.
+- **Gone:** the nushell harness (`reference/`), its lint configs, `plugins/README.md`.
 
 ## 0.7.0 — 2026-10-07
 

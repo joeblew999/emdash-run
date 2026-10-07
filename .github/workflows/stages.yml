@@ -1,184 +1,33 @@
-# The stages, proven the way a project gets them: an EMPTY folder whose mise.toml has one line
-# naming this repo. On macOS, Linux and Windows, on a Cloudflare and a Node.js template.
+# The same test a developer runs — `mise run test:full` — on macOS, Linux and Windows.
 #
-# The steps below are the commands a developer types, in order — nothing else. The glue around them
-# (make the folder, ask the site a question) is bash, which every runner has; the stages themselves
-# run under mise's own shell for each OS, which is what is being proven.
+# Started by hand, or by a release tag. Never by a push: the test is run locally after every change
+# (docs/status.md is its record), and this is the cross-OS proof before a release.
 name: stages
 on:
-  push:
-    branches: [main]
-    paths: ["tasks.toml", ".github/workflows/stages.yml"]
   workflow_dispatch:
+  push:
+    tags: ["v*"]
 concurrency:
   group: stages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  from-nothing:
+  test:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # The two ways to choose: a TEMPLATE setting in mise.toml, or an argument to site:new.
-        choice:
-          - { template: "cloudflare:blog", by: setting }
-          - { template: "node:starter", by: argument }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
-        working-directory: project
-    env:
-      SITE: http://localhost:4400
     steps:
+      - uses: actions/checkout@v4
       - uses: jdx/mise-action@v5
         with:
-          install: false
-      - name: a project that is one mise.toml
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir project && cd project && git init -q
-          cat > mise.toml <<EOF
-          [settings]
-          experimental = true
-
-          [tools]
-          node = "26"
-          pnpm = "12"
-
-          [env]
-          ${{ matrix.choice.by == 'setting' && format('TEMPLATE = "{0}"', matrix.choice.template) || '# no TEMPLATE: site:new is given it as an argument' }}
-          SITE_PORT = "4400"
-          PLUGIN_PUBLISHER = "did:web:example.com"
-          PLUGIN_AUTHOR = "Example Author"
-          PLUGIN_SECURITY_EMAIL = "security@example.com"
-
-          [task_config]
-          includes = ["git::https://github.com/${{ github.repository }}.git//tasks.toml?ref=${{ github.ref_name }}"]
-          EOF
-          mise trust --quiet
-          mise tasks ls
-      - name: with no site yet, a task says so plainly
-        run: |
-          out="$(mise run site:start 2>&1 || true)"; echo "$out"
-          echo "$out" | grep -q 'There is no site'
-          if mise run site:check; then echo "site:check passed with no site"; exit 1; fi
-      - run: mise run site:new ${{ matrix.choice.by == 'argument' && format('-- {0}', matrix.choice.template) || '' }}
-      - name: it made the platform that was asked for
-        run: |
-          case "${{ matrix.choice.template }}" in
-            cloudflare:*) test -f site/wrangler.jsonc ;;
-            node:*)       test ! -e site/wrangler.jsonc ;;
-          esac
-      - name: a template that does not exist is refused by name, and nothing is made
-        run: |
-          if mise run site:new -- wordpress; then echo "accepted a template that does not exist"; exit 1; fi
-      - run: mise run site:start
-      - name: the site answers, and EmDash's sign-in link sets it up
-        run: |
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$SITE/")" = 200
-          curl -fsS --max-time 300 -X POST "$SITE/_emdash/api/setup/dev-bypass" -o /dev/null
-      - name: the CLI stage, with a flag and with a quoted argument
-        run: |
-          mise run emdash -- schema --help | grep -q add-field
-          mise run emdash -- content create pages --draft --slug from-ci --data '{"title":"Two words, one argument"}'
-          mise run emdash -- content get pages from-ci --json | grep -q 'Two words, one argument'
-      - name: site:check passes beside the running site, and fails on a type error
-        run: |
-          mise run site:check
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$SITE/")" = 200
-          printf -- '---\nconst n: number = "text";\n---\n<p>{n}</p>\n' > site/src/pages/zz-typeerr.astro
-          if mise run site:check; then echo "site:check passed a type error"; exit 1; fi
-          rm site/src/pages/zz-typeerr.astro
-      - name: live:check rehearses the deploy with no account
-        if: startsWith(matrix.choice.template, 'cloudflare:')
-        run: mise run live:check
-      - name: model:sync records a model change in the repo
-        run: |
-          mise run model:sync
-          test -f site/.emdash/schema.json
-          mise run emdash -- schema add-field pages subtitle --type string --label Subtitle
-          mise run model:sync
-          grep -q subtitle site/.emdash/schema.json
-      - name: content:pull refuses without LIVE_URL, and brings a package down with it
-        run: |
-          if mise run content:pull; then echo "content:pull ran with no LIVE_URL"; exit 1; fi
-          LIVE_URL="$SITE" mise run content:pull
-          ls site/backups/*.emdash
-      - name: plugin:new makes, tests, builds and adds a plugin; plugin:check passes; plugin:add adds a package
-        run: |
-          mise run plugin:new -- save-log
-          test -f site/plugins/save-log/dist/plugin.mjs
-          grep -q '"save-log"' site/package.json
-          mise run plugin:check -- save-log
-          mise run plugin:add -- @emdash-cms/plugin-forms
-          grep -q 'plugin-forms' site/package.json
-          # the plugin tasks stop the site first: on Windows, packages and folders changing under a
-          # running dev server broke it (run 37564290454) and broke the scaffolder (run 37564933270)
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$SITE/" || true)" != 200
-          mise run site:start
-      - name: site:reset refuses without a yes, and puts the site back on its seed
-        run: |
-          if env -u MISE_YES -u CI mise run site:reset </dev/null; then echo "reset without being asked"; exit 1; fi
-          mise run emdash -- content get pages from-ci --json | grep -q 'Two words, one argument'
-          mise run --yes site:reset
-          if mise run emdash -- content get pages from-ci --json; then echo "the page survived the reset"; exit 1; fi
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$SITE/")" = 200
-      - name: site:admin — a production build, set up and signed in to by a script, nobody at a browser
-        run: |
-          mise run --yes site:admin
-          mise run emdash -- schema list --url http://localhost:4322
-          mise run site:stop
-      - name: start again leaves it alone; stop stops it
-        run: |
-          mise run site:start
-          mise run site:stop
-          sleep 3
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$SITE/" || true)" != 200
-      - name: delete refuses without a yes, and deletes with one
-        run: |
-          # mise answers every prompt itself when CI or MISE_YES is set — as on any runner. The refusal
-          # is what a person at a terminal gets, so it is tested with both removed.
-          if env -u MISE_YES -u CI mise run site:delete </dev/null; then echo "deleted without being asked"; exit 1; fi
-          test -d site
-          mise run --yes site:delete
-          test ! -e site
-      - name: an existing site, laid out the way EmDash does — the project root is the site
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir existing && cd existing && git init -q
-          cat > mise.toml <<EOF
-          [settings]
-          experimental = true
-
-          [tools]
-          node = "26"
-          pnpm = "12"
-
-          [env]
-          SITE_PORT = "4401"
-          SITE_FOLDER = "."
-
-          [task_config]
-          includes = ["git::https://github.com/${{ github.repository }}.git//tasks.toml?ref=${{ github.ref_name }}"]
-          EOF
-          mise trust --quiet
-          mise x -- pnpm dlx create-emdash@latest . --template node:starter --pm pnpm --install --yes --force
-          mise run site:start
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
-          mise run emdash -- whoami
-          mise run site:check
-          mise run model:sync
-          mise run emdash:update
-          mise run --yes site:reset
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
-          # the site is the project: there is nothing to make, and nothing that may be deleted
-          if mise run site:new; then echo "site:new should have refused"; exit 1; fi
-          if mise run --yes site:delete; then echo "site:delete should have refused"; exit 1; fi
-          test -f package.json
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 http://localhost:4401/)" = 200
-          mise run site:stop
-      - name: what the site logged, if anything failed
-        if: failure()
-        run: mise x node@26.10.0 pnpm@12.9.1 -- pnpm --dir site exec astro dev logs | tail -60 || true
+          # node and pnpm only: fnox is for the tasks that change Cloudflare, which are not run here
+          install_args: node pnpm
+      - run: mise run test:full
+      - name: what worked
+        if: always()
+        run: cat docs/status.md >> "$GITHUB_STEP_SUMMARY"

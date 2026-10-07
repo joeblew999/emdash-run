@@ -1,4 +1,5 @@
-# The stages of working on an EmDash site — docs/plans/done/2026-10-07-stages.md.
+# The stages of working on an EmDash site, as mise tasks. What works right now: docs/status.md.
+#
 # A project gets them with one line in its mise.toml:
 #   [tools]
 #   node = "26"
@@ -6,17 +7,25 @@
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
 #
-# Where the site is: the folder `site` beside mise.toml, or SITE_FOLDER — "." when the site is the
+# WHERE THE SITE IS: the folder `site` beside mise.toml, or SITE_FOLDER — "." when the site is the
 # project itself, which is how EmDash lays out an existing site.
 #
-# The tools the tasks run — node and pnpm — are the project's: its mise.toml has a [tools] block.
-# Not declared per task here: a step that forgot would silently run on whatever the machine has.
+# THIS MACHINE OR THE DEPLOYED SITE — one rule:
+#   site:*   always this machine.          live:*   always the deployed site (LIVE_URL in mise.toml).
+#   Every task that can do either — signin:*, model:sync, emdash — is this machine by default and
+#   the deployed site with  -- --live .   Every task prints where it is acting before it acts.
+#   This machine has two sites: the dev one (site:start, port 4321) and the built one
+#   (site:preview, port 4322). signin:* act on the built one; emdash on the dev one unless --preview.
+#   Tasks that change Cloudflare take your token from fnox:  fnox exec -- mise run <task>
 #
-# Visible tasks are named <what>:<verb> — site:new, site:start, plugin:add — so they group by what
-# you are working on. `step:*` tasks are hidden: each is ONE command — EmDash's, Astro's, wrangler's
-# or pnpm's — written once and reused. Where no command exists, a step is one line of `node -e`
-# (a check, a message), and one step runs a script: admin/first-admin.mjs, for site:admin. If a
-# step seems to need more logic than that, it is a gap to write down in a plan, not code to add.
+# THE TOOLS — node and pnpm — are the project's: its mise.toml has a [tools] block. Not declared
+# per task here: a hidden step does not inherit its task's tools.
+#
+# HOW IT IS BUILT: visible tasks are named <what>:<verb>. `step:*` tasks are hidden: each is ONE
+# command — EmDash's, Astro's, wrangler's or pnpm's — written once and reused. Where no command
+# exists a step is one line of `node -e` (a check, a message), and four scripts in admin/ cover the
+# gaps no command closes: token.mjs, access.mjs, first-admin.mjs (the only Playwright), emdash.mjs.
+# After any change here or in admin/:  mise run test   (in the emdash-run repo).
 
 # ── hidden steps ─────────────────────────────────────────────────────────────────────────────
 
@@ -47,15 +56,17 @@ run = "pnpm exec astro check"
 
 ["step:build"]
 hide = true
-description = "The production build — what a deploy ships"
+description = "The production build — what a deploy ships. Skipped when nothing it is made from has changed since the last one: the site's source, config, seed, packages and plugins"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+sources = ["src/**/*", "public/**/*", "seed/**/*", "astro.config.*", "package.json", "pnpm-lock.yaml", "wrangler.jsonc", "tsconfig.json", ".env", "plugins/*/dist/**/*"]
+outputs = ["dist/**/*"]
 run = "pnpm exec astro build"
 
 ["step:forget"]
 hide = true
 description = "Remove the local database and uploads, so the next start makes them again from the seed. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm dlx rimraf .wrangler/state data.db data.db-wal data.db-shm uploads"
+run = "node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\""
 
 ["step:key"]
 hide = true
@@ -195,7 +206,7 @@ run = "curl --fail --silent --show-error --head --max-time 180 http://localhost:
 
 ["step:admin-tools"]
 hide = true
-description = "The one package site:admin's script needs, installed beside the script — in mise's copy of emdash-run, not in the project"
+description = "Playwright, the one package admin/first-admin.mjs needs (signin:passkey, signin:open), installed beside the script — in mise's copy of emdash-run, not in the project"
 dir = "{{config_root}}"
 run = "pnpm --dir \"{{ env.MISE_TASK_DIR }}/admin\" install --silent"
 
@@ -228,7 +239,7 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop"]
 
 ["site:logs"]
-description = "Follow the running site's log"
+description = "Follow the dev site's log (site:start). The built site's: pnpm exec astro preview logs --follow, in the site folder"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev logs --follow"
@@ -243,7 +254,7 @@ confirm = "Remove this site's local database and uploads, and start again from t
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:start" }]
 
 ["model:sync"]
-description = "The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with --live, from the deployed one at LIVE_URL (once: mise run emdash -- login --url <LIVE_URL>)"
+description = "The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with -- --live, from the deployed one at LIVE_URL (sign in to it first: signin:token -- --live)"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'flag "--live" help="Read the model of the deployed site at LIVE_URL instead of the local one"'
@@ -253,7 +264,7 @@ run = [
 ]
 
 ["content:pull"]
-description = "The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
+description = "The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and a sign-in to it: signin:token -- --live"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:import-how" }]
 
 ["plugin:new"]
@@ -338,7 +349,7 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec wrangler tail"
 
 ["live:backup"]
-description = "A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
+description = "A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and a sign-in to it: signin:token -- --live"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
 
 ["site:preview"]
@@ -350,13 +361,6 @@ hide = true
 description = "Hidden — a fresh production build plus signin:passkey in one go. NEEDS PLAYWRIGHT and Chrome or Edge. EMPTIES the local database first. Asks first. Kept for testing the wizard; for everyday use: site:preview, then signin:token"
 confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
-
-# ── local or deployed: one rule ──────────────────────────────────────────────────────────────
-#   site:*    always this machine.        live:*   always the deployed site (LIVE_URL in mise.toml).
-#   Every task that can do either — signin:*, model:sync, emdash — is this machine by default,
-#   and the deployed site with  -- --live .   e.g.  mise run emdash -- content list posts --live
-#   This machine has two sites: the dev one (site:start, port 4321) and the built one
-#   (site:preview, port 4322). signin:* act on the built one; emdash on the dev one unless --preview.
 
 # ── signing in ───────────────────────────────────────────────────────────────────────────────
 # In development (site:start) EmDash signs you in by itself — open
@@ -386,14 +390,14 @@ run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }
 # and admin/emdash.mjs, option B).
 
 ["signin:token"]
-description = "SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local production build by default (run site:preview first); add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>"
+description = "SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local built site by default, started if it is not running; add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>"
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
 
 ["signin:passkey"]
-description = "SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local production build by default (run site:preview first); -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/"
+description = "SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local built site by default, started if it is not running; -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
@@ -432,6 +436,6 @@ run = "{% set f = env.SITE_FOLDER | default(value='site') %}{% if f == '' or f |
 
 ["step:delete"]
 hide = true
-description = "Remove site/ with a tool that works the same on every OS"
+description = "Remove the site folder — Node's own remove, the same on every OS, nothing to download"
 dir = "{{config_root}}"
-run = [{ task = "step:own-folder" }, "pnpm dlx rimraf {{ env.SITE_FOLDER | default(value='site') }}"]
+run = [{ task = "step:own-folder" }, "node -e \"require('fs').rmSync('{{ env.SITE_FOLDER | default(value='site') }}', { recursive: true, force: true, maxRetries: 5, retryDelay: 500 })\""]

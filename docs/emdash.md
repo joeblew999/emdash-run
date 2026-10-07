@@ -1,6 +1,6 @@
 # EmDash, for someone using this harness
 
-> **2026-10-07:** written while this repo was a nushell harness, now in `reference/nushell-harness/`.
+> **2026-10-07:** written while this repo was a nushell harness (release 0.6.1; gone from `main`).
 > The sections that map EmDash's commands onto harness tasks describe that harness, not `tasks.toml`.
 
 What EmDash is, how a site lives and changes, and where this harness fits it or fights it.

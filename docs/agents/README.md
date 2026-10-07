@@ -130,16 +130,18 @@ skill says it does; it had not within a second).
   project has the same line, pointing at this repo on GitHub at a tag.
 - **`site/`** — this repo's own site, made by `mise run site:new`. It is what the stages are run
   against here.
-- **`.github/workflows/stages.yml`** — the proof: the stages from an empty folder, on macOS, Linux
-  and Windows, on a Cloudflare and a Node.js template.
-- **`reference/nushell-harness/`** — what this repo was before 2026-10-07. Not loaded, not tested.
-  Read it for the EmDash rough edges it worked around; do not extend it.
+- **`.github/workflows/stages.yml`** — the same `mise run test:full` on macOS, Linux and Windows.
+  Started by hand or by a release tag, never by a push.
+- **`tests/replay.sh`** — the test: the tasks from an empty folder, in order. `mise run test`
+  (a minute) and `mise run test:full`; each writes **`docs/status.md`**, the record of what works.
 - **`.src/`** — gitignored: EmDash's source and docs, for reading.
 
 ## Rules
 
-- **Run it and read the output.** After changing `tasks.toml`: run the stage in an empty folder
-  (`/tmp/emdash-try` has a `mise.toml` for that) and in this repo. Reasoning about it is not proof.
+- **After any change to `tasks.toml` or `admin/`: `mise run test`,** and commit the
+  `docs/status.md` it writes with the change. Before a release: `mise run test:full`. "It works"
+  means the status file says so for this commit — not that it worked earlier, and not that it
+  should. A long run is started in the background and never waited on in silence.
 - **A setting is read as `{{ env.NAME | default(value='…') }}`.** `get_env()` does not see the
   project's settings; a stage once ran on the wrong port and wrote to another project's site.
 - **Every step is a plain `program arguments` line**, so it means the same under mise's shell on

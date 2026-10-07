@@ -176,7 +176,12 @@ try {
 		const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 120);
 		console.log(`open: signed in to ${page.url()} with the saved token — "${await page.title()}": ${shown}`);
 		console.log("open: close the window when you are done");
-		await new Promise((r) => (page.on("close", r), browser.on("disconnected", r)));
+		// SIGNIN_OPEN_SECONDS closes the window by itself after that long: for the test, which has nobody to close it.
+		await new Promise((r) => {
+			page.on("close", r);
+			browser.on("disconnected", r);
+			if (process.env.SIGNIN_OPEN_SECONDS) setTimeout(r, Number(process.env.SIGNIN_OPEN_SECONDS) * 1000);
+		});
 		await browser.close().catch(() => {});
 		process.exit(0);
 	}
@@ -204,7 +209,12 @@ try {
 		console.log("open: close the window when you are done");
 		// On macOS closing the last window leaves Chrome itself running, so wait for the page to
 		// go as well as for the browser to.
-		await new Promise((r) => (page.on("close", r), browser.on("disconnected", r)));
+		// SIGNIN_OPEN_SECONDS closes the window by itself after that long: for the test, which has nobody to close it.
+		await new Promise((r) => {
+			page.on("close", r);
+			browser.on("disconnected", r);
+			if (process.env.SIGNIN_OPEN_SECONDS) setTimeout(r, Number(process.env.SIGNIN_OPEN_SECONDS) * 1000);
+		});
 		await browser.close().catch(() => {});
 		process.exit(0);
 	}

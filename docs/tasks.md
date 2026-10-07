@@ -2,7 +2,7 @@
 
 - **Usage:** `content:pull`
 
-The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and once: mise run emdash -- login --url &lt;LIVE_URL>
+The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and a sign-in to it: signin:token -- --live
 
 ## `emdash`
 
@@ -22,7 +22,7 @@ A newer EmDash: updates the site to the latest release, then type-checks and bui
 
 - **Usage:** `live:backup`
 
-A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url &lt;LIVE_URL>
+A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and a sign-in to it: signin:token -- --live
 
 ## `live:logs`
 
@@ -52,7 +52,7 @@ Put the previous version back — or the one you name: mise run live:undo -- <ve
 
 ## `model:sync`
 
-The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with --live, from the deployed one at LIVE_URL (once: mise run emdash -- login --url <LIVE_URL>)
+The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with -- --live, from the deployed one at LIVE_URL (sign in to it first: signin:token -- --live)
 
 
 - Depends: step:there
@@ -140,7 +140,7 @@ SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser windo
 
 ## `signin:passkey`
 
-SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local production build by default (run site:preview first); -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/
+SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local built site by default, started if it is not running; -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/
 
 
 - Depends: step:there, step:admin-tools
@@ -152,7 +152,7 @@ SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYW
 
 ## `signin:token`
 
-SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local production build by default (run site:preview first); add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>
+SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local built site by default, started if it is not running; add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>
 
 
 - Depends: step:there
@@ -180,7 +180,7 @@ Delete this project's site folder — the opposite of site:new. Stops the site f
 
 - **Usage:** `site:logs`
 
-Follow the running site's log
+Follow the dev site's log (site:start). The built site's: pnpm exec astro preview logs --follow, in the site folder
 
 ## `site:new`
 
@@ -219,3 +219,15 @@ I want to work on this site: install, make its key if it has none, run it in the
 - **Usage:** `site:stop`
 
 Stop the site that site:start started, and the production build that site:preview started
+
+## `test`
+
+- **Usage:** `test`
+
+What works right now: the everyday tasks from an empty folder, about 2 minutes. Writes docs/status.md. Run it after any change to tasks.toml or admin/
+
+## `test:full`
+
+- **Usage:** `test:full`
+
+Every task that needs no deployment, on a Cloudflare and a Node template, about 10 minutes. Writes docs/status.md. Run it before a release
