@@ -72,14 +72,32 @@ const keyFile = join(
 const here = dirname(fileURLToPath(import.meta.url));
 
 const LOCAL_HINT = local
-	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: start it with  mise run site:preview  — then run this again.`
+	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: and  mise run site:preview  did not bring it up — run that to see why.`
 	: `Nothing is answering at ${origin}. Is the site deployed? mise run live:ship`;
-// Is the site there at all? Say so in one line when it is not.
-try {
-	await fetch(new URL(url).origin, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
-} catch {
-	console.error(LOCAL_HINT);
-	process.exit(1);
+// Is the site there at all? A local build that is not running is started — the same as
+// `mise run site:preview` — so that this is one command. A deployed site is only reported.
+const answering = async () => {
+	try {
+		await fetch(new URL(url).origin, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+		return true;
+	} catch {
+		return false;
+	}
+};
+if (!(await answering())) {
+	if (local) {
+		console.log(`Nothing is answering at ${new URL(url).origin}: starting the production build (mise run site:preview)…`);
+		const { spawnSync: start } = await import("node:child_process");
+		start("mise", ["run", "site:preview"], {
+			cwd: process.env.MISE_PROJECT_ROOT || process.env.MISE_CONFIG_ROOT || process.cwd(),
+			stdio: ["ignore", "ignore", "inherit"],
+			shell: process.platform === "win32",
+		});
+	}
+	if (!(await answering())) {
+		console.error(LOCAL_HINT);
+		process.exit(1);
+	}
 }
 
 // The Chrome or Edge already installed: nothing is downloaded.
