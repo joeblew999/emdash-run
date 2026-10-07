@@ -50,7 +50,8 @@ if (!local && !deployed) {
 }
 const email = process.env.ADMIN_EMAIL || (local ? "agent@emdash.local" : "");
 const name = process.env.ADMIN_NAME || "Site Admin";
-if (!email) {
+// Only making an administrator needs an address; opening a window on a site already set up does not.
+if (!email && !show) {
 	console.error("A deployed site's administrator needs an address: set ADMIN_EMAIL in the [env] block of mise.toml.");
 	process.exit(1);
 }
@@ -139,8 +140,6 @@ try {
 		chmodSync(keyFile, 0o600);
 	};
 
-	await page.goto(`${origin}/_emdash/admin`);
-	await page.waitForURL(/\/_emdash\/admin\/(setup|login)/, { timeout: 180_000 });
 	// What signin:token and signin:access saved for this site, if anything.
 	const savedDir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run");
 	const savedJson = (kind) => {
@@ -171,6 +170,8 @@ try {
 		await browser.close().catch(() => {});
 		process.exit(0);
 	}
+	await page.goto(`${origin}/_emdash/admin`);
+	await page.waitForURL(/\/_emdash\/admin\/(setup|login)/, { timeout: 180_000 });
 	if (show) {
 		// A window for a person: sign in with the saved passkey and hand the page over.
 		if (page.url().includes("/setup") || !existsSync(keyFile)) {
