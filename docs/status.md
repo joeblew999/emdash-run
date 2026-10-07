@@ -7,9 +7,9 @@ nav_order: 50
 
 Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.
 
-**91 steps pass, 0 fail, 0 of 28 tasks have no test.**
+**91 steps pass, 0 fail, 1 of 29 tasks have no test.**
 
-Last run: `—`, tasks from —, commit `—`, 2026-10-07 11:45 UTC, 0s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
+Last run: `—`, tasks from —, commit `—`, 2026-10-07 11:50 UTC, 0s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
 
 - `mise run test` — quick: the everyday tasks, one template, about a minute
 - `mise run test:full` — everything: both templates, then the tasks that act on a deployed site
@@ -44,6 +44,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | `site:delete` | pass ×3 | pass ×3 | pass ×1 |  |
 | `site:logs` | pass ×1 | pass ×1 | — |  |
 | `site:new` | pass ×2 | pass ×2 | pass ×1 |  |
+| `site:ports` | — | — | — | **NOT TESTED** |
 | `site:preview` | pass ×1 | pass ×1 | — |  |
 | `site:reset` | pass ×2 | pass ×2 | — |  |
 | `site:start` | pass ×4 | pass ×4 | — |  |

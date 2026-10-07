@@ -47,6 +47,7 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 | [Deploying](deploying.md) | putting a site on Cloudflare, undoing, logs, backups |
 | [Plugins](plugins.md) | making one, adding one, searching the registry |
 | [Settings](settings.md) | everything you can set in `mise.toml` |
+| [Several sites, or several agents, at once](several-sites-or-several-agents-at-once.md) |  |
 | [Good to know](good-to-know.md) | what asks first, what stops the site, what is not there |
 | [Working on emdash-run](working-on-emdash-run.md) | the tests, and where the rules are |
 | [What works](status.md) | every task, and what the last test run showed |
