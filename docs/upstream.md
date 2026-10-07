@@ -1,6 +1,6 @@
 ---
 title: Upstream bugs
-nav_order: 3
+nav_order: 60
 ---
 
 # Reports for upstream — written, not sent

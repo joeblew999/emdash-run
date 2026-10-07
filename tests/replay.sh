@@ -43,6 +43,9 @@ else
   INCLUDE=$REPO/tasks.toml
 fi
 
+# Provenance first: every task in tasks.toml has a step below, and every step names a real task.
+(cd "$REPO" && node tests/status.mjs --coverage) || exit 1
+
 # One step: the task it tests, what it shows, the command. `no` is a step that must refuse.
 step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   local verdict detail=""

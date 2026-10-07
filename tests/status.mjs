@@ -10,6 +10,25 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
+// `node tests/status.mjs --coverage`: PROVENANCE. Every task in tasks.toml must be tested by at
+// least one step in tests/replay.sh, and every step must name a task that exists. It runs first in
+// every test, and fails it — so tasks.toml cannot change without the test changing with it.
+if (process.argv[2] === "--coverage") {
+	const all = JSON.parse(execFileSync("mise", ["tasks", "ls", "--hidden", "--json"], { cwd: repo, encoding: "utf8" }));
+	const names = all.filter((t) => !t.name.startsWith("step:") && t.source.endsWith("tasks.toml")).map((t) => t.name);
+	const stepped = new Set([...readFileSync(join(repo, "tests", "replay.sh"), "utf8").matchAll(/^\s*(?:\[[^\n]*?\]\s*\|\|\s*|case[^\n]*?\)\s*)?(?:ok|no)\s+([a-z:]+)\s+"/gm)].map((m) => m[1]));
+	const untested = names.filter((n) => !stepped.has(n));
+	const unknown = [...stepped].filter((n) => !names.includes(n));
+	if (untested.length) console.error(`tasks.toml has tasks with no step in tests/replay.sh: ${untested.join(", ")}`);
+	if (unknown.length) console.error(`tests/replay.sh has steps for tasks that are not in tasks.toml: ${unknown.join(", ")}`);
+	if (untested.length || unknown.length) {
+		console.error("Change the test with the task. Nothing was run.");
+		process.exit(1);
+	}
+	console.log(`provenance: all ${names.length} tasks in tasks.toml have a step in tests/replay.sh, and every step names a real task`);
+	process.exit(0);
+}
+
 // `node tests/status.mjs --rebuild` rewrites the pages from the record as it is, without a new run.
 const rebuild = process.argv[2] === "--rebuild";
 const [rowsFile, tier, from, commit, took] = rebuild ? [null, "—", "—", "—", "0"] : process.argv.slice(2);
@@ -43,7 +62,7 @@ const cell = (task, where) => {
 const notTested = tasks.filter((t) => !results.some((r) => r.task === t.name));
 const failures = results.filter((r) => r.result === "FAIL");
 const out = [];
-out.push("---", "title: What works", "nav_order: 2", "---", "", "# What works", "");
+out.push("---", "title: What works", "nav_order: 50", "---", "", "# What works", "");
 out.push("Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.", "");
 out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${tasks.length} tasks have no test.**`, "");
 out.push(`Last run: \`${tier}\`, tasks from ${from}, commit \`${commit}\`, ${when}, ${took}s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.`, "");
@@ -95,16 +114,40 @@ if (text.includes(begin) && text.includes(end)) {
 	writeFileSync(readme, text.slice(0, text.indexOf(begin)) + block + text.slice(text.indexOf(end) + end.length));
 }
 }
-// The docs site's home page IS the README: one source. Written here with the site's front matter
-// and its links pointed at the site's own pages.
+// The docs site is the README, one page per section: one source, so the two cannot drift. The home
+// page is the README's opening and its "Set up"; every other `## ` section becomes a page of its
+// own, in the README's order. Pages written here carry a marker, and stale ones are removed.
 {
-	const text = readFileSync(join(repo, "README.md"), "utf8")
+	const { readdirSync, unlinkSync } = await import("node:fs");
+	const docs = join(repo, "docs");
+	const marker = "<!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->";
+	for (const f of readdirSync(docs)) {
+		if (f.endsWith(".md") && readFileSync(join(docs, f), "utf8").includes(marker)) unlinkSync(join(docs, f));
+	}
+	const fix = (t) => t
 		.replaceAll("](docs/status.md)", "](status.md)")
 		.replaceAll("](docs/plans/)", "](plans/README.md)")
 		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
 		.replaceAll("](admin/)", "](https://github.com/joeblew999/emdash-run/tree/main/admin)")
-		.replace(/^Docs: .*\n/m, "Something wrong? [Open an issue](https://github.com/joeblew999/emdash-run/issues/new/choose).\n");
-	writeFileSync(join(repo, "docs", "README.md"), "---\ntitle: Home\nnav_order: 1\npermalink: /\n---\n\n<!-- Written by tests/status.mjs from the repo's README.md: edit that, not this. -->\n\n" + text);
+		.replace(/^Docs: .*\n/m, "");
+	const [intro, ...sections] = fix(readFileSync(join(repo, "README.md"), "utf8")).split(/^## /m);
+	const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+	const pages = sections.map((sec, i) => {
+		const title = sec.slice(0, sec.indexOf("\n")).trim();
+		return { title, file: `${slug(title)}.md`, body: sec.slice(sec.indexOf("\n") + 1).trim(), order: i + 2 };
+	});
+	const home = pages.find((p) => p.title === "Set up");
+	const rest = pages.filter((p) => p !== home);
+	for (const p of rest) {
+		writeFileSync(join(docs, p.file), `---\ntitle: "${p.title}"\nnav_order: ${p.order}\n---\n\n${marker}\n\n# ${p.title}\n\n${p.body}\n`);
+	}
+	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | |`),
+		"| [What works](status.md) | every task, and what the last test run showed |",
+		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",
+		"| [For agents](agents/README.md) | the rules for working on this repo |",
+		"| [Plans](plans/README.md) | what is next, and what was done |",
+		"| [Writing docs](writing.md) | how these pages are written |"].join("\n");
+	writeFileSync(join(docs, "README.md"), `---\ntitle: Home\nnav_order: 1\npermalink: /\n---\n\n${marker}\n\n${intro.trim()}\n\n## Set up\n\n${home ? home.body : ""}\n\n## In these docs\n\n${index}\n`);
 }
 
 console.log(`${fresh.filter((r) => r.result === "PASS").length} passed, ${fresh.filter((r) => r.result === "FAIL").length} failed in this run, ${took}s — docs/status.md: ${notTested.length} of ${tasks.length} tasks have no test`);

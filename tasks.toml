@@ -28,8 +28,239 @@
 # exists a step is one line of `node -e` (a check, a message), and four scripts in admin/ cover the
 # gaps no command closes: token.mjs, access.mjs, first-admin.mjs (the only Playwright), emdash.mjs.
 # After any change here or in admin/:  mise run test   (in the emdash-run repo).
+#
+# THIS FILE, IN ORDER: the tasks you run, group by group — then, at the end, every hidden step they
+# are built from. Nothing is mixed.
 
-# ── hidden steps ─────────────────────────────────────────────────────────────────────────────
+# ═══ A SITE ON THIS MACHINE ══════════════════════════════════════════════════════════════════
+
+["site:new"]
+description = "Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog)"
+dir = "{{config_root}}"
+usage = '''
+arg "[template]" help="<platform>:<template>" {
+  choices "cloudflare:blog" "cloudflare:starter" "cloudflare:marketing" "cloudflare:portfolio" "node:blog" "node:starter" "node:marketing" "node:portfolio"
+}
+'''
+run = [{ task = "step:own-folder" }, "pnpm dlx create-emdash@latest {{ env.SITE_FOLDER | default(value='site') }} --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"]
+
+["site:start"]
+description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
+run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]
+
+["site:stop"]
+description = "Stop the dev site and the built site"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop"]
+
+["site:logs"]
+description = "Follow the dev site's log"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec astro dev logs --follow"
+
+["site:check"]
+description = "Before a commit: seed valid, types check, site builds"
+run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:seed" }, { task = "step:typecheck" }, { task = "step:build" }]
+
+["site:preview"]
+description = "Build the site and serve it locally (port 4322) — behaves like a deployed site"
+run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" }, { task = "step:key" }, { task = "step:build" }, { task = "step:preview" }, { task = "step:preview-up" }]
+
+["site:reset"]
+description = "Empty the local database and start again from the seed. Asks first"
+confirm = "Remove this site's local database and uploads, and start again from the seed?"
+run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:start" }]
+
+["site:delete"]
+description = "Delete the site folder. Asks first"
+confirm = "Delete the site folder and everything in it, including the local database?"
+run = [{ task = "step:own-folder" }, { task = "step:there" }, { task = "site:stop" }, { task = "step:delete" }]
+
+# ═══ THE ADMIN AND THE REPO ══════════════════════════════════════════════════════════════════
+
+["model:sync"]
+description = "Record the site's content model in the repo (.emdash/). Add -- --live for the deployed site"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'flag "--live" help="Read the model of the deployed site at LIVE_URL instead of the local one"'
+run = [
+  "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" types --url {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.SITE_PORT | default(value='4321') }}{% endif %}",
+  { task = "step:model-changed" },
+]
+
+["content:pull"]
+description = "Download the deployed site's content as a package into backups/"
+run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:import-how" }]
+
+# ═══ PLUGINS ═════════════════════════════════════════════════════════════════════════════════
+
+["plugin:new"]
+description = "Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name>"
+depends = ["step:there", "step:plugin-details"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
+run = [
+  { task = "site:stop" },
+  "pnpm dlx @emdash-cms/plugin-cli@latest init {{ usage.name }} --dir plugins/{{ usage.name }} --yes --publisher {{ env.PLUGIN_PUBLISHER | default(value='') }} --author-name \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" --security-email {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }} --package-manager pnpm",
+  "pnpm --dir plugins/{{ usage.name }} install",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} run build",
+  "pnpm add file:./plugins/{{ usage.name }}",
+  { task = "step:plugin-how" },
+]
+
+["plugin:check"]
+description = "Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name>"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
+run = [
+  "pnpm --dir plugins/{{ usage.name }} install",
+  "pnpm --dir plugins/{{ usage.name }} run validate",
+  "pnpm --dir plugins/{{ usage.name }} run typecheck",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} run build",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
+]
+
+["plugin:add"]
+description = "Add a plugin from npm. mise run plugin:add -- <package>"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
+run = [{ task = "site:stop" }, "pnpm add {{ usage.package }}", { task = "step:plugin-how" }]
+
+["plugin:search"]
+description = "Search EmDash's plugin registry. mise run plugin:search -- forms"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<words>" help="What to look for, e.g. forms"'
+run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
+
+["plugin:publish"]
+description = "Publish a plugin to EmDash's registry. Asks first"
+confirm = "Publish this plugin to the public registry? A released version cannot be changed."
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
+run = [
+  "pnpm --dir plugins/{{ usage.name }} run validate",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin publish",
+]
+
+[plugin]
+description = "Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug>"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm dlx @emdash-cms/plugin-cli@latest"
+
+# ═══ SIGNING IN ══════════════════════════════════════════════════════════════════════════════
+# In development (site:start) EmDash signs you in by itself — open
+# /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin — and nothing below is needed.
+#
+# A production build — on this machine (site:preview) or deployed — has real sign-in. These are
+# the ways, kept side by side so each can be tried. Each works on the local production build, and
+# with -- --live on the deployed site at LIVE_URL.
+#
+#   task            who it signs in   needs Playwright?   what it is for
+#   signin:token    a machine         NO                  everyday: CLI, agents, CI — one second
+#   signin:access   people (+ a pass  NO                  a deployed site: Cloudflare Access in
+#                   for machines)                         front of the admin, sign in by emailed code
+#   signin:passkey  a machine         YES (+ Chrome/Edge) testing EmDash's own wizard and login
+#   signin:open     a person          YES (+ Chrome/Edge) a signed-in window, after signin:token
+#                                                         or signin:passkey
+#   site:admin      a machine         YES (+ Chrome/Edge) hidden: fresh build + signin:passkey
+#   (a login provider — GitHub, Google — is one more way and needs no task: two lines in the
+#   site's astro.config.mjs and an OAuth app)
+#
+# Playwright is only admin/first-admin.mjs. Nothing else here uses a browser.
+# signin:token and signin:passkey each want a site nobody has set up yet: they are alternatives.
+# To try the other one, start from an empty database (site:reset locally).
+#
+# Once signed in, `mise run emdash -- <command> --url <site>` adds what this machine saved for
+# that site. `whoami` behind Cloudflare Access is handled two ways (see admin/token.mjs, option A,
+# and admin/emdash.mjs, option B).
+
+["signin:token"]
+description = "Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed"
+depends = ["step:there"]
+dir = "{{config_root}}"
+usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
+
+["signin:access"]
+description = "Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code)"
+depends = ["step:live", "step:there"]
+dir = "{{config_root}}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
+
+["signin:passkey"]
+description = "Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome"
+depends = ["step:there", "step:admin-tools"]
+dir = "{{config_root}}"
+usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
+
+["signin:open"]
+description = "Open a browser window already signed in to the admin. Needs Playwright + Chrome"
+depends = ["step:there", "step:admin-tools"]
+dir = "{{config_root}}"
+usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
+
+# ═══ THE DEPLOYED SITE ═══════════════════════════════════════════════════════════════════════
+
+["live:ship"]
+description = "Deploy to Cloudflare: check, deploy, wait for the site to answer"
+run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
+
+["live:undo"]
+description = "Roll the deployed site back to the previous version (code only)"
+depends = ["step:live", "step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "[version]" help="A version id; left out, the one before the current"'
+run = ["pnpm exec wrangler whoami", "pnpm exec wrangler rollback {{ usage.version }} --yes --message \"live:undo\"", { task = "step:deployed" }, { task = "step:live-up" }]
+
+["live:logs"]
+description = "Follow the deployed site's log"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler tail"
+
+["live:backup"]
+description = "Back up the deployed site: database bookmark + content package"
+run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
+
+# ═══ EMDASH ITSELF ═══════════════════════════════════════════════════════════════════════════
+
+["emdash:update"]
+description = "Update the site to the newest EmDash, then type-check and build"
+run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
+
+[emdash]
+description = "EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
+
+# ═══ HIDDEN, BUT RUN BY NAME ═════════════════════════════════════════════════════════════════
+
+["live:check"]
+hide = true
+description = "Hidden. site:check, then a dry run of the deploy"
+run = [{ task = "site:check" }, { task = "step:rehearse" }]
+
+["site:admin"]
+hide = true
+description = "Hidden. Fresh built site + signin:passkey in one go. Empties the local database"
+confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
+run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
+
+# ═══ HIDDEN STEPS — one command each, reused by the tasks above ══════════════════════════════
 
 ["step:there"]
 hide = true
@@ -217,224 +448,6 @@ hide = true
 description = "EmDash's setup wizard and CLI sign-in, done by a script in a headless browser with a simulated passkey. Refuses any address that is not this machine"
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
-
-# ── the stages ───────────────────────────────────────────────────────────────────────────────
-
-["site:new"]
-description = "Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog)"
-dir = "{{config_root}}"
-usage = '''
-arg "[template]" help="<platform>:<template>" {
-  choices "cloudflare:blog" "cloudflare:starter" "cloudflare:marketing" "cloudflare:portfolio" "node:blog" "node:starter" "node:marketing" "node:portfolio"
-}
-'''
-run = [{ task = "step:own-folder" }, "pnpm dlx create-emdash@latest {{ env.SITE_FOLDER | default(value='site') }} --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"]
-
-["site:start"]
-description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
-run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]
-
-["site:stop"]
-description = "Stop the dev site and the built site"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop"]
-
-["site:logs"]
-description = "Follow the dev site's log"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm exec astro dev logs --follow"
-
-["site:check"]
-description = "Before a commit: seed valid, types check, site builds"
-run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:seed" }, { task = "step:typecheck" }, { task = "step:build" }]
-
-["site:reset"]
-description = "Empty the local database and start again from the seed. Asks first"
-confirm = "Remove this site's local database and uploads, and start again from the seed?"
-run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:start" }]
-
-["model:sync"]
-description = "Record the site's content model in the repo (.emdash/). Add -- --live for the deployed site"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'flag "--live" help="Read the model of the deployed site at LIVE_URL instead of the local one"'
-run = [
-  "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" types --url {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.SITE_PORT | default(value='4321') }}{% endif %}",
-  { task = "step:model-changed" },
-]
-
-["content:pull"]
-description = "Download the deployed site's content as a package into backups/"
-run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:import-how" }]
-
-["plugin:new"]
-description = "Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name>"
-depends = ["step:there", "step:plugin-details"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
-run = [
-  { task = "site:stop" },
-  "pnpm dlx @emdash-cms/plugin-cli@latest init {{ usage.name }} --dir plugins/{{ usage.name }} --yes --publisher {{ env.PLUGIN_PUBLISHER | default(value='') }} --author-name \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" --security-email {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }} --package-manager pnpm",
-  "pnpm --dir plugins/{{ usage.name }} install",
-  "pnpm --dir plugins/{{ usage.name }} run test",
-  "pnpm --dir plugins/{{ usage.name }} run build",
-  "pnpm add file:./plugins/{{ usage.name }}",
-  { task = "step:plugin-how" },
-]
-
-["plugin:check"]
-description = "Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name>"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
-run = [
-  "pnpm --dir plugins/{{ usage.name }} install",
-  "pnpm --dir plugins/{{ usage.name }} run validate",
-  "pnpm --dir plugins/{{ usage.name }} run typecheck",
-  "pnpm --dir plugins/{{ usage.name }} run test",
-  "pnpm --dir plugins/{{ usage.name }} run build",
-  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
-]
-
-["plugin:add"]
-description = "Add a plugin from npm. mise run plugin:add -- <package>"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
-run = [{ task = "site:stop" }, "pnpm add {{ usage.package }}", { task = "step:plugin-how" }]
-
-["plugin:publish"]
-description = "Publish a plugin to EmDash's registry. Asks first"
-confirm = "Publish this plugin to the public registry? A released version cannot be changed."
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
-run = [
-  "pnpm --dir plugins/{{ usage.name }} run validate",
-  "pnpm --dir plugins/{{ usage.name }} run test",
-  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
-  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin publish",
-]
-
-["plugin:search"]
-description = "Search EmDash's plugin registry. mise run plugin:search -- forms"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "<words>" help="What to look for, e.g. forms"'
-run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
-
-[plugin]
-description = "Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug>"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm dlx @emdash-cms/plugin-cli@latest"
-
-["live:check"]
-hide = true
-description = "Hidden. site:check, then a dry run of the deploy"
-run = [{ task = "site:check" }, { task = "step:rehearse" }]
-
-["emdash:update"]
-description = "Update the site to the newest EmDash, then type-check and build"
-run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
-
-["live:ship"]
-description = "Deploy to Cloudflare: check, deploy, wait for the site to answer"
-run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
-
-["live:undo"]
-description = "Roll the deployed site back to the previous version (code only)"
-depends = ["step:live", "step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-usage = 'arg "[version]" help="A version id; left out, the one before the current"'
-run = ["pnpm exec wrangler whoami", "pnpm exec wrangler rollback {{ usage.version }} --yes --message \"live:undo\"", { task = "step:deployed" }, { task = "step:live-up" }]
-
-["live:logs"]
-description = "Follow the deployed site's log"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm exec wrangler tail"
-
-["live:backup"]
-description = "Back up the deployed site: database bookmark + content package"
-run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
-
-["site:preview"]
-description = "Build the site and serve it locally (port 4322) — behaves like a deployed site"
-run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" }, { task = "step:key" }, { task = "step:build" }, { task = "step:preview" }, { task = "step:preview-up" }]
-
-["site:admin"]
-hide = true
-description = "Hidden. Fresh built site + signin:passkey in one go. Empties the local database"
-confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
-run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
-
-# ── signing in ───────────────────────────────────────────────────────────────────────────────
-# In development (site:start) EmDash signs you in by itself — open
-# /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin — and nothing below is needed.
-#
-# A production build — on this machine (site:preview) or deployed — has real sign-in. These are
-# the ways, kept side by side so each can be tried. Each works on the local production build, and
-# with -- --live on the deployed site at LIVE_URL.
-#
-#   task            who it signs in   needs Playwright?   what it is for
-#   signin:token    a machine         NO                  everyday: CLI, agents, CI — one second
-#   signin:access   people (+ a pass  NO                  a deployed site: Cloudflare Access in
-#                   for machines)                         front of the admin, sign in by emailed code
-#   signin:passkey  a machine         YES (+ Chrome/Edge) testing EmDash's own wizard and login
-#   signin:open     a person          YES (+ Chrome/Edge) a signed-in window, after signin:token
-#                                                         or signin:passkey
-#   site:admin      a machine         YES (+ Chrome/Edge) hidden: fresh build + signin:passkey
-#   (a login provider — GitHub, Google — is one more way and needs no task: two lines in the
-#   site's astro.config.mjs and an OAuth app)
-#
-# Playwright is only admin/first-admin.mjs. Nothing else here uses a browser.
-# signin:token and signin:passkey each want a site nobody has set up yet: they are alternatives.
-# To try the other one, start from an empty database (site:reset locally).
-#
-# Once signed in, `mise run emdash -- <command> --url <site>` adds what this machine saved for
-# that site. `whoami` behind Cloudflare Access is handled two ways (see admin/token.mjs, option A,
-# and admin/emdash.mjs, option B).
-
-["signin:token"]
-description = "Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed"
-depends = ["step:there"]
-dir = "{{config_root}}"
-usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
-
-["signin:passkey"]
-description = "Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome"
-depends = ["step:there", "step:admin-tools"]
-dir = "{{config_root}}"
-usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
-
-["signin:open"]
-description = "Open a browser window already signed in to the admin. Needs Playwright + Chrome"
-depends = ["step:there", "step:admin-tools"]
-dir = "{{config_root}}"
-usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
-
-["signin:access"]
-description = "Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code)"
-depends = ["step:live", "step:there"]
-dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
-
-[emdash]
-description = "EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
-
-["site:delete"]
-description = "Delete the site folder. Asks first"
-confirm = "Delete the site folder and everything in it, including the local database?"
-run = [{ task = "step:own-folder" }, { task = "step:there" }, { task = "site:stop" }, { task = "step:delete" }]
 
 ["step:own-folder"]
 hide = true

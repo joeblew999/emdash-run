@@ -1,6 +1,6 @@
 ---
 title: For agents
-nav_order: 4
+nav_order: 70
 ---
 
 # Agent guide — emdash-run

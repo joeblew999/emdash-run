@@ -1,0 +1,31 @@
+---
+title: "Deploying (Cloudflare)"
+nav_order: 8
+---
+
+<!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->
+
+# Deploying (Cloudflare)
+
+Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+
+```
+mise run signin:access                once: Cloudflare Access in front of the admin
+mise run live:ship                    check, deploy, wait for it to answer
+mise run signin:token -- --live       once: the CLI is signed in
+mise run live:logs
+mise run live:undo                    back to the previous version
+mise run live:backup
+```
+
+Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
+Access but not change it. For that one task, make an API token in the Cloudflare dashboard
+(My Profile → API Tokens) with **Access: Apps and Policies — Edit** and **Access: Service Tokens —
+Edit**, and store it with [fnox](https://fnox.jdx.dev), which the task reads by itself:
+
+```
+fnox init                             once per machine
+fnox set CLOUDFLARE_API_TOKEN         it asks for the value
+```
+
+Or set `CLOUDFLARE_API_TOKEN` in your environment any other way.

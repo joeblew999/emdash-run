@@ -1,6 +1,6 @@
 ---
 title: Plans
-nav_order: 5
+nav_order: 80
 has_children: true
 ---
 
