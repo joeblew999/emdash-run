@@ -8,7 +8,7 @@
 //   ~/.config/emdash-run/access/<host>.json  → EMDASH_HEADERS  (signin:access; Cloudflare Access)
 // A value already in the environment wins. Nothing is printed.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
@@ -77,6 +77,30 @@ if (URL.canParse(url)) {
 	// pass by itself — and putting them in the environment as well is what breaks `whoami`.
 	const inStore = token?.stored === true;
 	if (token && !inStore && !env.EMDASH_TOKEN) env.EMDASH_TOKEN = token.token;
+	// A dev site set to sign in with Cloudflare Access (`auth: access(…)`, which signin:access asks
+	// for) has no /_emdash/api/auth/dev-bypass — EmDash leaves its own sign-in routes out — and that
+	// is the address the CLI signs in at on localhost: "Not authenticated". The setup route's dev
+	// sign-in is still there and hands out a token (?token=1): take that one, and keep it.
+	if (!env.EMDASH_TOKEN || token?.dev) {
+		const { hostname, origin } = new URL(url);
+		if (["localhost", "127.0.0.1", "[::1]"].includes(hostname)) {
+			try {
+				const quick = { redirect: "manual", signal: AbortSignal.timeout(20_000) };
+				const good = token?.dev && (await fetch(new URL("/_emdash/api/auth/me", origin), { ...quick, headers: { Authorization: `Bearer ${token.token}` } })).ok;
+				if (token?.dev && !good) delete env.EMDASH_TOKEN;
+				if (!good && (await fetch(new URL("/_emdash/api/auth/dev-bypass", origin), quick)).status === 404) {
+					const res = await fetch(new URL("/_emdash/api/setup/dev-bypass?token=1", origin), { method: "POST", signal: AbortSignal.timeout(120_000) });
+					const minted = res.ok ? ((await res.json())?.data?.token ?? null) : null;
+					if (minted) {
+						env.EMDASH_TOKEN = minted;
+						const f = join(dir, "tokens", `${host}.json`);
+						mkdirSync(join(dir, "tokens"), { recursive: true, mode: 0o700 });
+						writeFileSync(f, JSON.stringify({ url: origin, token: minted, dev: true }), { mode: 0o600 });
+					}
+				}
+			} catch {}
+		}
+	}
 	const access = read("access");
 	if (access && !inStore && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
 }

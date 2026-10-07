@@ -65,9 +65,9 @@ In the order you use them. This table is written by the test, from the order it 
 | | task | what it does | tested |
 |---|---|---|---|
 | 1 | `signin:access` | Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code) | yes |
-| 2 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
-| 3 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
-| 4 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 2 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
+| 4 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
 | 5 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
 | 6 | `content:pull` | Download the deployed site's content as a package into backups/ | yes |
 | 7 | `live:backup` | Back up the deployed site: database bookmark + content package | yes |
@@ -162,6 +162,14 @@ mise run live:logs
 mise run live:undo                    back to the previous version
 mise run live:backup
 ```
+
+`signin:access` prints three lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in
+before `live:ship`. It leaves uploaded media public, so pictures on your pages need no sign-in.
+
+**A newly deployed site has no content.** `live:ship` says so, with the commands: sign in with
+`signin:token -- --live`, export this machine's content (`mise run emdash -- site export --output
+site.emdash`), then import it with `--live` — `--analyze` first, which prints a plan, then
+`--plan <digest> --confirm`.
 
 Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
 Access but not change it. For that one task, make an API token in the Cloudflare dashboard

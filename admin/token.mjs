@@ -163,4 +163,4 @@ if (where === "--remote") {
 	const { dismissWelcome } = await import("./welcome.mjs");
 	await dismissWelcome(origin, raw, pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {});
 }
-console.log(`token: ${email} is an administrator of ${origin}, and its API token is saved on this machine${stored ? " — and in EmDash's own sign-in store" : ""}`);
+console.log(`token: ${process.env.ADMIN_EMAIL ? "the address in ADMIN_EMAIL" : email} is an administrator of ${origin}, and its API token is saved on this machine${stored ? " — and in EmDash's own sign-in store" : ""}`);

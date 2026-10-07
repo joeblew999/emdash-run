@@ -41,9 +41,9 @@ In the order you use them. This table is written by the test, from the order it 
 | | task | what it does | tested |
 |---|---|---|---|
 | 1 | `signin:access` | Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code) | yes |
-| 2 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
-| 3 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
-| 4 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 2 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
+| 4 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
 | 5 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
 | 6 | `content:pull` | Download the deployed site's content as a package into backups/ | yes |
 | 7 | `live:backup` | Back up the deployed site: database bookmark + content package | yes |
