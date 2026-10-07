@@ -25,7 +25,8 @@
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
+import { createHash } from "node:crypto";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
@@ -53,11 +54,20 @@ if (!email) {
 	console.error("A deployed site's administrator needs an address: set ADMIN_EMAIL in the [env] block of mise.toml.");
 	process.exit(1);
 }
+// One name per site for what this machine saves. A deployed site: its host. A site on this
+// machine: host and port are not enough — two projects can use the same port — so the site's
+// folder is part of it.
+const savedName = (url, siteDir) => {
+	const { host, hostname } = new URL(url);
+	const safe = host.replace(/[^a-zA-Z0-9.-]/g, "_");
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(hostname) || hostname.endsWith(".localhost");
+	return local ? `${safe}_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}` : safe;
+};
 const keyFile = join(
 	process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
 	"emdash-run",
 	"passkeys",
-	`${host.replace(/[^a-zA-Z0-9.-]/g, "_")}.json`,
+	`${savedName(url, siteDir)}.json`,
 );
 const here = dirname(fileURLToPath(import.meta.url));
 

@@ -14,7 +14,8 @@ import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { hostname as machineName } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const where = args.includes("--remote") ? "--remote" : "--local";
@@ -24,6 +25,17 @@ if (!url || !URL.canParse(url) || !siteDir) {
 	process.exit(1);
 }
 const { host, origin } = new URL(url);
+// One name per site for what this machine saves. A deployed site: its host. A site on this
+// machine: host and port are not enough — two projects can use the same port — so the site's
+// folder is part of it.
+const savedName = (url, siteDir) => {
+	const { host, hostname } = new URL(url);
+	const safe = host.replace(/[^a-zA-Z0-9.-]/g, "_");
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(hostname) || hostname.endsWith(".localhost");
+	return local ? `${safe}_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}` : safe;
+};
+// One token per machine, named after it, so a second developer or CI does not replace this one.
+const tokenName = `emdash-run:${machineName().replace(/[^a-zA-Z0-9.-]/g, "-")}`;
 const email = process.env.ADMIN_EMAIL || "agent@emdash.local";
 const name = process.env.ADMIN_NAME || "Site Admin";
 
@@ -38,8 +50,8 @@ const sql = [
 	`INSERT INTO options (name, value) VALUES ('emdash:site_title', ${q(JSON.stringify("My Site"))}) ON CONFLICT(name) DO NOTHING`,
 	`INSERT INTO options (name, value) VALUES ('emdash:site_url', ${q(JSON.stringify(origin))}) ON CONFLICT(name) DO UPDATE SET value = excluded.value`,
 	`INSERT INTO options (name, value) VALUES ('emdash:setup_complete', 'true') ON CONFLICT(name) DO UPDATE SET value = excluded.value`,
-	`DELETE FROM _emdash_api_tokens WHERE name = 'emdash-run'`,
-	`INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) SELECT ${q(id())}, 'emdash-run', ${q(hash)}, ${q(raw.slice(0, 11))}, id, ${q(JSON.stringify(["admin"]))} FROM users WHERE email = ${q(email)}`,
+	`DELETE FROM _emdash_api_tokens WHERE name = ${q(tokenName)}`,
+	`INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) SELECT ${q(id())}, ${q(tokenName)}, ${q(hash)}, ${q(raw.slice(0, 11))}, id, ${q(JSON.stringify(["admin"]))} FROM users WHERE email = ${q(email)}`,
 ].join("; ");
 
 try {
@@ -52,7 +64,7 @@ try {
 	console.error(`token: the database refused it. Has the site answered a request yet? EmDash makes its tables on the first one.\n${String(error.stderr || error.message).slice(0, 600)}`);
 	process.exit(1);
 }
-const file = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "tokens", `${host.replace(/[^a-zA-Z0-9.-]/g, "_")}.json`);
+const file = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "tokens", `${savedName(url, siteDir)}.json`);
 mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
 writeFileSync(file, JSON.stringify({ url: origin, token: raw }), { mode: 0o600 });
 chmodSync(file, 0o600);

@@ -10,7 +10,19 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { join, resolve } from "node:path";
+
+// One name per site for what this machine saves. A deployed site: its host. A site on this
+// machine: host and port are not enough — two projects can use the same port — so the site's
+// folder is part of it.
+const savedName = (url, siteDir) => {
+	const { host, hostname } = new URL(url);
+	const safe = host.replace(/[^a-zA-Z0-9.-]/g, "_");
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(hostname) || hostname.endsWith(".localhost");
+	return local ? `${safe}_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}` : safe;
+};
+
 
 const [fallback, siteDir, ...rest] = process.argv.slice(2);
 const i = rest.findIndex((a) => a === "--url" || a === "-u");
@@ -18,7 +30,7 @@ const inline = rest.find((a) => a.startsWith("--url="));
 const url = inline ? inline.slice(6) : i >= 0 ? rest[i + 1] : fallback;
 const env = { ...process.env, EMDASH_URL: url };
 if (URL.canParse(url)) {
-	const host = new URL(url).host.replace(/[^a-zA-Z0-9.-]/g, "_");
+	const host = savedName(url, siteDir);
 	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run");
 	const read = (kind) => {
 		const f = join(dir, kind, `${host}.json`);
