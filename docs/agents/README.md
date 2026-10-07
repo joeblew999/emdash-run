@@ -23,7 +23,7 @@ exist so that does not happen again. They come before every other rule in this f
    Run `--help` on the command you are about to wrap. If it has the option, use it.
 
 2. **Read the skill for the area before working in it.** EmDash writes them for agents; they are in
-   this repo at `.github/skills/`:
+   the site at `site/.agents/skills/` (the scaffolder puts them there):
    - `emdash-cli/` — the CLI, sign-in, the editing flow, site export and import
    - `building-emdash-site/` — config, schema and seed, querying, rendering, site features
    - `creating-plugins/` — plugins, capabilities, hooks, testing, publishing
@@ -71,78 +71,39 @@ skill says it does; it had not within a second).
 
 ## How it is built
 
-- **`mise.toml`** — the project's settings, and nothing else. It is the only file that names a
-  project.
-- **`.config/mise/conf.d/harness.toml`** — the harness's mise config: tools, task names, daemons.
-  mise loads it alongside `mise.toml`. A consumer repo never edits it; `mise run upgrade` replaces
-  it together with `nu/`. So nothing project-specific may ever go in it, or in `nu/`.
-- **`nu/`** — the logic, in nushell. `main.nu` has one command per task; `lib.nu`, `site.nu`,
-  `plugin.nu` and `checks.nu` hold what they are made of; `task.nu` hands a task its
-  arguments; `tests.nu` tests the pure parts. Read [`nushell.md`](nushell.md) before editing any of it.
-- **`site/`** — the project's own site: pages, config, seed. `setup` creates it once from the
-  template; the harness never overwrites it. It is where a real site is built.
-- **`.src/`** — gitignored reference checkouts: the templates, the EmDash source, EmDash's own
-  site (`mise run source -- <name>`). Read them; nothing runs from there.
+- **`tasks.toml`** — everything. Visible tasks are the stages, named `<what>:<verb>` (`site:new`,
+  `site:start`). Hidden `step:*` tasks are single EmDash commands, written once and reused by the
+  stages. There is no script underneath: if a step seems to need logic, that is a gap to write in
+  the plan, not code to add.
+- **`mise.toml`** — this repo's own settings, and the line that includes `tasks.toml`. Another
+  project has the same line, pointing at this repo on GitHub at a tag.
+- **`site/`** — this repo's own site, made by `mise run site:new`. It is what the stages are run
+  against here.
+- **`.github/workflows/stages.yml`** — the proof: the stages from an empty folder, on macOS, Linux
+  and Windows, on a Cloudflare and a Node.js template.
+- **`reference/nushell-harness/`** — what this repo was before 2026-10-07. Not loaded, not tested.
+  Read it for the EmDash rough edges it worked around; do not extend it.
+- **`.src/`** — gitignored: EmDash's source and docs, for reading.
 
 ## Rules
 
-- **A task is a flow — and only where EmDash has none.** One command for a whole job that EmDash's
-  own commands do not cover (see *EmDash first*, rule 4). The steps are functions in `nu/`, not tasks.
-- **Use the tasks.** `mise tasks ls` is the list. For anything the official CLIs do, use the
-  passthroughs: `mise run emdash -- …`, `mise run emdash-plugin -- …`.
-- **Write logic once.** If two flows need it, it goes in `lib.nu`. No copied blocks.
-- **Run it and read the output.** Reasoning about a change is not validation. After a change:
-  `mise run dev`, then `mise run check`, and for anything user-facing look at the actual behaviour.
-- **A check must be able to fail.** `check` plants known faults in a copy of the module and
-  requires its own checkers to catch them. When you add a check, prove it fires.
-- **Every task runs on every OS — macOS, Linux, Windows.** That is why this is mise and nushell.
-  Use nushell's own commands: `request` (in `lib.nu`, over nushell's `http`) not curl; `files-in`
-  (in `lib.nu`, over nushell's `glob`), `ls`, `cp`, `rm` not the programs; `start` to open a
-  browser; no `/dev/null`, no `sh -c`. The only programs
-  the harness runs are the ones mise installs, the site's own `emdash`, plus git and docker — the
-  `PORTABLE` list in `nu/checks.nu` — and `check` fails on any other. Do not say a platform
-  works until `mise run verify` has run on it; CI runs it on all three.
-- **CI is not a second system, and not the test loop.** Verify locally. A push runs only
-  `mise run check` on the three OSes; a tag publishes; the full matrix is manual. Push once per
-  finished piece of work, and never add a CI-only step.
-- **No symlinks.** git writes the target path into a file on Windows. Copy instead; `check` fails
-  on one.
-- **Comments say what; docs say why.** A comment is a line or three. History goes in git.
-- **Plugins are scaffolded, not hand-written:** `mise run plugin:new -- <name>`. See
-  [`../plugin.md`](../plugin.md).
-- **Releasing is a tag, and it is fast.** Bump `HARNESS_VERSION` in `harness.toml`, add a
-  `## x.y.z` section to `CHANGELOG.md`, commit, `git tag vx.y.z && git push origin main vx.y.z`. The
-  `release` workflow runs `mise run check` and publishes the tarball — about a minute. Verify
-  locally first (`mise run verify -- --full`). Run the slow `full verification` workflow by hand
-  only when the cross-platform layer changed. Never create a release by hand, and never tag to test.
-- **Plans live in `docs/plans/`** — read the active one before structural changes.
-
-## The checks
-
-| command | what it tells you |
-|---|---|
-| `mise run check` | the harness holds together: modules parse, tasks and commands agree, checkers catch planted faults, task arguments arrive, unit tests, formatting, generated docs, no symlinks, plugins |
-| `mise run check -- --site` | also type-checks the site — a running site is not touched |
-| `mise run doctor` | the **running** site matches the repo: database health, plugins, content, and the settings-driven cross-checks |
-| `mise run doctor -- --url <url>` | the same for a deployment: core migrations (Cloudflare), content model, content |
-| `mise run verify` | does it work on this machine: site up, check, doctor — what CI runs on every OS. `--full` adds plugins, snapshot, build |
-| `mise run verify:linux` | `verify -- --full` in a clean Linux container, from any host with docker |
-| `mise run plugin:roundtrip` | plugin development works against this EmDash: scaffold, load, the site calls it, remove |
+- **Run it and read the output.** After changing `tasks.toml`: run the stage in an empty folder
+  (`/tmp/emdash-try` has a `mise.toml` for that) and in this repo. Reasoning about it is not proof.
+- **A setting is read as `{{ env.NAME | default(value='…') }}`.** `get_env()` does not see the
+  project's settings; a stage once ran on the wrong port and wrote to another project's site.
+- **Every step is a plain `program arguments` line**, so it means the same under mise's shell on
+  every OS. No pipes, no `&&`, no shell variables.
+- **Add files to a commit by name.** `git add -A` once swept a deleted `site/` into a commit about
+  something else.
+- **CI is the three-OS proof, not the test loop.** Lint a workflow with `actionlint` and run its
+  steps locally before pushing. On a runner `CI=true` makes mise answer every prompt with yes.
+- **Plans live in `docs/plans/`** — the open one is `2026-10-07-stages.md`.
 
 ## Tools
 
-- **MCP servers:** `emdash` (`.mcp.json`) — content, schema, media, taxonomy on the running site,
-  authenticated by the token `dev` mints.
-- **A browser:** Playwright, configured once per machine (user scope) as headless and isolated, so
-  several agents can each drive their own browser without fighting over one window:
-  `claude mcp add --scope user playwright -- mise exec node@24 -- npx -y @playwright/mcp@latest --headless --isolated`.
-  Prefer `curl` for "is it server-rendered" proofs; use the browser for the admin UI. Sign in
-  through `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. Set a tall viewport
-  (`page.setViewportSize({ width: 1400, height: 4000 })`) before clicking below the fold. A
-  saved-entry plugin panel loads through the host —
-  `POST /_emdash/api/content/<collection>/<id>/plugin-extensions/<plugin-id>`.
-- **EmDash skills** are vendored at `.github/skills/` so they exist on a fresh clone — *EmDash
-  first*, rule 2, says when to read them. `dev` refreshes them from EmDash's source at the version the site is pinned to (`.src/emdash/skills`) —
-  not from the template's copy in `site/`, which stays at whatever the template was synced from.
-  Nothing checks them: after an EmDash upgrade, commit what `dev` changed there.
+- **A browser:** Playwright, configured once per machine as headless and isolated. Sign in through
+  `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`.
+- **EmDash's docs MCP** (`.mcp.json`): `emdash-docs`, for looking things up in the current docs.
+- **EmDash's skills** come with the site: `site/.agents/skills/`. *EmDash first*, rule 2, says when
+  to read them. `pnpm dlx skills update` refreshes them.
 - **mise skills are machine-level** (`~/.claude/skills/`), not this repo's.

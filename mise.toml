@@ -1,35 +1,22 @@
 # $schema = "https://mise.jdx.dev/schema/mise.json"
 #
-# emdash-run — develop and run EmDash from any repo, on the official CLIs.
+# emdash-run — the stages of working on an EmDash site, as mise tasks. They are in tasks.toml.
 #
-#   mise run setup              first time: template, install, config — then the site is up
-#   mise run dev                after any change: config, seed, plugins, restart, URLs
-#   mise run check              before a commit (the git hook runs it)      --fix repairs
-#   mise run doctor             is the running site what the repo says?     --url <deployment>
-#   mise run deploy             check, build, ship to Cloudflare, verify    --dry
-#   mise run snapshot           the whole site as a package;  mise run restore -- <package>
-#   mise run plugin:new -- x    scaffold a plugin, load it, have the site call it
-#   mise run emdash -- …        the official CLI, any arguments
+#   mise run site:new -- cloudflare:blog   a site, once
+#   mise run site:start                    run it; then open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+#   mise run site:stop
+#   mise run emdash -- content list posts  anything else, through EmDash's own CLI
+#   mise run site:delete
 #
-# YOUR PROJECT is this file (settings) and site/ (the site itself — pages, config, seed). The
-# harness — tools, tasks, daemons — is .config/mise/conf.d/harness.toml and nu/, which
-# `mise run upgrade` replaces.
-# How to work here: docs/agents/README.md
+# This repo uses its own tasks the way any project does. Another project needs only:
+#   [task_config]
+#   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag>"]
+
+[settings]
+experimental = true # task includes from a git repo
 
 [env]
-TEMPLATE = "cloudflare:starter" # <platform>:<template>, as create-emdash spells it — what site:new makes site/ from, once
-EMDASH_VERSION = "1.1.0"        # read by the old nushell tasks only, until they are deleted; the stages use site/package.json
-DEPLOY_URL = ""                 # this repo's own site is not deployed anywhere
-# Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
-PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
-PLUGIN_AUTHOR = "joeblew999"
-PLUGIN_SECURITY_URL = "https://github.com/joeblew999/emdash-run/security/advisories/new"
+TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is given no argument
 
-# What `doctor` asserts about live content: this collection has entries, and they carry data.
-# Empty skips the check.
-VERIFY_COLLECTION = "posts"
-
-# The stage tasks — start, emdash, stop, prove — come from tasks.toml, as they do in any project.
-# Here it is the file beside this one; elsewhere it is one line naming this repo at a tag.
 [task_config]
 includes = ["tasks.toml"]

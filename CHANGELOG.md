@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The repo is now the stages, in pure mise.** `tasks.toml` holds `site:new`, `site:start`,
+  `site:stop`, `site:logs`, `site:delete` and `emdash` — EmDash's own commands in order, hidden
+  `step:*` tasks reused between them, no script underneath. A project gets them with one include
+  line; nothing is copied in. Proven from an empty folder on macOS, Linux and Windows, on a
+  Cloudflare and a Node.js template (`stages.yml`).
+- **The nushell harness is reference only**, in `reference/nushell-harness/`: its tasks, its
+  installers, its workflows, its git hook and the pitchfork daemon are no longer loaded or run.
+  Release 0.6.1 is the last of it.
+- **This repo's `site/`** is a fresh `cloudflare:starter` made by `mise run site:new`, on EmDash 1.2.0.
 - **`dev` is the one way in.** The first time it creates and installs the site as well; `setup`
   still exists for the installer. `mise run emdash -- <command> --help` works (the flag was lost).
 - **Fewer tasks: 18 where there were 32**, each described by the job it does. `mise tasks ls` now lists the flows and the two official

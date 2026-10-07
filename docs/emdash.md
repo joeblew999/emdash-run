@@ -1,5 +1,8 @@
 # EmDash, for someone using this harness
 
+> **2026-10-07:** written while this repo was a nushell harness, now in `reference/nushell-harness/`.
+> The sections that map EmDash's commands onto harness tasks describe that harness, not `tasks.toml`.
+
 What EmDash is, how a site lives and changes, and where this harness fits it or fights it.
 Written from EmDash's own source and docs at tag `emdash@1.1.0`, not from this repo's comments.
 
