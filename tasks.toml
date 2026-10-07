@@ -13,9 +13,10 @@
 # Not declared per task here: a step that forgot would silently run on whatever the machine has.
 #
 # Visible tasks are named <what>:<verb> — site:new, site:start, plugin:add — so they group by what
-# you are working on. `step:*` tasks are hidden: each is ONE of EmDash's own commands,
-# written once and reused. There is no script underneath — if a step needs logic, it is a gap to
-# write down in the plan, not code to add here.
+# you are working on. `step:*` tasks are hidden: each is ONE command — EmDash's, Astro's, wrangler's
+# or pnpm's — written once and reused. Where no command exists, a step is one line of `node -e`
+# (a check, a message), and one step runs a script: admin/first-admin.mjs, for site:admin. If a
+# step seems to need more logic than that, it is a gap to write down in a plan, not code to add.
 
 # ── hidden steps ─────────────────────────────────────────────────────────────────────────────
 
@@ -204,6 +205,12 @@ description = "EmDash's setup wizard and CLI sign-in, done by a script in a head
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
+["step:admin-live"]
+hide = true
+description = "The same script, allowed to leave this machine: it sets up, or signs in to, the deployed site at LIVE_URL"
+dir = "{{config_root}}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --deployed"
+
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
 ["site:new"]
@@ -354,6 +361,11 @@ run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" 
 description = "A production build with a real administrator and a signed-in CLI, with nobody at a browser — for building and testing anything that needs real sign-in. EMPTIES the local database first, then site:preview, then a script completes EmDash's setup wizard and approves the CLI's sign-in. Local only. Asks first. Afterwards: mise run emdash -- <command> --url http://localhost:<PREVIEW_PORT>"
 confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
+
+["live:admin"]
+description = "The deployed site has an administrator and the CLI is signed in to it, with nobody at a browser. First time: a script completes EmDash's setup wizard at LIVE_URL as ADMIN_EMAIL (and ADMIN_NAME), with an empty site, and saves the passkey it made in ~/.config/emdash-run/passkeys/ — that file is the way in, keep it. After that: it signs in with the saved passkey and signs the CLI in again. A site somebody else set up: it stops. Asks first"
+confirm = "Set up, or sign in to, the DEPLOYED site at LIVE_URL as its administrator?"
+run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:admin-tools" }, { task = "step:admin-live" }]
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"

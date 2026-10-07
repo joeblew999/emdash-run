@@ -18,6 +18,12 @@ Anything else in EmDash, through its official CLI — e.g: mise run emdash -- co
 
 A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after
 
+## `live:admin`
+
+- **Usage:** `live:admin`
+
+The deployed site has an administrator and the CLI is signed in to it, with nobody at a browser. First time: a script completes EmDash's setup wizard at LIVE_URL as ADMIN_EMAIL (and ADMIN_NAME), with an empty site, and saves the passkey it made in ~/.config/emdash-run/passkeys/ — that file is the way in, keep it. After that: it signs in with the saved passkey and signs the CLI in again. A site somebody else set up: it stops. Asks first
+
 ## `live:backup`
 
 - **Usage:** `live:backup`

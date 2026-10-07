@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stands in for the system command while `emdash login` runs under site:admin and live:admin:
+# EmDash opens its approval page in the default browser with no way to say no, and the script
+# approves the code in its own headless browser.
+exit 0

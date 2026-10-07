@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`live:admin`**: the same script for a deployed site — sets it up as `ADMIN_EMAIL`, or signs in
+  with the passkey it saved, and signs the CLI in. Proven against this machine only.
+- `site:admin` no longer opens the default browser, leaves no process behind when it fails, and
+  can sign in again to a site it set up.
+
 - **`site:preview` and `site:admin`**: the production build on this machine, and that build with
   a first administrator and a signed-in CLI made by a script — no person, no passkey prompt.
   `site:stop` stops the preview too.

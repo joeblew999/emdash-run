@@ -55,6 +55,7 @@ mise run plugin -- search forms        anything else in EmDash's plugin CLI
 mise run live:check                    would this deploy — wrangler's dry run, no account needed
 mise run live:ship                     put it live on Cloudflare, and wait for it to answer
 mise run live:key                      once, after the first ship: the encryption key, as a secret
+mise run live:admin                    the deployed site set up and the CLI signed in to it, nobody at a browser
 mise run live:undo                     the previous version back — code only
 mise run live:logs                     follow the deployed site's log
 mise run live:backup                   the database's bookmark, and the site as a package
@@ -108,6 +109,7 @@ All optional, under `[env]` in your `mise.toml`:
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
 | `PREVIEW_PORT` | `4322` | the port `site:preview` serves the production build on |
 | `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
+| `ADMIN_EMAIL`, `ADMIN_NAME` | — | who `live:admin` makes the deployed site's first administrator. Use your own address: a login provider added later links to the account with the same verified address |
 | `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
 
@@ -148,8 +150,13 @@ loaded into an empty site with EmDash's two import commands.
   not. `site:admin` empties the local database, serves the production build, and a script
   completes EmDash's setup wizard with a simulated passkey and approves the CLI's sign-in — so
   anything that needs a signed-in site can be built and tested with nobody there. It needs Chrome
-  or Edge, works only on this machine's address, and is the one script in this repo. Then:
+  or Edge and is the one script in this repo. Then:
   `mise run emdash -- <command> --url http://localhost:4322`.
+- **The same for a deployed site: `live:admin`.** It sets the site at `LIVE_URL` up as
+  `ADMIN_EMAIL`, or signs in to one it set up before, and signs the CLI in. The passkey it makes
+  is saved in `~/.config/emdash-run/passkeys/`, readable only by you. **That file is the way in
+  to the site — whoever has it is its administrator. Keep a copy somewhere safe, and never commit
+  it.** A site somebody else set up, it cannot enter and does not try.
 - **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
   the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
   to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.

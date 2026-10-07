@@ -72,6 +72,18 @@ says which. Until then the workaround in the last line of each entry is what `ta
 - **Expected:** the template's committed file to match its own config.
 - **Here:** not used as a check.
 
+## 9. No setup, and no CLI sign-in, without a browser — and `emdash login` always opens one
+
+- **Seen:** a site that is not in development mode can only get its first administrator through
+  the setup wizard, and the CLI can only be signed in by a person approving a code. Every
+  `EMDASH_*` variable in the source was listed: none bootstraps an administrator or a token.
+  `emdash login` runs `open` / `xdg-open` / `cmd /c start` on its approval page unconditionally
+  (`cli/commands/login.ts`), so an automated run pops up the default browser.
+- **Proposed:** `emdash login --no-browser`; and a first-run bootstrap an operator can script —
+  for example a one-time setup token given as a secret.
+- **Here:** `site:admin` and `live:admin` drive the wizard with Playwright and a simulated passkey
+  device, and put a do-nothing `open` first on the PATH while `emdash login` runs.
+
 ## 8. `emdash migrate` cannot use wrangler's own sign-in
 
 - **Run:** signed in with `wrangler login`, in a deployed Cloudflare project:

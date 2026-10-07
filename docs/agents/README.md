@@ -36,7 +36,10 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
 7. **Decide what is reversible yourself; do not get ahead on what is not.**
 8. **Nothing waits on a person at a browser.** A task that needs a signed-in site is built and
    tested against a production build on this machine: `mise run --yes site:admin`, then
-   `--url http://localhost:4322` (or `LIVE_URL` set to it). See
+   `--url http://localhost:4322` (or `LIVE_URL` set to it). For a deployed site the same script is
+   `live:admin`; the owner has said (2026-10-07) they are fine with it making the first
+   administrator there. An agent whose own rules do not let it create an account on a site on the
+   internet hands that one command to the owner and carries on. See
    `docs/plans/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
    tied to one person's machine.
 9. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
