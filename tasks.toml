@@ -1,4 +1,4 @@
-# The stages of working on an EmDash site — docs/plans/2026-10-07-stages.md.
+# The stages of working on an EmDash site — docs/plans/done/2026-10-07-stages.md.
 # A project gets them with one line in its mise.toml:
 #   [tools]
 #   node = "26"

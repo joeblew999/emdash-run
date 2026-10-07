@@ -99,7 +99,8 @@ skill says it does; it had not within a second).
   something else.
 - **CI is the three-OS proof, not the test loop.** Lint a workflow with `actionlint` and run its
   steps locally before pushing. On a runner `CI=true` makes mise answer every prompt with yes.
-- **Plans live in `docs/plans/`** — the open one is `2026-10-07-stages.md`.
+- **Plans live in `docs/plans/`** — `ls docs/plans/` is what is left. How the tasks were arrived at,
+  with every command that was run, is `done/2026-10-07-stages.md`.
 
 ## Tools
 

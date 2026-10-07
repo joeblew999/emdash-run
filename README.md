@@ -7,10 +7,9 @@
 Each task is EmDash's own commands in the right order: its scaffolder, its dev server, its CLI.
 There is no script underneath and nothing is copied into your repo.
 
-> **Being rebuilt.** Until 2026-10-07 this repo was a nushell harness; release 0.6.1 is that, and is
-> no longer developed (it is kept in [`reference/nushell-harness/`](reference/nushell-harness/)).
-> What is below is what exists today. What is coming is in
-> [`docs/plans/2026-10-07-stages.md`](docs/plans/2026-10-07-stages.md).
+> Until 2026-10-07 this repo was a nushell harness; release 0.6.1 is that, and is no longer
+> developed (it is kept in [`reference/nushell-harness/`](reference/nushell-harness/)). `v0.7.0` is
+> the first release of what is below. What is coming is in [`docs/plans/`](docs/plans/).
 
 ## Use it in your repo
 
@@ -148,8 +147,9 @@ loaded into an empty site with EmDash's two import commands.
 ## Not here yet
 
 Deploying (`live:ship`, `live:undo`, `live:logs`) and backups — they need a real
-deployment to be proven on. The plan has each as a stage, with the EmDash command behind every step and the
-gaps that are known: [`docs/plans/2026-10-07-stages.md`](docs/plans/2026-10-07-stages.md).
+deployment to be proven on: [`docs/plans/2026-10-07-live.md`](docs/plans/2026-10-07-live.md). How
+the tasks were arrived at, with the EmDash command behind every step and the gaps that are known:
+[`docs/plans/done/2026-10-07-stages.md`](docs/plans/done/2026-10-07-stages.md).
 
 ## This repo
 
