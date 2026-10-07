@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Harness gaps found by running it"
 nav_order: 13
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Harness gaps found by running it

@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Deploy and recover the way EmDash documents"
 nav_order: 10
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Deploy and recover the way EmDash documents

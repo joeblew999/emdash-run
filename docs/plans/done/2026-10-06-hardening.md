@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Hardening — what the first releases showed is still soft"
 nav_order: 12
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Hardening: what the first releases showed is still soft

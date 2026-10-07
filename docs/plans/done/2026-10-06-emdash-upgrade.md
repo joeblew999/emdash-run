@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Upgrading EmDash is one flow"
 nav_order: 11
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Upgrading EmDash is one flow

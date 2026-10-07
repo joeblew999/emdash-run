@@ -2,6 +2,7 @@
 title: "Done · 2026-10-07 — Loose ends — everything raised while the stages were buil"
 nav_order: 21
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-07 — Loose ends: everything raised while the stages were built

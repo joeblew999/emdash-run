@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Other platforms, and what 0.1.0 left open"
 nav_order: 18
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Other platforms, and what 0.1.0 left open

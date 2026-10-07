@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Lean on EmDash — delete what it already does"
 nav_order: 16
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Lean on EmDash: delete what it already does

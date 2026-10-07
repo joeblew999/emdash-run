@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — Know EmDash properly, then make the harness fit it"
 nav_order: 14
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — Know EmDash properly, then make the harness fit it

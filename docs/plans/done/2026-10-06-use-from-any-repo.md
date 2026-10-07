@@ -2,6 +2,7 @@
 title: "Done · 2026-10-06 — What this repo is for — develop and run EmDash from any r"
 nav_order: 19
 parent: Plans
+nav_exclude: true
 ---
 
 # 2026-10-06 — What this repo is for: develop and run EmDash from any repo

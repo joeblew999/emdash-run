@@ -10,12 +10,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
-const [rowsFile, tier, from, commit, took] = process.argv.slice(2);
+// `node tests/status.mjs --rebuild` rewrites the pages from the record as it is, without a new run.
+const rebuild = process.argv[2] === "--rebuild";
+const [rowsFile, tier, from, commit, took] = rebuild ? [null, "—", "—", "—", "0"] : process.argv.slice(2);
 const store = join(repo, "tests", "results.json");
 const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
 
 let results = existsSync(store) ? JSON.parse(readFileSync(store, "utf8")) : [];
-const fresh = readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line) => {
+const fresh = rebuild ? [] : readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line) => {
 	const [task, where, step, result, detail, kind] = line.split("|").map((x) => x.trim());
 	return { task, where, step, result, detail, refusal: kind === "no", tier, from, commit, when };
 }).map((r, i) => ({ ...r, order: i }));
@@ -65,7 +67,7 @@ writeFileSync(join(repo, "docs", "status.md"), out.join("\n") + "\n");
 
 // The README's "in order" block: the tasks in the order the test uses them — which is the order a
 // developer does — each with its one-line description and what the test saw. Between two markers.
-for (const readme of [join(repo, "README.md"), join(repo, "docs", "README.md")]) {
+for (const readme of [join(repo, "README.md")]) {
 if (!existsSync(readme)) continue;
 const text = readFileSync(readme, "utf8");
 const begin = "<!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->";
@@ -92,5 +94,17 @@ if (text.includes(begin) && text.includes(end)) {
 	writeFileSync(readme, text.slice(0, text.indexOf(begin)) + block + text.slice(text.indexOf(end) + end.length));
 }
 }
+// The docs site's home page IS the README: one source. Written here with the site's front matter
+// and its links pointed at the site's own pages.
+{
+	const text = readFileSync(join(repo, "README.md"), "utf8")
+		.replaceAll("](docs/status.md)", "](status.md)")
+		.replaceAll("](docs/plans/)", "](plans/README.md)")
+		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
+		.replaceAll("](admin/)", "](https://github.com/joeblew999/emdash-run/tree/main/admin)")
+		.replace(/^Docs: .*\n/m, "Something wrong? [Open an issue](https://github.com/joeblew999/emdash-run/issues/new/choose).\n");
+	writeFileSync(join(repo, "docs", "README.md"), "---\ntitle: Home\nnav_order: 1\npermalink: /\n---\n\n<!-- Written by tests/status.mjs from the repo's README.md: edit that, not this. -->\n\n" + text);
+}
+
 console.log(`${fresh.filter((r) => r.result === "PASS").length} passed, ${fresh.filter((r) => r.result === "FAIL").length} failed in this run, ${took}s — docs/status.md: ${notTested.length} of ${tasks.length} tasks have no test`);
 process.exit(fresh.some((r) => r.result === "FAIL") ? 1 : 0);

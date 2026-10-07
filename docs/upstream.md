@@ -1,5 +1,5 @@
 ---
-title: Upstream
+title: Upstream bugs
 nav_order: 3
 ---
 
