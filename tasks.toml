@@ -68,3 +68,15 @@ dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
 env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
 run = "pnpm exec emdash"
+
+[delete]
+description = "Delete this project's site/ — the opposite of new. Stops the site first. Everything in site/ goes, including its local database; asks before it does"
+confirm = "Delete site/ and everything in it, including the local database?"
+run = [{ task = "stop" }, { task = "step:delete" }]
+
+["step:delete"]
+hide = true
+description = "Remove site/ with a tool that works the same on every OS"
+dir = "{{config_root}}"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm dlx rimraf site"

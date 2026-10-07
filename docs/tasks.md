@@ -9,6 +9,12 @@ Before a commit: is the project sound? --fix repairs formatting; --site also typ
 ### Arguments
 - **`[args]…`**
 
+## `delete`
+
+- **Usage:** `delete`
+
+Delete this project's site/ — the opposite of new. Stops the site first. Everything in site/ goes, including its local database; asks before it does
+
 ## `deploy`
 
 Go live: check, build, ship to Cloudflare, then verify what is live. --dry builds without shipping
