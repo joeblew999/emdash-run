@@ -124,11 +124,11 @@ Release this plugin to EmDash's registry, under the account you are logged in to
 
 - **Usage:** `signin:access`
 
-SIGN-IN, for PEOPLE on the deployed site: Cloudflare Access in front of its admin and API at LIVE_URL — a policy lets ADMIN_EMAIL in by a code sent to that address — plus a pass for machines, saved in ~/.config/emdash-run/access/. Changes nothing already there. Ends with the lines to add to astro.config.mjs and wrangler.jsonc. Needs a Cloudflare token with Access edit rights: fnox exec -- mise run signin:access
+SIGN-IN for PEOPLE on the deployed site, by Cloudflare Access. NO BROWSER, NO PLAYWRIGHT. Puts Access in front of the admin and API at LIVE_URL: ADMIN_EMAIL may sign in with a code sent to that address, and a pass for machines is saved in ~/.config/emdash-run/access/ so the CLI gets through. Changes nothing already there. Ends by printing the lines to add to astro.config.mjs and wrangler.jsonc. Run as: fnox exec -- mise run signin:access (it needs a Cloudflare token with Access edit rights; wrangler's own login can only read Access)
 
 ## `signin:open`
 
-SIGN-IN, for a PERSON: a browser window you can see, already signed in to the admin of a site that signin:passkey set up — local production build, or --live. Close the window when done
+SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin — only on a site that signin:passkey set up, because it uses the passkey that task saved. Local production build by default; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin. Site behind Cloudflare Access: no task needed, open its admin in your own browser)
 
 
 - Depends: step:there, step:admin-tools
@@ -140,7 +140,7 @@ SIGN-IN, for a PERSON: a browser window you can see, already signed in to the ad
 
 ## `signin:passkey`
 
-SIGN-IN, through EmDash's real pages, for a MACHINE: a script in a hidden browser completes the setup wizard with a simulated passkey and approves the CLI's own login. The local production build (run site:preview first), or with --live the deployed site at LIVE_URL as ADMIN_EMAIL. The passkey is saved in ~/.config/emdash-run/passkeys/. Needs Chrome or Edge
+SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local production build by default (run site:preview first); -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/
 
 
 - Depends: step:there, step:admin-tools
@@ -152,7 +152,7 @@ SIGN-IN, through EmDash's real pages, for a MACHINE: a script in a hidden browse
 
 ## `signin:token`
 
-SIGN-IN, the fast way for a MACHINE: an administrator and an EmDash API token written straight into the site's database — no browser. The local production build (run site:preview first), or with --live the deployed site at LIVE_URL (fnox exec -- mise run signin:token -- --live). After it, mise run emdash -- <command> --url <site> just works
+SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local production build by default (run site:preview first); add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>
 
 
 - Depends: step:there

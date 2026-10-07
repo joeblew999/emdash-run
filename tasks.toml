@@ -347,57 +347,59 @@ run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" 
 
 ["site:admin"]
 hide = true
-description = "A testing tool: a production build with a real administrator and a signed-in CLI, with nobody at a browser — for building and testing anything that needs real sign-in. Not how a deployed site gets its administrator (that is live:access). EMPTIES the local database first, then site:preview, then a script completes EmDash's setup wizard and approves the CLI's sign-in. Local only. Asks first. Afterwards: mise run emdash -- <command> --url http://localhost:<PREVIEW_PORT>"
+description = "Hidden — a fresh production build plus signin:passkey in one go. NEEDS PLAYWRIGHT and Chrome or Edge. EMPTIES the local database first. Asks first. Kept for testing the wizard; for everyday use: site:preview, then signin:token"
 confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
 
 # ── signing in ───────────────────────────────────────────────────────────────────────────────
-# In development (site:start) EmDash signs you in by itself: open
-# /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin — nothing below is needed.
+# In development (site:start) EmDash signs you in by itself — open
+# /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin — and nothing below is needed.
 #
-# A production build — on this machine (site:preview) or deployed — has real sign-in. These are the
-# ways, side by side, so each can be tried. Each works on the local production build, and with
-# --live on the deployed site at LIVE_URL.
+# A production build — on this machine (site:preview) or deployed — has real sign-in. These are
+# the ways, kept side by side so each can be tried. Each works on the local production build, and
+# with -- --live on the deployed site at LIVE_URL.
 #
-#   signin:token    a MACHINE, in a second, no browser. Writes an administrator and an EmDash API
-#                   token straight into the site's database. Use for the CLI, agents, CI.
-#   signin:passkey  a MACHINE, through EmDash's real pages: a script in a hidden browser completes
-#                   the setup wizard with a simulated passkey and signs the CLI in. Use to exercise
-#                   the wizard and the CLI's own login. Needs Chrome or Edge.
-#   signin:open     a PERSON: a visible browser window already signed in, on a site signin:passkey
-#                   set up.
-#   signin:access   PEOPLE on a deployed site: Cloudflare Access in front of the admin — sign in by
-#                   a code sent to ADMIN_EMAIL — plus a pass that lets machines through it. Needs a
-#                   Cloudflare token with Access rights: fnox exec -- mise run signin:access
-#   (a login provider — GitHub, Google — is a fifth way and needs no task: two lines in the
-#   site's astro.config.mjs and an OAuth app; see the README)
+#   task            who it signs in   needs Playwright?   what it is for
+#   signin:token    a machine         NO                  everyday: CLI, agents, CI — one second
+#   signin:access   people (+ a pass  NO                  a deployed site: Cloudflare Access in
+#                   for machines)                         front of the admin, sign in by emailed code
+#   signin:passkey  a machine         YES (+ Chrome/Edge) testing EmDash's own wizard and login
+#   signin:open     a person          YES (+ Chrome/Edge) a signed-in window, after signin:passkey
+#   site:admin      a machine         YES (+ Chrome/Edge) hidden: fresh build + signin:passkey
+#   (a login provider — GitHub, Google — is one more way and needs no task: two lines in the
+#   site's astro.config.mjs and an OAuth app)
 #
-# signin:token and signin:passkey each want a site nobody has set up yet. They are alternatives:
-# to try the other, start again from an empty database (site:reset locally).
+# Playwright is only admin/first-admin.mjs. Nothing else here uses a browser.
+# signin:token and signin:passkey each want a site nobody has set up yet: they are alternatives.
+# To try the other one, start from an empty database (site:reset locally).
+#
+# Once signed in, `mise run emdash -- <command> --url <site>` adds what this machine saved for
+# that site. `whoami` behind Cloudflare Access is handled two ways (see admin/token.mjs, option A,
+# and admin/emdash.mjs, option B).
 
 ["signin:token"]
-description = "SIGN-IN, the fast way for a MACHINE: an administrator and an EmDash API token written straight into the site's database — no browser. The local production build (run site:preview first), or with --live the deployed site at LIVE_URL (fnox exec -- mise run signin:token -- --live). After it, mise run emdash -- <command> --url <site> just works"
+description = "SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local production build by default (run site:preview first); add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>"
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
 
 ["signin:passkey"]
-description = "SIGN-IN, through EmDash's real pages, for a MACHINE: a script in a hidden browser completes the setup wizard with a simulated passkey and approves the CLI's own login. The local production build (run site:preview first), or with --live the deployed site at LIVE_URL as ADMIN_EMAIL. The passkey is saved in ~/.config/emdash-run/passkeys/. Needs Chrome or Edge"
+description = "SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local production build by default (run site:preview first); -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
 
 ["signin:open"]
-description = "SIGN-IN, for a PERSON: a browser window you can see, already signed in to the admin of a site that signin:passkey set up — local production build, or --live. Close the window when done"
+description = "SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin — only on a site that signin:passkey set up, because it uses the passkey that task saved. Local production build by default; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin. Site behind Cloudflare Access: no task needed, open its admin in your own browser)"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
 
 ["signin:access"]
-description = "SIGN-IN, for PEOPLE on the deployed site: Cloudflare Access in front of its admin and API at LIVE_URL — a policy lets ADMIN_EMAIL in by a code sent to that address — plus a pass for machines, saved in ~/.config/emdash-run/access/. Changes nothing already there. Ends with the lines to add to astro.config.mjs and wrangler.jsonc. Needs a Cloudflare token with Access edit rights: fnox exec -- mise run signin:access"
+description = "SIGN-IN for PEOPLE on the deployed site, by Cloudflare Access. NO BROWSER, NO PLAYWRIGHT. Puts Access in front of the admin and API at LIVE_URL: ADMIN_EMAIL may sign in with a code sent to that address, and a pass for machines is saved in ~/.config/emdash-run/access/ so the CLI gets through. Changes nothing already there. Ends by printing the lines to add to astro.config.mjs and wrangler.jsonc. Run as: fnox exec -- mise run signin:access (it needs a Cloudflare token with Access edit rights; wrangler's own login can only read Access)"
 depends = ["step:live", "step:there"]
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
