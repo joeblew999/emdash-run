@@ -24,6 +24,13 @@ dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
 run = "pnpm exec emdash seed --validate"
 
+["step:key"]
+hide = true
+description = "The key EmDash encrypts plugin secrets with, in the gitignored site/.env — made when there is none, left alone when there is"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm exec emdash secrets generate --write .env"
+
 ["step:dev"]
 hide = true
 description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock"
@@ -54,7 +61,7 @@ run = "pnpm dlx create-emdash@latest site --template {% if usage.template %}{{ u
 
 ["site:start"]
 description = "I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
-run = [{ task = "step:install" }, { task = "step:seed" }, { task = "step:dev" }, { task = "step:up" }]
+run = [{ task = "step:install" }, { task = "step:key" }, { task = "step:seed" }, { task = "step:dev" }, { task = "step:up" }]
 
 ["site:stop"]
 description = "Stop the site that site:start started"
