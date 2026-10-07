@@ -28,6 +28,9 @@ jobs:
           # node and pnpm only: fnox is for the tasks that change Cloudflare, which are not run here
           install_args: node pnpm
       - run: mise run test:full
+        env:
+          # the test needs node and pnpm only; do not let a task pull in fnox on a runner
+          MISE_TASK_RUN_AUTO_INSTALL: "false"
       - name: what worked
         if: always()
         run: cat docs/status.md >> "$GITHUB_STEP_SUMMARY"

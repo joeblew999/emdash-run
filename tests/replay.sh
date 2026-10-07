@@ -12,6 +12,9 @@ set -u
 TIER=${1:-quick}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d)
+# On Windows this runs under Git Bash, whose /d/a/… paths mise (a Windows program) cannot read:
+# give it C:/… ones.
+if command -v cygpath >/dev/null 2>&1; then REPO=$(cygpath -m "$REPO"); WORK=$(cygpath -m "$WORK"); fi
 OUT=$REPO/docs/status.md
 ROWS=$WORK/rows.txt; : > "$ROWS"
 
