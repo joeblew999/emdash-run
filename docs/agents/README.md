@@ -58,7 +58,7 @@ row exited 0.
 |---|---|---|
 | make a project, installed | `pnpm dlx create-emdash@1.1.0 site --template cloudflare:blog --pm pnpm --install --yes` | 39s |
 | start it; migrate, seed, sign in | `pnpm dev`, then open `/_emdash/api/setup/dev-bypass` | 17s |
-| use the CLI locally with no token | `emdash whoami` → "Client will use dev bypass for localhost" | 1s |
+| use the CLI locally with no token | `emdash whoami` → "Client will use dev bypass for localhost". **It exits 0 even with no site running** — to know a site answers, use `emdash schema list` | 1s |
 | read the model, list content, media, menus | `emdash schema list`, `content list posts`, `media list`, `menu list` | ≤1s each |
 | change the model | `emdash schema add-field posts subtitle --type string --label Subtitle` | 1s |
 | types from the running site | `emdash types` | 1s |

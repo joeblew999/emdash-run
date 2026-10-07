@@ -36,11 +36,27 @@ Then:
 ```
 mise run site:new -- cloudflare:blog   a site, once — or node:blog, cloudflare:starter, …
 mise run site:start                    install, make its key if it has none, run it in the background
-mise run emdash -- content list posts  anything else, through EmDash's own CLI
 mise run site:logs                     follow the running site's log
 mise run site:stop
+mise run site:check                    before a commit: the seed is valid, the types check, it builds
+mise run site:reset                    the local site back to its seed — it asks first
 mise run site:delete                   remove site/ again — it asks first
+
+mise run model:sync                    after a model change in the admin: record it in the repo
+mise run content:pull                  the deployed site's content, as a package on this machine
+
+mise run plugin:new -- save-log        a plugin of your own: scaffolded, tested, built, added to the site
+mise run plugin:check -- save-log      its manifest, types, tests, build and registry bundle
+mise run plugin:add -- <npm package>   someone else's plugin, declared in the repo
+mise run plugin:publish -- save-log    release it to EmDash's registry — it asks first
+mise run plugin -- search forms        anything else in EmDash's plugin CLI
+
+mise run live:check                    would this deploy — wrangler's dry run, no account needed
+
+mise run emdash -- content list posts  anything else, through EmDash's own CLI
 ```
+
+Run a task where there is no site and it says so, and what to do.
 
 After `site:start`, open
 `http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. That is EmDash's own
@@ -69,7 +85,7 @@ The tasks look for the site in a `site/` folder beside `mise.toml`. An existing 
 SITE_FOLDER = "."
 ```
 
-`site:start`, `site:stop`, `site:logs` and `emdash` run on it. `site:new` and `site:delete` refuse:
+Every task runs on it but two. `site:new` and `site:delete` refuse:
 there is nothing to make, and the folder they would remove is your project. They only ever work on
 a plainly named folder of its own — never `.`, never a path that leaves the project.
 
@@ -82,6 +98,9 @@ All optional, under `[env]` in your `mise.toml`:
 | `TEMPLATE` | `cloudflare:blog` | what `site:new` makes when it is given no argument |
 | `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
+| `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
+| `LIVE_URL` | — | the address of the deployed site; `content:pull` needs it |
+| `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
 
 ## What is proven
 
@@ -94,23 +113,39 @@ empty folder holding only the `mise.toml` above and runs the commands a develope
 - `emdash`, with a flag and with a quoted argument that contains spaces
 - `site:start` again leaves the running site alone; `site:stop` stops it
 - `site:delete` refuses without a yes and deletes with one
-- an existing site at the project root: `site:start` and `emdash` run on it; `site:new` and
-  `site:delete` refuse, and the project is left whole and running
+- with no site, a task says so plainly
+- `site:check` passes beside the running site and fails on a type error
+- `live:check` rehearses the deploy with no account (Cloudflare)
+- `model:sync` records a model change; `content:pull` brings a package down
+- `plugin:new`, `plugin:check`, `plugin:add`
+- `site:reset` refuses without a yes, and puts the site back on its seed
+- an existing site at the project root: `site:start`, `emdash`, `site:check`, `model:sync` and
+  `site:reset` run on it; `site:new` and `site:delete` refuse, and the project is left whole
+
+By hand, on macOS: a sandboxed plugin made by `plugin:new` answering on a Cloudflare site and on a
+Node.js site once the two lines were added to `astro.config.mjs`; and a package from `content:pull`
+loaded into an empty site with EmDash's two import commands.
 
 ## What to know
 
 - **A project pointing at `main` does not update by itself.** mise keeps the first copy it fetched.
   Point at a tag and change the tag to update; or add `task.remote_no_cache = true` under
   `[settings]` to fetch every time (about a second per command); or run `mise cache clear` once.
-- **In CI, `site:delete` does not ask.** mise answers every prompt with yes when `CI` is set.
+- **In CI, nothing asks.** mise answers every prompt with yes when `CI` is set — `site:delete`,
+  `site:reset` and `plugin:publish` included.
+- **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
+  the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
+  to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.
+- **`content:pull` writes to `backups/` in the site.** Keep that folder out of git: a package
+  holds drafts too.
 - **The EmDash version is your site's**, in `site/package.json` and its lockfile — not a setting here.
 - **Everything else is EmDash's.** Its scaffolder gives the site the agent skills
   (`site/.agents/skills/`), the docs MCP config and an encryption key in a gitignored `.env`.
 
 ## Not here yet
 
-Checking before a commit, keeping the admin and the repo in step, plugins, deploying, backups and
-updating EmDash. The plan has each as a stage, with the EmDash command behind every step and the
+Deploying (`live:ship`, `live:undo`, `live:logs`), backups and updating EmDash — they need a real
+deployment to be proven on. The plan has each as a stage, with the EmDash command behind every step and the
 gaps that are known: [`docs/plans/2026-10-07-stages.md`](docs/plans/2026-10-07-stages.md).
 
 ## This repo

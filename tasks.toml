@@ -116,6 +116,26 @@ description = "The two commands that bring a package into an empty local site �
 dir = "{{config_root}}"
 run = "node -e \"console.log('The package is in backups/. To load it into an EMPTY local site (mise run site:reset, then open /_emdash/api/setup/dev-bypass?content=0):'); console.log('  mise run emdash -- site import backups/FILE --analyze'); console.log('  mise run emdash -- site import backups/FILE --plan DIGEST --confirm');\""
 
+["step:plugin-details"]
+hide = true
+quiet = true
+description = "The project says who publishes its plugins — EmDash's plugin scaffolder refuses without all three"
+dir = "{{config_root}}"
+run = "{% if env.PLUGIN_PUBLISHER | default(value='') == '' or env.PLUGIN_AUTHOR | default(value='') == '' or env.PLUGIN_SECURITY_EMAIL | default(value='') == '' %}node -e \"console.error('A new plugin needs three settings in the [env] block of mise.toml: PLUGIN_PUBLISHER (your Atmosphere handle or DID - it must resolve), PLUGIN_AUTHOR (a name) and PLUGIN_SECURITY_EMAIL.'); process.exit(1)\"{% else %}node -e \"\"{% endif %}"
+
+["step:plugin-how"]
+hide = true
+quiet = true
+description = "The edit EmDash leaves to you after a plugin is added: two lines in astro.config.mjs, and a sandbox runner if the site has none"
+dir = "{{config_root}}"
+run = "node -e \"console.log('The plugin is in the site and in package.json. Now, in astro.config.mjs:'); console.log('  1. import it:              import myPlugin from PACKAGE-NAME'); console.log('  2. inside emdash({ ... }):  sandboxed: [myPlugin],'); console.log('  3. once per site, a runner: Cloudflare - sandboxRunner: sandbox() from @emdash-cms/cloudflare, and the worker_loaders line in wrangler.jsonc (Workers Paid plan to deploy).'); console.log('                              Node - sandboxRunner: @emdash-cms/sandbox-workerd/sandbox (a string), and in the site: pnpm add @emdash-cms/sandbox-workerd workerd'); console.log('Then: mise run site:stop, mise run site:start. EmDash docs: deployment/plugin-sandbox.');\""
+
+["step:rehearse"]
+hide = true
+description = "Everything a Cloudflare deploy does short of shipping: wrangler bundles the build and resolves the bindings, and uploads nothing. Needs no account"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler deploy --dry-run"
+
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
 ["site:new"]
@@ -160,6 +180,64 @@ run = [{ task = "step:there" }, { task = "step:up" }, { task = "step:types" }, {
 ["content:pull"]
 description = "The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:import-how" }]
+
+["plugin:new"]
+description = "I need a plugin of my own: EmDash's plugin scaffolder makes plugins/<name> inside the site, then it is installed, tested, built and added to the site. Ends with the two lines to add to astro.config.mjs. Needs PLUGIN_PUBLISHER, PLUGIN_AUTHOR and PLUGIN_SECURITY_EMAIL"
+depends = ["step:there", "step:plugin-details"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
+run = [
+  "pnpm dlx @emdash-cms/plugin-cli@latest init {{ usage.name }} --dir plugins/{{ usage.name }} --yes --publisher {{ env.PLUGIN_PUBLISHER | default(value='') }} --author-name \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" --security-email {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }} --package-manager pnpm",
+  "pnpm --dir plugins/{{ usage.name }} install",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} run build",
+  "pnpm add file:./plugins/{{ usage.name }}",
+  { task = "step:plugin-how" },
+]
+
+["plugin:check"]
+description = "Is this plugin sound: its manifest is valid, its types check, its tests pass, it builds, and the bundle the registry would get is valid"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
+run = [
+  "pnpm --dir plugins/{{ usage.name }} install",
+  "pnpm --dir plugins/{{ usage.name }} run validate",
+  "pnpm --dir plugins/{{ usage.name }} run typecheck",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} run build",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
+]
+
+["plugin:add"]
+description = "I need someone else's plugin, from npm: adds the package to the site, so the repo declares it and a fresh clone has it. Ends with the two lines to add to astro.config.mjs. (A registry plugin is installed in the admin instead — EmDash has no command for it)"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
+run = ["pnpm add {{ usage.package }}", { task = "step:plugin-how" }]
+
+["plugin:publish"]
+description = "Release this plugin to EmDash's registry, under the account you are logged in to: mise run plugin -- login <handle>. Checks it first. Asks first — except in CI, where mise answers yes"
+confirm = "Publish this plugin to the public registry? A released version cannot be changed."
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
+run = [
+  "pnpm --dir plugins/{{ usage.name }} run validate",
+  "pnpm --dir plugins/{{ usage.name }} run test",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin bundle --validate-only",
+  "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin publish",
+]
+
+[plugin]
+description = "Anything else in EmDash's plugin CLI — e.g: mise run plugin -- search forms"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm dlx @emdash-cms/plugin-cli@latest"
+
+["live:check"]
+description = "Would this deploy: site:check, then wrangler's dry run of the deploy — nothing is uploaded and no account is needed. For a site on Cloudflare"
+run = [{ task = "site:check" }, { task = "step:rehearse" }]
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"

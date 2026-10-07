@@ -50,12 +50,20 @@ jobs:
           [env]
           ${{ matrix.choice.by == 'setting' && format('TEMPLATE = "{0}"', matrix.choice.template) || '# no TEMPLATE: site:new is given it as an argument' }}
           SITE_PORT = "4400"
+          PLUGIN_PUBLISHER = "did:web:example.com"
+          PLUGIN_AUTHOR = "Example Author"
+          PLUGIN_SECURITY_EMAIL = "security@example.com"
 
           [task_config]
           includes = ["git::https://github.com/${{ github.repository }}.git//tasks.toml?ref=${{ github.ref_name }}"]
           EOF
           mise trust --quiet
           mise tasks ls
+      - name: with no site yet, a task says so plainly
+        run: |
+          out="$(mise run site:start 2>&1 || true)"; echo "$out"
+          echo "$out" | grep -q 'There is no site'
+          if mise run site:check; then echo "site:check passed with no site"; exit 1; fi
       - run: mise run site:new ${{ matrix.choice.by == 'argument' && format('-- {0}', matrix.choice.template) || '' }}
       - name: it made the platform that was asked for
         run: |
@@ -76,6 +84,43 @@ jobs:
           mise run emdash -- schema --help | grep -q add-field
           mise run emdash -- content create pages --draft --slug from-ci --data '{"title":"Two words, one argument"}'
           mise run emdash -- content get pages from-ci --json | grep -q 'Two words, one argument'
+      - name: site:check passes beside the running site, and fails on a type error
+        run: |
+          mise run site:check
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$SITE/")" = 200
+          printf -- '---\nconst n: number = "text";\n---\n<p>{n}</p>\n' > site/src/pages/zz-typeerr.astro
+          if mise run site:check; then echo "site:check passed a type error"; exit 1; fi
+          rm site/src/pages/zz-typeerr.astro
+      - name: live:check rehearses the deploy with no account
+        if: startsWith(matrix.choice.template, 'cloudflare:')
+        run: mise run live:check
+      - name: model:sync records a model change in the repo
+        run: |
+          mise run model:sync
+          test -f site/.emdash/schema.json
+          mise run emdash -- schema add-field pages subtitle --type string --label Subtitle
+          mise run model:sync
+          grep -q subtitle site/.emdash/schema.json
+      - name: content:pull refuses without LIVE_URL, and brings a package down with it
+        run: |
+          if mise run content:pull; then echo "content:pull ran with no LIVE_URL"; exit 1; fi
+          LIVE_URL="$SITE" mise run content:pull
+          ls site/backups/*.emdash
+      - name: plugin:new makes, tests, builds and adds a plugin; plugin:check passes; plugin:add adds a package
+        run: |
+          mise run plugin:new -- save-log
+          test -f site/plugins/save-log/dist/plugin.mjs
+          grep -q '"save-log"' site/package.json
+          mise run plugin:check -- save-log
+          mise run plugin:add -- @emdash-cms/plugin-forms
+          grep -q 'plugin-forms' site/package.json
+      - name: site:reset refuses without a yes, and puts the site back on its seed
+        run: |
+          if env -u MISE_YES -u CI mise run site:reset </dev/null; then echo "reset without being asked"; exit 1; fi
+          mise run emdash -- content get pages from-ci --json | grep -q 'Two words, one argument'
+          mise run --yes site:reset
+          if mise run emdash -- content get pages from-ci --json; then echo "the page survived the reset"; exit 1; fi
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$SITE/")" = 200
       - name: start again leaves it alone; stop stops it
         run: |
           mise run site:start
@@ -114,6 +159,10 @@ jobs:
           mise run site:start
           test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
           mise run emdash -- whoami
+          mise run site:check
+          mise run model:sync
+          mise run --yes site:reset
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
           # the site is the project: there is nothing to make, and nothing that may be deleted
           if mise run site:new; then echo "site:new should have refused"; exit 1; fi
           if mise run --yes site:delete; then echo "site:delete should have refused"; exit 1; fi

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **More stages:** `site:check`, `site:reset`, `model:sync`, `content:pull`, `plugin:new`,
+  `plugin:check`, `plugin:add`, `plugin:publish`, `plugin` and `live:check`. Each proven on a new
+  site and on an existing site at a project's root, on Cloudflare and Node.js.
+- **`site:start` now really checks the site answers.** Its last step was `emdash whoami`, which
+  exits 0 with nothing running; it is `emdash schema list` now, which does not.
+- **A task run where there is no site says so**, instead of mise's "No such file or directory".
+
 - **The repo is now the stages, in pure mise.** `tasks.toml` holds `site:new`, `site:start`,
   `site:stop`, `site:logs`, `site:delete` and `emdash` — EmDash's own commands in order, hidden
   `step:*` tasks reused between them, no script underneath. A project gets them with one include
