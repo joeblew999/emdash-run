@@ -35,7 +35,7 @@ Then:
 
 ```
 mise run site:new -- cloudflare:blog   a site, once — or node:blog, cloudflare:starter, …
-mise run site:start                    install, make its key if it has none, check the seed, run it in the background
+mise run site:start                    install, make its key if it has none, run it in the background
 mise run emdash -- content list posts  anything else, through EmDash's own CLI
 mise run site:logs                     follow the running site's log
 mise run site:stop

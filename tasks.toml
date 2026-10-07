@@ -24,7 +24,7 @@ run = "pnpm install"
 
 ["step:seed"]
 hide = true
-description = "The seed is one EmDash will accept — an invalid one is skipped on first start with no error"
+description = "The seed is one EmDash will accept — an invalid one is skipped on first start with no error. For site:check, not site:start: a site with no seed is a valid site, and this fails on one"
 dir = "{{config_root}}/site"
 run = "pnpm exec emdash seed --validate"
 
@@ -60,8 +60,8 @@ arg "[template]" help="<platform>:<template>" {
 run = "pnpm dlx create-emdash@latest site --template {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %} --pm pnpm --install --yes"
 
 ["site:start"]
-description = "I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
-run = [{ task = "step:install" }, { task = "step:key" }, { task = "step:seed" }, { task = "step:dev" }, { task = "step:up" }]
+description = "I want to work on this site: install, make its key if it has none, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+run = [{ task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]
 
 ["site:stop"]
 description = "Stop the site that site:start started"

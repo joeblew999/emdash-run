@@ -32,7 +32,7 @@ A site, once: EmDash's scaffolder makes site/ and installs it. Say which — mis
 
 - **Usage:** `site:start`
 
-I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+I want to work on this site: install, make its key if it has none, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
 
 ## `site:stop`
 
