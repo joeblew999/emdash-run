@@ -114,9 +114,9 @@ jobs:
           mise run plugin:check -- save-log
           mise run plugin:add -- @emdash-cms/plugin-forms
           grep -q 'plugin-forms' site/package.json
-          # what the tasks say to do after adding a package. On Windows a Cloudflare dev server did
-          # not survive packages being added under it (run 37564290454); the others did.
-          mise run site:stop
+          # the plugin tasks stop the site first: on Windows, packages and folders changing under a
+          # running dev server broke it (run 37564290454) and broke the scaffolder (run 37564933270)
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$SITE/" || true)" != 200
           mise run site:start
       - name: site:reset refuses without a yes, and puts the site back on its seed
         run: |

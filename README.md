@@ -134,6 +134,8 @@ loaded into an empty site with EmDash's two import commands.
   `[settings]` to fetch every time (about a second per command); or run `mise cache clear` once.
 - **In CI, nothing asks.** mise answers every prompt with yes when `CI` is set — `site:delete`,
   `site:reset` and `plugin:publish` included.
+- **`plugin:new` and `plugin:add` stop the site first** and tell you to start it again: on Windows
+  a running site does not survive packages changing under it.
 - **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
   the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
   to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.

@@ -40,7 +40,7 @@ Anything else in EmDash's plugin CLI — e.g: mise run plugin -- search forms
 
 ## `plugin:add`
 
-I need someone else's plugin, from npm: adds the package to the site, so the repo declares it and a fresh clone has it. Ends with the two lines to add to astro.config.mjs. (A registry plugin is installed in the admin instead — EmDash has no command for it)
+I need someone else's plugin, from npm: stops the site and adds the package to it, so the repo declares it and a fresh clone has it. Ends with the two lines to add to astro.config.mjs. (A registry plugin is installed in the admin instead — EmDash has no command for it)
 
 
 - Depends: step:there
@@ -64,7 +64,7 @@ Is this plugin sound: its manifest is valid, its types check, its tests pass, it
 
 ## `plugin:new`
 
-I need a plugin of my own: EmDash's plugin scaffolder makes plugins/<name> inside the site, then it is installed, tested, built and added to the site. Ends with the two lines to add to astro.config.mjs. Needs PLUGIN_PUBLISHER, PLUGIN_AUTHOR and PLUGIN_SECURITY_EMAIL
+I need a plugin of my own: stops the site, then EmDash's plugin scaffolder makes plugins/<name> inside it, and the plugin is installed, tested, built and added to the site. Ends with the two lines to add to astro.config.mjs. Needs PLUGIN_PUBLISHER, PLUGIN_AUTHOR and PLUGIN_SECURITY_EMAIL
 
 
 - Depends: step:there, step:plugin-details
