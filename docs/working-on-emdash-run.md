@@ -1,11 +1,11 @@
 ---
-title: "Working on this repo"
+title: "Working on emdash-run"
 nav_order: 12
 ---
 
 <!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->
 
-# Working on this repo
+# Working on emdash-run
 
 ```
 mise run test          the everyday tasks from an empty folder, about a minute

@@ -29,9 +29,9 @@ includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v
 That pins release `v1.0.0`; change the tag to update. `ref=main` follows development, but mise
 keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 
-## The tasks, in the order you use them
+## The tasks
 
-This table is written by the test, from the order it runs the tasks in. Run one with
+In the order you use them. This table is written by the test, from the order it runs the tasks in. Run one with
 `mise run <task>`; `mise tasks ls` shows them all.
 
 <!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->
@@ -50,14 +50,31 @@ This table is written by the test, from the order it runs the tasks in. Run one 
 | 9 | `site:stop` | Stop the dev site and the built site | yes |
 | 10 | `site:delete` | Delete the site folder. Asks first | yes |
 | 11 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
-| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name> | yes |
-| 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name> | yes |
-| 14 | `plugin:add` | Add a plugin from npm. mise run plugin:add -- <package> | yes |
+| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- &lt;name&gt; | yes |
+| 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- &lt;name&gt; | yes |
+| 14 | `plugin:add` | Add a plugin from npm. mise run plugin:add -- &lt;package&gt; | yes |
 | 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search -- forms | yes |
-| 16 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug> | yes |
+| 16 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin -- info &lt;publisher&gt; &lt;slug&gt; | yes |
 | 17 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
 | 18 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
 | 19 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
+
+**On the deployed site**
+
+| | task | what it does | tested |
+|---|---|---|---|
+| 1 | `site:new` | Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog) | yes |
+| 2 | `signin:access` | Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code) | yes |
+| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
+| 4 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed | yes |
+| 5 | `emdash` | EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site | yes |
+| 6 | `model:sync` | Record the site's content model in the repo (.emdash/). Add -- --live for the deployed site | yes |
+| 7 | `content:pull` | Download the deployed site's content as a package into backups/ | yes |
+| 8 | `live:backup` | Back up the deployed site: database bookmark + content package | yes |
+| 9 | `live:logs` | Follow the deployed site's log | yes |
+| 10 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
+| 11 | `live:undo` | Roll the deployed site back to the previous version (code only) | yes |
+| 12 | `site:delete` | Delete the site folder. Asks first | yes |
 <!-- in-order:end -->
 
 After `site:start`, open `http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`.
@@ -94,7 +111,7 @@ SITE_FOLDER = "."
 
 Everything works except `site:new` and `site:delete`, which refuse.
 
-## This machine or the deployed site
+## This machine or deployed
 
 **No flag is this machine. `--live` is the deployed site.**
 
@@ -132,9 +149,9 @@ mise run signin:token -- --live       the deployed site
 These are for development sites. What they save is in `~/.config/emdash-run/` on your machine,
 never in the repo.
 
-## Deploying (Cloudflare)
+## Deploying
 
-Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+For a site on Cloudflare. Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
 
 ```
 mise run signin:access                once: Cloudflare Access in front of the admin
@@ -193,7 +210,7 @@ All optional, under `[env]` in your `mise.toml`.
 - There is no SQL dump in `live:backup`: Cloudflare's export refuses an EmDash database.
 - `signin:token -- --live` works for Cloudflare sites only.
 
-## Working on this repo
+## Working on emdash-run
 
 ```
 mise run test          the everyday tasks from an empty folder, about a minute

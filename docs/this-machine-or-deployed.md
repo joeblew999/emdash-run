@@ -1,11 +1,11 @@
 ---
-title: "This machine or the deployed site"
+title: "This machine or deployed"
 nav_order: 6
 ---
 
 <!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->
 
-# This machine or the deployed site
+# This machine or deployed
 
 **No flag is this machine. `--live` is the deployed site.**
 

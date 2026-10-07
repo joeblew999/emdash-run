@@ -1,13 +1,13 @@
 ---
-title: "Deploying (Cloudflare)"
+title: "Deploying"
 nav_order: 8
 ---
 
 <!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->
 
-# Deploying (Cloudflare)
+# Deploying
 
-Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+For a site on Cloudflare. Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
 
 ```
 mise run signin:access                once: Cloudflare Access in front of the admin

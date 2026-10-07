@@ -39,16 +39,16 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 
 | | |
 |---|---|
-| [The tasks, in the order you use them](the-tasks-in-the-order-you-use-them.md) | |
-| [Templates](templates.md) | |
-| [An existing site](an-existing-site.md) | |
-| [This machine or the deployed site](this-machine-or-the-deployed-site.md) | |
-| [Signing in](signing-in.md) | |
-| [Deploying (Cloudflare)](deploying-cloudflare.md) | |
-| [Plugins](plugins.md) | |
-| [Settings](settings.md) | |
-| [Good to know](good-to-know.md) | |
-| [Working on this repo](working-on-this-repo.md) | |
+| [The tasks](the-tasks.md) | every task, in the order you use them |
+| [Templates](templates.md) | the eight kinds of site `site:new` can make |
+| [An existing site](an-existing-site.md) | using the tasks on a repo that already is an EmDash site |
+| [This machine or deployed](this-machine-or-deployed.md) | one rule: no flag is this machine, `--live` is the deployed site |
+| [Signing in](signing-in.md) | the four ways, and which to use |
+| [Deploying](deploying.md) | putting a site on Cloudflare, undoing, logs, backups |
+| [Plugins](plugins.md) | making one, adding one, searching the registry |
+| [Settings](settings.md) | everything you can set in `mise.toml` |
+| [Good to know](good-to-know.md) | what asks first, what stops the site, what is not there |
+| [Working on emdash-run](working-on-emdash-run.md) | the tests, and where the rules are |
 | [What works](status.md) | every task, and what the last test run showed |
 | [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |
 | [For agents](agents/README.md) | the rules for working on this repo |

@@ -93,7 +93,8 @@ const text = readFileSync(readme, "utf8");
 const begin = "<!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->";
 const end = "<!-- in-order:end -->";
 if (text.includes(begin) && text.includes(end)) {
-	const describe = Object.fromEntries(tasks.map((t) => [t.name, t.description]));
+	// a description can hold <name> or a | — either would break the table on the docs site
+	const describe = Object.fromEntries(tasks.map((t) => [t.name, t.description.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|")]));
 	const lines = [];
 	for (const [where, heading] of [["cloudflare", "On this machine"], ["deployed", "On the deployed site"]]) {
 		// in the order the test first USES each task (a refusal step is not a use); hidden tasks left out
@@ -141,7 +142,19 @@ if (text.includes(begin) && text.includes(end)) {
 	for (const p of rest) {
 		writeFileSync(join(docs, p.file), `---\ntitle: "${p.title}"\nnav_order: ${p.order}\n---\n\n${marker}\n\n# ${p.title}\n\n${p.body}\n`);
 	}
-	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | |`),
+	const about = {
+		"The tasks": "every task, in the order you use them",
+		"Templates": "the eight kinds of site `site:new` can make",
+		"An existing site": "using the tasks on a repo that already is an EmDash site",
+		"This machine or deployed": "one rule: no flag is this machine, `--live` is the deployed site",
+		"Signing in": "the four ways, and which to use",
+		"Deploying": "putting a site on Cloudflare, undoing, logs, backups",
+		"Plugins": "making one, adding one, searching the registry",
+		"Settings": "everything you can set in `mise.toml`",
+		"Good to know": "what asks first, what stops the site, what is not there",
+		"Working on emdash-run": "the tests, and where the rules are",
+	};
+	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | ${about[p.title] ?? ""} |`),
 		"| [What works](status.md) | every task, and what the last test run showed |",
 		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",
 		"| [For agents](agents/README.md) | the rules for working on this repo |",
