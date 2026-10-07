@@ -1,6 +1,6 @@
 # 2026-10-06 — Deploy and recover the way EmDash documents
 
-**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`../2026-10-06-open.md`](../2026-10-06-open.md).
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](../2026-10-07-stages.md).
 
 `deploy` builds, ships and checks that the URL answers. EmDash's own deployment docs ask for more
 than that, and in four places the harness currently says something that is not so: a migration
