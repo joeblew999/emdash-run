@@ -136,6 +136,19 @@ description = "Everything a Cloudflare deploy does short of shipping: wrangler b
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec wrangler deploy --dry-run"
 
+["step:newer"]
+hide = true
+description = "EmDash's documented update: the newest emdash and, where the site has it, its Cloudflare package — written to package.json and the lockfile"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm up --latest emdash @emdash-cms/cloudflare"
+
+["step:update-how"]
+hide = true
+quiet = true
+description = "What an update does not do, and what comes next"
+dir = "{{config_root}}"
+run = "node -e \"console.log('EmDash is updated in package.json and the lockfile, and the site type-checks and builds on it.'); console.log('  Read what changed:  https://github.com/emdash-cms/emdash/releases'); console.log('  Not updated: the files your site got from its template, and the agent skills the scaffolder wrote.'); console.log('  Next: mise run site:stop, mise run site:start - database migrations run on the first request. Then commit.');\""
+
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
 ["site:new"]
@@ -238,6 +251,10 @@ run = "pnpm dlx @emdash-cms/plugin-cli@latest"
 ["live:check"]
 description = "Would this deploy: site:check, then wrangler's dry run of the deploy — nothing is uploaded and no account is needed. For a site on Cloudflare"
 run = [{ task = "site:check" }, { task = "step:rehearse" }]
+
+["emdash:update"]
+description = "A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after"
+run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"

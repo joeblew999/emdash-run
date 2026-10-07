@@ -52,6 +52,7 @@ mise run plugin:publish -- save-log    release it to EmDash's registry — it as
 mise run plugin -- search forms        anything else in EmDash's plugin CLI
 
 mise run live:check                    would this deploy — wrangler's dry run, no account needed
+mise run emdash:update                 the site on the newest EmDash, type-checked and built
 
 mise run emdash -- content list posts  anything else, through EmDash's own CLI
 ```
@@ -144,7 +145,7 @@ loaded into an empty site with EmDash's two import commands.
 
 ## Not here yet
 
-Deploying (`live:ship`, `live:undo`, `live:logs`), backups and updating EmDash — they need a real
+Deploying (`live:ship`, `live:undo`, `live:logs`) and backups — they need a real
 deployment to be proven on. The plan has each as a stage, with the EmDash command behind every step and the
 gaps that are known: [`docs/plans/2026-10-07-stages.md`](docs/plans/2026-10-07-stages.md).
 

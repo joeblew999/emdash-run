@@ -114,6 +114,10 @@ jobs:
           mise run plugin:check -- save-log
           mise run plugin:add -- @emdash-cms/plugin-forms
           grep -q 'plugin-forms' site/package.json
+          # what the tasks say to do after adding a package. On Windows a Cloudflare dev server did
+          # not survive packages being added under it (run 37564290454); the others did.
+          mise run site:stop
+          mise run site:start
       - name: site:reset refuses without a yes, and puts the site back on its seed
         run: |
           if env -u MISE_YES -u CI mise run site:reset </dev/null; then echo "reset without being asked"; exit 1; fi
@@ -161,6 +165,7 @@ jobs:
           mise run emdash -- whoami
           mise run site:check
           mise run model:sync
+          mise run emdash:update
           mise run --yes site:reset
           test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 http://localhost:4401/)" = 200
           # the site is the project: there is nothing to make, and nothing that may be deleted

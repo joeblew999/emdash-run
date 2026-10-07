@@ -5,6 +5,8 @@
 - **More stages:** `site:check`, `site:reset`, `model:sync`, `content:pull`, `plugin:new`,
   `plugin:check`, `plugin:add`, `plugin:publish`, `plugin` and `live:check`. Each proven on a new
   site and on an existing site at a project's root, on Cloudflare and Node.js.
+- **`emdash:update`**: the site on the newest EmDash, type-checked and built. Proven on the
+  Remy-Sport site, 1.1.0 → 1.2.0.
 - **`site:start` now really checks the site answers.** Its last step was `emdash whoami`, which
   exits 0 with nothing running; it is `emdash schema list` now, which does not.
 - **A task run where there is no site says so**, instead of mise's "No such file or directory".

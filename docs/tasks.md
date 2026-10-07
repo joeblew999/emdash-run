@@ -12,6 +12,12 @@ The deployed site's content, on this machine: downloads it as an EmDash package 
 
 Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts
 
+## `emdash:update`
+
+- **Usage:** `emdash:update`
+
+A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after
+
 ## `live:check`
 
 - **Usage:** `live:check`
