@@ -1,10 +1,17 @@
-# The same test a developer runs — `mise run test:full` — on macOS, Linux and Windows.
+# The same test a developer runs, on macOS, Linux and Windows — at one of the two levels.
 #
-# Started by hand, or by a release tag. Never by a push: the test is run locally after every change
-# (docs/status.md is its record), and this is the cross-OS proof before a release.
+# Started by hand, with the level chosen: quick (about 2 minutes a machine) or full. A release tag
+# runs the full one. Never started by a push: the test runs locally after every change, and
+# docs/status.md is its record.
 name: stages
 on:
   workflow_dispatch:
+    inputs:
+      level:
+        description: "quick = the everyday tasks; full = every task that needs no deployed site"
+        type: choice
+        options: [quick, full]
+        default: quick
   push:
     tags: ["v*"]
 concurrency:
@@ -21,16 +28,20 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      # the test needs node and pnpm only; do not let a task pull in the other tools on a runner
+      MISE_TASK_RUN_AUTO_INSTALL: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v5
         with:
-          # node and pnpm only: fnox is for the tasks that change Cloudflare, which are not run here
           install_args: node pnpm
-      - run: mise run test:full
-        env:
-          # the test needs node and pnpm only; do not let a task pull in fnox on a runner
-          MISE_TASK_RUN_AUTO_INSTALL: "false"
+      - name: mise run test (quick)
+        if: github.event_name == 'workflow_dispatch' && inputs.level == 'quick'
+        run: mise run test
+      - name: mise run test:full
+        if: github.event_name != 'workflow_dispatch' || inputs.level == 'full'
+        run: mise run test:full
       - name: what worked
         if: always()
         run: cat docs/status.md >> "$GITHUB_STEP_SUMMARY"

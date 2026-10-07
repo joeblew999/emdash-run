@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-06 — Know EmDash properly, then make the harness fit it"
+nav_order: 14
+parent: Plans
+---
+
 # 2026-10-06 — Know EmDash properly, then make the harness fit it
 
 **Status:** done — **4 of 4 done**
@@ -20,7 +26,7 @@ running the thing. One correction to this plan's own premise: the vendored skill
 
 ## Items
 
-- [x] **Write `docs/emdash.md` — what EmDash is, for someone using this harness** — [`../emdash.md`](../emdash.md)
+- [x] **Write `docs/emdash.md` — what EmDash is, for someone using this harness** — `../emdash.md` (a document since deleted)
   - [x] the pieces and how they fit: core, the Astro integration, admin, auth, the database and storage adapters, the CLIs, templates, plugins, the registry, MCP — § The pieces
   - [x] every deployment target and what differs between them (database, storage, sandbox runner, migrations, scheduled work, auth) — § Two targets
   - [x] the lifecycle of a site: first boot and setup, seed, schema evolution, content, deploy, upgrade to a new EmDash version, backup and restore — § The life of a site

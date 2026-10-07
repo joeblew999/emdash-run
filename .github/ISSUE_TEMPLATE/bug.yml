@@ -1,0 +1,50 @@
+# This repo's own bug form (the other forms and the labels are charter's: mise run github:setup).
+# Each field's label is a heading in the issue body.
+name: Bug report
+description: A task failed, or did the wrong thing.
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Is it ours?** These tasks run EmDash's, Astro's and wrangler's own commands. Check
+        [docs/upstream.md](../blob/main/docs/upstream.md) first, and use the *Upstream bug* form
+        if the fault is theirs. [docs/status.md](../blob/main/docs/status.md) says what the last
+        test run showed for every task.
+  - type: input
+    id: task
+    attributes:
+      label: The task
+      description: Exactly as you ran it, with every flag.
+      placeholder: mise run signin:token -- --live
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Everything it printed
+      description: All of it, not a summary. The first lines say where it was acting.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: machine
+    attributes:
+      label: Machine
+      description: macOS, Linux or Windows; the output of `mise --version`; Cloudflare or Node site.
+    validations:
+      required: true
+  - type: input
+    id: ref
+    attributes:
+      label: Which emdash-run
+      description: The `ref=` in your mise.toml include line (a tag, or main).
+    validations:
+      required: true

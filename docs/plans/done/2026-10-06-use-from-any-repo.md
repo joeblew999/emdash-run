@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-06 — What this repo is for — develop and run EmDash from any r"
+nav_order: 19
+parent: Plans
+---
+
 # 2026-10-06 — What this repo is for: develop and run EmDash from any repo
 
 **Status:** done — closed 2026-10-06, **6 of 6**. Platform leftovers moved to

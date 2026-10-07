@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-06 — Other platforms, and what 0.1.0 left open"
+nav_order: 18
+parent: Plans
+---
+
 # 2026-10-06 — Other platforms, and what 0.1.0 left open
 
 **Status:** done — closed 2026-10-06, **7 of 7**

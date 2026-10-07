@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-06 — Hardening — what the first releases showed is still soft"
+nav_order: 12
+parent: Plans
+---
+
 # 2026-10-06 — Hardening: what the first releases showed is still soft
 
 **Status:** done — closed 2026-10-06, **5 of 5**

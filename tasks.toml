@@ -318,8 +318,15 @@ run = [
   "pnpm --dir plugins/{{ usage.name }} exec emdash-plugin publish",
 ]
 
+["plugin:search"]
+description = "Search EmDash's plugin registry. mise run plugin:search -- forms"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "<words>" help="What to look for, e.g. forms"'
+run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
+
 [plugin]
-description = "EmDash's plugin CLI. mise run plugin -- search forms"
+description = "Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug>"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm dlx @emdash-cms/plugin-cli@latest"

@@ -1,7 +1,12 @@
+---
+title: Upstream
+nav_order: 3
+---
+
 # Reports for upstream — written, not sent
 
 Things in EmDash, its scaffolders and wrangler that behaved differently from their docs, or that a
-task here has to work around. Each was run on 2026-10-07 on macOS (and where said, in CI on
+task here has to work around. Thirteen of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
 Windows) with EmDash 1.2.0, `@emdash-cms/plugin-cli` 0.13.3, `create-emdash@latest`, Astro 7.3.5,
 wrangler 4.147.0, Node 26, pnpm 12.
 
@@ -81,8 +86,10 @@ says which. Until then the workaround in the last line of each entry is what `ta
   (`cli/commands/login.ts`), so an automated run pops up the default browser.
 - **Proposed:** `emdash login --no-browser`; and a first-run bootstrap an operator can script —
   for example a one-time setup token given as a secret.
-- **Here:** `site:admin` and `live:admin` drive the wizard with Playwright and a simulated passkey
-  device, and put a do-nothing `open` first on the PATH while `emdash login` runs.
+- **Here:** `signin:token` writes an administrator and an API token into the site's database, the
+  way EmDash's own `dev-bypass?token=1` does in development. `signin:passkey` drives the wizard
+  with Playwright and a simulated passkey, with a do-nothing `open` first on the PATH while
+  `emdash login` runs.
 
 ## 8. `emdash migrate` cannot use wrangler's own sign-in
 
@@ -93,3 +100,42 @@ says which. Until then the workaround in the last line of each entry is what `ta
   works with the stored login.
 - **Here:** no migration step; EmDash's default mode migrates on the first request, which
   `live:ship` makes.
+
+## 10. `emdash whoami` does not send `EMDASH_HEADERS`
+
+- **Run:** a site behind Cloudflare Access; `EMDASH_TOKEN` and `EMDASH_HEADERS` (the Access service
+  token) set; `emdash whoami --url <site>`.
+- **Got:** "Unexpected token '<', \"<!DOCTYPE \"… is not valid JSON" — Cloudflare's login page.
+  `emdash schema list` with the same environment works.
+- **Why:** every other command builds its client with `createClientFromArgs`, which merges headers
+  from the stored sign-in, `EMDASH_HEADERS` and `--header`. `whoami` (`cli/commands/login.ts`)
+  makes its own request with headers from the stored sign-in only.
+- **Here:** `signin:token -- --live` also writes EmDash's sign-in store; and the `emdash` task
+  answers `whoami` itself when the token is only in the environment.
+
+## 11. A local sign-in is stored per project folder, and outlives the database
+
+- **Run:** `emdash login --url http://localhost:4322`; empty the local database; start the dev
+  site on port 4321; `emdash whoami`.
+- **Got:** "Token is invalid or expired. Run: emdash login" — on a dev site that needs no sign-in.
+  The store keys a localhost sign-in by project path (`path:/…/site`), not by address, so one
+  made for the built site is used for the dev site, and survives the database it belonged to.
+- **Expected:** on localhost, fall back to the dev sign-in when the stored token is refused.
+- **Here:** `signin:token` does not use `emdash login`; the tasks run `emdash logout` where it matters.
+
+## 12. A Node build takes itself to be on port 4321
+
+- **Run:** a `node:*` template, `astro build`, `astro preview --port 4410`; create a passkey in the
+  setup wizard.
+- **Got:** "Invalid origin: http://localhost:4410 not in [http://localhost:4321]".
+- **Here:** `site:preview` sets `EMDASH_SITE_URL` to the address it serves on.
+
+## 13. Under Cloudflare Access a machine cannot sign in by any documented route
+
+- **Seen:** `emdash login` → "Device Flow is not available for this instance. Generate an API token
+  in Settings > API Tokens". A service token gets through Access (`/_emdash/api/setup/status` →
+  200) and is not a user (`/_emdash/api/auth/me` → 401): the Access module asks Cloudflare for an
+  identity with an email, which a service token does not have.
+- **Proposed:** map a service token to a named machine user, or document the API-token route as
+  the way for CI.
+- **Here:** `signin:token -- --live`.

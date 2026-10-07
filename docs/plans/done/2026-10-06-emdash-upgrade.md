@@ -1,6 +1,12 @@
+---
+title: "Done · 2026-10-06 — Upgrading EmDash is one flow"
+nav_order: 11
+parent: Plans
+---
+
 # 2026-10-06 — Upgrading EmDash is one flow
 
-**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](../2026-10-07-stages.md).
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](2026-10-07-stages.md).
 
 `mise run upgrade` upgrades the harness. Nothing upgrades EmDash. Today the only way to move
 `EMDASH_VERSION` is to edit it and run `setup`, and `setup` deletes the site copy — which is where
@@ -10,7 +16,7 @@ machine; the first database it meets is production's. EmDash's migrations are fo
 The developer should change one line in `mise.toml` and run one command. That command should end
 either with "✓ on 1.2.0, your data intact, plugins pass" or with exactly what is in the way.
 
-Background and sources: [`../emdash.md`](../emdash.md) § Upgrading EmDash, and its A8 and A17.
+Background and sources: `../emdash.md` (a document since deleted) § Upgrading EmDash, and its A8 and A17.
 
 ## What is verified, and what is a guess
 

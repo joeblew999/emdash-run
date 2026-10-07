@@ -1,3 +1,8 @@
+---
+title: For agents
+nav_order: 4
+---
+
 # Agent guide — emdash-run
 
 This repo is a set of `mise` tasks for working on an EmDash site. Read this before changing anything.
@@ -7,13 +12,20 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 1. **Use EmDash's own commands.** It ships three CLIs — `emdash`, `emdash-plugin`, `create-emdash`
    — and Astro and wrangler have theirs. Run `--help` before writing a step; if a command exists,
    the step is that command. A script is allowed only where no command exists.
-2. **Know what works from a file.** After any change to `tasks.toml` or `admin/`, run
-   `mise run test` and commit the `docs/status.md` it writes; after a push, `mise run test:published`
-   proves what another developer gets. "It works" means the status file
+2. **A new task gets a test step in the same change** — `docs/status.md` lists every task and says
+   NOT TESTED for one without. A name people will look for is a task of its own, not an argument
+   to a general one (`plugin:search`, not `plugin -- search`).
+   **Know what works from a file.** After any change to `tasks.toml` or `admin/`, run
+   the quick test (`test`) and commit the `docs/status.md` it writes. Before a release, the full
+   one (`test:full`). `TEST_FROM=github` before either fetches the tasks from GitHub: what another
+   developer gets. "It works" means the status file
    says so for this commit.
 3. **Do the whole job in one pass.** When something changes, fix everything it makes stale in the
    same pass: descriptions, README, plan, changelog. Look ahead for what breaks next.
-4. **Say what failed, first, unasked.** Never report something as working that you have not run.
+4. **Start with the issues.** `issues` (in this repo) lists what developers have reported. An open
+   issue labelled `needs-triage` is dealt with before anything else: reproduce it with the test,
+   fix it, add a test step for it, answer the issue.
+   **Say what failed, first, unasked.** Never report something as working that you have not run.
 5. **One plan.** `docs/plans/` holds one open plan, in stages. A finding becomes a box in it, not
    a new plan or a new task.
 6. **Never wait in silence.** Start a long run in the background and keep working.
@@ -32,17 +44,20 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `admin/access.mjs` | `signin:access` — Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open` — the only Playwright |
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
-| `tests/replay.sh` | `mise run test`, `test:full`, `test:published` (tasks fetched from GitHub) — always in a clean environment; writes `docs/status.md` |
+| `tests/replay.sh` | the test, at two levels: `test` (quick) and `test:full` (everything, the deployed-site tasks included). Each step names the task it tests |
+| `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |
+| `docs/_config.yml`, `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | written by charter, the owner's tool: `docs:setup`, `github:labels` |
 | `mise.toml` | this repo's settings and its own `test` tasks |
-| `site/` | not in the repo. `mise run site:new` makes one here to try tasks on; it is gitignored |
+| `site/` | not in the repo. The `site:new` task makes one here to try tasks on; it is gitignored |
 
 ## Rules that came from mistakes
 
 - **Where a task acts:** no flag is this machine; `--live` is the deployed site (`LIVE_URL`).
   Every task prints where it is acting.
-- **A setting is read as `{{ env.NAME | default(value='…') }}`.** `get_env()` does not see the
-  project's settings.
-- **A task finds its own files with `{{ env.MISE_TASK_DIR }}`** — inside `run`, not inside `dir`.
+- **A setting is read in a task as `env.NAME | default(value='…')`** (inside mise's double curly
+  braces). `get_env()` does not see the project's settings.
+- **A task finds its own files with `env.MISE_TASK_DIR`** — it is filled in inside `run`, not
+  inside `dir`.
 - **No `tools =` on a task.** A hidden step does not inherit them; the project's `[tools]` is the
   one place.
 - **Steps are plain `program arguments` lines** so they mean the same on every OS.

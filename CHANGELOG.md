@@ -17,14 +17,20 @@ Everything here has run on macOS only. `docs/status.md` is the record of the las
   an EmDash database.
 - **`site:preview`**: the built site on this machine, which signs in the way a deployed one does.
 - **`emdash:update`**: the site on the newest EmDash, type-checked and built.
-- **`mise run test` and `test:full`** in this repo: the tasks from an empty folder, with the result
-  written to `docs/status.md`. The CI workflow runs the same thing, by hand or on a tag.
+- **The test, and a status that matches the tasks.** Two levels: `mise run test` (quick) and `test:full`
+  (everything — both templates, then the deployed-site tasks). Each runs
+  as another developer would — a clean environment, an empty config folder. Every step is
+  recorded against the task it tests; `docs/status.md` has one row for every task in
+  `tasks.toml`, and says NOT TESTED where there is none. The CI workflow runs the same thing, by
+  hand or on a tag.
+- **`plugin:search`** is its own task.
 - The build is skipped when nothing it is made from has changed. Nothing is downloaded to delete
   a folder. A task run where there is no site says so.
 - `emdash whoami` behind Cloudflare Access is handled two ways, because EmDash's does not send
   the Access pass: the token is put in EmDash's own sign-in store, and the `emdash` task answers
   it when the token is only in the environment.
-- fnox is in this repo's tools: the tasks that change Cloudflare take its token from there.
+- fnox is in the setup snippet. Only `signin:access` needs it — for a Cloudflare token that can
+  change Access — and reads it by itself: no task needs a `fnox exec` prefix.
 - **Gone:** the nushell harness (`reference/`), its lint configs, `plugins/README.md`.
 
 ## 0.7.0 — 2026-10-07

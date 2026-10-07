@@ -1,13 +1,19 @@
+---
+title: "Done · 2026-10-06 — Deploy and recover the way EmDash documents"
+nav_order: 10
+parent: Plans
+---
+
 # 2026-10-06 — Deploy and recover the way EmDash documents
 
-**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](../2026-10-07-stages.md).
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](2026-10-07-stages.md).
 
 `deploy` builds, ships and checks that the URL answers. EmDash's own deployment docs ask for more
 than that, and in four places the harness currently says something that is not so: a migration
 check that cannot fail, a rollback that implies the database went back, a "backup" that is not one,
 and a default that needs a paid plan.
 
-Sources for every claim: [`../emdash.md`](../emdash.md) § Two targets, § The life of a site,
+Sources for every claim: `../emdash.md` (a document since deleted) § Two targets, § The life of a site,
 and A5–A9, A14, A15.
 
 ## What is verified, and what is a guess

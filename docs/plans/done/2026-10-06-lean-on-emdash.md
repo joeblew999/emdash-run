@@ -1,6 +1,12 @@
+---
+title: "Done · 2026-10-06 — Lean on EmDash — delete what it already does"
+nav_order: 16
+parent: Plans
+---
+
 # 2026-10-06 — Lean on EmDash: delete what it already does
 
-**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](../2026-10-07-stages.md).
+**Status:** closed 2026-10-06 — everything that could be done without a deployment is done and merged. The boxes still open below are carried, in one place, by [`2026-10-06-open.md`](2026-10-06-open.md), itself superseded by [`../2026-10-07-stages.md`](2026-10-07-stages.md).
 
 Reading EmDash's source turned up things the harness does by hand that EmDash does itself, a
 workaround for a problem that no longer exists, and one flow that the source says cannot work.
@@ -10,7 +16,7 @@ Two things on the first draft of this list were fixed by 0.4.2 while it was bein
 not here: `--url` no longer has to come last, and the comment claiming the CLI exits 0 on errors is
 gone. A third is half done (commit `c9efc63`): `apply-seed` skips an unchanged seed.
 
-Sources for every claim: [`../emdash.md`](../emdash.md) § Capability map (W1–W12, A1–A17).
+Sources for every claim: `../emdash.md` (a document since deleted) § Capability map (W1–W12, A1–A17).
 
 ## What is verified, and what is a guess
 

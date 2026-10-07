@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-06 — Harness gaps found by running it"
+nav_order: 13
+parent: Plans
+---
+
 # 2026-10-06 — Harness gaps found by running it
 
 **Status:** done — closed 2026-10-06, **5 of 5**

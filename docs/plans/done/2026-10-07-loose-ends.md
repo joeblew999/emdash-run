@@ -1,3 +1,9 @@
+---
+title: "Done · 2026-10-07 — Loose ends — everything raised while the stages were buil"
+nav_order: 21
+parent: Plans
+---
+
 # 2026-10-07 — Loose ends: everything raised while the stages were built
 
 **Status:** closed 2026-10-07 — merged into [`../2026-10-07-next.md`](../2026-10-07-next.md). Three plans
