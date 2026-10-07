@@ -20,9 +20,16 @@ You need [mise](https://mise.jdx.dev). Put this in a `mise.toml`:
 [settings]
 experimental = true
 
+[tools]
+node = "26"
+pnpm = "12"
+
 [task_config]
 includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=main"]
 ```
+
+The tools are your project's: the tasks run whatever `node` and `pnpm` your `mise.toml` names
+(EmDash needs Node 22.16 or later). Leave the block out and they run whatever the machine has.
 
 Then:
 

@@ -9,11 +9,16 @@
 #   mise run site:delete
 #
 # This repo uses its own tasks the way any project does. Another project needs only:
+#   [tools] node and pnpm, and
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag>"]
 
 [settings]
 experimental = true # task includes from a git repo
+
+[tools]
+node = "26"
+pnpm = "12"
 
 [env]
 TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is given no argument

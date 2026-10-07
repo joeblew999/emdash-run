@@ -93,6 +93,8 @@ skill says it does; it had not within a second).
   project's settings; a stage once ran on the wrong port and wrote to another project's site.
 - **Every step is a plain `program arguments` line**, so it means the same under mise's shell on
   every OS. No pipes, no `&&`, no shell variables.
+- **No `tools =` on a task.** The project's `[tools]` block is the one place. A hidden step does not
+  inherit its task's tools, so a per-task declaration that misses one step runs it on the machine's Node.
 - **Add files to a commit by name.** `git add -A` once swept a deleted `site/` into a commit about
   something else.
 - **CI is the three-OS proof, not the test loop.** Lint a workflow with `actionlint` and run its
