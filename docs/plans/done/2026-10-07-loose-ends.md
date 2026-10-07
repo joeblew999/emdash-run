@@ -1,9 +1,11 @@
 # 2026-10-07 — Loose ends: everything raised while the stages were built
 
-**Status:** active — **2 of 4 stages done.** Stage 3 is the owner's moves; nothing in it can be done by an agent.
+**Status:** closed 2026-10-07 — merged into [`../2026-10-07-next.md`](../2026-10-07-next.md). Three plans
+with 42 open boxes between them had stopped being a plan. What is ticked here was done and is the
+record of how; every box still open was carried into the one plan, or dropped there with the reason.
 
 Every problem, doubt and unproven claim that came up in
-[`done/2026-10-07-stages.md`](done/2026-10-07-stages.md), with who has to move. Nothing here needs a
+[`done/2026-10-07-stages.md`](2026-10-07-stages.md), with who has to move. Nothing here needs a
 deployment; what does is in [`2026-10-07-live.md`](2026-10-07-live.md).
 
 ## The list
@@ -39,7 +41,7 @@ deployment; what does is in [`2026-10-07-live.md`](2026-10-07-live.md).
     `site:start` exit 0, home 200
 
 - [x] **Stage 2 — the reports, written so they can be sent as they are**
-  - [x] [`docs/upstream.md`](../upstream.md): eight entries — what was run, what it printed, what
+  - [x] [`docs/upstream.md`](../../upstream.md): eight entries — what was run, what it printed, what
     was expected, what the tasks do instead. The seven listed when this plan was written, and an
     eighth found while deploying: `emdash migrate` cannot use wrangler's sign-in
   - [x] every one was run on 2026-10-07, the day it was written; entry 5 is from a CI run of the

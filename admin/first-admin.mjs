@@ -1,5 +1,5 @@
 // What `mise run site:admin` and `mise run live:admin` run — the one script in this repo, for a gap
-// that is written down in docs/plans/2026-10-07-sign-in.md: EmDash has no command that sets a site
+// that is written down in docs/plans/done/2026-10-07-sign-in.md: EmDash has no command that sets a site
 // up, or signs its CLI in, without a person at a browser.
 //
 // It makes sure an EmDash site that is NOT in development mode has an administrator and that
@@ -7,6 +7,8 @@
 // Chrome's built-in simulated passkey device stands in for Touch ID.
 //
 //   node first-admin.mjs <site address> <site folder> [--deployed] [--show]
+//
+// Tasks: site:admin, live:admin (--deployed), site:open (--show), site:open -- --live (both).
 //
 // - A site that has not been set up: it completes the setup wizard (ADMIN_EMAIL, ADMIN_NAME,
 //   an empty site), then approves `emdash login`.
@@ -19,7 +21,7 @@
 // Whoever holds that file is the site's administrator: it is a secret, and it is never printed.
 //
 // Without --deployed it refuses any address that is not this machine. With it, it creates an
-// administrator on a site on the internet: `live:admin` passes it, behind a question.
+// administrator on a site on the internet: `live:admin` and `site:open -- --live` pass it.
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -33,6 +35,10 @@ const show = args.includes("--show");
 const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
 if (!url || !siteDir) {
 	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
+	process.exit(1);
+}
+if (!URL.canParse(url)) {
+	console.error("This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
 	process.exit(1);
 }
 const { hostname, host, origin } = new URL(url);

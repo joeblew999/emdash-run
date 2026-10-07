@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Fewer tasks, 23.** `live:key` is gone: `live:ship` sends the site's `.env` as secrets with the
+  deploy. `live:open` is `site:open -- --live`. `site:preview` and `live:check` still run by name
+  but are not listed: they are steps of `site:admin` and `live:ship`.
+
 - **`site:open`, `live:open`**: a visible browser window signed in to the admin with the passkey
   the script saved — the way for a person in to a site that `site:admin` or `live:admin` set up.
 

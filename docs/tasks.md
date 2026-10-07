@@ -30,20 +30,6 @@ The deployed site has an administrator and the CLI is signed in to it, with nobo
 
 A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url &lt;LIVE_URL>
 
-## `live:check`
-
-- **Usage:** `live:check`
-
-Would this deploy: site:check, then wrangler's dry run of the deploy — nothing is uploaded and no account is needed. For a site on Cloudflare
-
-## `live:key`
-
-- Depends: step:there
-
-- **Usage:** `live:key`
-
-Once, after the first live:ship: the site's encryption key goes to the Worker as a secret. It uploads every line of the site's .env — on a site this made, that is the key and nothing else. The values are never shown. Asks first
-
 ## `live:logs`
 
 - Depends: step:there
@@ -52,17 +38,11 @@ Once, after the first live:ship: the site's encryption key goes to the Worker as
 
 Follow the deployed site's log — requests, errors, and each run of the scheduler
 
-## `live:open`
-
-- **Usage:** `live:open`
-
-For a person: a browser window signed in to the admin of the DEPLOYED site at LIVE_URL, with the passkey live:admin saved. From there you can work in the admin, and add a sign-in of your own under Security. Close the window when done
-
 ## `live:ship`
 
 - **Usage:** `live:ship`
 
-Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it AT ONCE with live:admin, then live:key — until a site has its administrator, whoever opens its admin first becomes it
+Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. The site's .env goes up with it as secrets. First time: follow it AT ONCE with live:admin — until a site has its administrator, whoever opens its admin first becomes it
 
 ## `live:undo`
 
@@ -184,15 +164,15 @@ A site, once: EmDash's scaffolder makes the site folder and installs it. Say whi
 
 ## `site:open`
 
-- **Usage:** `site:open`
+For a person: a browser window signed in to the admin of a site the script set up — the production build from site:admin, or with --live the deployed site from live:admin. It uses the passkey the script saved, which no ordinary browser can. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
 
-For a person: a browser window signed in to the admin of the production build that site:admin set up — with the passkey the script saved, which no ordinary browser can use. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
 
-## `site:preview`
+- Depends: step:there, step:admin-tools
 
-- **Usage:** `site:preview`
+- **Usage:** `site:open [--live]`
 
-The site as a deploy would ship it, on this machine: stops the dev server, builds, and serves the production build in the background on PREVIEW_PORT (4322). It shares the local database with site:start. site:stop stops it
+### Flags
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
 
 ## `site:reset`
 

@@ -125,6 +125,11 @@ jobs:
           mise run --yes site:reset
           if mise run emdash -- content get pages from-ci --json; then echo "the page survived the reset"; exit 1; fi
           test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$SITE/")" = 200
+      - name: site:admin — a production build, set up and signed in to by a script, nobody at a browser
+        run: |
+          mise run --yes site:admin
+          mise run emdash -- schema list --url http://localhost:4322
+          mise run site:stop
       - name: start again leaves it alone; stop stops it
         run: |
           mise run site:start

@@ -38,9 +38,8 @@ mise run site:start                    install, make its key if it has none, run
 mise run site:logs                     follow the running site's log
 mise run site:stop
 mise run site:check                    before a commit: the seed is valid, the types check, it builds
-mise run site:preview                  the production build, served on this machine — signs in like a deployed site
-mise run site:admin                    that build with an administrator and a signed-in CLI, nobody at a browser
-mise run site:open                     a browser window signed in to that build's admin, for you
+mise run site:admin                    a production build with an administrator and a signed-in CLI, nobody at a browser
+mise run site:open                     a browser window signed in to that build's admin, for you — or --live
 mise run site:reset                    the local site back to its seed — it asks first
 mise run site:delete                   remove site/ again — it asks first
 
@@ -53,11 +52,8 @@ mise run plugin:add -- <npm package>   someone else's plugin, declared in the re
 mise run plugin:publish -- save-log    release it to EmDash's registry — it asks first
 mise run plugin -- search forms        anything else in EmDash's plugin CLI
 
-mise run live:check                    would this deploy — wrangler's dry run, no account needed
-mise run live:ship                     put it live on Cloudflare, and wait for it to answer
-mise run live:key                      once, after the first ship: the encryption key, as a secret
+mise run live:ship                     check, deploy to Cloudflare with the site's secrets, wait for it to answer
 mise run live:admin                    the deployed site set up and the CLI signed in to it, nobody at a browser
-mise run live:open                     a browser window signed in to the deployed site's admin, for you
 mise run live:undo                     the previous version back — code only
 mise run live:logs                     follow the deployed site's log
 mise run live:backup                   the database's bookmark, and the site as a package
@@ -68,6 +64,9 @@ mise run emdash -- content list posts  anything else, through EmDash's own CLI
 ```
 
 Run a task where there is no site and it says so, and what to do.
+
+Two more, not in the list because other tasks run them: `site:preview` (the production build,
+served on this machine) and `live:check` (`site:check`, then wrangler's dry run of the deploy).
 
 After `site:start`, open
 `http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. That is EmDash's own
@@ -160,7 +159,7 @@ loaded into an empty site with EmDash's two import commands.
   to the site — whoever has it is its administrator. Keep a copy somewhere safe, and never commit
   it.** A site somebody else set up, it cannot enter and does not try.
 - **How you get in to a site the script set up.** Its passkey works only in the script's own
-  browser, so `site:open` and `live:open` open a window you can see, already signed in. That is
+  browser, so `site:open` (and `site:open -- --live`) opens a window you can see, already signed in. That is
   the bridge. The lasting way in for people is a login provider in the site's own config —
   GitHub is the one recommended here — which works alongside the script's passkey. Cloudflare
   Access is not recommended with these tasks: on a deployed site it switches every other sign-in
@@ -178,7 +177,7 @@ loaded into an empty site with EmDash's two import commands.
 
 Deploying is built and was proven on a throwaway Worker on macOS; it is not in a release yet.
 The package half of `live:backup`, `content:pull` and `model:sync -- --live` against a real
-deployment wait on a person signing in to it: [`docs/plans/2026-10-07-live.md`](docs/plans/2026-10-07-live.md). How
+deployment wait on a person signing in to it: [`docs/plans/2026-10-07-next.md`](docs/plans/2026-10-07-next.md). How
 the tasks were arrived at, with the EmDash command behind every step and the gaps that are known:
 [`docs/plans/done/2026-10-07-stages.md`](docs/plans/done/2026-10-07-stages.md).
 

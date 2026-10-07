@@ -151,9 +151,9 @@ run = "pnpm exec wrangler whoami"
 
 ["step:deploy"]
 hide = true
-description = "The build goes to Cloudflare. On a first deploy wrangler makes the database and bucket named in wrangler.jsonc. --strict refuses when the deployed Worker was changed from somewhere else"
+description = "The build goes to Cloudflare, and every line of the site's .env goes with it as a secret — on a site this made, that is EmDash's encryption key; the values are never shown, and secrets already there are kept. On a first deploy wrangler makes the database and bucket named in wrangler.jsonc. --strict refuses when the deployed Worker was changed from somewhere else"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm exec wrangler deploy --strict --message \"live:ship {{ now() | date(format='%Y-%m-%d %H:%M:%S') }} UTC\""
+run = "pnpm exec wrangler deploy --strict --secrets-file .env --message \"live:ship {{ now() | date(format='%Y-%m-%d %H:%M:%S') }} UTC\""
 
 ["step:deployed"]
 hide = true
@@ -318,6 +318,7 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm dlx @emdash-cms/plugin-cli@latest"
 
 ["live:check"]
+hide = true
 description = "Would this deploy: site:check, then wrangler's dry run of the deploy — nothing is uploaded and no account is needed. For a site on Cloudflare"
 run = [{ task = "site:check" }, { task = "step:rehearse" }]
 
@@ -326,7 +327,7 @@ description = "A newer EmDash: updates the site to the latest release, then type
 run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
 
 ["live:ship"]
-description = "Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it AT ONCE with live:admin, then live:key — until a site has its administrator, whoever opens its admin first becomes it"
+description = "Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. The site's .env goes up with it as secrets. First time: follow it AT ONCE with live:admin — until a site has its administrator, whoever opens its admin first becomes it"
 run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
 
 ["live:undo"]
@@ -342,18 +343,12 @@ depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec wrangler tail"
 
-["live:key"]
-description = "Once, after the first live:ship: the site's encryption key goes to the Worker as a secret. It uploads every line of the site's .env — on a site this made, that is the key and nothing else. The values are never shown. Asks first"
-confirm = "Upload every line of this site's .env to the deployed Worker as secrets?"
-depends = ["step:there"]
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = ["pnpm exec wrangler whoami", "pnpm exec wrangler secret bulk .env", "pnpm exec wrangler secret list"]
-
 ["live:backup"]
 description = "A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
 
 ["site:preview"]
+hide = true
 description = "The site as a deploy would ship it, on this machine: stops the dev server, builds, and serves the production build in the background on PREVIEW_PORT (4322). It shares the local database with site:start. site:stop stops it"
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" }, { task = "step:key" }, { task = "step:build" }, { task = "step:preview" }, { task = "step:preview-up" }]
 
@@ -368,12 +363,11 @@ confirm = "Set up, or sign in to, the DEPLOYED site at LIVE_URL as its administr
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:admin-tools" }, { task = "step:admin-live" }]
 
 ["site:open"]
-description = "For a person: a browser window signed in to the admin of the production build that site:admin set up — with the passkey the script saved, which no ordinary browser can use. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)"
-run = [{ task = "step:there" }, { task = "step:admin-tools" }, "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show"]
-
-["live:open"]
-description = "For a person: a browser window signed in to the admin of the DEPLOYED site at LIVE_URL, with the passkey live:admin saved. From there you can work in the admin, and add a sign-in of your own under Security. Close the window when done"
-run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:admin-tools" }, "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --deployed --show"]
+description = "For a person: a browser window signed in to the admin of a site the script set up — the production build from site:admin, or with --live the deployed site from live:admin. It uses the passkey the script saved, which no ordinary browser can. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)"
+depends = ["step:there", "step:admin-tools"]
+dir = "{{config_root}}"
+usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"

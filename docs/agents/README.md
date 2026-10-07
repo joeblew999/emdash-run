@@ -14,7 +14,11 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
    `emdash-plugin` (`mise run plugin -- --help`) and `create-emdash`, then Astro's and wrangler's,
    and use the command that exists. A line of `node -e` in `tasks.toml` is allowed only where no
    command exists and the plan names the gap.
-2. **Work from a plan, in stages.** Plans are `docs/plans/*.md`, written as numbered stages of
+2. **One plan, in stages, and it stays one.** On 2026-10-07 three plans grew to 42 open boxes and
+   27 tasks by reacting to each finding; the owner called it out of control and it was. A finding
+   goes into the open plan as a box or under "Watch" — it does not start a new plan or a new
+   task. No new task while a release is owed.
+   **Work from a plan, in stages.** Plans are `docs/plans/*.md`, written as numbered stages of
    checkboxes. When a plan is ready, do it — do not wait to be told again — and prove each stage
    works before the next. Finish a plan: tick, close, move to `done/`, and write the next plan for
    what is left. Everything raised along the way goes into a plan, not only into chat.
@@ -40,11 +44,11 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
    `live:admin`; the owner has said (2026-10-07) they are fine with it making the first
    administrator there. An agent whose own rules do not let it create an account on a site on the
    internet hands that one command to the owner and carries on. See
-   `docs/plans/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
+   `docs/plans/done/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
    tied to one person's machine.
 9. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
    who can do it and the exact command or address — and keep the table of them current in the
-   open plan (`docs/plans/2026-10-07-live.md` § Sign-ins). An agent does not make accounts,
+   open plan (`docs/plans/done/2026-10-07-live.md` § Sign-ins). An agent does not make accounts,
    passkeys or tokens; it starts the flow and the owner approves.
 
 ## EmDash first — read this before you touch anything
