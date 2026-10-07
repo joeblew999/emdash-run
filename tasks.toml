@@ -3,7 +3,8 @@
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
 #
-# Visible tasks are the stages. `step:*` tasks are hidden: each is ONE of EmDash's own commands,
+# Visible tasks are named <what>:<verb> — site:new, site:start, plugin:add — so they group by what
+# you are working on. `step:*` tasks are hidden: each is ONE of EmDash's own commands,
 # written once and reused. There is no script underneath — if a step needs logic, it is a gap to
 # write down in the plan, not code to add here.
 
@@ -40,23 +41,23 @@ run = "pnpm exec emdash whoami"
 
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
-[new]
+["site:new"]
 description = "A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it"
 dir = "{{config_root}}"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
 run = "pnpm dlx create-emdash@latest site --template {{ env.TEMPLATE | default(value='cloudflare:blog') }} --pm pnpm --install --yes"
 
-[start]
+["site:start"]
 description = "I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
 run = [{ task = "step:install" }, { task = "step:seed" }, { task = "step:dev" }, { task = "step:up" }]
 
-[stop]
-description = "Stop the site that start started"
+["site:stop"]
+description = "Stop the site that site:start started"
 dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
 run = "pnpm exec astro dev stop"
 
-[logs]
+["site:logs"]
 description = "Follow the running site's log"
 dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
@@ -69,10 +70,10 @@ tools = { node = "26.10.0", pnpm = "12.9.1" }
 env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
 run = "pnpm exec emdash"
 
-[delete]
-description = "Delete this project's site/ — the opposite of new. Stops the site first. Everything in site/ goes, including its local database; asks before it does"
+["site:delete"]
+description = "Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database; asks before it does"
 confirm = "Delete site/ and everything in it, including the local database?"
-run = [{ task = "stop" }, { task = "step:delete" }]
+run = [{ task = "site:stop" }, { task = "step:delete" }]
 
 ["step:delete"]
 hide = true

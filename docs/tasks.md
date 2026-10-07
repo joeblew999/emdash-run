@@ -9,12 +9,6 @@ Before a commit: is the project sound? --fix repairs formatting; --site also typ
 ### Arguments
 - **`[args]…`**
 
-## `delete`
-
-- **Usage:** `delete`
-
-Delete this project's site/ — the opposite of new. Stops the site first. Everything in site/ goes, including its local database; asks before it does
-
 ## `deploy`
 
 Go live: check, build, ship to Cloudflare, then verify what is live. --dry builds without shipping
@@ -63,15 +57,13 @@ The plugin registry, through the official plugin CLI — e.g: mise run emdash-pl
 
 ## `logs`
 
-- **Usage:** `logs`
+Follow the site's log. --deployed follows the live site
 
-Follow the running site's log
 
-## `new`
+- **Usage:** `logs [args]…`
 
-- **Usage:** `new`
-
-A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it
+### Arguments
+- **`[args]…`**
 
 ## `open`
 
@@ -143,6 +135,36 @@ Undo the last deploy
 ### Arguments
 - **`[args]…`**
 
+## `site:delete`
+
+- **Usage:** `site:delete`
+
+Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database; asks before it does
+
+## `site:logs`
+
+- **Usage:** `site:logs`
+
+Follow the running site's log
+
+## `site:new`
+
+- **Usage:** `site:new`
+
+A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it
+
+## `site:start`
+
+- **Usage:** `site:start`
+
+I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+
+## `site:stop`
+
+- **Usage:** `site:stop`
+
+Stop the site that site:start started
+
 ## `snapshot`
 
 Save the site's content as a package. --database backs up everything, users included. --url takes it from a live site
@@ -153,12 +175,6 @@ Save the site's content as a package. --database backs up everything, users incl
 ### Arguments
 - **`[args]…`**
 
-## `start`
-
-- **Usage:** `start`
-
-I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
-
 ## `status`
 
 What is running, and on which versions
@@ -168,12 +184,6 @@ What is running, and on which versions
 
 ### Arguments
 - **`[args]…`**
-
-## `stop`
-
-- **Usage:** `stop`
-
-Stop the site that start started
 
 ## `upgrade`
 
