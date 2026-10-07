@@ -4,6 +4,7 @@
 #   [tools]
 #   node = "26"
 #   pnpm = "12"
+#   fnox = "1.36.0"     # only for signin:access: it reads your Cloudflare token from fnox
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
 #
@@ -16,7 +17,8 @@
 #   the deployed site with  -- --live .   Every task prints where it is acting before it acts.
 #   This machine has two sites: the dev one (site:start, port 4321) and the built one
 #   (site:preview, port 4322). signin:* act on the built one; emdash on the dev one unless --preview.
-#   Tasks that change Cloudflare take your token from fnox:  fnox exec -- mise run <task>
+#   The live tasks use your wrangler login. signin:access needs more — an API token with Access
+#   edit rights — and reads it from CLOUDFLARE_API_TOKEN or, by itself, from fnox.
 #
 # THE TOOLS — node and pnpm — are the project's: its mise.toml has a [tools] block. Not declared
 # per task here: a hidden step does not inherit its task's tools.

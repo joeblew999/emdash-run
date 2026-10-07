@@ -51,8 +51,9 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
   `emdash schema list`.
 - **`emdash login` saves its sign-in per project folder**, and a stale one breaks the dev CLI.
   `signin:token` does not use it.
-- **Tasks that change Cloudflare run under `fnox exec --`.** Wrangler's own login cannot change
-  Cloudflare Access.
+- **The live tasks use the wrangler login.** Only `signin:access` needs more — wrangler's login
+  cannot change Cloudflare Access — and it reads `CLOUDFLARE_API_TOKEN` from the environment or,
+  by itself, from fnox. No task needs a `fnox exec --` prefix. fnox is in the README's `[tools]`.
 - **Add files to a commit by name.**
 
 ## Reading EmDash

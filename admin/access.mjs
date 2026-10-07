@@ -38,7 +38,21 @@ const run = (args) =>
 		stdio: ["ignore", "pipe", "ignore"],
 		shell: process.platform === "win32",
 	});
-let bearer = process.env.CLOUDFLARE_API_TOKEN;
+// The Cloudflare token, from wherever the developer keeps it: the environment, else fnox (the
+// secrets tool in the project's [tools]), else the login wrangler holds — which can read Access
+// but not change it, so the first two are the ones that work.
+const fromFnox = (key) => {
+	try {
+		return execFileSync("fnox", ["get", key], { cwd: siteDir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], shell: process.platform === "win32" }).trim();
+	} catch {
+		return "";
+	}
+};
+let bearer = process.env.CLOUDFLARE_API_TOKEN || fromFnox("CLOUDFLARE_API_TOKEN");
+if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
+	const id = fromFnox("CLOUDFLARE_ACCOUNT_ID");
+	if (id) process.env.CLOUDFLARE_ACCOUNT_ID = id;
+}
 if (!bearer) {
 	try {
 		bearer = JSON.parse(run(["auth", "token", "--json"])).token;
@@ -66,7 +80,7 @@ const api = async (method, path, body) => {
 	const j = await r.json().catch(() => ({}));
 	if (!j.success) {
 		const why = (j.errors || []).map((e) => e.message).join("; ") || `HTTP ${r.status}`;
-		throw new Error(`Cloudflare refused ${method} access/${path}: ${why}. Wrangler's own login can read Access but not change it. Make an API token with "Access: Apps and Policies — Edit" and "Access: Service Tokens — Edit" (Cloudflare dashboard, My Profile, API Tokens) and set it as CLOUDFLARE_API_TOKEN.`);
+		throw new Error(`Cloudflare refused ${method} access/${path}: ${why}. Wrangler's own login can read Access but not change it. Make an API token with "Access: Apps and Policies — Edit" and "Access: Service Tokens — Edit" (Cloudflare dashboard, My Profile, API Tokens) and store it:  fnox set CLOUDFLARE_API_TOKEN`);
 	}
 	return j.result;
 };

@@ -21,6 +21,7 @@ experimental = true
 [tools]
 node = "26"
 pnpm = "12"
+fnox = "1.36.0"   # keeps your Cloudflare token; only needed for signin:access
 
 [task_config]
 includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=main"]
@@ -104,8 +105,8 @@ deployed one — has real sign-in. Pick a way:
 | `signin:open` | you | Playwright + Chrome | a browser window already signed in |
 
 ```
-mise run signin:token                            this machine's built site
-fnox exec -- mise run signin:token -- --live     the deployed site
+mise run signin:token                 this machine's built site
+mise run signin:token -- --live       the deployed site
 ```
 
 These are for development sites. What they save is in `~/.config/emdash-run/` on your machine,
@@ -113,18 +114,28 @@ never in the repo.
 
 ## Deploying (Cloudflare)
 
+Sign in to Cloudflare once: `mise x -- pnpm dlx wrangler login`. Then:
+
 ```
-fnox exec -- mise run signin:access              once: Cloudflare Access in front of the admin
-mise run live:ship                               check, deploy, wait for it to answer
-fnox exec -- mise run signin:token -- --live     once: the CLI is signed in
+mise run signin:access                once: Cloudflare Access in front of the admin
+mise run live:ship                    check, deploy, wait for it to answer
+mise run signin:token -- --live       once: the CLI is signed in
 mise run live:logs
-mise run live:undo                               back to the previous version
+mise run live:undo                    back to the previous version
 mise run live:backup
 ```
 
-The tasks that change Cloudflare need an API token with D1 and Access rights, as
-`CLOUDFLARE_API_TOKEN`. `fnox exec --` supplies it from [fnox](https://fnox.jdx.dev); any other way
-of setting the variable works too.
+Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
+Access but not change it. For that one task, make an API token in the Cloudflare dashboard
+(My Profile → API Tokens) with **Access: Apps and Policies — Edit** and **Access: Service Tokens —
+Edit**, and store it with [fnox](https://fnox.jdx.dev), which the task reads by itself:
+
+```
+fnox init                             once per machine
+fnox set CLOUDFLARE_API_TOKEN         it asks for the value
+```
+
+Or set `CLOUDFLARE_API_TOKEN` in your environment any other way.
 
 ## Plugins
 
