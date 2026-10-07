@@ -31,6 +31,10 @@ jobs:
     env:
       # the test needs node and pnpm only; do not let a task pull in the other tools on a runner
       MISE_TASK_RUN_AUTO_INSTALL: "false"
+      # GitHub limits anonymous downloads per address, and hosted runners share addresses: without a
+      # token, fetching EmDash's template (and mise fetching a tool) is refused now and then.
+      GITHUB_TOKEN: ${{ github.token }}
+      GIGET_AUTH: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v5

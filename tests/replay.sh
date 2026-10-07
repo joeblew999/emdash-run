@@ -33,7 +33,8 @@ if [ -z "${REPLAY_CLEAN:-}" ] && ! command -v cygpath >/dev/null 2>&1; then
   rm -rf "$WORK"
   exec env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-xterm}" ${CI:+CI="$CI"} \
     ${TEST_LIVE_URL:+TEST_LIVE_URL="$TEST_LIVE_URL"} ${TEST_LIVE_NAME:+TEST_LIVE_NAME="$TEST_LIVE_NAME"} \
-    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} REPLAY_CLEAN=1 bash "$0" "$@"
+    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} \
+    ${GITHUB_TOKEN:+GITHUB_TOKEN="$GITHUB_TOKEN"} ${GIGET_AUTH:+GIGET_AUTH="$GIGET_AUTH"} REPLAY_CLEAN=1 bash "$0" "$@"
 fi
 export XDG_CONFIG_HOME=$WORK/config; mkdir -p "$XDG_CONFIG_HOME"
 if [ "$FROM" = github ]; then
@@ -53,6 +54,8 @@ step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   else [ "$1" = no ] && verdict=PASS || { verdict=FAIL; detail=$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160); }; fi
   printf '%s|%s|%s|%s|%s|%s\n' "$2" "$W" "$3" "$verdict" "$detail" "$1" >> "$ROWS"
   printf '%-4s %-11s %-15s %s\n' "$verdict" "$W" "$2" "$3"
+  # a failure shows its last output here too — on a CI runner this is the only place it can be read
+  if [ "$verdict" = FAIL ]; then tail -12 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-220 | sed 's/^/       > /'; fi
 }
 ok() { step ok "$@"; }
 no() { step no "$@"; }
