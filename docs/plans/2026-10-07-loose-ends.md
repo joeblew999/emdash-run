@@ -1,6 +1,6 @@
 # 2026-10-07 — Loose ends: everything raised while the stages were built
 
-**Status:** active — **0 of 4 stages done.**
+**Status:** active — **1 of 4 stages done.**
 
 Every problem, doubt and unproven claim that came up in
 [`done/2026-10-07-stages.md`](done/2026-10-07-stages.md), with who has to move. Nothing here needs a
@@ -23,13 +23,20 @@ deployment; what does is in [`2026-10-07-live.md`](2026-10-07-live.md).
 
 ## The stages
 
-- [ ] **Stage 1 — what can be fixed here, now**
-  - [ ] (1) `stages.yml` adds the two lines and a runner to `astro.config.mjs` after `plugin:new`,
-    starts the site and gets `{"greeting":"hello"}` from the plugin's route — on three OSes, on
-    Cloudflare and on Node
-  - [ ] (2) decided and written down: which variables a task takes from the shell on purpose, and
-    a test that a stray `SITE_FOLDER`-style variable of the old harness changes nothing
-  - [ ] (3) the Remy-Sport branch pins `?ref=v0.7.0`; its tasks still list and `site:start` works
+- [x] **Stage 1 — what can be fixed here, now**
+  - [x] (1) proven again from nothing, locally, after the tasks were changed to stop the site
+    first: `site:new` → `site:start` → `plugin:new save-log` → the two lines and a runner in
+    `astro.config.mjs` → `site:start` → `{"greeting":"hello","pluginId":"save-log"}` [200], then
+    `site:check` passes — on `node:blog` (runner packages added with `plugin:add`) and on
+    `cloudflare:starter`. Not added to CI: the owner's instruction is to keep CI for when it is
+    really needed
+  - [x] (2) decided and written in `docs/agents/README.md` § Rules: a task's settings come from the
+    project's `[env]`, else the shell; EmDash's own variables pass through to its CLIs. The test
+    was every run of 2026-10-07: they were all made in a shell still carrying the old harness's
+    `SITE_DIR`, `SEED_FILE`, `TEMPLATES_DIR`, `EMDASH_VERSION` and an empty `EMDASH_URL`, and no
+    task was moved by them. Only `EMDASH_REGISTRY_URL` had an effect, on `plugin -- search`
+  - [x] (3) the Remy-Sport branch pins `?ref=v0.7.0` (its commit b75b508): 17 tasks listed,
+    `site:start` exit 0, home 200
 
 - [ ] **Stage 2 — the reports, written so they can be sent as they are**
   - [ ] `docs/upstream.md`: one entry per finding — what was run, what it printed, what the docs

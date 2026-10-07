@@ -4,6 +4,37 @@
 EmDash already ships the tooling. This repo adds a task only where EmDash has a gap that has been
 proven by running EmDash's own command first.
 
+## How the owner wants the work done — standing instructions
+
+Said by the owner on 2026-10-07, after the stages were built. They hold until the owner says
+otherwise; an agent that has not read them repeats the mistakes they came from.
+
+1. **Use the three CLIs for everything they can do — always.** The mise approach works *because*
+   a task is EmDash's own commands in order. Before writing any step, run `--help` on `emdash`,
+   `emdash-plugin` (`mise run plugin -- --help`) and `create-emdash`, then Astro's and wrangler's,
+   and use the command that exists. A line of `node -e` in `tasks.toml` is allowed only where no
+   command exists and the plan names the gap.
+2. **Work from a plan, in stages.** Plans are `docs/plans/*.md`, written as numbered stages of
+   checkboxes. When a plan is ready, do it — do not wait to be told again — and prove each stage
+   works before the next. Finish a plan: tick, close, move to `done/`, and write the next plan for
+   what is left. Everything raised along the way goes into a plan, not only into chat.
+3. **Tell the owner about problems, unasked, and fix them.** A fault found in something already
+   called proven is said plainly, with what was wrong. Never leave the owner to find it by
+   running a task.
+4. **Prove it on new sites and existing sites, on Cloudflare and on Node, with plugins** — on this
+   machine. "Works" means that run, today.
+5. **Do not use CI unless it is really, really needed.** It takes far too long. The three-OS run
+   is green as of `v0.7.0`; a new task built the same way is likely to pass there too. A push that
+   touches `tasks.toml` or `stages.yml` starts it: put `[skip ci]` in the commit message unless a
+   cross-OS proof is the point (a change to quoting or shell behaviour, a Windows fix, a release).
+6. **Cloudflare: the account is on the Workers Paid plan, and deploying to preview and
+   `workers.dev` addresses is allowed** — said 2026-10-07. So sandboxed plugins (the Worker
+   Loader binding) can be deployed, and the `live:` tasks can be proven on a throwaway Worker. A
+   real domain, the Remy-Sport site's names, deleting anything, and posting under the owner's name
+   (issues, a plugin release) still need the owner's yes each time. Never type or print a secret:
+   pass the file by path.
+7. **Decide what is reversible yourself; do not get ahead on what is not.**
+
 ## EmDash first — read this before you touch anything
 
 On 2026-10-06 a full day and about 1,200 lines of code were spent wrapping and rebuilding things
@@ -18,7 +49,7 @@ exist so that does not happen again. They come before every other rule in this f
    |---|---|---|
    | `create-emdash` | scaffold a project: `--template blog\|starter\|marketing\|portfolio`, `--platform node\|cloudflare`, `--pm`, `--sandboxed-plugins`, `--yes` | `pnpm dlx create-emdash@<version> --help` |
    | `emdash` (alias `em`) | everything on a site: `content`, `schema`, `media`, `taxonomy`, `menu`, `search`, `types`, `seed`, `export-seed`, `site export\|import`, `migrate`, `doctor`, `secrets`, `login` | `mise run emdash -- <command>` |
-   | `emdash-plugin` | plugins: `init`, `validate`, `build`, `dev`, `bundle`, `publish`, `search`, `info`, `release setup` | `mise run emdash-plugin -- <command>` |
+   | `emdash-plugin` | plugins: `init`, `validate`, `build`, `dev`, `bundle`, `publish`, `search`, `info`, `release setup` | `mise run plugin -- <command>` |
 
    Run `--help` on the command you are about to wrap. If it has the option, use it.
 
@@ -28,12 +59,13 @@ exist so that does not happen again. They come before every other rule in this f
    - `building-emdash-site/` — config, schema and seed, querying, rendering, site features
    - `creating-plugins/` — plugins, capabilities, hooks, testing, publishing
 
-   Then the guide: `mise run source` puts EmDash's docs at `.src/emdash/docs/src/content/docs/` —
+   Then the guide: EmDash's docs are at `.src/emdash/docs/src/content/docs/` when its source is
+   cloned into `.src/` (gitignored), and always through the `emdash-docs` MCP server —
    23 guides, 10 deployment pages. `guides/internationalization.mdx` and
    `deployment/schema-evolution.mdx` are two that the harness contradicted because nobody read them.
 
 3. **Search the registry before building a feature into a site:**
-   `mise run emdash-plugin -- search <words>`.
+   `mise run plugin -- search <words>`.
 
 4. **A harness task needs a proven gap.** Before adding or keeping a task, run the official command
    for that job on a real site and write down what it could not do. "It would be convenient" is not
@@ -97,8 +129,16 @@ skill says it does; it had not within a second).
   inherit its task's tools, so a per-task declaration that misses one step runs it on the machine's Node.
 - **Add files to a commit by name.** `git add -A` once swept a deleted `site/` into a commit about
   something else.
-- **CI is the three-OS proof, not the test loop.** Lint a workflow with `actionlint` and run its
-  steps locally before pushing. On a runner `CI=true` makes mise answer every prompt with yes.
+- **CI is the three-OS proof, not the test loop** — and is not run unless really needed (standing
+  instruction 5). Lint a workflow with `actionlint` and run its steps locally before pushing. On
+  a runner `CI=true` makes mise answer every prompt with yes.
+- **Stop the site before changing its packages.** On Windows a running dev server broke, and
+  broke EmDash's plugin scaffolder, when packages changed under it. `plugin:new` and `plugin:add`
+  do this themselves.
+- **A variable in the shell is a setting.** A task reads `SITE_FOLDER`, `SITE_PORT`, `TEMPLATE`,
+  `SITE_SEED`, `LIVE_URL` and `PLUGIN_*` from the project's `[env]`, and from the shell when the
+  project does not set them. EmDash's own variables (`EMDASH_REGISTRY_URL`, …) pass through to its
+  CLIs. A window opened under the old harness still carries its variables: reopen it.
 - **Plans live in `docs/plans/`** — `ls docs/plans/` is what is left. How the tasks were arrived at,
   with every command that was run, is `done/2026-10-07-stages.md`.
 
@@ -108,5 +148,5 @@ skill says it does; it had not within a second).
   `/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`.
 - **EmDash's docs MCP** (`.mcp.json`): `emdash-docs`, for looking things up in the current docs.
 - **EmDash's skills** come with the site: `site/.agents/skills/`. *EmDash first*, rule 2, says when
-  to read them. `pnpm dlx skills update` refreshes them.
+  to read them. `skills update` does not refresh them on a scaffolded site (it finds none).
 - **mise skills are machine-level** (`~/.claude/skills/`), not this repo's.
