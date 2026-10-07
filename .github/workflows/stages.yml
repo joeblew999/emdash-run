@@ -25,7 +25,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ${{ runner.temp }}/project
+        working-directory: project
     env:
       SITE: http://localhost:4400
     steps:
@@ -33,7 +33,7 @@ jobs:
         with:
           install: false
       - name: a project that is one mise.toml
-        working-directory: ${{ runner.temp }}
+        working-directory: ${{ github.workspace }}
         run: |
           mkdir project && cd project && git init -q
           cat > mise.toml <<EOF
@@ -53,7 +53,7 @@ jobs:
       - run: mise run site:start
       - name: the site answers, and EmDash's sign-in link sets it up
         run: |
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 $SITE/)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$SITE/")" = 200
           curl -fsS --max-time 300 -X POST "$SITE/_emdash/api/setup/dev-bypass" -o /dev/null
       - name: the CLI stage, with a flag and with a quoted argument
         run: |
@@ -65,7 +65,7 @@ jobs:
           mise run site:start
           mise run site:stop
           sleep 3
-          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 $SITE/ || true)" != 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$SITE/" || true)" != 200
       - name: delete refuses without a yes, and deletes with one
         run: |
           if mise run site:delete </dev/null; then echo "deleted without being asked"; exit 1; fi
