@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-Everything here has run on macOS only. `docs/status.md` is the record of the last test run.
+## 1.0.0 — 2026-10-07
+
+The first release with signing in, deploying and a test whose result is a file:
+[`docs/status.md`](docs/status.md) says what works, task by task.
 
 - **Signing in**, four ways side by side: `signin:token` (a machine, no browser: an administrator
   and an EmDash API token written to the site's database — D1 or a Node site's SQLite file),

@@ -31,7 +31,8 @@ writeFileSync(store, JSON.stringify(results, null, 1) + "\n");
 
 // Every task there is: the visible ones, and the hidden ones that are run by name.
 const listed = JSON.parse(execFileSync("mise", ["tasks", "ls", "--hidden", "--json"], { cwd: repo, encoding: "utf8" }));
-const tasks = listed.filter((t) => !t.name.startsWith("step:") && !/^test(:|$)/.test(t.name)).map((t) => ({ name: t.name, hidden: t.hide, description: t.description }));
+// the tasks a project gets — those in tasks.toml; this repo's own (test, issues, docs:…) are not counted
+const tasks = listed.filter((t) => !t.name.startsWith("step:") && t.source.endsWith("tasks.toml")).map((t) => ({ name: t.name, hidden: t.hide, description: t.description }));
 const wheres = ["cloudflare", "node", "deployed"];
 const cell = (task, where) => {
 	const rows = results.filter((r) => r.task === task && r.where === where);
