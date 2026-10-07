@@ -71,6 +71,17 @@ const keyFile = join(
 );
 const here = dirname(fileURLToPath(import.meta.url));
 
+const LOCAL_HINT = local
+	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: start it with  mise run site:preview  — then run this again.`
+	: `Nothing is answering at ${origin}. Is the site deployed? mise run live:ship`;
+// Is the site there at all? Say so in one line when it is not.
+try {
+	await fetch(new URL(url).origin, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+} catch {
+	console.error(LOCAL_HINT);
+	process.exit(1);
+}
+
 // The Chrome or Edge already installed: nothing is downloaded.
 let browser;
 for (const channel of ["chrome", "msedge"]) {

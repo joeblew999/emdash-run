@@ -39,6 +39,17 @@ const tokenName = `emdash-run:${machineName().replace(/[^a-zA-Z0-9.-]/g, "-")}`;
 const email = process.env.ADMIN_EMAIL || "agent@emdash.local";
 const name = process.env.ADMIN_NAME || "Site Admin";
 
+const LOCAL_HINT = where === "--local"
+	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: start it with  mise run site:preview  — then run this again.`
+	: `Nothing is answering at ${origin}. Is the site deployed? mise run live:ship`;
+// Is the site there at all? Say so in one line when it is not.
+try {
+	await fetch(new URL(url).origin, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+} catch {
+	console.error(LOCAL_HINT);
+	process.exit(1);
+}
+
 // As EmDash makes one: ec_pat_ + 32 random bytes, base64url; stored as the base64url SHA-256.
 const raw = "ec_pat_" + randomBytes(32).toString("base64url");
 const hash = createHash("sha256").update(raw).digest("base64url");
