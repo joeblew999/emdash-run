@@ -94,14 +94,17 @@ const begin = "<!-- in-order:begin (written by tests/status.mjs — run a test, 
 const end = "<!-- in-order:end -->";
 if (text.includes(begin) && text.includes(end)) {
 	// a description can hold <name> or a | — either would break the table on the docs site
-	const describe = Object.fromEntries(tasks.map((t) => [t.name, t.description.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|")]));
+	const describe = Object.fromEntries(tasks.map((t) => [t.name, t.description.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("--", "\\-\\-")]));
+	// The order is the order of the steps in tests/replay.sh itself — not of whichever run came last.
+	const script = readFileSync(join(repo, "tests", "replay.sh"), "utf8");
+	const part = { cloudflare: script.slice(script.indexOf("local_site() {"), script.indexOf("live_site() {")), deployed: script.slice(script.indexOf("live_site() {")) };
+	const firstUse = (where) => [...part[where].matchAll(/^\s*(?:\[[^\n]*?\]\s*\|\|\s*|case[^\n]*?\)\s*)?ok\s+([a-z:]+)\s+"/gm)].map((m) => m[1]).filter((n, i, all) => all.indexOf(n) === i);
 	const lines = [];
 	for (const [where, heading] of [["cloudflare", "On this machine"], ["deployed", "On the deployed site"]]) {
 		// in the order the test first USES each task (a refusal step is not a use); hidden tasks left out
 		const hidden = new Set(tasks.filter((t) => t.hidden).map((t) => t.name));
-		const rows = results.filter((r) => r.where === where && !r.refusal && !hidden.has(r.task)).sort((a, b) => a.order - b.order);
-		const seen = new Set();
-		const ordered = rows.filter((r) => !seen.has(r.task) && seen.add(r.task));
+		// on the deployed table, only the tasks that are about the deployed site
+		const ordered = firstUse(where).filter((n) => !hidden.has(n) && describe[n] !== undefined && !(where === "deployed" && n.startsWith("site:"))).map((n) => ({ task: n }));
 		if (!ordered.length) continue;
 		lines.push(`**${heading}**`, "", "| | task | what it does | tested |", "|---|---|---|---|");
 		ordered.forEach((r, i) => {
@@ -111,7 +114,7 @@ if (text.includes(begin) && text.includes(end)) {
 		});
 		lines.push("");
 	}
-	const block = `${begin}\n${lines.join("\n")}${end}`;
+	const block = `${begin}\n${lines.join("\n")}\n${end}`;
 	writeFileSync(readme, text.slice(0, text.indexOf(begin)) + block + text.slice(text.indexOf(end) + end.length));
 }
 }

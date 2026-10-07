@@ -9,7 +9,7 @@ Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.
 
 **75 steps pass, 0 fail, 0 of 28 tasks have no test.**
 
-Last run: `—`, tasks from —, commit `—`, 2026-10-07 11:03 UTC, 0s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
+Last run: `—`, tasks from —, commit `—`, 2026-10-07 11:04 UTC, 0s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
 
 - `mise run test` — quick: the everyday tasks, one template, about a minute
 - `mise run test:full` — everything: both templates, then the tasks that act on a deployed site
