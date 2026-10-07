@@ -45,6 +45,16 @@ for (const arg of given) {
 const i = rest.findIndex((a) => a === "--url" || a === "-u");
 const inline = rest.find((a) => a.startsWith("--url="));
 const url = inline ? inline.slice(6) : i >= 0 ? rest[i + 1] : fallback;
+
+// Say where this is acting, before doing anything. (On stderr, so piped output stays clean.)
+const whereIs = (u) => {
+	if (!URL.canParse(u)) return u;
+	const { origin, port, hostname } = new URL(u);
+	const here = ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+	if (!here) return `DEPLOYED site: ${origin}`;
+	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
+};
+console.error(`-> ${whereIs(url)}`);
 const env = { ...process.env, EMDASH_URL: url };
 if (URL.canParse(url)) {
 	const host = savedName(url, siteDir);

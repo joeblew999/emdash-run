@@ -26,3 +26,12 @@ TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is give
 
 [task_config]
 includes = ["tasks.toml"]
+
+# This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
+[tasks.test]
+description = "What works right now: the everyday tasks from an empty folder, about 2 minutes. Writes docs/status.md. Run it after any change to tasks.toml or admin/"
+run = "bash tests/replay.sh quick"
+
+[tasks."test:full"]
+description = "Every task that needs no deployment, on a Cloudflare and a Node template, about 10 minutes. Writes docs/status.md. Run it before a release"
+run = "bash tests/replay.sh full"

@@ -72,6 +72,16 @@ const keyFile = join(
 );
 const here = dirname(fileURLToPath(import.meta.url));
 
+
+// Say where this is acting, before doing anything. (On stderr, so piped output stays clean.)
+const whereIs = (u) => {
+	if (!URL.canParse(u)) return u;
+	const { origin, port, hostname } = new URL(u);
+	const here = ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+	if (!here) return `DEPLOYED site: ${origin}`;
+	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
+};
+console.error(`-> ${whereIs(url)}`);
 const LOCAL_HINT = local
 	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: and  mise run site:preview  did not bring it up — run that to see why.`
 	: `Nothing is answering at ${origin}. Is the site deployed? mise run live:ship`;

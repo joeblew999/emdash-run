@@ -21,6 +21,7 @@ if (!url || !URL.canParse(url) || !siteDir) {
 	console.error("This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
 	process.exit(1);
 }
+console.error(`-> DEPLOYED site: ${new URL(url).origin}`);
 const email = process.env.ADMIN_EMAIL;
 if (!email) {
 	console.error("Who may sign in? Set ADMIN_EMAIL in the [env] block of mise.toml.");

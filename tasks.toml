@@ -25,7 +25,7 @@ hide = true
 quiet = true
 description = "There is a site here — says so plainly when there is not, instead of mise's bare 'No such file or directory'"
 dir = "{{config_root}}"
-run = "node -e \"if (!require('fs').existsSync('{{ env.SITE_FOLDER | default(value='site') }}/package.json')) { console.error('There is no site in [{{ env.SITE_FOLDER | default(value='site') }}]. Make one with: mise run site:new - or set SITE_FOLDER to where the site is.'); process.exit(1) }\""
+run = "node -e \"if (!require('fs').existsSync('{{ env.SITE_FOLDER | default(value='site') }}/package.json')) { console.error('There is no site in [{{ env.SITE_FOLDER | default(value='site') }}]. Make one with: mise run site:new - or set SITE_FOLDER to where the site is.'); process.exit(1) } console.error('-> site folder: ' + require('path').resolve('{{ env.SITE_FOLDER | default(value='site') }}'))\""
 
 ["step:install"]
 hide = true
@@ -88,7 +88,7 @@ hide = true
 quiet = true
 description = "The project says where its deployment is — LIVE_URL in mise.toml. Fails plainly when it does not"
 dir = "{{config_root}}"
-run = "{% if env.LIVE_URL | default(value='') == '' %}node -e \"console.error('This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.'); process.exit(1)\"{% else %}node -e \"\"{% endif %}"
+run = "{% if env.LIVE_URL | default(value='') == '' %}node -e \"console.error('This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.'); process.exit(1)\"{% else %}node -e \"console.error('-> DEPLOYED site: {{ env.LIVE_URL }}')\"{% endif %}"
 
 ["step:backups"]
 hide = true

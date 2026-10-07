@@ -39,6 +39,16 @@ const tokenName = `emdash-run:${machineName().replace(/[^a-zA-Z0-9.-]/g, "-")}`;
 const email = process.env.ADMIN_EMAIL || "agent@emdash.local";
 const name = process.env.ADMIN_NAME || "Site Admin";
 
+
+// Say where this is acting, before doing anything. (On stderr, so piped output stays clean.)
+const whereIs = (u) => {
+	if (!URL.canParse(u)) return u;
+	const { origin, port, hostname } = new URL(u);
+	const here = ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+	if (!here) return `DEPLOYED site: ${origin}`;
+	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
+};
+console.error(`-> ${whereIs(url)}`);
 const LOCAL_HINT = where === "--local"
 	? `Nothing is answering at ${origin}. The sign-in tasks work on the production build: and  mise run site:preview  did not bring it up — run that to see why.`
 	: `Nothing is answering at ${origin}. Is the site deployed? mise run live:ship`;
@@ -83,12 +93,25 @@ const sql = [
 	`INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) SELECT ${q(id())}, ${q(tokenName)}, ${q(hash)}, ${q(raw.slice(0, 11))}, id, ${q(JSON.stringify(["admin"]))} FROM users WHERE email = ${q(email)}`,
 ].join("; ");
 
+// A Cloudflare site's database is D1, written with wrangler. A Node site's is a SQLite file in the
+// site folder, written with Node's own SQLite.
+const cloudflare = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
 try {
-	execFileSync("pnpm", ["exec", "wrangler", "d1", "execute", "DB", where, "--yes", "--command", sql], {
-		cwd: siteDir,
-		stdio: ["ignore", "ignore", "pipe"],
-		shell: process.platform === "win32",
-	});
+	if (cloudflare) {
+		execFileSync("pnpm", ["exec", "wrangler", "d1", "execute", "DB", where, "--yes", "--command", sql], {
+			cwd: siteDir,
+			stdio: ["ignore", "ignore", "pipe"],
+			shell: process.platform === "win32",
+		});
+	} else if (where === "--remote") {
+		throw new Error("this is a Node site: its deployed database is wherever you host it, which this task cannot reach. Run signin:token on the server, without --live.");
+	} else {
+		const { DatabaseSync } = await import("node:sqlite");
+		const db = new DatabaseSync(join(siteDir, process.env.SITE_DATABASE || "data.db"));
+		db.exec("PRAGMA busy_timeout = 10000");
+		db.exec(sql);
+		db.close();
+	}
 } catch (error) {
 	console.error(`token: the database refused it. Has the site answered a request yet? EmDash makes its tables on the first one.\n${String(error.stderr || error.message).slice(0, 600)}`);
 	process.exit(1);
