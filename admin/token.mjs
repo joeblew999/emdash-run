@@ -25,6 +25,15 @@ if (!url || !URL.canParse(url) || !siteDir) {
 	process.exit(1);
 }
 const { host, origin } = new URL(url);
+// A program one of the site's packages installs, as [node, its script]: run with Node itself, with
+// no shell in between, so an argument with spaces or quotes arrives whole on every OS. (`pnpm exec`
+// on Windows is a .cmd file and needs a shell, which takes such an argument apart.)
+const siteBin = (pkg, name) => {
+	const dir = join(siteDir, "node_modules", pkg);
+	const bin = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).bin;
+	return join(dir, typeof bin === "string" ? bin : bin[name]);
+};
+
 // One name per site for what this machine saves. A deployed site: its host. A site on this
 // machine: host and port are not enough — two projects can use the same port — so the site's
 // folder is part of it.
@@ -98,10 +107,9 @@ const sql = [
 const cloudflare = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
 try {
 	if (cloudflare) {
-		execFileSync("pnpm", ["exec", "wrangler", "d1", "execute", "DB", where, "--yes", "--command", sql], {
+		execFileSync(process.execPath, [siteBin("wrangler", "wrangler"), "d1", "execute", "DB", where, "--yes", "--command", sql], {
 			cwd: siteDir,
 			stdio: ["ignore", "ignore", "pipe"],
-			shell: process.platform === "win32",
 		});
 	} else if (where === "--remote") {
 		throw new Error("this is a Node site: its deployed database is wherever you host it, which this task cannot reach. Run signin:token on the server, without --live.");

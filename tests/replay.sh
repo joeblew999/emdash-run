@@ -3,7 +3,7 @@
 # recorded against the TASK it tests, in tests/results.json, and docs/status.md is rebuilt from
 # that with one line for every task in tasks.toml — so the status and the tasks always match.
 #
-TWO LEVELS, and no others:
+# TWO LEVELS, and no others:
 #   bash tests/replay.sh quick     one template, the everyday tasks — about a minute
 #   bash tests/replay.sh full      EVERYTHING: both templates, then the tasks that act on a
 #                                  deployed site
@@ -139,7 +139,9 @@ case $TIER in
 esac
 cat "$WORK"/rows-*.txt > "$WORK/rows.txt"
 cd "$REPO"
-mise x -- node tests/status.mjs "$WORK/rows.txt" "$TIER" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
+# plain `node`: it is on the PATH inside a mise task, and `mise x --` would install every tool in
+# mise.toml first — on a CI runner that meant charter, and GitHub refused the download
+node tests/status.mjs "$WORK/rows.txt" "$TIER" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
   "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/replay.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
 code=$?
 rm -rf "$WORK"

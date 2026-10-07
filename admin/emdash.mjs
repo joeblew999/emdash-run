@@ -25,6 +25,15 @@ const savedName = (url, siteDir) => {
 
 
 const [fallback, siteDir, ...given] = process.argv.slice(2);
+// A program one of the site's packages installs, as [node, its script]: run with Node itself, with
+// no shell in between, so an argument with spaces or quotes arrives whole on every OS. (`pnpm exec`
+// on Windows is a .cmd file and needs a shell, which takes such an argument apart.)
+const siteBin = (pkg, name) => {
+	const dir = join(siteDir, "node_modules", pkg);
+	const bin = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).bin;
+	return join(dir, typeof bin === "string" ? bin : bin[name]);
+};
+
 // One way to say where, the same as every other task: nothing = this machine's dev site;
 // --live = the deployed site (LIVE_URL); --preview = this machine's built site (PREVIEW_PORT).
 // Each becomes the CLI's own --url. An explicit --url still works and wins.
@@ -102,5 +111,5 @@ if (rest[0] === "whoami" && env.EMDASH_TOKEN && env.EMDASH_HEADERS && URL.canPar
 	}
 	process.exit(0);
 }
-const r = spawnSync("pnpm", ["exec", "emdash", ...rest], { cwd: siteDir, env, stdio: "inherit", shell: process.platform === "win32" });
+const r = spawnSync(process.execPath, [siteBin("emdash", "emdash"), ...rest], { cwd: siteDir, env, stdio: "inherit" });
 process.exit(r.status ?? 1);

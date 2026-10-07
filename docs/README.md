@@ -55,15 +55,17 @@ This table is written by the test, from the order it runs the tasks in. Run one 
 | 6 | `model:sync` | Record the site's content model in the repo (.emdash/). Add -- --live for the deployed site | yes |
 | 7 | `site:preview` | Build the site and serve it locally (port 4322) — behaves like a deployed site | yes |
 | 8 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed | yes |
-| 9 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
-| 10 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name> | yes |
-| 11 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name> | yes |
-| 12 | `plugin:add` | Add a plugin from npm. mise run plugin:add -- <package> | yes |
-| 13 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search -- forms | yes |
-| 14 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug> | yes |
-| 15 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
-| 16 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
-| 17 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
+| 9 | `site:stop` | Stop the dev site and the built site | yes |
+| 10 | `site:delete` | Delete the site folder. Asks first | yes |
+| 11 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
+| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name> | yes |
+| 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name> | yes |
+| 14 | `plugin:add` | Add a plugin from npm. mise run plugin:add -- <package> | yes |
+| 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search -- forms | yes |
+| 16 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin -- info <publisher> <slug> | yes |
+| 17 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
+| 18 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
+| 19 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
 <!-- in-order:end -->
 
 After `site:start`, open `http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`.
