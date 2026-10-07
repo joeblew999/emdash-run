@@ -38,8 +38,7 @@ mise run site:start                    install, make its key if it has none, run
 mise run site:logs                     follow the running site's log
 mise run site:stop
 mise run site:check                    before a commit: the seed is valid, the types check, it builds
-mise run site:admin                    a production build with an administrator and a signed-in CLI, nobody at a browser
-mise run site:open                     a browser window signed in to that build's admin, for you — or --live
+mise run site:preview                  the built site on this machine (port 4322): real sign-in, like a deployed one
 mise run site:reset                    the local site back to its seed — it asks first
 mise run site:delete                   remove site/ again — it asks first
 
@@ -53,15 +52,36 @@ mise run plugin:publish -- save-log    release it to EmDash's registry — it as
 mise run plugin -- search forms        anything else in EmDash's plugin CLI
 
 mise run live:ship                     check, deploy to Cloudflare with the site's secrets, wait for it to answer
-mise run live:admin                    the deployed site set up and the CLI signed in to it, nobody at a browser
 mise run live:undo                     the previous version back — code only
 mise run live:logs                     follow the deployed site's log
 mise run live:backup                   the database's bookmark, and the site as a package
 mise run model:sync -- --live          the deployed site's model, recorded in the repo
 mise run emdash:update                 the site on the newest EmDash, type-checked and built
 
+mise run signin:token                  a machine is a full user of the built site — no browser
+mise run signin:access                 people sign in to the deployed site through Cloudflare Access
+mise run signin:passkey                a machine signs in through EmDash's real wizard (needs Playwright)
+mise run signin:open                   a browser window signed in to the admin, for you (needs Playwright)
+
 mise run emdash -- content list posts  anything else, through EmDash's own CLI
 ```
+
+### This machine or the deployed site
+
+**No flag is this machine. `--live` is the deployed site** — the address in `LIVE_URL`, under `[env]`
+in your `mise.toml`. With no `LIVE_URL`, `--live` says so and stops.
+
+```
+mise run emdash -- content list posts            this machine
+mise run emdash -- content list posts --live     the deployed site
+mise run model:sync -- --live
+fnox exec -- mise run signin:token -- --live     tasks that change Cloudflare take your token from fnox
+```
+
+`site:` tasks are always this machine; `live:` tasks are always the deployed site. This machine has
+two sites: the dev one (`site:start`, port 4321) and the built one (`site:preview`, port 4322). The
+`signin:` tasks act on the built one and start it if it is not running; `emdash` acts on the dev one
+unless you add `--preview`.
 
 Run a task where there is no site and it says so, and what to do.
 
@@ -110,7 +130,7 @@ All optional, under `[env]` in your `mise.toml`:
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
 | `PREVIEW_PORT` | `4322` | the port `site:preview` serves the production build on |
 | `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
-| `ADMIN_EMAIL`, `ADMIN_NAME` | — | who `live:admin` makes the deployed site's first administrator. Use your own address: a login provider added later links to the account with the same verified address |
+| `ADMIN_EMAIL`, `ADMIN_NAME` | — | who the `signin:` tasks make the deployed site's administrator, and who `signin:access` lets in. Use your own address: a login provider added later links to the account with the same verified address |
 | `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
 
@@ -147,23 +167,23 @@ loaded into an empty site with EmDash's two import commands.
   `site:reset` and `plugin:publish` included.
 - **`plugin:new` and `plugin:add` stop the site first** and tell you to start it again: on Windows
   a running site does not survive packages changing under it.
-- **Real sign-in without a person.** In development EmDash signs you in by itself; a build does
-  not. `site:admin` empties the local database, serves the production build, and a script
-  completes EmDash's setup wizard with a simulated passkey and approves the CLI's sign-in — so
-  anything that needs a signed-in site can be built and tested with nobody there. It needs Chrome
-  or Edge and is the one script in this repo. Then:
-  `mise run emdash -- <command> --url http://localhost:4322`.
-- **The same for a deployed site: `live:admin`.** It sets the site at `LIVE_URL` up as
-  `ADMIN_EMAIL`, or signs in to one it set up before, and signs the CLI in. The passkey it makes
-  is saved in `~/.config/emdash-run/passkeys/`, readable only by you. **That file is the way in
-  to the site — whoever has it is its administrator. Keep a copy somewhere safe, and never commit
-  it.** A site somebody else set up, it cannot enter and does not try.
-- **How you get in to a site the script set up.** Its passkey works only in the script's own
-  browser, so `site:open` (and `site:open -- --live`) opens a window you can see, already signed in. That is
-  the bridge. The lasting way in for people is a login provider in the site's own config —
-  GitHub is the one recommended here — which works alongside the script's passkey. Cloudflare
-  Access is not recommended with these tasks: on a deployed site it switches every other sign-in
-  off, the script's included.
+- **Signing in.** In development (`site:start`) EmDash signs you in by itself. A built site — on
+  this machine or deployed — has real sign-in, and there are several ways, kept side by side:
+
+  | task | signs in | needs Playwright | for |
+  |---|---|---|---|
+  | `signin:token` | a machine | no | everyday: the CLI, agents, CI. Writes an administrator and an EmDash API token straight into the site's database |
+  | `signin:access` | people, plus a pass for machines | no | a deployed site: Cloudflare Access in front of the admin; sign in with a code sent to `ADMIN_EMAIL` |
+  | `signin:passkey` | a machine | yes, and Chrome or Edge | testing EmDash's own setup wizard and CLI login |
+  | `signin:open` | a person | yes, and Chrome or Edge | a signed-in browser window, with what `signin:token` or `signin:passkey` saved |
+
+  What they save is in `~/.config/emdash-run/` on your machine, never in the repo: tokens, the
+  Access pass, passkeys — named by site, so many sites and many machines do not collide. With
+  `--live`, `signin:token` also writes EmDash's own sign-in store, so the plain `emdash` CLI works.
+  These are for development sites: whoever can write to a site's database can make themselves its
+  administrator this way. The tasks that change Cloudflare need a token with D1 and Access rights —
+  wrangler's own login can read Access but not change it — and take it from fnox:
+  `fnox exec -- mise run signin:access`.
 - **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
   the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
   to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.

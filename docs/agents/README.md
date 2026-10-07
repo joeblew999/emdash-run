@@ -38,14 +38,13 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
    (issues, a plugin release) still need the owner's yes each time. Never type or print a secret:
    pass the file by path.
 7. **Decide what is reversible yourself; do not get ahead on what is not.**
-8. **Nothing waits on a person at a browser.** A task that needs a signed-in site is built and
-   tested against a production build on this machine: `mise run --yes site:admin`, then
-   `--url http://localhost:4322` (or `LIVE_URL` set to it). For a deployed site the same script is
-   `live:admin`; the owner has said (2026-10-07) they are fine with it making the first
-   administrator there. An agent whose own rules do not let it create an account on a site on the
-   internet hands that one command to the owner and carries on. See
-   `docs/plans/done/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
-   tied to one person's machine.
+8. **Nothing waits on a person at a browser.** A machine becomes a full user of a built site with
+   `mise run signin:token` — this machine's built site by default, the deployed one with
+   `-- --live` under `fnox exec`. The other ways (`signin:access`, `signin:passkey`, `signin:open`)
+   are kept beside it on purpose, to be tried; the table above them in `tasks.toml` says what each
+   is for and which need Playwright. One rule for where: no flag is this machine, `--live` is the
+   deployed site (`LIVE_URL`). Security of these test sites is deliberately a later job (the owner,
+   2026-10-07) — do not switch things off or add guards while exploring.
 9. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
    who can do it and the exact command or address — and keep the table of them current in the
    open plan (`docs/plans/done/2026-10-07-live.md` § Sign-ins). An agent does not make accounts,
@@ -122,8 +121,9 @@ skill says it does; it had not within a second).
 - **`tasks.toml`** — everything. Visible tasks are the stages, named `<what>:<verb>` (`site:new`,
   `site:start`). Hidden `step:*` tasks are single EmDash commands, written once and reused by the
   stages. If a step seems to need logic, that is a gap to write in the plan, not code to add.
-- **`admin/first-admin.mjs`** — the one script, for the one gap that could not be closed with a
-  command: EmDash sets a site up only through a browser. `site:admin` runs it. A task reaches a
+- **`admin/`** — the four scripts, each for a gap no command closes: `token.mjs` (`signin:token`),
+  `access.mjs` (`signin:access`), `first-admin.mjs` (`signin:passkey`, `signin:open` — the only
+  Playwright), `emdash.mjs` (what the `emdash` task runs: the CLI, plus what is saved for the site). A task reaches a
   file that came with the include through `{{ env.MISE_TASK_DIR }}` — which works inside `run`,
   not inside `dir`.
 - **`mise.toml`** — this repo's own settings, and the line that includes `tasks.toml`. Another
