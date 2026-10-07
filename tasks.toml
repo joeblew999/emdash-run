@@ -1,27 +1,70 @@
-# The stages of working on an EmDash site — one task each. A project gets them with one line:
+# The stages of working on an EmDash site — docs/plans/2026-10-07-stages.md.
+# A project gets them with one line in its mise.toml:
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
-# Each stage runs EmDash's own commands in order; stages/*.mjs is only the glue between them.
+#
+# Visible tasks are the stages. `step:*` tasks are hidden: each is ONE of EmDash's own commands,
+# written once and reused. There is no script underneath — if a step needs logic, it is a gap to
+# write down in the plan, not code to add here.
+
+# ── hidden steps ─────────────────────────────────────────────────────────────────────────────
+
+["step:install"]
+hide = true
+description = "The site's packages, as its lockfile pins them"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm install"
+
+["step:seed"]
+hide = true
+description = "The seed is one EmDash will accept — an invalid one is skipped on first start with no error"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm exec emdash seed --validate"
+
+["step:dev"]
+hide = true
+description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
+
+["step:up"]
+hide = true
+description = "The site answers and the CLI can reach it — fails when it does not"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
+run = "pnpm exec emdash whoami"
+
+# ── the stages ───────────────────────────────────────────────────────────────────────────────
+
+[new]
+description = "A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it"
+dir = "{{config_root}}"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm dlx create-emdash@latest site --template {{ env.TEMPLATE | default(value='cloudflare:blog') }} --pm pnpm --install --yes"
 
 [start]
-description = "I want to work on this site: makes it if there is none, installs, starts it, signs you in"
+description = "I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin"
+run = [{ task = "step:install" }, { task = "step:seed" }, { task = "step:dev" }, { task = "step:up" }]
+
+[stop]
+description = "Stop the site that start started"
+dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
-usage = 'arg "[args]" var=#true'
-run = 'node "{{ env.MISE_TASK_DIR }}/stages/start.mjs"'
+run = "pnpm exec astro dev stop"
+
+[logs]
+description = "Follow the running site's log"
+dir = "{{config_root}}/site"
+tools = { node = "26.10.0", pnpm = "12.9.1" }
+run = "pnpm exec astro dev logs --follow"
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
+dir = "{{config_root}}/site"
 tools = { node = "26.10.0", pnpm = "12.9.1" }
-usage = 'arg "[args]" var=#true'
-run = 'node "{{ env.MISE_TASK_DIR }}/stages/emdash.mjs"'
-
-[stop]
-description = "Stop the site this project's start started"
-tools = { node = "26.10.0", pnpm = "12.9.1" }
-run = 'node "{{ env.MISE_TASK_DIR }}/stages/stop.mjs"'
-
-[prove]
-description = "Do the stages really work, from nothing, on this machine? Runs them in a throwaway project. --git <url> <ref> fetches them the way a real project does"
-tools = { node = "26.10.0", pnpm = "12.9.1" }
-usage = 'arg "[args]" var=#true'
-run = 'node "{{ env.MISE_TASK_DIR }}/stages/prove.mjs"'
+env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
+run = "pnpm exec emdash"

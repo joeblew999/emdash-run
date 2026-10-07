@@ -41,13 +41,9 @@ Is the running site healthy, and what the repo says it is? --url <deployment> as
 
 ## `emdash`
 
+- **Usage:** `emdash`
+
 Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts
-
-
-- **Usage:** `emdash [args]…`
-
-### Arguments
-- **`[args]…`**
 
 ## `emdash-plugin`
 
@@ -61,13 +57,15 @@ The plugin registry, through the official plugin CLI — e.g: mise run emdash-pl
 
 ## `logs`
 
-Follow the site's log. --deployed follows the live site
+- **Usage:** `logs`
 
+Follow the running site's log
 
-- **Usage:** `logs [args]…`
+## `new`
 
-### Arguments
-- **`[args]…`**
+- **Usage:** `new`
+
+A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it
 
 ## `open`
 
@@ -105,16 +103,6 @@ Remove a plugin and bring the site back up without it
 
 
 - **Usage:** `plugin:remove [args]…`
-
-### Arguments
-- **`[args]…`**
-
-## `prove`
-
-Do the stages really work, from nothing, on this machine? Runs them in a throwaway project. --git <url> <ref> fetches them the way a real project does
-
-
-- **Usage:** `prove [args]…`
 
 ### Arguments
 - **`[args]…`**
@@ -161,13 +149,9 @@ Save the site's content as a package. --database backs up everything, users incl
 
 ## `start`
 
-I want to work on this site: makes it if there is none, installs, starts it, signs you in
+- **Usage:** `start`
 
-
-- **Usage:** `start [args]…`
-
-### Arguments
-- **`[args]…`**
+I want to work on this site: install, check the seed, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
 
 ## `status`
 
@@ -183,7 +167,7 @@ What is running, and on which versions
 
 - **Usage:** `stop`
 
-Stop the site this project's start started
+Stop the site that start started
 
 ## `upgrade`
 
