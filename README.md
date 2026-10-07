@@ -25,7 +25,7 @@ node = "26"
 pnpm = "12"
 
 [task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=main"]
+includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v0.7.0"]
 ```
 
 The tools are your project's: the tasks run whatever `node` and `pnpm` your `mise.toml` names
@@ -129,8 +129,8 @@ loaded into an empty site with EmDash's two import commands.
 
 ## What to know
 
-- **A project pointing at `main` does not update by itself.** mise keeps the first copy it fetched.
-  Point at a tag and change the tag to update; or add `task.remote_no_cache = true` under
+- **Updating is changing the tag** in that line. A project pointing at `main` instead does not
+  update by itself — mise keeps the first copy it fetched; or add `task.remote_no_cache = true` under
   `[settings]` to fetch every time (about a second per command); or run `mise cache clear` once.
 - **In CI, nothing asks.** mise answers every prompt with yes when `CI` is set — `site:delete`,
   `site:reset` and `plugin:publish` included.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-07
+
+The first release of the stages. A project pins it with `?ref=v0.7.0`.
+
 - **More stages:** `site:check`, `site:reset`, `model:sync`, `content:pull`, `plugin:new`,
   `plugin:check`, `plugin:add`, `plugin:publish`, `plugin` and `live:check`. Each proven on a new
   site and on an existing site at a project's root, on Cloudflare and Node.js.
