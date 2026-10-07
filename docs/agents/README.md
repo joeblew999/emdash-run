@@ -34,7 +34,11 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
    (issues, a plugin release) still need the owner's yes each time. Never type or print a secret:
    pass the file by path.
 7. **Decide what is reversible yourself; do not get ahead on what is not.**
-8. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
+8. **Nothing waits on a person at a browser.** A task that needs a signed-in site is built and
+   tested against a production build on this machine, set up by a script — see
+   `docs/plans/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
+   tied to one person's machine.
+9. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
    who can do it and the exact command or address — and keep the table of them current in the
    open plan (`docs/plans/2026-10-07-live.md` § Sign-ins). An agent does not make accounts,
    passkeys or tokens; it starts the flow and the owner approves.
