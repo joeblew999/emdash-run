@@ -76,16 +76,9 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
 run = "pnpm exec emdash schema list"
 
-["step:types"]
-hide = true
-description = "Record the running site's model in the repo: .emdash/schema.json and .emdash/types.ts"
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
-run = "pnpm exec emdash types"
-
 ["step:model-changed"]
 hide = true
-description = "What step:types changed, as git sees it — nothing printed means the repo already had the model"
+description = "What model:sync changed, as git sees it — nothing printed means the repo already had the model"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = ["git status --short -- .emdash", "git --no-pager diff --stat -- .emdash"]
 
@@ -149,6 +142,43 @@ description = "What an update does not do, and what comes next"
 dir = "{{config_root}}"
 run = "node -e \"console.log('EmDash is updated in package.json and the lockfile, and the site type-checks and builds on it.'); console.log('  Read what changed:  https://github.com/emdash-cms/emdash/releases'); console.log('  Not updated: the files your site got from its template, and the agent skills the scaffolder wrote.'); console.log('  Next: mise run site:stop, mise run site:start - database migrations run on the first request. Then commit.');\""
 
+["step:account"]
+hide = true
+description = "Someone is signed in to Cloudflare — fails at once, with wrangler's own words, when not. Sign in with: pnpm exec wrangler login"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler whoami"
+
+["step:deploy"]
+hide = true
+description = "The build goes to Cloudflare. On a first deploy wrangler makes the database and bucket named in wrangler.jsonc. --strict refuses when the deployed Worker was changed from somewhere else"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler deploy --strict --message \"live:ship {{ now() | date(format='%Y-%m-%d %H:%M:%S') }} UTC\""
+
+["step:deployed"]
+hide = true
+description = "What is live now: wrangler's own account of the current deployment and its version"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler deployments status"
+
+["step:live-up"]
+hide = true
+description = "The deployed site answers. A plain request, because none of EmDash's commands can ask a deployed site anything before someone has signed in to it. The first request after a deploy runs EmDash's migrations and can take half a minute"
+dir = "{{config_root}}"
+run = "curl --fail --silent --show-error --head --max-time 180 {{ env.LIVE_URL | default(value='') }}"
+
+["step:mark"]
+hide = true
+description = "Where the deployed database is right now: its Time Travel bookmark, and the command that would restore to it"
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler d1 time-travel info DB"
+
+["step:backup-how"]
+hide = true
+quiet = true
+description = "What a backup holds, what it does not, and how each copy is used"
+dir = "{{config_root}}"
+run = "node -e \"console.log('Two copies were taken. They are different things:'); console.log('  1. The Time Travel bookmark above: the whole database - users, tokens, plugin data. Cloudflare keeps 30 days. Restore: pnpm exec wrangler d1 time-travel restore DB --bookmark ID (destructive - stop writes first).'); console.log('  2. The package in backups/: content, model and media, no users. Loads into an EMPTY site: mise run emdash -- site import FILE --analyze.'); console.log('Neither holds: the media bucket itself, or EMDASH_ENCRYPTION_KEY - keep the key somewhere safe yourself.'); console.log('There is no SQL dump: wrangler d1 export refuses a database with search tables, which EmDash has.');\""
+
 # ── the stages ───────────────────────────────────────────────────────────────────────────────
 
 ["site:new"]
@@ -187,8 +217,14 @@ confirm = "Remove this site's local database and uploads, and start again from t
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:start" }]
 
 ["model:sync"]
-description = "The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. Needs the site running"
-run = [{ task = "step:there" }, { task = "step:up" }, { task = "step:types" }, { task = "step:model-changed" }]
+description = "The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with --live, from the deployed one at LIVE_URL (once: mise run emdash -- login --url <LIVE_URL>)"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'flag "--live" help="Read the model of the deployed site at LIVE_URL instead of the local one"'
+run = [
+  "pnpm exec emdash types --url {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.SITE_PORT | default(value='4321') }}{% endif %}",
+  { task = "step:model-changed" },
+]
 
 ["content:pull"]
 description = "The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
@@ -256,6 +292,34 @@ run = [{ task = "site:check" }, { task = "step:rehearse" }]
 ["emdash:update"]
 description = "A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after"
 run = [{ task = "step:there" }, { task = "step:newer" }, { task = "step:typecheck" }, { task = "step:build" }, { task = "step:update-how" }]
+
+["live:ship"]
+description = "Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it with live:key, then make the first administrator in a browser"
+run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
+
+["live:undo"]
+description = "Put the previous version back — or the one you name: mise run live:undo -- <version-id> (wrangler versions list shows them). Code only: a rollback does not undo a database migration or any content"
+depends = ["step:live", "step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+usage = 'arg "[version]" help="A version id; left out, the one before the current"'
+run = ["pnpm exec wrangler whoami", "pnpm exec wrangler rollback {{ usage.version }} --yes --message \"live:undo\"", { task = "step:deployed" }, { task = "step:live-up" }]
+
+["live:logs"]
+description = "Follow the deployed site's log — requests, errors, and each run of the scheduler"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = "pnpm exec wrangler tail"
+
+["live:key"]
+description = "Once, after the first live:ship: the site's encryption key goes to the Worker as a secret. It uploads every line of the site's .env — on a site this made, that is the key and nothing else. The values are never shown. Asks first"
+confirm = "Upload every line of this site's .env to the deployed Worker as secrets?"
+depends = ["step:there"]
+dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
+run = ["pnpm exec wrangler whoami", "pnpm exec wrangler secret bulk .env", "pnpm exec wrangler secret list"]
+
+["live:backup"]
+description = "A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url <LIVE_URL>"
+run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
 
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"

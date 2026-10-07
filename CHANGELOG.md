@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Deploying:** `live:ship`, `live:undo`, `live:logs`, `live:key`, `live:backup`, and
+  `model:sync -- --live`. Built from a first deploy done by hand and proven on a throwaway Worker
+  (macOS). No SQL dump: `wrangler d1 export` refuses an EmDash database, locally and deployed.
+
 ## 0.7.0 — 2026-10-07
 
 The first release of the stages. A project pins it with `?ref=v0.7.0`.

@@ -18,17 +18,63 @@ Anything else in EmDash, through its official CLI — e.g: mise run emdash -- co
 
 A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after
 
+## `live:backup`
+
+- **Usage:** `live:backup`
+
+A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and once: mise run emdash -- login --url &lt;LIVE_URL>
+
 ## `live:check`
 
 - **Usage:** `live:check`
 
 Would this deploy: site:check, then wrangler's dry run of the deploy — nothing is uploaded and no account is needed. For a site on Cloudflare
 
+## `live:key`
+
+- Depends: step:there
+
+- **Usage:** `live:key`
+
+Once, after the first live:ship: the site's encryption key goes to the Worker as a secret. It uploads every line of the site's .env — on a site this made, that is the key and nothing else. The values are never shown. Asks first
+
+## `live:logs`
+
+- Depends: step:there
+
+- **Usage:** `live:logs`
+
+Follow the deployed site's log — requests, errors, and each run of the scheduler
+
+## `live:ship`
+
+- **Usage:** `live:ship`
+
+Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. First time: follow it with live:key, then make the first administrator in a browser
+
+## `live:undo`
+
+Put the previous version back — or the one you name: mise run live:undo -- <version-id> (wrangler versions list shows them). Code only: a rollback does not undo a database migration or any content
+
+
+- Depends: step:live, step:there
+
+- **Usage:** `live:undo [version]`
+
+### Arguments
+- **`[version]`** — A version id; left out, the one before the current
+
 ## `model:sync`
 
-- **Usage:** `model:sync`
+The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with --live, from the deployed one at LIVE_URL (once: mise run emdash -- login --url <LIVE_URL>)
 
-The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. Needs the site running
+
+- Depends: step:there
+
+- **Usage:** `model:sync [--live]`
+
+### Flags
+- **`--live`** — Read the model of the deployed site at LIVE_URL instead of the local one
 
 ## `plugin`
 

@@ -51,6 +51,12 @@ mise run plugin:publish -- save-log    release it to EmDash's registry — it as
 mise run plugin -- search forms        anything else in EmDash's plugin CLI
 
 mise run live:check                    would this deploy — wrangler's dry run, no account needed
+mise run live:ship                     put it live on Cloudflare, and wait for it to answer
+mise run live:key                      once, after the first ship: the encryption key, as a secret
+mise run live:undo                     the previous version back — code only
+mise run live:logs                     follow the deployed site's log
+mise run live:backup                   the database's bookmark, and the site as a package
+mise run model:sync -- --live          the deployed site's model, recorded in the repo
 mise run emdash:update                 the site on the newest EmDash, type-checked and built
 
 mise run emdash -- content list posts  anything else, through EmDash's own CLI
@@ -99,7 +105,7 @@ All optional, under `[env]` in your `mise.toml`:
 | `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
 | `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
-| `LIVE_URL` | — | the address of the deployed site; `content:pull` needs it |
+| `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
 
 ## What is proven
@@ -146,8 +152,9 @@ loaded into an empty site with EmDash's two import commands.
 
 ## Not here yet
 
-Deploying (`live:ship`, `live:undo`, `live:logs`) and backups — they need a real
-deployment to be proven on: [`docs/plans/2026-10-07-live.md`](docs/plans/2026-10-07-live.md). How
+Deploying is built and was proven on a throwaway Worker on macOS; it is not in a release yet.
+The package half of `live:backup`, `content:pull` and `model:sync -- --live` against a real
+deployment wait on a person signing in to it: [`docs/plans/2026-10-07-live.md`](docs/plans/2026-10-07-live.md). How
 the tasks were arrived at, with the EmDash command behind every step and the gaps that are known:
 [`docs/plans/done/2026-10-07-stages.md`](docs/plans/done/2026-10-07-stages.md).
 
