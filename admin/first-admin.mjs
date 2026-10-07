@@ -141,10 +141,40 @@ try {
 
 	await page.goto(`${origin}/_emdash/admin`);
 	await page.waitForURL(/\/_emdash\/admin\/(setup|login)/, { timeout: 180_000 });
+	// What signin:token and signin:access saved for this site, if anything.
+	const savedDir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run");
+	const savedJson = (kind) => {
+		const f = join(savedDir, kind, `${savedName(url, siteDir)}.json`);
+		return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
+	};
+	const savedToken = savedJson("tokens");
+	if (show && savedToken && !existsSync(keyFile)) {
+		// A window for a person, on a site signin:token set up: there is no passkey, so every
+		// request this window makes to the site carries the saved API token — and the Cloudflare
+		// Access pass, if there is one. Only to the site itself, never to anything else it loads.
+		const pass = savedJson("access");
+		const extra = {
+			Authorization: `Bearer ${savedToken.token}`,
+			...(pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {}),
+		};
+		await page.context().route("**/*", (route) => {
+			const request = route.request();
+			if (new URL(request.url()).origin !== origin) return route.continue();
+			return route.continue({ headers: { ...request.headers(), ...extra } });
+		});
+		await page.goto(`${origin}/_emdash/admin`);
+		await page.getByText("Dashboard").first().waitFor({ timeout: 90_000 });
+		const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 120);
+		console.log(`open: signed in to ${page.url()} with the saved token — "${await page.title()}": ${shown}`);
+		console.log("open: close the window when you are done");
+		await new Promise((r) => (page.on("close", r), browser.on("disconnected", r)));
+		await browser.close().catch(() => {});
+		process.exit(0);
+	}
 	if (show) {
 		// A window for a person: sign in with the saved passkey and hand the page over.
 		if (page.url().includes("/setup") || !existsSync(keyFile)) {
-			throw new Error("There is no saved passkey for this site on this machine. Set it up first: mise run signin:passkey (add -- --live for the deployed site).");
+			throw new Error("This machine has nothing saved for this site, so there is no way to sign in. Run  mise run signin:token  first (add -- --live for the deployed site).");
 		}
 		for (const credential of JSON.parse(readFileSync(keyFile, "utf8"))) {
 			credential.signCount += 100;

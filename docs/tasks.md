@@ -128,7 +128,7 @@ SIGN-IN for PEOPLE on the deployed site, by Cloudflare Access. NO BROWSER, NO PL
 
 ## `signin:open`
 
-SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin — only on a site that signin:passkey set up, because it uses the passkey that task saved. Local production build by default; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin. Site behind Cloudflare Access: no task needed, open its admin in your own browser)
+SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin, using whatever this machine saved for the site: the token from signin:token (and the Cloudflare Access pass, if any), or else the passkey from signin:passkey. Local production build by default, started if it is not running; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
 
 
 - Depends: step:there, step:admin-tools

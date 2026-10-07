@@ -364,7 +364,8 @@ run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }
 #   signin:access   people (+ a pass  NO                  a deployed site: Cloudflare Access in
 #                   for machines)                         front of the admin, sign in by emailed code
 #   signin:passkey  a machine         YES (+ Chrome/Edge) testing EmDash's own wizard and login
-#   signin:open     a person          YES (+ Chrome/Edge) a signed-in window, after signin:passkey
+#   signin:open     a person          YES (+ Chrome/Edge) a signed-in window, after signin:token
+#                                                         or signin:passkey
 #   site:admin      a machine         YES (+ Chrome/Edge) hidden: fresh build + signin:passkey
 #   (a login provider — GitHub, Google — is one more way and needs no task: two lines in the
 #   site's astro.config.mjs and an OAuth app)
@@ -392,7 +393,7 @@ usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local 
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
 
 ["signin:open"]
-description = "SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin — only on a site that signin:passkey set up, because it uses the passkey that task saved. Local production build by default; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin. Site behind Cloudflare Access: no task needed, open its admin in your own browser)"
+description = "SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin, using whatever this machine saved for the site: the token from signin:token (and the Cloudflare Access pass, if any), or else the passkey from signin:passkey. Local production build by default, started if it is not running; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
