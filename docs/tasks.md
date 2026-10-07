@@ -132,6 +132,12 @@ Release this plugin to EmDash's registry, under the account you are logged in to
 ### Arguments
 - **`<name>`** — The folder name of the plugin under plugins/
 
+## `site:admin`
+
+- **Usage:** `site:admin`
+
+A production build with a real administrator and a signed-in CLI, with nobody at a browser — for building and testing anything that needs real sign-in. EMPTIES the local database first, then site:preview, then a script completes EmDash's setup wizard and approves the CLI's sign-in. Local only. Asks first. Afterwards: mise run emdash -- &lt;command> --url http://localhost:&lt;PREVIEW_PORT>
+
 ## `site:check`
 
 - **Usage:** `site:check`
@@ -164,6 +170,12 @@ A site, once: EmDash's scaffolder makes the site folder and installs it. Say whi
 
   **Choices:** `cloudflare:blog`, `cloudflare:starter`, `cloudflare:marketing`, `cloudflare:portfolio`, `node:blog`, `node:starter`, `node:marketing`, `node:portfolio`
 
+## `site:preview`
+
+- **Usage:** `site:preview`
+
+The site as a deploy would ship it, on this machine: stops the dev server, builds, and serves the production build in the background on PREVIEW_PORT (4322). It shares the local database with site:start. site:stop stops it
+
 ## `site:reset`
 
 - **Usage:** `site:reset`
@@ -182,4 +194,4 @@ I want to work on this site: install, make its key if it has none, run it in the
 
 - **Usage:** `site:stop`
 
-Stop the site that site:start started
+Stop the site that site:start started, and the production build that site:preview started

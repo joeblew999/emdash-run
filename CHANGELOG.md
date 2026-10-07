@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`site:preview` and `site:admin`**: the production build on this machine, and that build with
+  a first administrator and a signed-in CLI made by a script — no person, no passkey prompt.
+  `site:stop` stops the preview too.
+
 - **Deploying:** `live:ship`, `live:undo`, `live:logs`, `live:key`, `live:backup`, and
   `model:sync -- --live`. Built from a first deploy done by hand and proven on a throwaway Worker
   (macOS). No SQL dump: `wrangler d1 export` refuses an EmDash database, locally and deployed.

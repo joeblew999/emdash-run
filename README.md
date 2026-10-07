@@ -38,6 +38,8 @@ mise run site:start                    install, make its key if it has none, run
 mise run site:logs                     follow the running site's log
 mise run site:stop
 mise run site:check                    before a commit: the seed is valid, the types check, it builds
+mise run site:preview                  the production build, served on this machine — signs in like a deployed site
+mise run site:admin                    that build with an administrator and a signed-in CLI, nobody at a browser
 mise run site:reset                    the local site back to its seed — it asks first
 mise run site:delete                   remove site/ again — it asks first
 
@@ -104,6 +106,7 @@ All optional, under `[env]` in your `mise.toml`:
 | `TEMPLATE` | `cloudflare:blog` | what `site:new` makes when it is given no argument |
 | `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
 | `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
+| `PREVIEW_PORT` | `4322` | the port `site:preview` serves the production build on |
 | `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
 | `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
@@ -141,6 +144,12 @@ loaded into an empty site with EmDash's two import commands.
   `site:reset` and `plugin:publish` included.
 - **`plugin:new` and `plugin:add` stop the site first** and tell you to start it again: on Windows
   a running site does not survive packages changing under it.
+- **Real sign-in without a person.** In development EmDash signs you in by itself; a build does
+  not. `site:admin` empties the local database, serves the production build, and a script
+  completes EmDash's setup wizard with a simulated passkey and approves the CLI's sign-in — so
+  anything that needs a signed-in site can be built and tested with nobody there. It needs Chrome
+  or Edge, works only on this machine's address, and is the one script in this repo. Then:
+  `mise run emdash -- <command> --url http://localhost:4322`.
 - **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
   the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
   to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.

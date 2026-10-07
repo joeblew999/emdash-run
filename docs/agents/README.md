@@ -35,7 +35,8 @@ otherwise; an agent that has not read them repeats the mistakes they came from.
    pass the file by path.
 7. **Decide what is reversible yourself; do not get ahead on what is not.**
 8. **Nothing waits on a person at a browser.** A task that needs a signed-in site is built and
-   tested against a production build on this machine, set up by a script — see
+   tested against a production build on this machine: `mise run --yes site:admin`, then
+   `--url http://localhost:4322` (or `LIVE_URL` set to it). See
    `docs/plans/2026-10-07-sign-in.md`. Passkeys are not the answer for deployed sites: they are
    tied to one person's machine.
 9. **A sign-in must never quietly hold the work up.** The moment a task needs one, say which,
@@ -113,8 +114,11 @@ skill says it does; it had not within a second).
 
 - **`tasks.toml`** — everything. Visible tasks are the stages, named `<what>:<verb>` (`site:new`,
   `site:start`). Hidden `step:*` tasks are single EmDash commands, written once and reused by the
-  stages. There is no script underneath: if a step seems to need logic, that is a gap to write in
-  the plan, not code to add.
+  stages. If a step seems to need logic, that is a gap to write in the plan, not code to add.
+- **`admin/first-admin.mjs`** — the one script, for the one gap that could not be closed with a
+  command: EmDash sets a site up only through a browser. `site:admin` runs it. A task reaches a
+  file that came with the include through `{{ env.MISE_TASK_DIR }}` — which works inside `run`,
+  not inside `dir`.
 - **`mise.toml`** — this repo's own settings, and the line that includes `tasks.toml`. Another
   project has the same line, pointing at this repo on GitHub at a tag.
 - **`site/`** — this repo's own site, made by `mise run site:new`. It is what the stages are run

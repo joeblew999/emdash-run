@@ -1,13 +1,15 @@
-// PROTOTYPE — docs/plans/2026-10-07-sign-in.md. Not a task yet, not loaded by tasks.toml.
+// What `mise run site:admin` runs — the one script in this repo, for a gap that is written down in
+// docs/plans/2026-10-07-sign-in.md: EmDash has no command that sets a site up without a browser.
 //
-// Makes the first administrator of an EmDash site that is NOT in development mode, and signs
-// EmDash's CLI in to it, with no person: a browser driven by Playwright, with Chrome's built-in
-// simulated passkey device standing in for Touch ID.
+// It makes the first administrator of an EmDash production build served ON THIS MACHINE, and signs
+// EmDash's CLI in to it, with no person: Playwright drives EmDash's own setup wizard, and Chrome's
+// built-in simulated passkey device stands in for Touch ID. The passkey is thrown away afterwards;
+// what stays is the CLI's sign-in, stored by `emdash login` for that site folder.
 //
 //   node first-admin.mjs <site address> <site folder>
 //
 // It refuses any address that is not this machine. Pointed at a deployed site it would create an
-// account there; that is a decision for the site's owner, and it is not what this prototype is for.
+// account there; that is a decision for the site's owner, and this is not the tool for it.
 import { spawn } from "node:child_process";
 import { chromium } from "playwright-core";
 
@@ -18,7 +20,18 @@ if (!["localhost", "127.0.0.1", "[::1]"].includes(host) && !host.endsWith(".loca
 	process.exit(1);
 }
 
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+// The Chrome or Edge already installed: nothing is downloaded.
+let browser;
+for (const channel of ["chrome", "msedge"]) {
+	try {
+		browser = await chromium.launch({ channel, headless: true });
+		break;
+	} catch {}
+}
+if (!browser) {
+	console.error("site:admin needs Google Chrome or Microsoft Edge installed; neither was found.");
+	process.exit(1);
+}
 const page = await (await browser.newContext()).newPage();
 const cdp = await page.context().newCDPSession(page);
 await cdp.send("WebAuthn.enable");
@@ -34,7 +47,13 @@ await cdp.send("WebAuthn.addVirtualAuthenticator", {
 });
 
 // 1. EmDash's setup wizard: site, account, passkey.
-await page.goto(`${url}/_emdash/admin/setup`);
+await page.goto(`${url}/_emdash/admin`);
+await page.waitForURL(/\/_emdash\/admin\/(setup|login)/, { timeout: 180_000 });
+if (!page.url().includes("/setup")) {
+	console.error("This site is already set up, so there is no first administrator to make.");
+	await browser.close();
+	process.exit(1);
+}
 await page.getByRole("heading", { name: "Set up your site" }).waitFor({ timeout: 120_000 });
 await page.getByRole("radio", { name: /Empty site/ }).check({ force: true });
 await page.getByRole("button", { name: /Continue/ }).click();

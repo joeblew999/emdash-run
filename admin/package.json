@@ -1,0 +1,9 @@
+{
+  "name": "emdash-run-admin",
+  "private": true,
+  "type": "module",
+  "description": "What site:admin runs. Its one dependency drives the Chrome or Edge already on the machine.",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
