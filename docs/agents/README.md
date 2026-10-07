@@ -53,6 +53,14 @@ More than one agent may be working on this machine. So that none disturbs anothe
    unless the plan gives you that job.
 6. **Do not stop what you did not start.** `site:stop` in your own project only; never kill by
    port or by name.
+8. **A folder where the owner has a site running is not yours.** Do not run `site:stop`,
+   `site:reset`, `site:delete` or a package install there, and do not send an agent there with a
+   brief that lets it. (2026-10-07: an agent sent to deploy the Remy-Sport site ran `site:stop` in
+   the owner's folder, and the site the owner was looking at went down.) Deploy from a worktree of
+   that repo, or leave the dev site alone and say so in the brief.
+7. **Sign in with `signin:token`, not `emdash login`.** EmDash keeps every sign-in in one file and
+   two written at the same moment lose one (`docs/upstream.md` § 14). `signin:token` keeps a file
+   per site.
 
 ## How it is built
 
@@ -63,6 +71,7 @@ More than one agent may be working on this machine. So that none disturbs anothe
 | `admin/access.mjs` | `signin:access` — Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open` — the only Playwright |
 | `admin/again.mjs` | what makes `site:new`, `site:delete` and `plugin:new` safe to run again; and `site:ports` |
+| `admin/welcome.mjs` | closes EmDash's welcome dialog for the user a task makes (`site:start`, `signin:token`), through EmDash's own API |
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
 | `tests/replay.sh` | the test, at two levels: `test` (quick) and `test:full` (everything, the deployed-site tasks included). Each step names the task it tests |
 | `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |

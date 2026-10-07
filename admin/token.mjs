@@ -156,4 +156,11 @@ if (where === "--remote") {
 	stored = true;
 	writeFileSync(file, JSON.stringify({ url: origin, token: raw, stored }), { mode: 0o600 });
 }
+// EmDash's welcome dialog, closed for this user the way its own button does it (welcome.mjs)
+{
+	const accessFile = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "access", `${host}.json`);
+	const pass = existsSync(accessFile) ? JSON.parse(readFileSync(accessFile, "utf8")) : null;
+	const { dismissWelcome } = await import("./welcome.mjs");
+	await dismissWelcome(origin, raw, pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {});
+}
 console.log(`token: ${email} is an administrator of ${origin}, and its API token is saved on this machine${stored ? " — and in EmDash's own sign-in store" : ""}`);

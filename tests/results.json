@@ -1,512 +1,5 @@
 [
  {
-  "task": "site:start",
-  "where": "cloudflare",
-  "step": "with no site, says so and stops",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 0
- },
- {
-  "task": "site:new",
-  "where": "cloudflare",
-  "step": "makes the site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 1
- },
- {
-  "task": "site:new",
-  "where": "cloudflare",
-  "step": "run again: the site is left alone",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 2
- },
- {
-  "task": "site:start",
-  "where": "cloudflare",
-  "step": "starts the dev site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 3
- },
- {
-  "task": "site:start",
-  "where": "cloudflare",
-  "step": "run again: it is already running",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 4
- },
- {
-  "task": "site:start",
-  "where": "cloudflare",
-  "step": "the dev site answers; dev sign-in works",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 5
- },
- {
-  "task": "site:logs",
-  "where": "cloudflare",
-  "step": "shows the dev site log",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 6
- },
- {
-  "task": "emdash",
-  "where": "cloudflare",
-  "step": "a quoted JSON argument arrives whole",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 7
- },
- {
-  "task": "emdash",
-  "where": "cloudflare",
-  "step": "whoami on the dev site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 8
- },
- {
-  "task": "emdash",
-  "where": "cloudflare",
-  "step": "--live with no LIVE_URL says so",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 9
- },
- {
-  "task": "site:check",
-  "where": "cloudflare",
-  "step": "passes on a sound site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 10
- },
- {
-  "task": "site:check",
-  "where": "cloudflare",
-  "step": "fails on a type error",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 11
- },
- {
-  "task": "model:sync",
-  "where": "cloudflare",
-  "step": "records an added field in .emdash/",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 12
- },
- {
-  "task": "site:preview",
-  "where": "cloudflare",
-  "step": "serves the built site; dev sign-in is off there",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 13
- },
- {
-  "task": "signin:token",
-  "where": "cloudflare",
-  "step": "the CLI is an administrator of the built site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 14
- },
- {
-  "task": "signin:token",
-  "where": "cloudflare",
-  "step": "run again: still an administrator",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 15
- },
- {
-  "task": "emdash",
-  "where": "cloudflare",
-  "step": "--preview writes to the built site",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 16
- },
- {
-  "task": "signin:token",
-  "where": "cloudflare",
-  "step": "starts the built site when it is stopped",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 17
- },
- {
-  "task": "live:check",
-  "where": "cloudflare",
-  "step": "the deploy rehearses with no account",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 18
- },
- {
-  "task": "content:pull",
-  "where": "cloudflare",
-  "step": "with no LIVE_URL says so",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 19
- },
- {
-  "task": "signin:open",
-  "where": "cloudflare",
-  "step": "opens a signed-in window (token)",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 20
- },
- {
-  "task": "plugin:new",
-  "where": "cloudflare",
-  "step": "scaffolds, tests, builds and adds a plugin",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 21
- },
- {
-  "task": "plugin:new",
-  "where": "cloudflare",
-  "step": "run again: not scaffolded twice, still builds",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 22
- },
- {
-  "task": "plugin:check",
-  "where": "cloudflare",
-  "step": "the plugin passes its checks",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 23
- },
- {
-  "task": "plugin:add",
-  "where": "cloudflare",
-  "step": "adds a package from npm",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 24
- },
- {
-  "task": "plugin:add",
-  "where": "cloudflare",
-  "step": "run again: no error",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 25
- },
- {
-  "task": "plugin:search",
-  "where": "cloudflare",
-  "step": "finds plugins in the registry",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 26
- },
- {
-  "task": "plugin:publish",
-  "where": "cloudflare",
-  "step": "asks first, and stops with nobody to answer (a real publish is never run)",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 27
- },
- {
-  "task": "plugin",
-  "where": "cloudflare",
-  "step": "passes any command to the plugin CLI",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 28
- },
- {
-  "task": "emdash:update",
-  "where": "cloudflare",
-  "step": "updates, type-checks and builds",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 29
- },
- {
-  "task": "site:reset",
-  "where": "cloudflare",
-  "step": "empties the local content",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 30
- },
- {
-  "task": "site:reset",
-  "where": "cloudflare",
-  "step": "refuses with nobody to ask",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 31
- },
- {
-  "task": "signin:passkey",
-  "where": "cloudflare",
-  "step": "completes the EmDash wizard on a fresh database",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 32
- },
- {
-  "task": "signin:open",
-  "where": "cloudflare",
-  "step": "opens a signed-in window (passkey)",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 33
- },
- {
-  "task": "site:admin",
-  "where": "cloudflare",
-  "step": "a fresh built site, signed in, in one go",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 34
- },
- {
-  "task": "site:delete",
-  "where": "cloudflare",
-  "step": "refuses with nobody to ask",
-  "result": "PASS",
-  "detail": "",
-  "refusal": true,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 35
- },
- {
-  "task": "site:stop",
-  "where": "cloudflare",
-  "step": "stops both sites; twice is fine",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 36
- },
- {
-  "task": "site:delete",
-  "where": "cloudflare",
-  "step": "removes the site folder",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 37
- },
- {
-  "task": "site:delete",
-  "where": "cloudflare",
-  "step": "run again: nothing to delete",
-  "result": "PASS",
-  "detail": "",
-  "refusal": false,
-  "tier": "full",
-  "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 38
- },
- {
   "task": "site:new",
   "where": "deployed",
   "step": "makes the site that will be deployed",
@@ -689,6 +182,591 @@
   "order": 52
  },
  {
+  "task": "site:ports",
+  "where": "cloudflare",
+  "step": "gives the project two ports of its own",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 0
+ },
+ {
+  "task": "site:ports",
+  "where": "cloudflare",
+  "step": "run again: it keeps them",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 1
+ },
+ {
+  "task": "site:start",
+  "where": "cloudflare",
+  "step": "with no site, says so and stops",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 2
+ },
+ {
+  "task": "site:new",
+  "where": "cloudflare",
+  "step": "makes the site",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 3
+ },
+ {
+  "task": "site:new",
+  "where": "cloudflare",
+  "step": "run again: the site is left alone",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 4
+ },
+ {
+  "task": "site:start",
+  "where": "cloudflare",
+  "step": "starts the dev site; EmDash's welcome dialog is closed",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 5
+ },
+ {
+  "task": "site:start",
+  "where": "cloudflare",
+  "step": "run again: it is already running",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 6
+ },
+ {
+  "task": "site:start",
+  "where": "cloudflare",
+  "step": "the dev site answers; dev sign-in works",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 7
+ },
+ {
+  "task": "site:logs",
+  "where": "cloudflare",
+  "step": "shows the dev site log",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 8
+ },
+ {
+  "task": "emdash",
+  "where": "cloudflare",
+  "step": "a quoted JSON argument arrives whole",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 9
+ },
+ {
+  "task": "emdash",
+  "where": "cloudflare",
+  "step": "whoami on the dev site",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 10
+ },
+ {
+  "task": "emdash",
+  "where": "cloudflare",
+  "step": "--live with no LIVE_URL says so",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 11
+ },
+ {
+  "task": "site:check",
+  "where": "cloudflare",
+  "step": "passes on a sound site",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 12
+ },
+ {
+  "task": "site:check",
+  "where": "cloudflare",
+  "step": "fails on a type error",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 13
+ },
+ {
+  "task": "model:sync",
+  "where": "cloudflare",
+  "step": "records an added field in .emdash/",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 14
+ },
+ {
+  "task": "site:preview",
+  "where": "cloudflare",
+  "step": "serves the built site; dev sign-in is off there",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 15
+ },
+ {
+  "task": "signin:token",
+  "where": "cloudflare",
+  "step": "the CLI is an administrator of the built site",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 16
+ },
+ {
+  "task": "signin:token",
+  "where": "cloudflare",
+  "step": "run again: still an administrator",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 17
+ },
+ {
+  "task": "emdash",
+  "where": "cloudflare",
+  "step": "--preview writes to the built site",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 18
+ },
+ {
+  "task": "signin:token",
+  "where": "cloudflare",
+  "step": "starts the built site when it is stopped",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 19
+ },
+ {
+  "task": "live:check",
+  "where": "cloudflare",
+  "step": "the deploy rehearses with no account",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 20
+ },
+ {
+  "task": "content:pull",
+  "where": "cloudflare",
+  "step": "with no LIVE_URL says so",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 21
+ },
+ {
+  "task": "signin:open",
+  "where": "cloudflare",
+  "step": "opens a signed-in window (token)",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 22
+ },
+ {
+  "task": "plugin:new",
+  "where": "cloudflare",
+  "step": "scaffolds, tests, builds and adds a plugin",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 23
+ },
+ {
+  "task": "plugin:new",
+  "where": "cloudflare",
+  "step": "run again: not scaffolded twice, still builds",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 24
+ },
+ {
+  "task": "plugin:check",
+  "where": "cloudflare",
+  "step": "the plugin passes its checks",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 25
+ },
+ {
+  "task": "plugin:add",
+  "where": "cloudflare",
+  "step": "adds a package from npm",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 26
+ },
+ {
+  "task": "plugin:add",
+  "where": "cloudflare",
+  "step": "run again: no error",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 27
+ },
+ {
+  "task": "plugin:search",
+  "where": "cloudflare",
+  "step": "finds plugins in the registry",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 28
+ },
+ {
+  "task": "plugin:publish",
+  "where": "cloudflare",
+  "step": "asks first, and stops with nobody to answer (a real publish is never run)",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 29
+ },
+ {
+  "task": "plugin",
+  "where": "cloudflare",
+  "step": "passes any command to the plugin CLI",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 30
+ },
+ {
+  "task": "emdash:update",
+  "where": "cloudflare",
+  "step": "updates, type-checks and builds",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 31
+ },
+ {
+  "task": "site:reset",
+  "where": "cloudflare",
+  "step": "empties the local content",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 32
+ },
+ {
+  "task": "site:reset",
+  "where": "cloudflare",
+  "step": "refuses with nobody to ask",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 33
+ },
+ {
+  "task": "signin:passkey",
+  "where": "cloudflare",
+  "step": "completes the EmDash wizard on a fresh database",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 34
+ },
+ {
+  "task": "signin:open",
+  "where": "cloudflare",
+  "step": "opens a signed-in window (passkey)",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 35
+ },
+ {
+  "task": "signin:token",
+  "where": "cloudflare",
+  "step": "the saved token goes when the local database does",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 36
+ },
+ {
+  "task": "site:admin",
+  "where": "cloudflare",
+  "step": "a fresh built site, signed in, in one go",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 37
+ },
+ {
+  "task": "site:delete",
+  "where": "cloudflare",
+  "step": "refuses with nobody to ask",
+  "result": "PASS",
+  "detail": "",
+  "refusal": true,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 38
+ },
+ {
+  "task": "site:stop",
+  "where": "cloudflare",
+  "step": "stops both sites; twice is fine",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 39
+ },
+ {
+  "task": "site:delete",
+  "where": "cloudflare",
+  "step": "removes the site folder",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 40
+ },
+ {
+  "task": "site:delete",
+  "where": "cloudflare",
+  "step": "run again: nothing to delete",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 41
+ },
+ {
+  "task": "site:ports",
+  "where": "cloudflare",
+  "step": "three sites at once, each on its own ports with only its own content",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 42
+ },
+ {
+  "task": "site:ports",
+  "where": "node",
+  "step": "gives the project two ports of its own",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 43
+ },
+ {
+  "task": "site:ports",
+  "where": "node",
+  "step": "run again: it keeps them",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 44
+ },
+ {
   "task": "site:start",
   "where": "node",
   "step": "with no site, says so and stops",
@@ -697,9 +775,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 53
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 45
  },
  {
   "task": "site:new",
@@ -710,9 +788,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 54
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 46
  },
  {
   "task": "site:new",
@@ -723,22 +801,22 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 55
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 47
  },
  {
   "task": "site:start",
   "where": "node",
-  "step": "starts the dev site",
+  "step": "starts the dev site; EmDash's welcome dialog is closed",
   "result": "PASS",
   "detail": "",
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 56
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 48
  },
  {
   "task": "site:start",
@@ -749,9 +827,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 57
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 49
  },
  {
   "task": "site:start",
@@ -762,9 +840,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 58
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 50
  },
  {
   "task": "site:logs",
@@ -775,9 +853,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 59
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 51
  },
  {
   "task": "emdash",
@@ -788,9 +866,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 60
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 52
  },
  {
   "task": "emdash",
@@ -801,9 +879,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 61
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 53
  },
  {
   "task": "emdash",
@@ -814,9 +892,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 62
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 54
  },
  {
   "task": "site:check",
@@ -827,9 +905,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 63
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 55
  },
  {
   "task": "site:check",
@@ -840,9 +918,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 64
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 56
  },
  {
   "task": "model:sync",
@@ -853,9 +931,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 65
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 57
  },
  {
   "task": "site:preview",
@@ -866,9 +944,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 66
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 58
  },
  {
   "task": "signin:token",
@@ -879,9 +957,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 67
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 59
  },
  {
   "task": "signin:token",
@@ -892,9 +970,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 68
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 60
  },
  {
   "task": "emdash",
@@ -905,9 +983,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 69
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 61
  },
  {
   "task": "signin:token",
@@ -918,9 +996,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 70
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 62
  },
  {
   "task": "content:pull",
@@ -931,9 +1009,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 71
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 63
  },
  {
   "task": "signin:open",
@@ -944,9 +1022,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 72
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 64
  },
  {
   "task": "plugin:new",
@@ -957,9 +1035,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 73
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 65
  },
  {
   "task": "plugin:new",
@@ -970,9 +1048,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 74
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 66
  },
  {
   "task": "plugin:check",
@@ -983,9 +1061,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 75
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 67
  },
  {
   "task": "plugin:add",
@@ -996,9 +1074,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 76
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 68
  },
  {
   "task": "plugin:add",
@@ -1009,9 +1087,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 77
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 69
  },
  {
   "task": "plugin:search",
@@ -1022,9 +1100,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 78
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 70
  },
  {
   "task": "plugin:publish",
@@ -1035,9 +1113,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 79
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 71
  },
  {
   "task": "plugin",
@@ -1048,9 +1126,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 80
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 72
  },
  {
   "task": "emdash:update",
@@ -1061,9 +1139,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 81
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 73
  },
  {
   "task": "site:reset",
@@ -1074,9 +1152,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 82
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 74
  },
  {
   "task": "site:reset",
@@ -1087,9 +1165,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 83
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 75
  },
  {
   "task": "signin:passkey",
@@ -1100,9 +1178,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 84
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 76
  },
  {
   "task": "signin:open",
@@ -1113,9 +1191,22 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 85
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 77
+ },
+ {
+  "task": "signin:token",
+  "where": "node",
+  "step": "the saved token goes when the local database does",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "tier": "full",
+  "from": "the local files",
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 78
  },
  {
   "task": "site:admin",
@@ -1126,9 +1217,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 86
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 79
  },
  {
   "task": "site:delete",
@@ -1139,9 +1230,9 @@
   "refusal": true,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 87
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 80
  },
  {
   "task": "site:stop",
@@ -1152,9 +1243,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 88
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 81
  },
  {
   "task": "site:delete",
@@ -1165,9 +1256,9 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 89
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 82
  },
  {
   "task": "site:delete",
@@ -1178,8 +1269,8 @@
   "refusal": false,
   "tier": "full",
   "from": "the local files",
-  "commit": "f94adca",
-  "when": "2026-10-07 11:34 UTC",
-  "order": 90
+  "commit": "f69d726+uncommitted",
+  "when": "2026-10-07 12:06 UTC",
+  "order": 83
  }
 ]

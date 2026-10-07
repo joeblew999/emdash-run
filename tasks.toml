@@ -50,8 +50,8 @@ dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" ports \"{{config_root}}\""
 
 ["site:start"]
-description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
-run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]
+description = "Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you"
+run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }, "node \"{{ env.MISE_TASK_DIR }}/admin/welcome.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }}"]
 
 ["site:stop"]
 description = "Stop the dev site and the built site"
@@ -302,9 +302,9 @@ run = "pnpm exec astro build"
 
 ["step:forget"]
 hide = true
-description = "Remove the local database and uploads, so the next start makes them again from the seed. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
+description = "Remove the local database and uploads, so the next start makes them again from the seed — and the token signin:token saved for that database, which dies with it. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\""
+run = ["node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\"", "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" forget ."]
 
 ["step:key"]
 hide = true

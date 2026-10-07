@@ -87,6 +87,10 @@ port() { sed -n "s/^$1 = \"\([0-9]*\)\"/\1/p" mise.local.toml; }
 local_site() { # $1 = template  $2 = (optional) a label, when this is an extra copy run beside the others
   local T=$1 SITE BUILT
   W=${2:-${T%%:*}}; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
+  # A config folder of its own. EmDash's CLI keeps every sign-in in ONE file, auth.json, which it
+  # reads, changes and writes back with no lock: two `emdash login`s at once and one is lost
+  # (seen 2026-10-07 — "Invalid or expired token" on one of three sites; docs/upstream.md).
+  export XDG_CONFIG_HOME=$WORK/config-$W; mkdir -p "$XDG_CONFIG_HOME"
   project "$WORK/$W" "$T"
   ok site:ports     "gives the project two ports of its own"  'mise run site:ports && test -n "$(port SITE_PORT)" && test -n "$(port PREVIEW_PORT)"'
   ok site:ports     "run again: it keeps them"                'before=$(cat mise.local.toml); mise run site:ports | grep -q "already has its ports" && test "$before" = "$(cat mise.local.toml)"'
@@ -94,7 +98,7 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
   no site:start     "with no site, says so and stops"        'mise run site:start'
   ok site:new       "makes the site"                          'mise run site:new'
   ok site:new       "run again: the site is left alone"       'mise run site:new 2>&1 | grep -q "already a site"'
-  ok site:start     "starts the dev site"                     'mise run site:start'
+  ok site:start     "starts the dev site; EmDash's welcome dialog is closed" 'mise run site:start | grep -q "welcome dialog is closed"'
   ok site:start     "run again: it is already running"        'mise run site:start'
   ok site:start     "the dev site answers; dev sign-in works" 'test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 $SITE/)" = 200 && curl -fsS -X POST $SITE/_emdash/api/setup/dev-bypass -o /dev/null'
   ok site:logs      "shows the dev site log"                  'for_a_while 5 mise run site:logs > logs.txt 2>&1; grep -q . logs.txt'
@@ -125,8 +129,9 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
     ok emdash:update "updates, type-checks and builds"        'mise run emdash:update'
     ok site:reset   "empties the local content"               'mise run site:start && mise run --yes site:reset && ! mise run emdash -- content get pages audit --json'
     no site:reset   "refuses with nobody to ask"              'env -u MISE_YES -u CI mise run site:reset </dev/null'
-    ok signin:passkey "completes the EmDash wizard on a fresh database" 'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); rm -f $XDG_CONFIG_HOME/emdash-run/tokens/localhost_*.json; mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
+    ok signin:passkey "completes the EmDash wizard on a fresh database" 'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
     [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (passkey)" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open 2>&1 | grep -q "open: signed in"'
+    ok signin:token "the saved token goes when the local database does" 'mise run signin:token && ls "$XDG_CONFIG_HOME"/emdash-run/tokens/ | grep -q . && mise run site:stop && mise run step:forget && ! ls "$XDG_CONFIG_HOME"/emdash-run/tokens/ | grep -q .'
     ok site:admin   "a fresh built site, signed in, in one go" 'mise run --yes site:admin && mise run emdash -- schema list --preview | grep -q slug'
     no site:delete  "refuses with nobody to ask"              'env -u MISE_YES -u CI mise run site:delete </dev/null'
   fi
@@ -159,7 +164,7 @@ live_site() {
   ok site:new       "makes the site that will be deployed"    'mise run site:new && sed -i.bak "s/\"my-emdash-site\"/\"$TEST_LIVE_NAME\"/g; s/\"my-emdash-media\"/\"$TEST_LIVE_NAME-media\"/" site/wrangler.jsonc && mise run site:start && mise run site:stop'
   ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access 2>&1 | tee access.txt | grep -q "access: application"'
   STAMP=shipped-$(date +%s)
-  ok live:ship      "deploys; the site answers with the change" "printf '<p>%s</p>\n' $STAMP > site/src/pages/zz-shipped.astro && mise run live:ship && curl -fsS \$LIVE_URL_/zz-shipped | grep -q $STAMP"
+  ok live:ship      "deploys; the site answers with the change" "printf '<p>%s</p>\n' $STAMP > site/src/pages/zz-shipped.astro && mise run live:ship && (for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS \$LIVE_URL_/zz-shipped 2>/dev/null | grep -q $STAMP && exit 0; sleep 3; done; exit 1)"
   ok signin:access  "run again: changes nothing"              'mise run signin:access 2>&1 | grep -q "already"'
   ok signin:token   "--live: the CLI is an administrator of the deployed site" 'mise run signin:token -- --live && mise run emdash -- whoami --live 2>&1 | grep -qi "admin"'
   ok signin:token   "--live, run again: still an administrator" 'mise run signin:token -- --live && mise run emdash -- whoami --live 2>&1 | grep -qi "admin"'

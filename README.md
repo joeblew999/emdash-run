@@ -41,7 +41,7 @@ In the order you use them. This table is written by the test, from the order it 
 |---|---|---|---|
 | 1 | `site:ports` | Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once | yes |
 | 2 | `site:new` | Make a new site. Template: mise run site:new \-\- node:blog (default cloudflare:blog). A site that is already there is left alone | yes |
-| 3 | `site:start` | Start the dev site in the background (port 4321). EmDash signs you in by itself | yes |
+| 3 | `site:start` | Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you | yes |
 | 4 | `site:logs` | Follow the dev site's log | yes |
 | 5 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
 | 6 | `site:check` | Before a commit: seed valid, types check, site builds | yes |

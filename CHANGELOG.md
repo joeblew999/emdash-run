@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **`site:ports`** gives a project two free ports of its own, in `mise.local.toml` — so several
+  sites, or several agents, run on one machine without meeting. The full test now runs three sites
+  at once, and holds a lock while it uses the deployed test Worker.
+- **EmDash's welcome dialog no longer appears**: `site:start` and `signin:token` close it for the
+  user they make, with the call the dialog's own button makes. EmDash has no setting for it.
+- **A site set to Cloudflare Access works with the CLI on this machine again.** After
+  `signin:access` and its `auth: access(…)` line, `site:start` failed and every `mise run emdash`
+  on the dev site said "Not authenticated": EmDash leaves out the address its CLI signs in at. The
+  `emdash` task now takes the dev sign-in's token instead.
+- **Emptying the local database removes the token saved for it** (`site:reset`, `site:admin`).
+  Left behind, the CLI sent it to the new database and was told "Invalid or expired token".
+- **Working on emdash-run:** `mise run hooks` turns on a commit check — a task without a test step,
+  a test step for a task that is gone, or stale generated pages, and the commit is refused.
+
 ## 1.0.1 — 2026-10-07
 
 Proven on macOS, Linux and Windows (the `stages` workflow), and by the full test on a Mac: 91 steps,

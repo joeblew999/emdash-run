@@ -7,9 +7,11 @@
 //                                                       plugin:new  — a plugin that exists is not scaffolded again
 //   node again.mjs ports <project folder>               site:ports  — a project that has its ports keeps them
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { createServer } from "node:net";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const [what, siteDir, ...rest] = process.argv.slice(2);
 const win = process.platform === "win32";
@@ -43,6 +45,13 @@ if (what === "new") {
 		process.exit(0);
 	}
 	run("pnpm", ["dlx", "@emdash-cms/plugin-cli@latest", "init", name, "--dir", `plugins/${name}`, "--yes", "--publisher", publisher, "--author-name", author, "--security-email", email, "--package-manager", "pnpm"], siteDir);
+} else if (what === "forget") {
+	// The local database is going: the token signin:token saved for it dies with it. Left behind,
+	// the CLI would send it to the next database and be told "Invalid or expired token".
+	// Only this site's: saved names for sites on this machine end in a hash of the site folder.
+	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "tokens");
+	const mine = `_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}.json`;
+	for (const f of existsSync(dir) ? readdirSync(dir) : []) if (f.endsWith(mine)) rmSync(join(dir, f), { force: true });
 } else if (what === "ports") {
 	// siteDir is the PROJECT folder here. Two ports nothing is using, written to mise.local.toml —
 	// which git ignores and mise reads — so this project, or this agent's copy of it, never
