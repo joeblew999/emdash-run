@@ -1,4 +1,4 @@
-// What `mise run live:access` runs: Cloudflare Access in front of a deployed EmDash site's admin,
+// What `mise run signin:access` runs: Cloudflare Access in front of a deployed EmDash site's admin,
 // made with the Cloudflare login wrangler already holds. Wrangler has no command for Access, so
 // this calls Cloudflare's API; it is the second and last script in this repo.
 //
@@ -114,6 +114,6 @@ try {
 	console.log('  "preview_urls": false,');
 	console.log("Then: mise run live:ship");
 } catch (error) {
-	console.error(`live:access failed: ${error.message}`);
+	console.error(`signin:access failed: ${error.message}`);
 	process.exit(1);
 }

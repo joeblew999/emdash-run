@@ -4,8 +4,8 @@
 //   node emdash.mjs <default site address> <site folder> [anything for the CLI…]
 //
 // The site is the CLI's own --url (or -u) when given, else the default. For that site's host:
-//   ~/.config/emdash-run/tokens/<host>.json  → EMDASH_TOKEN    (site:token, live:token)
-//   ~/.config/emdash-run/access/<host>.json  → EMDASH_HEADERS  (live:access; Cloudflare Access)
+//   ~/.config/emdash-run/tokens/<host>.json  → EMDASH_TOKEN    (signin:token)
+//   ~/.config/emdash-run/access/<host>.json  → EMDASH_HEADERS  (signin:access; Cloudflare Access)
 // A value already in the environment wins. Nothing is printed.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

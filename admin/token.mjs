@@ -1,4 +1,4 @@
-// What `mise run site:token` and `mise run live:token` run: the one token that makes a machine a
+// What `mise run signin:token` runs (with --live: --remote): the one token that makes a machine a
 // full user of an EmDash site, with no browser.
 //
 // EmDash accepts an API token before any other sign-in — under Cloudflare Access too — and its own

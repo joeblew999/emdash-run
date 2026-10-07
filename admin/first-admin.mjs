@@ -1,20 +1,27 @@
-// What `mise run site:admin` and `mise run site:open` run. A TESTING TOOL, for this machine only.
+// What `mise run site:admin` and `mise run live:admin` run — the one script in this repo, for a gap
+// that is written down in docs/plans/done/2026-10-07-sign-in.md: EmDash has no command that sets a site
+// up, or signs its CLI in, without a person at a browser.
 //
-// EmDash has no command that sets a site up, or signs its CLI in, without a person at a browser.
-// So that anything needing real sign-in can be built and tested with nobody there, this makes
-// sure a production build served on THIS MACHINE has an administrator and that EmDash's CLI is
-// signed in to it: Playwright drives EmDash's own pages, and Chrome's simulated passkey device
-// stands in for Touch ID.
+// It makes sure an EmDash site that is NOT in development mode has an administrator and that
+// EmDash's CLI is signed in to it — with no person. Playwright drives EmDash's own pages, and
+// Chrome's built-in simulated passkey device stands in for Touch ID.
 //
-//   node first-admin.mjs <site address> <site folder> [--show]
+//   node first-admin.mjs <site address> <site folder> [--deployed] [--show]
 //
-// - A site that has not been set up: it completes the setup wizard, then approves `emdash login`.
+// Tasks: signin:passkey, signin:open (--show); each with --live adds --deployed.
+//
+// - A site that has not been set up: it completes the setup wizard (ADMIN_EMAIL, ADMIN_NAME,
+//   an empty site), then approves `emdash login`.
 // - A site it set up before: it signs in with the passkey it saved, then approves `emdash login`.
-// - With --show: a browser window you can see, signed in, for a person. The CLI is left alone.
+// - A site somebody else set up: it stops. It has no way in, and should not.
+// - With --show: a browser window you can see, signed in to the admin with the saved passkey, for
+//   a person to use. It stays until the window is closed. The CLI is left as it is.
 //
 // The passkey is saved in ~/.config/emdash-run/passkeys/<host>.json, readable by this user only.
-// It refuses any address that is not this machine. A deployed site is not set up this way:
-// Cloudflare Access is in front of it (admin/access.mjs, `live:access`), and it has no passkeys.
+// Whoever holds that file is the site's administrator: it is a secret, and it is never printed.
+//
+// Without --deployed it refuses any address that is not this machine. With it, it creates an
+// administrator on a site on the internet: the signin: tasks pass it for --live.
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -23,10 +30,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
 const args = process.argv.slice(2);
+const deployed = args.includes("--deployed");
 const show = args.includes("--show");
 const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
 if (!url || !siteDir) {
-	console.error("usage: node first-admin.mjs <site address> <site folder> [--show]");
+	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
 	process.exit(1);
 }
 if (!URL.canParse(url)) {
@@ -35,12 +43,16 @@ if (!URL.canParse(url)) {
 }
 const { hostname, host, origin } = new URL(url);
 const local = ["localhost", "127.0.0.1", "[::1]"].includes(hostname) || hostname.endsWith(".localhost");
-if (!local) {
-	console.error(`Refusing: ${hostname} is not this machine. A deployed site is signed in to through Cloudflare Access: live:access.`);
+if (!local && !deployed) {
+	console.error(`Refusing: ${hostname} is not this machine. For a deployed site: mise run signin:passkey -- --live`);
 	process.exit(1);
 }
-const email = "agent@emdash.local";
-const name = "Local Test Admin";
+const email = process.env.ADMIN_EMAIL || (local ? "agent@emdash.local" : "");
+const name = process.env.ADMIN_NAME || "Site Admin";
+if (!email) {
+	console.error("A deployed site's administrator needs an address: set ADMIN_EMAIL in the [env] block of mise.toml.");
+	process.exit(1);
+}
 const keyFile = join(
 	process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
 	"emdash-run",
@@ -93,7 +105,7 @@ try {
 	if (show) {
 		// A window for a person: sign in with the saved passkey and hand the page over.
 		if (page.url().includes("/setup") || !existsSync(keyFile)) {
-			throw new Error("There is no saved passkey for this build on this machine. Set it up first: mise run site:admin");
+			throw new Error("There is no saved passkey for this site on this machine. Set it up first: mise run signin:passkey (add -- --live for the deployed site).");
 		}
 		for (const credential of JSON.parse(readFileSync(keyFile, "utf8"))) {
 			credential.signCount += 100;
