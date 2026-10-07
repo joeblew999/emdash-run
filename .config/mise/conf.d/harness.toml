@@ -2,14 +2,13 @@
 # do not edit it in a project. Project settings live in mise.toml; the logic lives in nu/.
 
 [settings]
-experimental = true # `mise daemons`
+experimental = true
 
 [tools]
 node = "26.10.0"
 pnpm = "12.9.1"
-pitchfork = "2.29.0" # runs the daemons, through `mise daemons`
-nushell = "0.116.1"  # the language of nu/ — the same on every platform
-fnox = "1.36.0"      # secrets: Cloudflare credentials for deploy and the R2 check
+nushell = "0.116.1" # the language of nu/ — the same on every platform
+fnox = "1.36.0"     # secrets: Cloudflare credentials for deploy and the R2 check
 
 [task_config]
 shell = "nu --no-config-file -c"
@@ -177,13 +176,3 @@ description = "The plugin registry, through the official plugin CLI — e.g: mis
 [tasks.args]
 extends = "harness"
 hide = true
-
-[tasks."daemon:site"]
-extends = "harness"
-hide = true
-
-# Values here reach pitchfork verbatim — mise does not expand templates in [daemons].
-[daemons.site]
-run = "mise run daemon:site"
-dir = "."
-auto = ["start", "stop"]

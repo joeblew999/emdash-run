@@ -543,7 +543,5 @@ def --wrapped "main emdash-plugin" [...args: string] { plugin cli ...$args }
 # Prints its arguments as JSON. `check` calls it through mise to prove arguments reach commands.
 def --wrapped "main args" [...args: string] { print ($args | to json --raw) }
 
-# What the site daemon runs. Not for typing: `mise run dev` starts it.
-def "main daemon site" [] { site serve }
 
 def main [] { print "run a task: mise tasks ls" }
