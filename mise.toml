@@ -17,8 +17,8 @@
 # How to work here: docs/agents/README.md
 
 [env]
-TEMPLATE = "starter-cloudflare" # any directory in emdash-cms/templates
-EMDASH_VERSION = "1.1.0"        # the site is pinned to exactly this
+TEMPLATE = "cloudflare:starter" # <platform>:<template>, as create-emdash spells it — what site:new makes site/ from, once
+EMDASH_VERSION = "1.1.0"        # read by the old nushell tasks only, until they are deleted; the stages use site/package.json
 DEPLOY_URL = ""                 # this repo's own site is not deployed anywhere
 # Who a scaffolded plugin says it is from. The placeholder works locally; publishing needs yours.
 PLUGIN_PUBLISHER = "did:plc:REPLACE-WITH-YOUR-PUBLISHER-DID"
