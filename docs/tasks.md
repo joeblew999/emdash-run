@@ -149,9 +149,15 @@ Follow the running site's log
 
 ## `site:new`
 
-- **Usage:** `site:new`
+A site, once: EmDash's scaffolder makes site/ and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog
 
-A site, once: EmDash's scaffolder makes site/ from TEMPLATE (cloudflare:blog, node:starter, …) and installs it
+
+- **Usage:** `site:new [template]`
+
+### Arguments
+- **`[template]`** — &lt;platform>:&lt;template>
+
+  **Choices:** `cloudflare:blog`, `cloudflare:starter`, `cloudflare:marketing`, `cloudflare:portfolio`, `node:blog`, `node:starter`, `node:marketing`, `node:portfolio`
 
 ## `site:start`
 
