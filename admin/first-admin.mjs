@@ -163,7 +163,14 @@ try {
 	// a shell can start, and the default browser does open.)
 	login = spawn("pnpm", ["exec", "emdash", "login", "--url", origin], {
 		cwd: siteDir,
-		env: { ...process.env, PATH: join(here, "quiet") + delimiter + process.env.PATH },
+		// No colour: the code is read out of what it prints. (In CI, and in a terminal, it colours
+		// the code; that is what broke the first three-OS run of this script.)
+		env: {
+			...process.env,
+			PATH: join(here, "quiet") + delimiter + process.env.PATH,
+			NO_COLOR: "1",
+			FORCE_COLOR: "0",
+		},
 		shell: process.platform === "win32",
 		// Its own process group, so that stopping it stops what pnpm started too.
 		detached: process.platform !== "win32",
@@ -173,7 +180,8 @@ try {
 	const exited = new Promise((r) => login.on("exit", r));
 	const code = await new Promise((resolve, reject) => {
 		const t = setInterval(() => {
-			const m = out.match(/Enter code:\s*([A-Z0-9]{4}-[A-Z0-9]{4})/);
+			// Colour codes stripped anyway, in case a later EmDash ignores NO_COLOR.
+			const m = out.replace(/\x1b\[[0-9;]*m/g, "").match(/Enter code:\s*([A-Z0-9]{4}-[A-Z0-9]{4})/);
 			if (m) (clearInterval(t), resolve(m[1]));
 		}, 250);
 		setTimeout(() => (clearInterval(t), reject(new Error("emdash login printed no code"))), 60_000);
