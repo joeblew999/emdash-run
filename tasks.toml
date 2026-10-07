@@ -44,6 +44,11 @@ arg "[template]" help="<platform>:<template>" {
 '''
 run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" new \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %}"]
 
+["site:ports"]
+description = "Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once"
+dir = "{{config_root}}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" ports \"{{config_root}}\""
+
 ["site:start"]
 description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
 run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]

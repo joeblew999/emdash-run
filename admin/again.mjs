@@ -5,8 +5,10 @@
 //   node again.mjs delete <site folder>                  site:delete — no site is nothing to delete
 //   node again.mjs plugin <site folder> <name> <publisher> <author> <security email>
 //                                                       plugin:new  — a plugin that exists is not scaffolded again
+//   node again.mjs ports <project folder>               site:ports  — a project that has its ports keeps them
 import { spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
 import { basename, dirname, join } from "node:path";
 
 const [what, siteDir, ...rest] = process.argv.slice(2);
@@ -41,7 +43,35 @@ if (what === "new") {
 		process.exit(0);
 	}
 	run("pnpm", ["dlx", "@emdash-cms/plugin-cli@latest", "init", name, "--dir", `plugins/${name}`, "--yes", "--publisher", publisher, "--author-name", author, "--security-email", email, "--package-manager", "pnpm"], siteDir);
+} else if (what === "ports") {
+	// siteDir is the PROJECT folder here. Two ports nothing is using, written to mise.local.toml —
+	// which git ignores and mise reads — so this project, or this agent's copy of it, never
+	// shares a port with another. A project that already says its ports keeps them.
+	const read = (f) => (existsSync(join(siteDir, f)) ? readFileSync(join(siteDir, f), "utf8") : "");
+	const said = (name) => (read("mise.local.toml") + read("mise.toml")).match(new RegExp(`^\\s*${name}\\s*=\\s*"?(\\d+)`, "m"))?.[1];
+	const free = () => new Promise((resolve) => {
+		const server = createServer();
+		server.listen(0, "127.0.0.1", () => {
+			const { port } = server.address();
+			server.close(() => resolve(port));
+		});
+	});
+	let [dev, built] = [said("SITE_PORT"), said("PREVIEW_PORT")];
+	if (dev && built) {
+		console.log(`This project already has its ports: dev site ${dev}, built site ${built}.`);
+	} else {
+		const local = read("mise.local.toml");
+		let add = local.includes("[env]") ? "" : `${local && !local.endsWith("\n") ? "\n" : ""}[env]\n`;
+		if (local.includes("[env]") && !local.trimEnd().endsWith("[env]") && !/\[env\][^\[]*$/.test(local)) {
+			console.error("mise.local.toml has an [env] block that is not its last block: add SITE_PORT and PREVIEW_PORT to it by hand.");
+			process.exit(1);
+		}
+		if (!dev) add += `SITE_PORT = "${(dev = String(await free()))}"\n`;
+		if (!built) add += `PREVIEW_PORT = "${(built = String(await free()))}"\n`;
+		appendFileSync(join(siteDir, "mise.local.toml"), add);
+		console.log(`Ports of its own, in mise.local.toml: dev site ${dev}, built site ${built}.`);
+	}
 } else {
-	console.error("usage: node again.mjs new|delete|plugin …");
+	console.error("usage: node again.mjs new|delete|plugin|ports …");
 	process.exit(1);
 }

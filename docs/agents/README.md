@@ -38,6 +38,22 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 10. **Keep it short.** Task descriptions are one line. Docs are for someone who wants to use the
    tasks, not a record of how they were made.
 
+## Working beside other agents
+
+More than one agent may be working on this machine. So that none disturbs another:
+
+1. **Your own git worktree.** Never work in a folder another agent is in.
+2. **Your own ports.** In any project you start a site in: `mise run site:ports`, first. The test
+   does this itself.
+3. **Never `mise cache clear`.** The copy of the tasks mise fetched is shared by every project on
+   the machine. Pin a tag instead of following `main`.
+4. **One site at a time.** The machine has 16 GB. The full test already runs three.
+5. **The deployed test Worker belongs to one agent at a time.** The full test takes a lock before
+   it deploys and skips the deployed part if another run holds it. Do not deploy to it by hand
+   unless the plan gives you that job.
+6. **Do not stop what you did not start.** `site:stop` in your own project only; never kill by
+   port or by name.
+
 ## How it is built
 
 | | |
@@ -46,7 +62,7 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 | `admin/token.mjs` | `signin:token` — an administrator and an API token written to the site's database |
 | `admin/access.mjs` | `signin:access` — Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open` — the only Playwright |
-| `admin/again.mjs` | what makes `site:new`, `site:delete` and `plugin:new` safe to run again |
+| `admin/again.mjs` | what makes `site:new`, `site:delete` and `plugin:new` safe to run again; and `site:ports` |
 | `admin/emdash.mjs` | the `emdash` task — the CLI, plus `--live`, `--preview` and what is saved for the site |
 | `tests/replay.sh` | the test, at two levels: `test` (quick) and `test:full` (everything, the deployed-site tasks included). Each step names the task it tests |
 | `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |
