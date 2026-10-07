@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.0.1 — 2026-10-07
+
+Proven on macOS, Linux and Windows (the `stages` workflow), and by the full test on a Mac: 91 steps,
+every task, both templates and a deployed site.
+
+- **Windows:** `mise run emdash -- …` with a quoted argument, and `signin:token`, were broken in
+  1.0.0 — a shell took the argument apart. EmDash's CLI and wrangler are now run by Node itself.
+- **Every task is safe to run again.** `site:new` leaves an existing site alone, `site:delete` with
+  no site has nothing to delete, `plugin:new` does not scaffold twice. The test runs them twice.
+- **`plugin:search`** is its own task.
+- **`tasks.toml` is in order:** the tasks by group, then every hidden step.
+- **The test:** two levels (`test`, `test:full`); one task alone (`mise run test -- <task>`); it
+  refuses to run unless every task has a step; the README's table of tasks is written from it.
+- The docs site: <https://joeblew999.github.io/emdash-run/>. Issue forms and labels.
+
 ## 1.0.0 — 2026-10-07
 
 The first release with signing in, deploying and a test whose result is a file:

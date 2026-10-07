@@ -23,10 +23,10 @@ pnpm = "12"
 fnox = "1.36.0"   # keeps your Cloudflare token; only needed for signin:access
 
 [task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.0.0"]
+includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.0.1"]
 ```
 
-That pins release `v1.0.0`; change the tag to update. `ref=main` follows development, but mise
+That pins release `v1.0.1`; change the tag to update. `ref=main` follows development, but mise
 keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 
 ## The tasks
