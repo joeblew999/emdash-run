@@ -40,6 +40,7 @@ mise run site:stop
 mise run site:check                    before a commit: the seed is valid, the types check, it builds
 mise run site:preview                  the production build, served on this machine — signs in like a deployed site
 mise run site:admin                    that build with an administrator and a signed-in CLI, nobody at a browser
+mise run site:open                     a browser window signed in to that build's admin, for you
 mise run site:reset                    the local site back to its seed — it asks first
 mise run site:delete                   remove site/ again — it asks first
 
@@ -56,6 +57,7 @@ mise run live:check                    would this deploy — wrangler's dry run,
 mise run live:ship                     put it live on Cloudflare, and wait for it to answer
 mise run live:key                      once, after the first ship: the encryption key, as a secret
 mise run live:admin                    the deployed site set up and the CLI signed in to it, nobody at a browser
+mise run live:open                     a browser window signed in to the deployed site's admin, for you
 mise run live:undo                     the previous version back — code only
 mise run live:logs                     follow the deployed site's log
 mise run live:backup                   the database's bookmark, and the site as a package
@@ -157,6 +159,12 @@ loaded into an empty site with EmDash's two import commands.
   is saved in `~/.config/emdash-run/passkeys/`, readable only by you. **That file is the way in
   to the site — whoever has it is its administrator. Keep a copy somewhere safe, and never commit
   it.** A site somebody else set up, it cannot enter and does not try.
+- **How you get in to a site the script set up.** Its passkey works only in the script's own
+  browser, so `site:open` and `live:open` open a window you can see, already signed in. That is
+  the bridge. The lasting way in for people is a login provider in the site's own config —
+  GitHub is the one recommended here — which works alongside the script's passkey. Cloudflare
+  Access is not recommended with these tasks: on a deployed site it switches every other sign-in
+  off, the script's included.
 - **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
   the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
   to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.

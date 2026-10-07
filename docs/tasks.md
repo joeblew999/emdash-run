@@ -52,6 +52,12 @@ Once, after the first live:ship: the site's encryption key goes to the Worker as
 
 Follow the deployed site's log — requests, errors, and each run of the scheduler
 
+## `live:open`
+
+- **Usage:** `live:open`
+
+For a person: a browser window signed in to the admin of the DEPLOYED site at LIVE_URL, with the passkey live:admin saved. From there you can work in the admin, and add a sign-in of your own under Security. Close the window when done
+
 ## `live:ship`
 
 - **Usage:** `live:ship`
@@ -175,6 +181,12 @@ A site, once: EmDash's scaffolder makes the site folder and installs it. Say whi
 - **`[template]`** — &lt;platform>:&lt;template>
 
   **Choices:** `cloudflare:blog`, `cloudflare:starter`, `cloudflare:marketing`, `cloudflare:portfolio`, `node:blog`, `node:starter`, `node:marketing`, `node:portfolio`
+
+## `site:open`
+
+- **Usage:** `site:open`
+
+For a person: a browser window signed in to the admin of the production build that site:admin set up — with the passkey the script saved, which no ordinary browser can use. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
 
 ## `site:preview`
 

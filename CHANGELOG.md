@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`site:open`, `live:open`**: a visible browser window signed in to the admin with the passkey
+  the script saved — the way for a person in to a site that `site:admin` or `live:admin` set up.
+
 - **`live:admin`**: the same script for a deployed site — sets it up as `ADMIN_EMAIL`, or signs in
   with the passkey it saved, and signs the CLI in. Proven against this machine only.
 - `site:admin` no longer opens the default browser, leaves no process behind when it fails, and

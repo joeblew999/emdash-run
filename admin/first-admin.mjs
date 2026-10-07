@@ -6,12 +6,14 @@
 // EmDash's CLI is signed in to it — with no person. Playwright drives EmDash's own pages, and
 // Chrome's built-in simulated passkey device stands in for Touch ID.
 //
-//   node first-admin.mjs <site address> <site folder> [--deployed]
+//   node first-admin.mjs <site address> <site folder> [--deployed] [--show]
 //
 // - A site that has not been set up: it completes the setup wizard (ADMIN_EMAIL, ADMIN_NAME,
 //   an empty site), then approves `emdash login`.
 // - A site it set up before: it signs in with the passkey it saved, then approves `emdash login`.
 // - A site somebody else set up: it stops. It has no way in, and should not.
+// - With --show: a browser window you can see, signed in to the admin with the saved passkey, for
+//   a person to use. It stays until the window is closed. The CLI is left as it is.
 //
 // The passkey is saved in ~/.config/emdash-run/passkeys/<host>.json, readable by this user only.
 // Whoever holds that file is the site's administrator: it is a secret, and it is never printed.
@@ -27,6 +29,7 @@ import { chromium } from "playwright-core";
 
 const args = process.argv.slice(2);
 const deployed = args.includes("--deployed");
+const show = args.includes("--show");
 const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
 if (!url || !siteDir) {
 	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
@@ -56,7 +59,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 let browser;
 for (const channel of ["chrome", "msedge"]) {
 	try {
-		browser = await chromium.launch({ channel, headless: true });
+		browser = await chromium.launch({ channel, headless: !show });
 		break;
 	} catch {}
 }
@@ -65,7 +68,7 @@ if (!browser) {
 	process.exit(1);
 }
 // English, whatever the machine's language: the pages are found by their words.
-const page = await (await browser.newContext({ locale: "en-GB" })).newPage();
+const page = await (await browser.newContext({ locale: "en-GB", viewport: show ? null : undefined })).newPage();
 let login;
 let out = "";
 let exit = 1;
@@ -93,6 +96,24 @@ try {
 
 	await page.goto(`${origin}/_emdash/admin`);
 	await page.waitForURL(/\/_emdash\/admin\/(setup|login)/, { timeout: 180_000 });
+	if (show) {
+		// A window for a person: sign in with the saved passkey and hand the page over.
+		if (page.url().includes("/setup") || !existsSync(keyFile)) {
+			throw new Error("There is no saved passkey for this site on this machine. Set it up first: site:admin for a local build, live:admin for a deployed site.");
+		}
+		for (const credential of JSON.parse(readFileSync(keyFile, "utf8"))) {
+			credential.signCount += 100;
+			await cdp.send("WebAuthn.addCredential", { authenticatorId, credential });
+		}
+		const signInShown = page.getByRole("button", { name: "Sign in with Passkey" });
+		await signInShown.waitFor({ timeout: 60_000 });
+		await signInShown.click();
+		await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 60_000 });
+		await savePasskey();
+		console.log(`open: signed in to ${origin}/_emdash/admin — close the window when you are done`);
+		await new Promise((r) => browser.on("disconnected", r));
+		process.exit(0);
+	}
 	if (page.url().includes("/setup")) {
 		// 1a. EmDash's setup wizard: site, account, passkey.
 		await page.getByRole("heading", { name: "Set up your site" }).waitFor({ timeout: 120_000 });
@@ -176,6 +197,7 @@ try {
 } finally {
 	// Never leave a browser or a waiting `emdash login` behind.
 	if (exit !== 0 && out) console.error(out);
+	if (!browser.isConnected()) process.exit(exit);
 	if (login && login.exitCode === null) {
 		try {
 			if (process.platform === "win32") {

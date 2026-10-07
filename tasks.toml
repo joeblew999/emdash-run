@@ -367,6 +367,14 @@ description = "The deployed site has an administrator and the CLI is signed in t
 confirm = "Set up, or sign in to, the DEPLOYED site at LIVE_URL as its administrator?"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:admin-tools" }, { task = "step:admin-live" }]
 
+["site:open"]
+description = "For a person: a browser window signed in to the admin of the production build that site:admin set up — with the passkey the script saved, which no ordinary browser can use. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)"
+run = [{ task = "step:there" }, { task = "step:admin-tools" }, "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show"]
+
+["live:open"]
+description = "For a person: a browser window signed in to the admin of the DEPLOYED site at LIVE_URL, with the passkey live:admin saved. From there you can work in the admin, and add a sign-in of your own under Security. Close the window when done"
+run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:admin-tools" }, "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --deployed --show"]
+
 [emdash]
 description = "Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts"
 depends = ["step:there"]
