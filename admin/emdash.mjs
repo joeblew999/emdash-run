@@ -25,9 +25,12 @@ if (URL.canParse(url)) {
 		return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
 	};
 	const token = read("tokens");
-	if (token && !env.EMDASH_TOKEN) env.EMDASH_TOKEN = token.token;
+	// Option A: when the token is in EmDash's own sign-in store, the CLI finds it and the Access
+	// pass by itself — and putting them in the environment as well is what breaks `whoami`.
+	const inStore = token?.stored === true;
+	if (token && !inStore && !env.EMDASH_TOKEN) env.EMDASH_TOKEN = token.token;
 	const access = read("access");
-	if (access && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
+	if (access && !inStore && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
 }
 const r = spawnSync("pnpm", ["exec", "emdash", ...rest], { cwd: siteDir, env, stdio: "inherit", shell: process.platform === "win32" });
 process.exit(r.status ?? 1);

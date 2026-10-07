@@ -12,7 +12,7 @@
 // The token is saved in ~/.config/emdash-run/tokens/<host>.json, readable by this user only.
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -56,4 +56,32 @@ const file = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "em
 mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
 writeFileSync(file, JSON.stringify({ url: origin, token: raw }), { mode: 0o600 });
 chmodSync(file, 0o600);
-console.log(`token: ${email} is an administrator of ${origin}, and its API token is saved on this machine`);
+
+// OPTION A (being tried, 2026-10-07) — deployed sites only: also put the token, and the Cloudflare
+// Access pass if this machine has one, into EmDash's OWN sign-in store, as `emdash login` would.
+// Then every command finds both by itself. `emdash whoami` needs this: it takes extra headers
+// only from a stored sign-in, never from EMDASH_HEADERS, so with the token in the environment it
+// was sent to Cloudflare's login page. The file's format is EmDash's (cli/credentials.ts), not ours.
+// Not for this machine's sites: those are stored per project folder, and a stale one breaks the
+// dev CLI when the local database is emptied.
+let stored = false;
+if (where === "--remote") {
+	const config = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+	const authFile = join(config, "emdash", "auth.json");
+	const accessFile = join(config, "emdash-run", "access", `${host}.json`);
+	const store = existsSync(authFile) ? JSON.parse(readFileSync(authFile, "utf8")) : {};
+	const pass = existsSync(accessFile) ? JSON.parse(readFileSync(accessFile, "utf8")) : null;
+	store[origin] = {
+		accessToken: raw,
+		refreshToken: "",
+		expiresAt: new Date(Date.now() + 10 * 365 * 24 * 3600 * 1000).toISOString(),
+		...(pass ? { customHeaders: { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } } : {}),
+		user: { email, role: "admin" },
+	};
+	mkdirSync(dirname(authFile), { recursive: true, mode: 0o700 });
+	writeFileSync(authFile, JSON.stringify(store, null, 2), { mode: 0o600 });
+	chmodSync(authFile, 0o600);
+	stored = true;
+	writeFileSync(file, JSON.stringify({ url: origin, token: raw, stored }), { mode: 0o600 });
+}
+console.log(`token: ${email} is an administrator of ${origin}, and its API token is saved on this machine${stored ? " — and in EmDash's own sign-in store" : ""}`);
