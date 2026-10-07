@@ -2,7 +2,7 @@
 
 - **Usage:** `content:pull`
 
-The deployed site's content, on this machine: downloads it as an EmDash package into backups/ and prints how to load it into an empty local site. Needs LIVE_URL, and a sign-in to it: signin:token -- --live
+Download the deployed site's content as a package into backups/
 
 ## `emdash`
 
@@ -10,19 +10,19 @@ The deployed site's content, on this machine: downloads it as an EmDash package 
 
 - **Usage:** `emdash`
 
-Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. WHERE: nothing = this machine's dev site; add --live for the deployed site (LIVE_URL); add --preview for this machine's built site; or --url &lt;address>. For whichever site, it adds the token and the Access pass this machine has saved for it (signin:token, signin:access)
+EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site
 
 ## `emdash:update`
 
 - **Usage:** `emdash:update`
 
-A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after
+Update the site to the newest EmDash, then type-check and build
 
 ## `live:backup`
 
 - **Usage:** `live:backup`
 
-A way back, and a copy: the deployed database's Time Travel bookmark, and the deployed site as an EmDash package in backups/. Says what neither holds. Needs LIVE_URL, and a sign-in to it: signin:token -- --live
+Back up the deployed site: database bookmark + content package
 
 ## `live:logs`
 
@@ -30,17 +30,17 @@ A way back, and a copy: the deployed database's Time Travel bookmark, and the de
 
 - **Usage:** `live:logs`
 
-Follow the deployed site's log — requests, errors, and each run of the scheduler
+Follow the deployed site's log
 
 ## `live:ship`
 
 - **Usage:** `live:ship`
 
-Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. The site's .env goes up with it as secrets. First time: see the signin: tasks, and have one in place BEFORE this — a deployed site with no sign-in in front of it belongs to whoever opens its admin first
+Deploy to Cloudflare: check, deploy, wait for the site to answer
 
 ## `live:undo`
 
-Put the previous version back — or the one you name: mise run live:undo -- <version-id> (wrangler versions list shows them). Code only: a rollback does not undo a database migration or any content
+Roll the deployed site back to the previous version (code only)
 
 
 - Depends: step:live, step:there
@@ -52,7 +52,7 @@ Put the previous version back — or the one you name: mise run live:undo -- <ve
 
 ## `model:sync`
 
-The admin and the repo must agree: after anyone changes the model — in the admin or with emdash schema — this records it in .emdash/ and shows what changed. Commit that with the code that uses it. From the running local site; with -- --live, from the deployed one at LIVE_URL (sign in to it first: signin:token -- --live)
+Record the site's content model in the repo (.emdash/). Add -- --live for the deployed site
 
 
 - Depends: step:there
@@ -68,11 +68,11 @@ The admin and the repo must agree: after anyone changes the model — in the adm
 
 - **Usage:** `plugin`
 
-Anything else in EmDash's plugin CLI — e.g: mise run plugin -- search forms
+EmDash's plugin CLI. mise run plugin -- search forms
 
 ## `plugin:add`
 
-I need someone else's plugin, from npm: stops the site and adds the package to it, so the repo declares it and a fresh clone has it. Ends with the two lines to add to astro.config.mjs. (A registry plugin is installed in the admin instead — EmDash has no command for it)
+Add a plugin from npm. mise run plugin:add -- <package>
 
 
 - Depends: step:there
@@ -84,7 +84,7 @@ I need someone else's plugin, from npm: stops the site and adds the package to i
 
 ## `plugin:check`
 
-Is this plugin sound: its manifest is valid, its types check, its tests pass, it builds, and the bundle the registry would get is valid
+Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- <name>
 
 
 - Depends: step:there
@@ -96,7 +96,7 @@ Is this plugin sound: its manifest is valid, its types check, its tests pass, it
 
 ## `plugin:new`
 
-I need a plugin of my own: stops the site, then EmDash's plugin scaffolder makes plugins/<name> inside it, and the plugin is installed, tested, built and added to the site. Ends with the two lines to add to astro.config.mjs. Needs PLUGIN_PUBLISHER, PLUGIN_AUTHOR and PLUGIN_SECURITY_EMAIL
+Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new -- <name>
 
 
 - Depends: step:there, step:plugin-details
@@ -108,7 +108,7 @@ I need a plugin of my own: stops the site, then EmDash's plugin scaffolder makes
 
 ## `plugin:publish`
 
-Release this plugin to EmDash's registry, under the account you are logged in to: mise run plugin -- login <handle>. Checks it first. Asks first — except in CI, where mise answers yes
+Publish a plugin to EmDash's registry. Asks first
 
 
 - Depends: step:there
@@ -124,11 +124,11 @@ Release this plugin to EmDash's registry, under the account you are logged in to
 
 - **Usage:** `signin:access`
 
-SIGN-IN for PEOPLE on the deployed site, by Cloudflare Access. NO BROWSER, NO PLAYWRIGHT. Puts Access in front of the admin and API at LIVE_URL: ADMIN_EMAIL may sign in with a code sent to that address, and a pass for machines is saved in ~/.config/emdash-run/access/ so the CLI gets through. Changes nothing already there. Ends by printing the lines to add to astro.config.mjs and wrangler.jsonc. Run as: fnox exec -- mise run signin:access (it needs a Cloudflare token with Access edit rights; wrangler's own login can only read Access)
+Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code)
 
 ## `signin:open`
 
-SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser window you can see, already signed in to the admin, using whatever this machine saved for the site: the token from signin:token (and the Cloudflare Access pass, if any), or else the passkey from signin:passkey. Local production build by default, started if it is not running; -- --live for the deployed site. Close the window when done. (Dev site: no task needed, open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
+Open a browser window already signed in to the admin. Needs Playwright + Chrome
 
 
 - Depends: step:there, step:admin-tools
@@ -140,7 +140,7 @@ SIGN-IN for a PERSON. NEEDS PLAYWRIGHT and Chrome or Edge. Opens a browser windo
 
 ## `signin:passkey`
 
-SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYWRIGHT and Chrome or Edge (installed for you on first run). A hidden browser completes EmDash's setup wizard with a simulated passkey and approves the CLI's own login. Only needed to test the wizard and emdash login themselves — signin:token does the same job without a browser. Local built site by default, started if it is not running; -- --live for the deployed site at LIVE_URL as ADMIN_EMAIL (not for a site behind Cloudflare Access: Access turns passkeys off). Saves the passkey in ~/.config/emdash-run/passkeys/
+Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome
 
 
 - Depends: step:there, step:admin-tools
@@ -152,7 +152,7 @@ SIGN-IN for a MACHINE — the long way, through EmDash's real pages. NEEDS PLAYW
 
 ## `signin:token`
 
-SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an administrator and an EmDash API token straight into the site's database, and saves the token on this machine, so the CLI, agents and CI are a full user at once. Local built site by default, started if it is not running; add -- --live for the deployed site at LIVE_URL, run as: fnox exec -- mise run signin:token -- --live (it needs your Cloudflare token to write to D1). With --live it also puts the token and the Cloudflare Access pass into EmDash's own sign-in store, so plain emdash --url works too. Then: mise run emdash -- <command> --url <site>
+Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed
 
 
 - Depends: step:there
@@ -166,13 +166,13 @@ SIGN-IN for a MACHINE — the fast way. NO BROWSER, NO PLAYWRIGHT. Writes an adm
 
 - **Usage:** `site:check`
 
-Is my work sound, before a commit or a deploy: the seed is valid, the types check, the production build passes. Safe beside a running site
+Before a commit: seed valid, types check, site builds
 
 ## `site:delete`
 
 - **Usage:** `site:delete`
 
-Delete this project's site folder — the opposite of site:new. Stops the site first. Everything in it goes, including its local database. Asks first — except in CI, where mise answers yes. Refuses when the site is the project itself
+Delete the site folder. Asks first
 
 ## `site:logs`
 
@@ -180,11 +180,11 @@ Delete this project's site folder — the opposite of site:new. Stops the site f
 
 - **Usage:** `site:logs`
 
-Follow the dev site's log (site:start). The built site's: pnpm exec astro preview logs --follow, in the site folder
+Follow the dev site's log
 
 ## `site:new`
 
-A site, once: EmDash's scaffolder makes the site folder and installs it. Say which — mise run site:new -- node:blog — or leave it out for TEMPLATE in mise.toml, else cloudflare:blog
+Make a new site. Template: mise run site:new -- node:blog (default cloudflare:blog)
 
 
 - **Usage:** `site:new [template]`
@@ -198,19 +198,19 @@ A site, once: EmDash's scaffolder makes the site folder and installs it. Say whi
 
 - **Usage:** `site:preview`
 
-The site as a deploy would ship it, on this machine: stops the dev server, builds, and serves the production build in the background on PREVIEW_PORT (4322). It shares the local database with site:start. site:stop stops it
+Build the site and serve it locally (port 4322) — behaves like a deployed site
 
 ## `site:reset`
 
 - **Usage:** `site:reset`
 
-The local site back to its seed: stops it, removes the local database and uploads, starts it again. Local only — nothing deployed is touched. Asks first — except in CI, where mise answers yes
+Empty the local database and start again from the seed. Asks first
 
 ## `site:start`
 
 - **Usage:** `site:start`
 
-I want to work on this site: install, make its key if it has none, run it in the background. Then open the admin: /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+Start the dev site in the background (port 4321). EmDash signs you in by itself
 
 ## `site:stop`
 
@@ -218,16 +218,16 @@ I want to work on this site: install, make its key if it has none, run it in the
 
 - **Usage:** `site:stop`
 
-Stop the site that site:start started, and the production build that site:preview started
+Stop the dev site and the built site
 
 ## `test`
 
 - **Usage:** `test`
 
-What works right now: the everyday tasks from an empty folder, about 2 minutes. Writes docs/status.md. Run it after any change to tasks.toml or admin/
+Test the everyday tasks from an empty folder (about a minute). Writes docs/status.md
 
 ## `test:full`
 
 - **Usage:** `test:full`
 
-Every task that needs no deployment, on a Cloudflare and a Node template, about 10 minutes. Writes docs/status.md. Run it before a release
+Test every task that needs no deployment, on both templates (about 5 minutes). Writes docs/status.md

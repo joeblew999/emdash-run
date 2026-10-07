@@ -29,9 +29,9 @@ includes = ["tasks.toml"]
 
 # This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
 [tasks.test]
-description = "What works right now: the everyday tasks from an empty folder, about 2 minutes. Writes docs/status.md. Run it after any change to tasks.toml or admin/"
+description = "Test the everyday tasks from an empty folder (about a minute). Writes docs/status.md"
 run = "bash tests/replay.sh quick"
 
 [tasks."test:full"]
-description = "Every task that needs no deployment, on a Cloudflare and a Node template, about 10 minutes. Writes docs/status.md. Run it before a release"
+description = "Test every task that needs no deployment, on both templates (about 5 minutes). Writes docs/status.md"
 run = "bash tests/replay.sh full"

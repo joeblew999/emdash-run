@@ -1,26 +1,18 @@
 # emdash-run
 
-[![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml)
-
-**The stages of working on an [EmDash](https://docs.emdashcms.com) site, as a few `mise` tasks.**
-
+Work on an [EmDash](https://docs.emdashcms.com) site with a few `mise` tasks: make a site, run it,
+check it, sign in, deploy it. Each task runs EmDash's own commands in the right order.
 
 https://github.com/joeblew999/emdash-run
 
+**What works right now: [`docs/status.md`](docs/status.md)** — the last test run, step by step.
 
-Each task is EmDash's own commands in the right order — its scaffolder, its dev server, its CLI,
-Astro's and wrangler's — and nothing is copied into your repo. Where no command exists, four small
-scripts in [`admin/`](admin/) cover the gap.
+> `v0.7.0` is the last release. Signing in, deploying and `--live` are newer: they are on `main`
+> and have only been run on macOS.
 
-**What works right now is a file, not a claim: [`docs/status.md`](docs/status.md)**, written by
-`mise run test` in this repo.
+## Set up
 
-> `v0.7.0` is the last release. Signing in, deploying and `--live` are on `main` and not yet in a
-> release; they have run on macOS only. What is left: [`docs/plans/`](docs/plans/).
-
-## Use it in your repo
-
-You need [mise](https://mise.jdx.dev). Put this in a `mise.toml`:
+You need [mise](https://mise.jdx.dev). Put this in a `mise.toml` in your repo:
 
 ```toml
 [settings]
@@ -31,177 +23,150 @@ node = "26"
 pnpm = "12"
 
 [task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v0.7.0"]
+includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=main"]
 ```
 
-The tools are your project's: the tasks run whatever `node` and `pnpm` your `mise.toml` names
-(EmDash needs Node 22.16 or later). Leave the block out and they run whatever the machine has.
+`ref=v0.7.0` pins the release. With `ref=main`, mise keeps the copy it fetched first; run
+`mise cache clear` to take a newer one.
 
-Then:
+## Everyday
 
 ```
-mise run site:new -- cloudflare:blog   a site, once — or node:blog, cloudflare:starter, …
-mise run site:start                    install, make its key if it has none, run it in the background
-mise run site:logs                     follow the running site's log
+mise run site:new          make a site (once)
+mise run site:start        run it — http://localhost:4321
+mise run site:check        before a commit
 mise run site:stop
-mise run site:check                    before a commit: the seed is valid, the types check, it builds
-mise run site:preview                  the built site on this machine (port 4322): real sign-in, like a deployed one
-mise run site:reset                    the local site back to its seed — it asks first
-mise run site:delete                   remove site/ again — it asks first
-
-mise run model:sync                    after a model change in the admin: record it in the repo
-mise run content:pull                  the deployed site's content, as a package on this machine
-
-mise run plugin:new -- save-log        a plugin of your own: scaffolded, tested, built, added to the site
-mise run plugin:check -- save-log      its manifest, types, tests, build and registry bundle
-mise run plugin:add -- <npm package>   someone else's plugin, declared in the repo
-mise run plugin:publish -- save-log    release it to EmDash's registry — it asks first
-mise run plugin -- search forms        anything else in EmDash's plugin CLI
-
-mise run live:ship                     check, deploy to Cloudflare with the site's secrets, wait for it to answer
-mise run live:undo                     the previous version back — code only
-mise run live:logs                     follow the deployed site's log
-mise run live:backup                   the database's bookmark, and the site as a package
-mise run model:sync -- --live          the deployed site's model, recorded in the repo
-mise run emdash:update                 the site on the newest EmDash, type-checked and built
-
-mise run signin:token                  a machine is a full user of the built site — no browser
-mise run signin:access                 people sign in to the deployed site through Cloudflare Access
-mise run signin:passkey                a machine signs in through EmDash's real wizard (needs Playwright)
-mise run signin:open                   a browser window signed in to the admin, for you (needs Playwright)
-
-mise run emdash -- content list posts  anything else, through EmDash's own CLI
+mise tasks ls              everything else
 ```
 
-### This machine or the deployed site
+After `site:start`, open `http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`.
+EmDash sets the site up and signs you in.
 
-**No flag is this machine. `--live` is the deployed site** — the address in `LIVE_URL`, under `[env]`
-in your `mise.toml`. With no `LIVE_URL`, `--live` says so and stops.
+Anything in EmDash's own CLI:
 
 ```
-mise run emdash -- content list posts            this machine
-mise run emdash -- content list posts --live     the deployed site
-mise run model:sync -- --live
-fnox exec -- mise run signin:token -- --live     tasks that change Cloudflare take your token from fnox
+mise run emdash -- content list posts
+mise run emdash -- schema add-field pages subtitle --type string
 ```
 
-`site:` tasks are always this machine; `live:` tasks are always the deployed site. This machine has
-two sites: the dev one (`site:start`, port 4321) and the built one (`site:preview`, port 4322). The
-`signin:` tasks act on the built one and start it if it is not running; `emdash` acts on the dev one
-unless you add `--preview`.
+## Templates
 
-Run a task where there is no site and it says so, and what to do.
-
-Two more, not in the list because other tasks run them: `site:preview` (the production build,
-served on this machine) and `live:check` (`site:check`, then wrangler's dry run of the deploy).
-
-After `site:start`, open
-`http://localhost:4321/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`. That is EmDash's own
-development sign-in: the first time, it sets the site up with the template's sample content.
-
-## Choosing a template
-
-`<platform>:<template>` — the way EmDash's scaffolder spells it.
+```
+mise run site:new -- node:blog
+```
 
 | | `blog` | `starter` | `marketing` | `portfolio` |
 |---|---|---|---|---|
-| **Cloudflare** — Workers, D1, R2 | `cloudflare:blog` | `cloudflare:starter` | `cloudflare:marketing` | `cloudflare:portfolio` |
-| **Node.js** — SQLite file, local uploads | `node:blog` | `node:starter` | `node:marketing` | `node:portfolio` |
+| Cloudflare (Workers, D1, R2) | `cloudflare:blog` | `cloudflare:starter` | `cloudflare:marketing` | `cloudflare:portfolio` |
+| Node.js (SQLite, local uploads) | `node:blog` | `node:starter` | `node:marketing` | `node:portfolio` |
 
-Say it as an argument, `mise run site:new -- node:blog`, or set `TEMPLATE = "node:blog"` under
-`[env]` in your `mise.toml`. With neither you get `cloudflare:blog`. A name that is not in the table
-is refused and nothing is made.
+With no argument it uses `TEMPLATE` from your `mise.toml`, else `cloudflare:blog`.
 
 ## An existing site
 
-The tasks look for the site in a `site/` folder beside `mise.toml`. An existing EmDash repo usually
-*is* the site — `astro.config.mjs` at its root. Say so, and everything but two tasks works there:
+The tasks expect the site in a `site/` folder. If your repo *is* the site:
 
 ```toml
 [env]
 SITE_FOLDER = "."
 ```
 
-Every task runs on it but two. `site:new` and `site:delete` refuse:
-there is nothing to make, and the folder they would remove is your project. They only ever work on
-a plainly named folder of its own — never `.`, never a path that leaves the project.
+Everything works except `site:new` and `site:delete`, which refuse.
+
+## This machine or the deployed site
+
+**No flag is this machine. `--live` is the deployed site.**
+
+```toml
+[env]
+LIVE_URL = "https://your-site.workers.dev"
+```
+
+```
+mise run emdash -- content list posts            this machine
+mise run emdash -- content list posts --live     the deployed site
+mise run model:sync -- --live
+```
+
+`site:` tasks are always this machine. `live:` tasks are always the deployed site. Every task
+prints where it is acting before it acts.
+
+## Signing in
+
+On the dev site (`site:start`) you never need to. A built site — `site:preview` locally, or a
+deployed one — has real sign-in. Pick a way:
+
+| task | signs in | browser? | use it for |
+|---|---|---|---|
+| `signin:token` | a machine | no | the CLI, agents, CI — the everyday one |
+| `signin:access` | people | no | a deployed site: Cloudflare Access, sign in by emailed code |
+| `signin:passkey` | a machine | Playwright + Chrome | testing EmDash's own setup wizard |
+| `signin:open` | you | Playwright + Chrome | a browser window already signed in |
+
+```
+mise run signin:token                            this machine's built site
+fnox exec -- mise run signin:token -- --live     the deployed site
+```
+
+These are for development sites. What they save is in `~/.config/emdash-run/` on your machine,
+never in the repo.
+
+## Deploying (Cloudflare)
+
+```
+fnox exec -- mise run signin:access              once: Cloudflare Access in front of the admin
+mise run live:ship                               check, deploy, wait for it to answer
+fnox exec -- mise run signin:token -- --live     once: the CLI is signed in
+mise run live:logs
+mise run live:undo                               back to the previous version
+mise run live:backup
+```
+
+The tasks that change Cloudflare need an API token with D1 and Access rights, as
+`CLOUDFLARE_API_TOKEN`. `fnox exec --` supplies it from [fnox](https://fnox.jdx.dev); any other way
+of setting the variable works too.
+
+## Plugins
+
+```
+mise run plugin:new -- save-log        your own, inside the site
+mise run plugin:add -- <npm package>   someone else's
+mise run plugin:check -- save-log
+mise run plugin -- search forms
+```
+
+After `plugin:new` or `plugin:add` you add two lines to the site's `astro.config.mjs`; the task
+prints them.
 
 ## Settings
 
-All optional, under `[env]` in your `mise.toml`:
+All optional, under `[env]` in your `mise.toml`.
 
-| setting | default | what it does |
+| setting | default | |
 |---|---|---|
-| `TEMPLATE` | `cloudflare:blog` | what `site:new` makes when it is given no argument |
-| `SITE_FOLDER` | `site` | where the site is — `.` when the repo itself is the site |
-| `SITE_PORT` | `4321` | the port the site runs on — give each project its own to run several at once |
-| `PREVIEW_PORT` | `4322` | the port `site:preview` serves the built site on |
-| `SITE_SEED` | — | `none` for a site with no seed file, so `site:check` does not ask EmDash to validate one |
-| `ADMIN_EMAIL`, `ADMIN_NAME` | — | who the `signin:` tasks make the deployed site's administrator, and who `signin:access` lets in. Use your own address: a login provider added later links to the account with the same verified address |
-| `LIVE_URL` | — | the address of the deployed site; the `live:` tasks and `content:pull` need it |
-| `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | who publishes your plugins. `plugin:new` needs all three: EmDash's scaffolder refuses without them, and the publisher must be a real Atmosphere handle or a DID |
+| `TEMPLATE` | `cloudflare:blog` | what `site:new` makes |
+| `SITE_FOLDER` | `site` | where the site is |
+| `SITE_PORT` | `4321` | the dev site's port |
+| `PREVIEW_PORT` | `4322` | the built site's port |
+| `LIVE_URL` | — | the deployed site |
+| `ADMIN_EMAIL` | — | who may sign in to the deployed site |
+| `SITE_SEED` | — | `none` if the site has no seed file |
+| `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | needed by `plugin:new` |
 
-## What is proven
+## Good to know
 
-[`docs/status.md`](docs/status.md) is the record: every step of the last test run, pass or fail,
-with the date, the commit and the machine. `mise run test` (about a minute) runs the everyday path
-from an empty folder; `mise run test:full` runs every task that needs no deployment, on a
-Cloudflare and a Node.js template side by side.
+- `site:reset`, `site:delete` and `plugin:publish` ask first. In CI nothing asks.
+- `plugin:new` and `plugin:add` stop the site; start it again afterwards.
+- `content:pull` and `live:backup` write to `backups/` in the site. Keep it out of git.
+- There is no SQL dump in `live:backup`: Cloudflare's export refuses an EmDash database.
+- `signin:token -- --live` works for Cloudflare sites only.
 
-- **macOS:** everything in the status file, on every change.
-- **Linux and Windows:** the tasks in `v0.7.0` passed there
-  ([`stages.yml`](.github/workflows/stages.yml), run 37565911607). What has been added since has
-  not run there. The workflow now runs the same `mise run test:full`, by hand or on a release tag.
-- **A deployed site:** `live:ship`, `live:undo`, `live:logs`, `live:backup`, `signin:access`,
-  `signin:token -- --live`, `signin:open -- --live`, `content:pull` and `model:sync -- --live`
-  were run by hand against one Worker behind Cloudflare Access. They are not in the test: it has
-  no deployed site to use.
+## Working on this repo
 
-## What to know
+```
+mise run test          the everyday tasks from an empty folder, about a minute
+mise run test:full     every task that needs no deployment, about 5 minutes
+```
 
-- **Updating is changing the tag** in that line. A project pointing at `main` instead does not
-  update by itself — mise keeps the first copy it fetched; or add `task.remote_no_cache = true` under
-  `[settings]` to fetch every time (about a second per command); or run `mise cache clear` once.
-- **In CI, nothing asks.** mise answers every prompt with yes when `CI` is set — `site:delete`,
-  `site:reset` and `plugin:publish` included.
-- **`plugin:new` and `plugin:add` stop the site first** and tell you to start it again: on Windows
-  a running site does not survive packages changing under it.
-- **Signing in.** In development (`site:start`) EmDash signs you in by itself. A built site — on
-  this machine or deployed — has real sign-in, and there are several ways, kept side by side:
-
-  | task | signs in | needs Playwright | for |
-  |---|---|---|---|
-  | `signin:token` | a machine | no | everyday: the CLI, agents, CI. Writes an administrator and an EmDash API token straight into the site's database |
-  | `signin:access` | people, plus a pass for machines | no | a deployed site: Cloudflare Access in front of the admin; sign in with a code sent to `ADMIN_EMAIL` |
-  | `signin:passkey` | a machine | yes, and Chrome or Edge | testing EmDash's own setup wizard and CLI login |
-  | `signin:open` | a person | yes, and Chrome or Edge | a signed-in browser window, with what `signin:token` or `signin:passkey` saved |
-
-  What they save is in `~/.config/emdash-run/` on your machine, never in the repo: tokens, the
-  Access pass, passkeys — named by site, so many sites and many machines do not collide. With
-  `--live`, `signin:token` also writes EmDash's own sign-in store, so the plain `emdash` CLI works.
-  These are for development sites: whoever can write to a site's database can make themselves its
-  administrator this way. The tasks that change Cloudflare need a token with D1 and Access rights —
-  wrangler's own login can read Access but not change it — and take it from fnox:
-  `fnox exec -- mise run signin:access`.
-- **A plugin lives inside the site**, in `plugins/<name>`, so the path to it is the same whether
-  the site is in `site/` or is the project. After `plugin:new` or `plugin:add` you add two lines
-  to `astro.config.mjs` yourself — the task prints them. No command of EmDash's makes that edit.
-- **`content:pull` writes to `backups/` in the site.** Keep that folder out of git: a package
-  holds drafts too.
-- **The EmDash version is your site's**, in `site/package.json` and its lockfile — not a setting here.
-- **Everything else is EmDash's.** Its scaffolder gives the site the agent skills
-  (`site/.agents/skills/`), the docs MCP config and an encryption key in a gitignored `.env`.
-
-## Not here yet
-
-- A release with everything since `v0.7.0` in it.
-- `signin:token -- --live` for a Node.js site: its deployed database is wherever you host it.
-- `plugin:publish` has never published: it needs a registry login.
-
-The plan: [`docs/plans/2026-10-07-next.md`](docs/plans/2026-10-07-next.md). How the tasks were
-arrived at, with the command behind every step: [`docs/plans/done/`](docs/plans/done/).
-
-## This repo
-
-It uses its own tasks: `site/` here was made by `mise run site:new`, and `mise.toml` includes
-`tasks.toml` from beside it. Working on the tasks themselves: [`docs/agents/README.md`](docs/agents/README.md).
+Both write [`docs/status.md`](docs/status.md). The plan is in [`docs/plans/`](docs/plans/); the
+rules for agents are in [`docs/agents/README.md`](docs/agents/README.md).
