@@ -64,29 +64,41 @@ step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   # a failure shows its last output here too — on a CI runner this is the only place it can be read
   if [ "$verdict" = FAIL ]; then tail -12 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-220 | sed 's/^/       > /'; fi
 }
+# Run a command that never ends for a few seconds, then stop IT — its own process group, nothing
+# else by that name on the machine: another run, or another agent, may be following a log too.
+for_a_while() { # $1 = seconds  $2.. = the command
+  perl -e 'setpgrp(0,0); exec @ARGV' "${@:2}" & local p=$!
+  sleep "$1"; kill -TERM -- -"$p" 2>/dev/null || kill "$p" 2>/dev/null; wait "$p" 2>/dev/null; true
+}
 ok() { step ok "$@"; }
 no() { step no "$@"; }
-project() { # $1 = folder  $2 = template  $3 = dev port  $4 = built port  $5.. = extra [env] lines
+project() { # $1 = folder  $2 = template  $3.. = extra [env] lines
+  # No ports here: the project gets its own from site:ports, as an agent's copy of a repo would —
+  # so any number of these can run at once, and beside whatever else is running on this machine.
   D=$1; mkdir -p "$D" && cd "$D" && git init -q
-  { printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\nfnox = "1.36.0"\n[env]\nTEMPLATE = "%s"\nSITE_PORT = "%s"\nPREVIEW_PORT = "%s"\n' "$2" "$3" "$4"
+  { printf '[settings]\nexperimental = true\n[tools]\nnode = "26"\npnpm = "12"\nfnox = "1.36.0"\n[env]\nTEMPLATE = "%s"\n' "$2"
     printf 'PLUGIN_PUBLISHER = "did:web:example.com"\nPLUGIN_AUTHOR = "Example Author"\nPLUGIN_SECURITY_EMAIL = "security@example.com"\n'
-    shift 4; for line in "$@"; do printf '%s\n' "$line"; done
+    shift 2; for line in "$@"; do printf '%s\n' "$line"; done
     printf '[task_config]\nincludes = ["%s"]\n' "$INCLUDE"; } > mise.toml
   mise trust -q .
 }
+port() { sed -n "s/^$1 = \"\([0-9]*\)\"/\1/p" mise.local.toml; }
 
-local_site() { # $1 = template  $2 = dev port  $3 = built port
-  local T=$1 SITE=http://localhost:$2 BUILT=http://localhost:$3
-  W=${T%%:*}; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
-  project "$WORK/$W" "$T" "$2" "$3"
+local_site() { # $1 = template  $2 = (optional) a label, when this is an extra copy run beside the others
+  local T=$1 SITE BUILT
+  W=${2:-${T%%:*}}; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
+  project "$WORK/$W" "$T"
+  ok site:ports     "gives the project two ports of its own"  'mise run site:ports && test -n "$(port SITE_PORT)" && test -n "$(port PREVIEW_PORT)"'
+  ok site:ports     "run again: it keeps them"                'before=$(cat mise.local.toml); mise run site:ports | grep -q "already has its ports" && test "$before" = "$(cat mise.local.toml)"'
+  SITE=http://localhost:$(port SITE_PORT); BUILT=http://localhost:$(port PREVIEW_PORT)
   no site:start     "with no site, says so and stops"        'mise run site:start'
   ok site:new       "makes the site"                          'mise run site:new'
   ok site:new       "run again: the site is left alone"       'mise run site:new 2>&1 | grep -q "already a site"'
   ok site:start     "starts the dev site"                     'mise run site:start'
   ok site:start     "run again: it is already running"        'mise run site:start'
   ok site:start     "the dev site answers; dev sign-in works" 'test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 $SITE/)" = 200 && curl -fsS -X POST $SITE/_emdash/api/setup/dev-bypass -o /dev/null'
-  ok site:logs      "shows the dev site log"            '(mise run site:logs > logs.txt 2>&1 & p=$!; sleep 5; kill $p 2>/dev/null; pkill -f "astro dev logs" 2>/dev/null; true); grep -q . logs.txt'
-  ok emdash         "a quoted JSON argument arrives whole"    "mise run emdash -- content create pages --draft --slug audit --data '{\"title\":\"Two words, one argument\"}' && mise run emdash -- content get pages audit --json | grep -q 'Two words, one argument'"
+  ok site:logs      "shows the dev site log"                  'for_a_while 5 mise run site:logs > logs.txt 2>&1; grep -q . logs.txt'
+  ok emdash         "a quoted JSON argument arrives whole"    "mise run emdash -- content create pages --draft --slug audit --data '{\"title\":\"Two words, one argument, from $W\"}' && mise run emdash -- content get pages audit --json | grep -q 'Two words, one argument, from $W'"
   ok emdash         "whoami on the dev site"                  'mise run emdash -- whoami 2>&1 | grep -qi "dev-bypass"'
   no emdash         "--live with no LIVE_URL says so"         'mise run emdash -- schema list --live'
   ok site:check     "passes on a sound site"                  'mise run site:check'
@@ -132,7 +144,18 @@ live_site() {
   # The developer's real Cloudflare login and fnox, not the empty config folder.
   if [ -n "${REAL_CONFIG:-}" ]; then export XDG_CONFIG_HOME=$REAL_CONFIG; else unset XDG_CONFIG_HOME; fi
   local U=$TEST_LIVE_URL
-  project "$WORK/live" cloudflare:starter 4440 4450 "LIVE_URL = \"$U\"" 'ADMIN_EMAIL = "agent@emdash.local"'
+  # One at a time: two runs deploying to the same Worker would overwrite each other.
+  local LOCK="${HOME}/.config/emdash-run/locks/deployed-$TEST_LIVE_NAME"
+  mkdir -p "$(dirname "$LOCK")"
+  if ! mkdir "$LOCK" 2>/dev/null; then
+    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin -30 2>/dev/null)" ]; then
+      echo "SKIP deployed: another run is using the test Worker ($LOCK). docs/status.md keeps what the deployed tasks last showed."; return
+    fi
+    echo "(a lock older than 30 minutes was left behind: taking it)"
+  fi
+  trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+  project "$WORK/live" cloudflare:starter "LIVE_URL = \"$U\"" 'ADMIN_EMAIL = "agent@emdash.local"'
+  mise run site:ports >/dev/null 2>&1
   ok site:new       "makes the site that will be deployed"    'mise run site:new && sed -i.bak "s/\"my-emdash-site\"/\"$TEST_LIVE_NAME\"/g; s/\"my-emdash-media\"/\"$TEST_LIVE_NAME-media\"/" site/wrangler.jsonc && mise run site:start && mise run site:stop'
   ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access 2>&1 | tee access.txt | grep -q "access: application"'
   STAMP=shipped-$(date +%s)
@@ -144,7 +167,7 @@ live_site() {
   ok model:sync     "--live records the deployed model"       'mise run model:sync -- --live && test -f site/.emdash/schema.json'
   ok content:pull   "downloads the deployed site as a package" 'mise run content:pull && ls site/backups/*.emdash'
   ok live:backup    "the database bookmark and a package"     'mise run live:backup 2>&1 | tee backup.txt | grep -q "bookmark is"'
-  ok live:logs      "shows a request to the deployed site"    '(mise run live:logs > tail.txt 2>&1 & p=$!; sleep 12; curl -s -o /dev/null "$LIVE_URL_/?from=test"; sleep 6; kill $p 2>/dev/null; pkill -f "wrangler tail" 2>/dev/null; true); grep -q GET tail.txt'
+  ok live:logs      "shows a request to the deployed site"    '(for_a_while 20 mise run live:logs > tail.txt 2>&1 &); sleep 12; curl -s -o /dev/null "$LIVE_URL_/?from=test"; sleep 10; grep -q GET tail.txt'
   [ -n "${CI:-}" ] || ok signin:open "--live opens a signed-in window" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open -- --live 2>&1 | grep -q "open: signed in"'
   ok live:undo      "puts the previous version back: the change is gone" "mise run live:undo && sleep 5 && ! curl -fsS \$LIVE_URL_/zz-shipped 2>/dev/null | grep -q $STAMP"
   ok site:delete    "removes the local site folder"           'mise run --yes site:delete && test ! -e site'
@@ -154,9 +177,17 @@ live_site() {
 START=$(date +%s)
 case $TIER in
   full)  # (TEST_ONLY=deployed runs just the last part — for working on that part, not a third level)
-         [ "${TEST_ONLY:-}" = deployed ] || { local_site cloudflare:blog 4400 4410 & local_site node:starter 4420 4430 & wait; }   # side by side
+         # THREE AT ONCE, as three agents would be: each in its own folder, on its own ports. The
+         # third is the proof of that and is recorded as one step, not as a third column.
+         [ "${TEST_ONLY:-}" = deployed ] || {
+           local_site cloudflare:blog & local_site node:starter & local_site cloudflare:starter third & wait
+           W=cloudflare; ROWS=$WORK/rows-cloudflare.txt; D=$WORK/cloudflare
+           ok site:ports "three sites at once, each on its own ports with only its own content" \
+             'test "$(grep -c "|FAIL|" "$WORK/rows-third.txt")" = 0 && test "$(grep -c "|PASS|" "$WORK/rows-third.txt")" -gt 20 && test "$(cat "$WORK"/*/mise.local.toml | grep -c PORT)" = "$(cat "$WORK"/*/mise.local.toml | grep PORT | sort -u | wc -l | tr -d " ")"'
+           mv "$WORK/rows-third.txt" "$WORK/third.txt"
+         }
          LIVE_URL_=${TEST_LIVE_URL:-} live_site ;;
-  *)     local_site cloudflare:starter 4400 4410 ;;
+  *)     local_site cloudflare:starter ;;
 esac
 cat "$WORK"/rows-*.txt > "$WORK/rows.txt"
 cd "$REPO"
