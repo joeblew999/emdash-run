@@ -76,7 +76,7 @@ env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') 
 run = "pnpm exec emdash"
 
 ["site:delete"]
-description = "Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database; asks before it does"
+description = "Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database. Asks first — except in CI, where mise answers yes"
 confirm = "Delete site/ and everything in it, including the local database?"
 run = [{ task = "site:stop" }, { task = "step:delete" }]
 

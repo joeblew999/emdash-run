@@ -139,7 +139,7 @@ Undo the last deploy
 
 - **Usage:** `site:delete`
 
-Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database; asks before it does
+Delete this project's site/ — the opposite of site:new. Stops the site first. Everything in site/ goes, including its local database. Asks first — except in CI, where mise answers yes
 
 ## `site:logs`
 

@@ -19,7 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        template: ["cloudflare:blog", "node:starter"]
+        # The two ways to choose: a TEMPLATE setting in mise.toml, or an argument to site:new.
+        choice:
+          - { template: "cloudflare:blog", by: setting }
+          - { template: "node:starter", by: argument }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     defaults:
@@ -41,7 +44,7 @@ jobs:
           experimental = true
 
           [env]
-          TEMPLATE = "${{ matrix.template }}"
+          ${{ matrix.choice.by == 'setting' && format('TEMPLATE = "{0}"', matrix.choice.template) || '# no TEMPLATE: site:new is given it as an argument' }}
           SITE_PORT = "4400"
 
           [task_config]
@@ -49,7 +52,16 @@ jobs:
           EOF
           mise trust --quiet
           mise tasks ls
-      - run: mise run site:new
+      - run: mise run site:new ${{ matrix.choice.by == 'argument' && format('-- {0}', matrix.choice.template) || '' }}
+      - name: it made the platform that was asked for
+        run: |
+          case "${{ matrix.choice.template }}" in
+            cloudflare:*) test -f site/wrangler.jsonc ;;
+            node:*)       test ! -e site/wrangler.jsonc ;;
+          esac
+      - name: a template that does not exist is refused by name, and nothing is made
+        run: |
+          if mise run site:new -- wordpress; then echo "accepted a template that does not exist"; exit 1; fi
       - run: mise run site:start
       - name: the site answers, and EmDash's sign-in link sets it up
         run: |
