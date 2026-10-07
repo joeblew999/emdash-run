@@ -1,6 +1,6 @@
 # 2026-10-07 — Loose ends: everything raised while the stages were built
 
-**Status:** active — **1 of 4 stages done.**
+**Status:** active — **2 of 4 stages done.** Stage 3 is the owner's moves; nothing in it can be done by an agent.
 
 Every problem, doubt and unproven claim that came up in
 [`done/2026-10-07-stages.md`](done/2026-10-07-stages.md), with who has to move. Nothing here needs a
@@ -38,18 +38,12 @@ deployment; what does is in [`2026-10-07-live.md`](2026-10-07-live.md).
   - [x] (3) the Remy-Sport branch pins `?ref=v0.7.0` (its commit b75b508): 17 tasks listed,
     `site:start` exit 0, home 200
 
-- [ ] **Stage 2 — the reports, written so they can be sent as they are**
-  - [ ] `docs/upstream.md`: one entry per finding — what was run, what it printed, what the docs
-    say, the versions — for:
-    `emdash whoami` exits 0 with no site running ·
-    `emdash export-seed` and `emdash doctor` cannot be pointed at a Cloudflare template's local
-    database (G3) ·
-    the backup guide's `wrangler d1 export` refuses a database with search on (G13) ·
-    the skills `create-emdash` writes cannot be refreshed by `skills update` (G14) ·
-    the plugin scaffolder's `EPERM … rename` on Windows beside a running dev server ·
-    deploy guards no command checks (G6) ·
-    `wrangler types --check` fails on a freshly scaffolded template
-  - [ ] each entry was run again on the day it is written, not copied from memory
+- [x] **Stage 2 — the reports, written so they can be sent as they are**
+  - [x] [`docs/upstream.md`](../upstream.md): eight entries — what was run, what it printed, what
+    was expected, what the tasks do instead. The seven listed when this plan was written, and an
+    eighth found while deploying: `emdash migrate` cannot use wrangler's sign-in
+  - [x] every one was run on 2026-10-07, the day it was written; entry 5 is from a CI run of the
+    same day
 
 - [ ] **Stage 3 — the owner's moves**, each a single action
   - [ ] (6) push the Remy-Sport branch: `git -C ../remy-sport-emdash push -u origin stages`, then
