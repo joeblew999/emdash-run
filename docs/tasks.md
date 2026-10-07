@@ -10,7 +10,7 @@ The deployed site's content, on this machine: downloads it as an EmDash package 
 
 - **Usage:** `emdash`
 
-Anything else in EmDash, through its official CLI — e.g: mise run emdash -- content list posts
+Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. The local dev site unless you say --url; for any site it adds the token and the Access pass this machine has saved for it (site:token, live:token, live:access)
 
 ## `emdash:update`
 
@@ -18,11 +18,11 @@ Anything else in EmDash, through its official CLI — e.g: mise run emdash -- co
 
 A newer EmDash: updates the site to the latest release, then type-checks and builds it. The local database migrates on the next start. A deployed site: take a backup first, deploy after
 
-## `live:admin`
+## `live:access`
 
-- **Usage:** `live:admin`
+- **Usage:** `live:access`
 
-The deployed site has an administrator and the CLI is signed in to it, with nobody at a browser. First time: a script completes EmDash's setup wizard at LIVE_URL as ADMIN_EMAIL (and ADMIN_NAME), with an empty site, and saves the passkey it made in ~/.config/emdash-run/passkeys/ — that file is the way in, keep it. After that: it signs in with the saved passkey and signs the CLI in again. A site somebody else set up: it stops. Asks first
+Who may sign in to the deployed site: puts Cloudflare Access in front of its admin and API at LIVE_URL — an Access application, a policy that lets ADMIN_EMAIL in by a code sent to that address, and a service token for machines saved in ~/.config/emdash-run/access/. Changes nothing that is already there. Ends with the lines to add to astro.config.mjs and wrangler.jsonc. Needs CLOUDFLARE_API_TOKEN with Access edit rights: wrangler's own login may read Access but not change it. Asks first
 
 ## `live:backup`
 
@@ -42,7 +42,15 @@ Follow the deployed site's log — requests, errors, and each run of the schedul
 
 - **Usage:** `live:ship`
 
-Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. The site's .env goes up with it as secrets. First time: follow it AT ONCE with live:admin — until a site has its administrator, whoever opens its admin first becomes it
+Put it live on Cloudflare: checks who is signed in, runs live:check, deploys, shows what is now live and waits for the site to answer. Needs LIVE_URL. EmDash migrates the database on the first request. The site's .env goes up with it as secrets. First time: run live:access and add its lines BEFORE this — a deployed site with no sign-in in front of it belongs to whoever opens its admin first
+
+## `live:token`
+
+- Depends: step:live, step:there
+
+- **Usage:** `live:token`
+
+A machine is a full user of the DEPLOYED site at LIVE_URL, with no browser: writes an administrator (ADMIN_EMAIL) and an EmDash API token straight into its D1 database with your Cloudflare login, and saves the token on this machine. A dev-site tool: whoever can write to the database can do this. After it, mise run emdash -- &lt;command> --url &lt;LIVE_URL> just works — through Cloudflare Access too, with the pass live:access saved
 
 ## `live:undo`
 
@@ -128,7 +136,7 @@ Release this plugin to EmDash's registry, under the account you are logged in to
 
 - **Usage:** `site:admin`
 
-A production build with a real administrator and a signed-in CLI, with nobody at a browser — for building and testing anything that needs real sign-in. EMPTIES the local database first, then site:preview, then a script completes EmDash's setup wizard and approves the CLI's sign-in. Local only. Asks first. Afterwards: mise run emdash -- &lt;command> --url http://localhost:&lt;PREVIEW_PORT>
+A testing tool: a production build with a real administrator and a signed-in CLI, with nobody at a browser — for building and testing anything that needs real sign-in. Not how a deployed site gets its administrator (that is live:access). EMPTIES the local database first, then site:preview, then a script completes EmDash's setup wizard and approves the CLI's sign-in. Local only. Asks first. Afterwards: mise run emdash -- &lt;command> --url http://localhost:&lt;PREVIEW_PORT>
 
 ## `site:check`
 
@@ -164,15 +172,11 @@ A site, once: EmDash's scaffolder makes the site folder and installs it. Say whi
 
 ## `site:open`
 
-For a person: a browser window signed in to the admin of a site the script set up — the production build from site:admin, or with --live the deployed site from live:admin. It uses the passkey the script saved, which no ordinary browser can. Close the window when done. (In development you do not need this: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin)
-
-
 - Depends: step:there, step:admin-tools
 
-- **Usage:** `site:open [--live]`
+- **Usage:** `site:open`
 
-### Flags
-- **`--live`** — The deployed site at LIVE_URL instead of the local production build
+For a person: a browser window signed in to the admin of the production build that site:admin set up — with the passkey the script saved, which no ordinary browser can use. Close the window when done. (In development: open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin. A deployed site: open its admin in your own browser — Cloudflare Access signs you in)
 
 ## `site:reset`
 
@@ -193,3 +197,11 @@ I want to work on this site: install, make its key if it has none, run it in the
 - **Usage:** `site:stop`
 
 Stop the site that site:start started, and the production build that site:preview started
+
+## `site:token`
+
+- Depends: step:there
+
+- **Usage:** `site:token`
+
+A machine is a full user of the local production build, with no browser: writes an administrator and an EmDash API token straight into the local database, the way EmDash's own dev sign-in does, and saves the token on this machine. The build must be running (site:preview). After it, mise run emdash -- &lt;command> --url http://localhost:&lt;PREVIEW_PORT> just works
