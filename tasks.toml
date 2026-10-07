@@ -351,6 +351,13 @@ description = "Hidden — a fresh production build plus signin:passkey in one go
 confirm = "Empty this site's local database and uploads, and set up a production build of it with a test administrator?"
 run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }, { task = "site:preview" }, { task = "step:admin-tools" }, { task = "step:admin" }]
 
+# ── local or deployed: one rule ──────────────────────────────────────────────────────────────
+#   site:*    always this machine.        live:*   always the deployed site (LIVE_URL in mise.toml).
+#   Every task that can do either — signin:*, model:sync, emdash — is this machine by default,
+#   and the deployed site with  -- --live .   e.g.  mise run emdash -- content list posts --live
+#   This machine has two sites: the dev one (site:start, port 4321) and the built one
+#   (site:preview, port 4322). signin:* act on the built one; emdash on the dev one unless --preview.
+
 # ── signing in ───────────────────────────────────────────────────────────────────────────────
 # In development (site:start) EmDash signs you in by itself — open
 # /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin — and nothing below is needed.
@@ -406,7 +413,7 @@ dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 [emdash]
-description = "Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. The local dev site unless you say --url; for any site it adds the token and the Access pass this machine has saved for it (signin:token, signin:access)"
+description = "Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. WHERE: nothing = this machine's dev site; add --live for the deployed site (LIVE_URL); add --preview for this machine's built site; or --url <address>. For whichever site, it adds the token and the Access pass this machine has saved for it (signin:token, signin:access)"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""

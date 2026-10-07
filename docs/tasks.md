@@ -10,7 +10,7 @@ The deployed site's content, on this machine: downloads it as an EmDash package 
 
 - **Usage:** `emdash`
 
-Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. The local dev site unless you say --url; for any site it adds the token and the Access pass this machine has saved for it (signin:token, signin:access)
+Anything in EmDash, through its official CLI — e.g: mise run emdash -- content list posts. WHERE: nothing = this machine's dev site; add --live for the deployed site (LIVE_URL); add --preview for this machine's built site; or --url &lt;address>. For whichever site, it adds the token and the Access pass this machine has saved for it (signin:token, signin:access)
 
 ## `emdash:update`
 

@@ -24,7 +24,24 @@ const savedName = (url, siteDir) => {
 };
 
 
-const [fallback, siteDir, ...rest] = process.argv.slice(2);
+const [fallback, siteDir, ...given] = process.argv.slice(2);
+// One way to say where, the same as every other task: nothing = this machine's dev site;
+// --live = the deployed site (LIVE_URL); --preview = this machine's built site (PREVIEW_PORT).
+// Each becomes the CLI's own --url. An explicit --url still works and wins.
+const rest = [];
+for (const arg of given) {
+	if (arg === "--live") {
+		if (!process.env.LIVE_URL) {
+			console.error("--live needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
+			process.exit(1);
+		}
+		rest.push("--url", process.env.LIVE_URL);
+	} else if (arg === "--preview") {
+		rest.push("--url", `http://localhost:${process.env.PREVIEW_PORT || "4322"}`);
+	} else {
+		rest.push(arg);
+	}
+}
 const i = rest.findIndex((a) => a === "--url" || a === "-u");
 const inline = rest.find((a) => a.startsWith("--url="));
 const url = inline ? inline.slice(6) : i >= 0 ? rest[i + 1] : fallback;
