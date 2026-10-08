@@ -25,7 +25,7 @@ node = "26"
 pnpm = "12"
 fnox = "1.36.0" # secrets: the Cloudflare token for the live: tasks — fnox exec -- mise run live:…
 # charter writes and checks the docs site the same way in every repo of the owner's (docs:setup).
-"github:joeblew999/charter" = "0.9.0"
+"github:joeblew999/charter" = "0.13.0"
 
 [env]
 TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is given no argument
@@ -59,7 +59,7 @@ description = "Write the docs site's config (charter: the same for every repo of
 run = "charter docs"
 
 [tasks."docs:check"]
-description = "Check docs/ with charter: the site config is charter's, front matter, links, paths. NOT in the commit check yet: charter looks for tasks in mise.toml, ours are in tasks.toml, so every `mise run <task>` in the docs is reported — read past those lines"
+description = "Check docs/ with charter: the site config is charter's, front matter, links, tasks and paths that do not exist. The commit check runs it by itself once charter is newer than 0.13.0 (joeblew999/charter#76): until then it reports every task in tasks.toml as missing — read past those lines"
 run = "charter docs -check && charter docs-lint"
 
 [tasks."docs:pages"]

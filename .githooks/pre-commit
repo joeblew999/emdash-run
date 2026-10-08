@@ -6,6 +6,15 @@
 if ! git diff --cached --quiet -- docs/_config.yml docs/_sass docs/writing.md docs/llms.txt && command -v charter >/dev/null 2>&1; then
 	charter docs -check >/dev/null || { echo "pre-commit: the docs site's config differs from charter's. Run  mise run docs:setup  — or change it in charter."; exit 1; }
 fi
+# charter's lint of docs/: front matter, dead links and anchors, tasks and paths that do not exist.
+# From the charter that reads a task file included by name (joeblew999/charter#76, after 0.13.0):
+# an older one reports every task in tasks.toml as missing, so it is not asked.
+if ! git diff --cached --quiet -- docs README.md tasks.toml && command -v charter >/dev/null 2>&1; then
+	have=$(charter version 2>/dev/null | tr -d v)
+	if [ -n "$have" ] && [ "$have" != 0.13.0 ] && [ "$(printf '%s\n0.13.0\n' "$have" | sort -V | tail -1)" = "$have" ]; then
+		charter docs-lint || { echo "pre-commit: charter's docs check found the problems above."; exit 1; }
+	fi
+fi
 git diff --cached --quiet -- tasks.toml tests/replay.sh tests/status.mjs README.md && exit 0
 node tests/status.mjs --coverage >/dev/null || exit 1
 node tests/status.mjs --rebuild >/dev/null || exit 1
