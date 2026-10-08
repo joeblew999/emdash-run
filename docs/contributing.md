@@ -39,7 +39,9 @@ Running a test turns on the commit check in your clone.
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
 | `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
 
-Each test runs as another developer would: a clean environment, an empty config folder, its own site in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. ## The site in this repo
+Each test runs as another developer would: a clean environment, an empty config folder, its own site in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. A failing step prints its last 30 lines of output. A step that has not ended after 15 minutes is stopped and fails, and the steps after it for that site are not run; `STEP_LIMIT=<seconds>` changes the limit.
+
+## The site in this repo
 
 `site/` is a real site, made with `mise run site:new` (the `cloudflare:blog` template) and committed: the place to try a task or a plugin in seconds, without making a site first. What is the machine's stays out of git: its packages, its `.env`, its local database.
 

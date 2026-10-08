@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The test: the tasks, from an empty folder, in the order a developer uses them. Every step is
-# recorded against the TASK it tests, in tests/results.json, and docs/status.md is rebuilt from
+# recorded against the TASK it tests, in tests/results.json, and docs/reference/status.md is rebuilt from
 # that with one line for every task in tasks.toml — so the status and the tasks always match.
 #
 # TWO LEVELS, and no others:
@@ -18,7 +18,7 @@
 # The deployed part of `full` puts a fresh starter site on a Worker kept for testing. It needs two
 # settings (in this repo's gitignored mise.local.toml): TEST_LIVE_URL, its address, and
 # TEST_LIVE_NAME, the Worker's name — its database is <name>, its bucket <name>-media. Without
-# them (on CI, on a machine with no Cloudflare login) that part is skipped, and docs/status.md
+# them (on CI, on a machine with no Cloudflare login) that part is skipped, and docs/reference/status.md
 # keeps what it last showed. It uses your real Cloudflare login and fnox: a clean config folder
 # would hide them.
 set -u
@@ -36,7 +36,7 @@ if [ -z "${REPLAY_CLEAN:-}" ] && ! command -v cygpath >/dev/null 2>&1; then
   rm -rf "$WORK"
   exec env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-xterm}" ${CI:+CI="$CI"} \
     ${TEST_LIVE_URL:+TEST_LIVE_URL="$TEST_LIVE_URL"} ${TEST_LIVE_NAME:+TEST_LIVE_NAME="$TEST_LIVE_NAME"} \
-    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} \
+    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${STEP_LIMIT:+STEP_LIMIT="$STEP_LIMIT"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} \
     ${GITHUB_TOKEN:+GITHUB_TOKEN="$GITHUB_TOKEN"} ${GIGET_AUTH:+GIGET_AUTH="$GIGET_AUTH"} REPLAY_CLEAN=1 bash "$0" "$@"
 fi
 export XDG_CONFIG_HOME=$WORK/config; mkdir -p "$XDG_CONFIG_HOME"
@@ -59,13 +59,30 @@ step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   if [ -n "$ONLY" ]; then
     if [ "$2" = "$ONLY" ]; then REACHED=1; elif [ "${REACHED:-}" = 1 ] && [ "$2" != site:stop ] && [ "$2" != site:delete ]; then return; fi
   fi
-  if eval "$4" > "$D/step.log" 2>&1; then [ "$1" = ok ] && verdict=PASS || { verdict=FAIL; detail="it should have refused"; }
+  # A step that does not end is stopped at STEP_LIMIT seconds and fails with what it had printed: on
+  # Windows a step once waited 40 minutes, to the job's limit, and the log said nothing of which.
+  # The steps after it in that site are not run (but the clean-up): they would each wait as long.
+  local pid stuck="" rc
+  if [ -n "${STUCK:-}" ] && [ "$2" != site:stop ] && [ "$2" != site:delete ]; then
+    echo "not run: [$STUCK] did not end" > "$D/step.log"; rc=1; stuck=skipped
+  else
+    ( eval "$4" ) > "$D/step.log" 2>&1 & pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+      if [ $((SECONDS - began)) -ge "${STEP_LIMIT:-900}" ]; then kill "$pid" 2>/dev/null; stuck=1; STUCK="$2: $3"; break; fi
+      sleep 0.3
+    done
+    wait "$pid" 2>/dev/null; rc=$?
+  fi
+  if [ "$stuck" = 1 ]; then verdict=FAIL; detail="did not end in ${STEP_LIMIT:-900}s and was stopped"
+  elif [ "$stuck" = skipped ]; then verdict=FAIL; detail="not run: an earlier step did not end"
+  elif [ "$rc" = 0 ]; then [ "$1" = ok ] && verdict=PASS || { verdict=FAIL; detail="it should have refused"; }
   else [ "$1" = no ] && verdict=PASS || { verdict=FAIL; detail=$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160); }; fi
   printf '%s|%s|%s|%s|%s|%s\n' "$2" "$W" "$3" "$verdict" "$detail" "$1" >> "$ROWS"
   # with how long it took: on a CI runner that is how a slow step is told from a stuck one
   printf '%-4s %-11s %-15s %s (%ss)\n' "$verdict" "$W" "$2" "$3" "$((SECONDS - began))"
   # a failure shows its last output here too — on a CI runner this is the only place it can be read
-  if [ "$verdict" = FAIL ]; then tail -12 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-220 | sed 's/^/       > /'; fi
+  if [ "$verdict" = FAIL ]; then tail -30 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-220 | sed 's/^/       > /'; fi
+  if [ "$stuck" = 1 ]; then echo "       > $detail"; fi
 }
 # Run a command that never ends for a few seconds, then stop IT — its own process group, nothing
 # else by that name on the machine: another run, or another agent, may be following a log too.
@@ -73,6 +90,12 @@ for_a_while() { # $1 = seconds  $2.. = the command
   perl -e 'setpgrp(0,0); exec @ARGV' "${@:2}" & local p=$!
   sleep "$1"; kill -TERM -- -"$p" 2>/dev/null || kill "$p" 2>/dev/null; wait "$p" 2>/dev/null; true
 }
+# A command whose output must say something: `says "<words>" mise run …` (says_i: in any case).
+# Never `mise run … | grep -q`: the output would be lost to the step's log, so a failure on a CI
+# runner showed nothing; and on Windows a site the task leaves running keeps the pipe open, so a
+# grep that has not found its words waits for ever.
+says() { local want=$1; shift; "$@" > "$D/said.txt" 2>&1; cat "$D/said.txt"; grep -q -- "$want" "$D/said.txt"; }
+says_i() { local want=$1; shift; "$@" > "$D/said.txt" 2>&1; cat "$D/said.txt"; grep -qi -- "$want" "$D/said.txt"; }
 ok() { step ok "$@"; }
 no() { step no "$@"; }
 project() { # $1 = folder  $2 = template  $3.. = extra [env] lines
@@ -97,74 +120,74 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
   export XDG_CONFIG_HOME=$WORK/config-$W; mkdir -p "$XDG_CONFIG_HOME"
   project "$WORK/$W" "$T"
   ok site:ports     "gives the project two ports of its own"  'mise run site:ports && test -n "$(port SITE_PORT)" && test -n "$(port PREVIEW_PORT)"'
-  ok site:ports     "run again: it keeps them"                'before=$(cat mise.local.toml); mise run site:ports | grep -q "already has its ports" && test "$before" = "$(cat mise.local.toml)"'
+  ok site:ports     "run again: it keeps them"                'before=$(cat mise.local.toml); says "already has its ports" mise run site:ports && test "$before" = "$(cat mise.local.toml)"'
   SITE=http://localhost:$(port SITE_PORT); BUILT=http://localhost:$(port PREVIEW_PORT)
   no site:start     "with no site, says so and stops"        'mise run site:start'
   ok site:new       "makes the site"                          'mise run site:new'
-  ok site:new       "run again: the site is left alone"       'mise run site:new 2>&1 | grep -q "already a site"'
-  ok site:start     "starts the dev site; EmDash's welcome dialog is closed" 'mise run site:start | grep -q "welcome dialog is closed"'
+  ok site:new       "run again: the site is left alone"       'says "already a site" mise run site:new'
+  ok site:start     "starts the dev site; EmDash's welcome dialog is closed" 'says "welcome dialog is closed" mise run site:start'
   ok site:start     "run again: it is already running"        'mise run site:start'
   ok site:start     "the dev site answers; dev sign-in works" 'test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 $SITE/)" = 200 && curl -fsS -X POST $SITE/_emdash/api/setup/dev-bypass -o /dev/null'
   ok site:logs      "shows the dev site log"                  'for_a_while 5 mise run site:logs > logs.txt 2>&1; grep -q . logs.txt'
-  ok emdash         "a quoted JSON argument arrives whole"    "mise run emdash -- content create pages --draft --slug audit --data '{\"title\":\"Two words, one argument, from $W\"}' && mise run emdash -- content get pages audit --json | grep -q 'Two words, one argument, from $W'"
-  ok emdash         "whoami on the dev site"                  'mise run emdash -- whoami 2>&1 | grep -qi "dev-bypass"'
+  ok emdash         "a quoted JSON argument arrives whole"    "mise run emdash -- content create pages --draft --slug audit --data '{\"title\":\"Two words, one argument, from $W\"}' && says 'Two words, one argument, from $W' mise run emdash -- content get pages audit --json"
+  ok emdash         "whoami on the dev site"                  'says_i "dev-bypass" mise run emdash -- whoami'
   no emdash         "--live with no LIVE_URL says so"         'mise run emdash -- schema list --live'
   ok site:check     "passes on a sound site"                  'mise run site:check'
   ok site:check     "fails on a type error"                   'printf -- "---\nconst n: number = \"text\";\n---\n<p>{n}</p>\n" > site/src/pages/zz.astro; mise run site:check; r=$?; rm site/src/pages/zz.astro; test $r != 0'
   ok model:sync     "records an added field in .emdash/"      'mise run emdash -- schema add-field pages subtitle --type string --label Subtitle && mise run model:sync && grep -q subtitle site/.emdash/schema.json'
   ok site:preview   "serves the built site; dev sign-in is off there" 'mise run site:preview && test "$(curl -s -o /dev/null -w "%{http_code}" $BUILT/_emdash/api/setup/dev-bypass)" = 403'
-  ok signin:token   "the CLI is an administrator of the built site" 'mise run signin:token && mise run emdash -- whoami --preview 2>&1 | grep -qi "admin"'
-  ok signin:token   "run again: still an administrator"       'mise run signin:token && mise run emdash -- whoami --preview 2>&1 | grep -qi "admin"'
+  ok signin:token   "the CLI is an administrator of the built site" 'mise run signin:token && says_i "admin" mise run emdash -- whoami --preview'
+  ok signin:token   "run again: still an administrator"       'mise run signin:token && says_i "admin" mise run emdash -- whoami --preview'
   ok emdash         "--preview writes to the built site"      "mise run emdash -- content create pages --preview --slug built --data '{\"title\":\"On the built site\"}'"
   if [ "$TIER" = full ]; then
-    ok signin:token "starts the built site when it is stopped" 'mise run site:stop && mise run signin:token && mise run emdash -- schema list --preview | grep -q slug'
+    ok signin:token "starts the built site when it is stopped" 'mise run site:stop && mise run signin:token && says slug mise run emdash -- schema list --preview'
     case $T in cloudflare:*) ok live:check "the deploy rehearses with no account" 'mise run live:check';; esac
     no content:pull "with no LIVE_URL says so"                'mise run content:pull'
     # a window needs a screen: not on a CI runner
-    [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (token)" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open 2>&1 | grep -q "open: signed in"'
+    [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (token)" 'SIGNIN_OPEN_SECONDS=3 says "open: signed in" mise run signin:open'
     ok plugin:sandbox "the site can run sandboxed plugins: the runner is in its config" 'mise run plugin:sandbox && grep -q "sandboxRunner" site/astro.config.mjs'
-    ok plugin:sandbox "run again: nothing changes"            'before=$(cat site/astro.config.mjs site/package.json); mise run plugin:sandbox | grep -q "nothing changed" && test "$before" = "$(cat site/astro.config.mjs site/package.json)"'
+    ok plugin:sandbox "run again: nothing changes"            'before=$(cat site/astro.config.mjs site/package.json); says "nothing changed" mise run plugin:sandbox && test "$before" = "$(cat site/astro.config.mjs site/package.json)"'
     ok plugin:new   "scaffolds, tests, builds and adds a plugin — to the site's config too, by itself" 'mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs && grep -q save-log site/package.json && grep -q "sandboxed: \[saveLog\]" site/astro.config.mjs'
-    ok plugin:new   "run again: not scaffolded twice, still builds, the config is not touched" 'before=$(cat site/astro.config.mjs); mise run plugin:new -- save-log 2>&1 | grep -q "already there" && test -f site/plugins/save-log/dist/plugin.mjs && test "$before" = "$(cat site/astro.config.mjs)"'
+    ok plugin:new   "run again: not scaffolded twice, still builds, the config is not touched" 'before=$(cat site/astro.config.mjs); says "already there" mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs && test "$before" = "$(cat site/astro.config.mjs)"'
     ok plugin:check "the plugin passes its checks"            'mise run plugin:check -- save-log'
     ok plugin:add   "adds a package from npm, and its lines in the site's config" 'mise run plugin:add -- @emdash-cms/plugin-forms && grep -q plugin-forms site/package.json && grep -q "plugins: \[formsPlugin()\]" site/astro.config.mjs'
     ok plugin:add   "run again: the config is not touched"    'before=$(cat site/astro.config.mjs); mise run plugin:add -- @emdash-cms/plugin-forms && test "$before" = "$(cat site/astro.config.mjs)"'
-    ok plugin:search "finds plugins in the registry"          'mise run plugin:search -- forms | grep -qi "forms"'
-    ok plugin:install "installs a registry plugin with no clicking, from a stopped site" 'mise run plugin:install -- @masonjames.com/contact-forms | grep -q "contact-forms: installed"'
-    ok plugin:install "run again: it is already installed"    'mise run plugin:install -- @masonjames.com/contact-forms | grep -q "contact-forms: already installed"'
+    ok plugin:search "finds plugins in the registry"          'says_i "forms" mise run plugin:search -- forms'
+    ok plugin:install "installs a registry plugin with no clicking, from a stopped site" 'says "contact-forms: installed" mise run plugin:install -- @masonjames.com/contact-forms'
+    ok plugin:install "run again: it is already installed"    'says "contact-forms: already installed" mise run plugin:install -- @masonjames.com/contact-forms'
     no plugin:install "a plugin that can change things or reach outside is not installed without a yes" 'env -u MISE_YES -u CI mise run plugin:install -- @meekmedia.bsky.social/link-guardian'
     no plugin:install "a release other than the one asked for is not installed" 'mise run plugin:install -- @netdollar.dev/forms@0.0.1'
     no plugin:install "a plugin the registry does not have: says so and fails" 'mise run plugin:install -- @nobody.example/nothing'
-    ok plugin:works "the registry plugin: every check passes" 'mise run plugin:works -- @masonjames.com/contact-forms > works.txt 2>&1; grep -q "contact-forms: works" works.txt && ! grep -q "FAIL" works.txt'
-    ok plugin:works "the plugin plugin:new made: its route answers from the sandbox" 'mise run plugin:works -- save-log 2>&1 | grep -q "save-log routes: 1 declared, each asked with a GET: hello 200"'
+    ok plugin:works "the registry plugin: every check passes" 'mise run plugin:works -- @masonjames.com/contact-forms > works.txt 2>&1; cat works.txt; grep -q "contact-forms: loads and answers" works.txt && ! grep -q "FAIL" works.txt'
+    ok plugin:works "the plugin plugin:new made: its route answers from the sandbox" 'says "save-log routes: 1 declared, each asked with a GET: hello 200" mise run plugin:works -- save-log'
     no plugin:works "a plugin the site does not have fails"   'mise run plugin:works -- no-such-plugin'
-    ok plugin:remove "removes a registry plugin"              'mise run plugin:remove -- @masonjames.com/contact-forms | grep -q "contact-forms: removed"'
-    ok plugin:remove "run again: nothing to remove"           'mise run plugin:remove -- @masonjames.com/contact-forms | grep -q "nothing to remove"'
-    ok plugin:favourites "installs the favourites in one go"  'mise run plugin:favourites > fav.txt 2>&1; ! grep -q "^FAIL" fav.txt && test "$(grep -c ": installed" fav.txt)" -ge 4'
-    ok plugin:favourites "run again: all already installed"   'mise run plugin:favourites > fav.txt 2>&1; ! grep -q "^FAIL" fav.txt && ! grep -q ": installed" fav.txt && grep -q "already installed" fav.txt'
-    ok plugin:favourites "PLUGINS in the project chooses the list" 'PLUGINS="@lasymphonieagency.com/comment-notify" mise run plugin:favourites | grep -q "comment-notify: installed"'
-    ok plugin:works "no name: every plugin in the site works — the favourites among them" 'mise run plugin:works > works.txt 2>&1; ! grep -q "FAIL\|DOES NOT WORK" works.txt && test "$(grep -c ": works" works.txt)" -ge 6'
+    ok plugin:remove "removes a registry plugin"              'says "contact-forms: removed" mise run plugin:remove -- @masonjames.com/contact-forms'
+    ok plugin:remove "run again: nothing to remove"           'says "nothing to remove" mise run plugin:remove -- @masonjames.com/contact-forms'
+    ok plugin:favourites "installs the favourites in one go"  'mise run plugin:favourites > fav.txt 2>&1; cat fav.txt; ! grep -q "^FAIL" fav.txt && test "$(grep -c ": installed" fav.txt)" -ge 4'
+    ok plugin:favourites "run again: all already installed"   'mise run plugin:favourites > fav.txt 2>&1; cat fav.txt; ! grep -q "^FAIL" fav.txt && ! grep -q ": installed" fav.txt && grep -q "already installed" fav.txt'
+    ok plugin:favourites "PLUGINS in the project chooses the list" 'PLUGINS="@lasymphonieagency.com/comment-notify" says "comment-notify: installed" mise run plugin:favourites'
+    ok plugin:works "no name: every plugin in the site works — the favourites among them" 'mise run plugin:works > works.txt 2>&1; cat works.txt; ! grep -q "FAIL\|DOES NOT WORK" works.txt && test "$(grep -c ": loads and answers" works.txt)" -ge 6'
     no plugin:publish "asks first, and stops with nobody to answer (a real publish is never run)" 'env -u MISE_YES -u CI mise run plugin:publish -- save-log </dev/null'
-    ok plugin       "passes any command to the plugin CLI"    'mise run plugin -- --help | grep -qi "search"'
+    ok plugin       "passes any command to the plugin CLI"    'says_i "search" mise run plugin -- --help'
     ok emdash:update "updates, type-checks and builds"        'mise run emdash:update'
     ok site:reset   "empties the local content"               'mise run site:start && mise run --yes site:reset && ! mise run emdash -- content get pages audit --json'
     no site:reset   "refuses with nobody to ask"              'env -u MISE_YES -u CI mise run site:reset </dev/null'
-    ok signin:passkey "completes the EmDash wizard on a fresh database" 'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run signin:passkey && mise run emdash -- schema list --preview | grep -q slug'
-    [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (passkey)" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open 2>&1 | grep -q "open: signed in"'
+    ok signin:passkey "completes the EmDash wizard on a fresh database" 'mise run site:stop; mise run step:forget; (cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run signin:passkey && says slug mise run emdash -- schema list --preview'
+    [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (passkey)" 'SIGNIN_OPEN_SECONDS=3 says "open: signed in" mise run signin:open'
     ok signin:token "the saved token goes when the local database does" 'mise run signin:token && ls "$XDG_CONFIG_HOME"/emdash-run/tokens/ | grep -q . && mise run site:stop && mise run step:forget && ! ls "$XDG_CONFIG_HOME"/emdash-run/tokens/ | grep -q .'
-    ok site:admin   "a fresh built site, signed in, in one go" 'mise run --yes site:admin && mise run emdash -- schema list --preview | grep -q slug'
+    ok site:admin   "a fresh built site, signed in, in one go" 'mise run --yes site:admin && says slug mise run emdash -- schema list --preview'
     no site:delete  "refuses with nobody to ask"              'env -u MISE_YES -u CI mise run site:delete </dev/null'
   fi
   ok site:stop      "stops both sites; twice is fine"         'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
   ok site:delete    "removes the site folder"                 '(cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run --yes site:delete && test ! -e site'
-  ok site:delete    "run again: nothing to delete"            'mise run --yes site:delete 2>&1 | grep -q "nothing to delete"'
+  ok site:delete    "run again: nothing to delete"            'says "nothing to delete" mise run --yes site:delete'
   cd "$REPO"
 }
 
 live_site() {
   W=deployed; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
   if [ -z "${TEST_LIVE_URL:-}" ] || [ -z "${TEST_LIVE_NAME:-}" ]; then
-    echo "SKIP deployed: no TEST_LIVE_URL / TEST_LIVE_NAME here. docs/status.md keeps what the deployed tasks last showed."; return
+    echo "SKIP deployed: no TEST_LIVE_URL / TEST_LIVE_NAME here. docs/reference/status.md keeps what the deployed tasks last showed."; return
   fi
   # The developer's real Cloudflare login and fnox, not the empty config folder.
   if [ -n "${REAL_CONFIG:-}" ]; then export XDG_CONFIG_HOME=$REAL_CONFIG; else unset XDG_CONFIG_HOME; fi
@@ -174,7 +197,7 @@ live_site() {
   mkdir -p "$(dirname "$LOCK")"
   if ! mkdir "$LOCK" 2>/dev/null; then
     if [ -n "$(find "$LOCK" -maxdepth 0 -mmin -30 2>/dev/null)" ]; then
-      echo "SKIP deployed: another run is using the test Worker ($LOCK). docs/status.md keeps what the deployed tasks last showed."; return
+      echo "SKIP deployed: another run is using the test Worker ($LOCK). docs/reference/status.md keeps what the deployed tasks last showed."; return
     fi
     echo "(a lock older than 30 minutes was left behind: taking it)"
   fi
