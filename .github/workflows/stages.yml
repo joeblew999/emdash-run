@@ -31,6 +31,9 @@ jobs:
       # token, fetching EmDash's template (and mise fetching a tool) is refused now and then.
       GITHUB_TOKEN: ${{ github.token }}
       GIGET_AUTH: ${{ github.token }}
+      # a step that has not ended in five minutes is stopped and fails (15 by default): the longest
+      # real one, a first install on Windows, takes under two
+      STEP_LIMIT: "300"
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v5

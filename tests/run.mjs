@@ -279,7 +279,9 @@ const runGroup = async (group) => {
 			result = "FAIL";
 			detail = `not run: ${stuck}`;
 		} else {
-			let timer, threw = null, timedOut = false;
+			let timer, timedOut = false;
+			/** @type {Error | null} */
+			let threw = null;
 			const limit = new Promise((resolve) => (timer = setTimeout(() => { timedOut = true; running?.stop(); resolve(); }, stepLimit * 1000)));
 			await Promise.race([Promise.resolve().then(fn).catch((e) => (threw = e)), limit]);
 			clearTimeout(timer);

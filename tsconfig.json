@@ -1,0 +1,17 @@
+{
+	// mise run types: the test (tests/) and the scripts behind the tasks (scripts/), type-checked as
+	// the JavaScript they are. Nothing is compiled.
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+		"target": "es2024",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"skipLibCheck": true,
+		"types": ["node"],
+		"typeRoots": ["tests/node_modules/@types"]
+	},
+	"include": ["tests/**/*.mjs", "scripts/*.mjs"],
+	"exclude": ["tests/plugin/fixtures", "**/node_modules"]
+}

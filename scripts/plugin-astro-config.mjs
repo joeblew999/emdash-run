@@ -26,6 +26,7 @@ export const kinds = (text) => {
 	const kind = new Uint8Array(text.length);
 	const n = text.length;
 	const mark = (from, to, as) => kind.fill(as, from, Math.min(to, n));
+	/** @type {{ template: boolean, depth?: number, inTemplate?: boolean }[]} */
 	const modes = [{ template: false, depth: 0, inTemplate: false }];
 	let prev = ""; // the last character of code that was not white space
 	let i = 0;
@@ -208,6 +209,7 @@ export const imports = (text, kind = kinds(text)) => {
 // One name imported from a module: `{ default: "forms" }` or `{ named: "sandbox" }`. Returns the
 // text and the name it is bound to in the file, which is the one already there when the module
 // already gives it under another name.
+/** @param {string} text @param {{ module: string, default?: string, named?: string }} what */
 export const addImport = (text, { module, default: byDefault, named }) => {
 	const kind = kinds(text);
 	const all = imports(text, kind);

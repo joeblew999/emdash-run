@@ -65,6 +65,7 @@ const whereIs = (u) => {
 	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
 };
 console.error(`-> ${whereIs(url)}`);
+/** @type {NodeJS.ProcessEnv} */
 const env = { ...process.env, EMDASH_URL: url };
 if (URL.canParse(url)) {
 	const host = savedName(url, siteDir);
@@ -87,6 +88,7 @@ if (URL.canParse(url)) {
 		const { hostname, origin } = new URL(url);
 		if (["localhost", "127.0.0.1", "[::1]"].includes(hostname)) {
 			try {
+				/** @type {RequestInit} */
 				const quick = { redirect: "manual", signal: AbortSignal.timeout(20_000) };
 				const good = token?.dev && (await fetch(new URL("/_emdash/api/auth/me", origin), { ...quick, headers: { Authorization: `Bearer ${token.token}` } })).ok;
 				if (token?.dev && !good) delete env.EMDASH_TOKEN;

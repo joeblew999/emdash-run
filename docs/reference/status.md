@@ -14,7 +14,7 @@ The test is in four groups, named as the tasks are. Each runs alone, on a site o
 
 | Group | What it tests | Run it | Everyday steps | Long steps | Took | Last run | Commit |
 |---|---|---|---|---|---|---|---|
-| [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test:site` | 17: proven | no run recorded | 1 min 13 s | 2026-10-08 05:03 UTC | `4c9d7c9+uncommitted` |
+| [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test:site` | 17: changed since it passed | no run recorded | 1 min 13 s | 2026-10-08 05:03 UTC | `4c9d7c9+uncommitted` |
 | [`signin`](status-signin.md) | the CLI and a browser window as an administrator of the built site | `mise run test:signin` | 9: changed since it passed | no run recorded | 1 min 43 s | 2026-10-08 04:39 UTC | `ada7563+uncommitted` |
 | [`plugin`](status-plugin.md) | a plugin of your own, and plugins from EmDash's registry | `mise run test:plugin` | 29: changed since it passed | no run recorded | 4 min 26 s | 2026-10-08 04:44 UTC | `ada7563+uncommitted` |
 | [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test:live` | 22: changed since it passed |  | 5 min 33 s | 2026-10-08 04:50 UTC | `cad9abe` |
@@ -29,7 +29,7 @@ On a Node site (`mise run test:node`, before a release): 55 of 55 steps pass, la
 | `emdash` | pass ×4 | pass ×4 | pass ×2 |  |
 | `emdash:update` |  | pass ×1 |  |  |
 | `live:backup` |  |  | pass ×1 |  |
-| `live:check` (hidden) |  |  |  | **NOT TESTED** |
+| `live:check` (hidden) |  |  |  | on CI: its steps are long ones |
 | `live:logs` |  |  | pass ×1 |  |
 | `live:preview` |  |  | pass ×3 |  |
 | `live:ship` |  |  | pass ×1 |  |

@@ -37,37 +37,41 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
+[tasks.types]
+description = "Type-check the test (tests/) and the scripts behind the tasks (scripts/), as the JavaScript they are: tsconfig.json. A few seconds. Every test runs it first"
+run = ["pnpm --dir tests install --silent --frozen-lockfile", "pnpm --dir tests exec tsc -p ../tsconfig.json"]
+
 [tasks.test]
 description = "The test, as you run it while working: the everyday steps of the site, signin and plugin groups that are not proven, about a minute a group, on a copy of this repo's site/. Proven: they passed and nothing the group depends on has changed since (node tests/record.mjs --depends), so it is not run again; -- --again runs it anyway. Never deploys. One test at a time on a machine: a second waits. Each group keeps its own record (tests/<group>/results.json) and page (docs/reference/status-<group>.md)"
-run = "node tests/run.mjs"
+run = [{ task = "types" }, "node tests/run.mjs"]
 
 [tasks."test:site"]
 description = "The site group alone: making, running, checking and deleting a site. -- --all for its long steps too, -- --again when it is proven"
-run = "node tests/run.mjs site"
+run = [{ task = "types" }, "node tests/run.mjs site"]
 
 [tasks."test:signin"]
 description = "The signin group alone: the CLI and a browser window as an administrator of the built site. -- --all for its long steps too, -- --again when it is proven"
-run = "node tests/run.mjs signin"
+run = [{ task = "types" }, "node tests/run.mjs signin"]
 
 [tasks."test:plugin"]
 description = "The plugin group alone: a plugin of your own, and plugins from EmDash's registry. -- --all for its long steps too, -- --again when it is proven"
-run = "node tests/run.mjs plugin"
+run = [{ task = "types" }, "node tests/run.mjs plugin"]
 
 [tasks."test:live"]
 description = "REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes: run it after changing a live: task, not every day"
-run = "node tests/run.mjs live"
+run = [{ task = "types" }, "node tests/run.mjs live"]
 
 [tasks."test:all"]
 description = "Every step of the site, signin and plugin groups, the long ones too: about nine minutes. What the stages workflow runs on Linux, macOS and Windows, so a pass here is a pass there"
-run = "node tests/run.mjs --all"
+run = [{ task = "types" }, "node tests/run.mjs --all"]
 
 [tasks."test:node"]
 description = "Every step of the site, signin and plugin groups on a Node site made from EmDash's template: before a release, not every day"
-run = "node tests/run.mjs --node --all"
+run = [{ task = "types" }, "node tests/run.mjs --node --all"]
 
 [tasks.check]
-description = "Every check but the tests themselves, in seconds: the unit tests of the scripts' own functions (tests/plugin/*.test.mjs), every task has a test step, no group's record has a failure or an untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; the stages workflow runs mise run test:all"
-run = ["node --test \"tests/**/*.test.mjs\"", "node tests/record.mjs --coverage", "node tests/record.mjs --green", { task = "repo:ci" }]
+description = "Every check but the tests themselves, in seconds: the types, the unit tests of the scripts' own functions (tests/plugin/*.test.mjs), every task has a test step, no group's record has a failure or an untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; the stages workflow runs mise run test:all"
+run = [{ task = "types" }, "node --test \"tests/**/*.test.mjs\"", "node tests/record.mjs --coverage", "node tests/record.mjs --green", { task = "repo:ci" }]
 
 [tasks.src]
 description = "EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest"

@@ -12,7 +12,7 @@ Run them: `mise run test:site`. The steps: `tests/site/steps.mjs`. Every group: 
 
 ## On a Cloudflare site
 
-**17 of 17 steps pass, in 1 min 13 s.** State: proven. Run 2026-10-08 05:03 UTC at commit `4c9d7c9+uncommitted`, on macOS.
+**17 of 17 steps pass, in 1 min 13 s.** State: changed since it passed. Run 2026-10-08 05:03 UTC at commit `4c9d7c9+uncommitted`, on macOS.
 
 | | Task | Step | Seconds |
 |---|---|---|---|

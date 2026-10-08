@@ -6,7 +6,7 @@
 //   node tests/record.mjs --page status            the index: every group, every task
 //   node tests/record.mjs --page status-<group>    one group: every step, in the order it ran
 //   node tests/record.mjs --coverage               every task has a test step, every step a task
-//   node tests/record.mjs --green                  no failure recorded, no task without a run
+//   node tests/record.mjs --green                  no failure recorded on this machine
 //   node tests/record.mjs --proven <group> [where] [all|everyday]   exit 0: passed, nothing changed since
 //   node tests/record.mjs --depends [group]    what a group depends on: what re-runs it
 import { execFileSync } from "node:child_process";
@@ -38,50 +38,52 @@ const stepped = (g) => [...read(`tests/${g}/steps.mjs`).matchAll(/\bt\.(?:ok|no)
 const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" });
 const [mode, arg, arg2] = process.argv.slice(2);
 
-// WHAT A GROUP DEPENDS ON, as one fingerprint — worked out, not listed by hand. From the tasks its
-// steps run (every task named in its steps.mjs), follow tasks.toml to every task and hidden step
-// those run, and from those to every script they name and every script those import. Add the
-// runner, the group's own folder and the site the test copies. A group that passed at this
+// WHAT A GROUP DEPENDS ON, as one fingerprint — worked out, not listed by hand, and from mise's own
+// reading of the tasks (`mise tasks ls --json`), not from a reading of tasks.toml made here. From the
+// tasks its steps name, follow what mise says each runs, depends on and waits for, to every task
+// and hidden step; from those, every script they name and every script those import or start. Add
+// the runner, the group's own folder and the site the test copies. A group that passed at this
 // fingerprint is PROVEN. Change scripts/live-preview.mjs and only the live group's moves.
+let everyTask;
 const closure = (group) => {
-	const blocks = new Map();
-	let preamble = "";
-	for (const b of read("tasks.toml").split(/^(?=\[)/m)) {
-		const name = (b.match(/^\["?([a-z][a-z:-]*)"?\]/) || [])[1];
-		if (!name || ["env", "vars", "settings", "tools"].includes(name)) preamble += b;
-		else blocks.set(name, b);
-	}
+	everyTask ??= new Map(JSON.parse(execFileSync("mise", ["tasks", "ls", "--hidden", "--json"], { cwd: repo, encoding: "utf8" })).filter((t) => t.source.endsWith("tasks.toml")).map((t) => [t.name, t]));
+	// what makes a task what it is — not its description, and not this clone's path
+	const what = (t) => JSON.stringify([t.run, t.depends, t.depends_post, t.wait_for, t.env, t.usage, t.sources, t.outputs, t.shell, t.raw, t.timeout, t.dir]).replaceAll(JSON.stringify(repo).slice(1, -1), "");
 	const tasksIn = new Set();
-	const walk = (name) => {
-		if (tasksIn.has(name) || !blocks.has(name)) return;
-		tasksIn.add(name);
-		// what the task runs is its lines that are not its description (which names tasks it only mentions)
-		const body = blocks.get(name).split("\n").filter((l) => !/^\s*(description|#)/.test(l)).join("\n");
-		for (const m of body.matchAll(/task\s*=\s*"([^"]+)"|mise run (?:--yes )?([a-z][a-z:-]*)/g)) walk(m[1] || m[2]);
-		for (const d of body.matchAll(/^depends\s*=\s*\[([^\]]*)\]/gm)) for (const m of d[1].matchAll(/"([^"]+)"/g)) walk(m[1]);
-	};
-	for (const m of read(`tests/${group}/steps.mjs`).matchAll(/"([a-z][a-z:-]*)"/g)) walk(m[1]);
 	const scripts = new Set();
 	const have = new Set(git("ls-files", "scripts").split("\n").filter(Boolean));
 	const follow = (f) => {
 		if (scripts.has(f) || !have.has(f)) return;
 		scripts.add(f);
+		const text = read(f);
 		// a script it imports ("./x.mjs") or starts (join(here, "x.mjs"))
-		for (const m of read(f).matchAll(/"\.\/([\w-]+\.mjs)"|here,\s*"([\w-]+\.mjs)"/g)) follow(`scripts/${m[1] || m[2]}`);
+		for (const m of text.matchAll(/"\.\/([\w-]+\.mjs)"|here,\s*"([\w-]+\.mjs)"/g)) follow(`scripts/${m[1] || m[2]}`);
+		// a task it runs itself: mise(["site:preview"]), ["run", "site:preview"]
+		for (const m of text.matchAll(/\[\s*(?:"run",\s*)?"([a-z][a-z:-]*)"/g)) walk(m[1]);
 	};
-	for (const t of tasksIn) for (const m of blocks.get(t).matchAll(/scripts\/([\w\/-]+\.mjs)/g)) follow(`scripts/${m[1]}`);
+	const walk = (name) => {
+		const task = everyTask.get(name);
+		if (!task || tasksIn.has(name)) return;
+		tasksIn.add(name);
+		for (const d of [...task.depends, ...task.depends_post, ...task.wait_for]) walk(typeof d === "string" ? d.split(" ")[0] : d.task);
+		for (const r of task.run) {
+			if (typeof r === "string") for (const m of r.matchAll(/mise run (?:--yes )?([a-z][a-z:-]*)/g)) walk(m[1]);
+			else for (const n of [r.task, ...(r.tasks || [])]) if (n) walk(n);
+		}
+		for (const m of what(task).matchAll(/scripts\/([\w\/-]+\.mjs)/g)) follow(`scripts/${m[1]}`);
+	};
+	for (const m of read(`tests/${group}/steps.mjs`).matchAll(/"([a-z][a-z:-]*)"/g)) walk(m[1]);
 	for (const f of have) if (!f.endsWith(".mjs")) scripts.add(f); // package.json, the lock file, quiet/
-	return { preamble, tasks: [...tasksIn].sort(), blocks, scripts: [...scripts].sort() };
+	return { tasks: [...tasksIn].sort(), what: (t) => what(everyTask.get(t)), scripts: [...scripts].sort() };
 };
 const fingerprint = (group) => {
 	const h = createHash("sha256");
 	const c = closure(group);
-	h.update(c.preamble);
-	for (const t of c.tasks) h.update(c.blocks.get(t));
+	for (const t of c.tasks) h.update(t).update(c.what(t));
 	for (const f of c.scripts) h.update(f).update(read(f));
 	h.update(read("tests/run.mjs"));
 	for (const f of readdirSync(join(repo, "tests", group), { recursive: true }).map(String).sort()) {
-		if (!f.endsWith("results.json") && !f.includes("fixtures") && /\.[a-z]+$/.test(f)) h.update(f).update(read(join("tests", group, f)));
+		if (!f.endsWith("results.json") && !f.includes("fixtures") && !f.includes("node_modules") && /\.[a-z]+$/.test(f)) h.update(f).update(read(join("tests", group, f)));
 	}
 	if (group !== "live") h.update(git("ls-files", "-s", "site")).update(git("diff", "--", "site"));
 	return h.digest("hex").slice(0, 12);
@@ -125,18 +127,17 @@ if (mode === "--coverage") {
 	process.exit(0);
 }
 
-// `--green`: what a release needs of the record — no failing step, no task without a test run.
+// `--green`: what a release needs of this machine's record — no failing step. (That every task has
+// a step is --coverage; that every step passes, the long ones too, is the stages workflow's run.)
 if (mode === "--green") {
 	const results = everyRow();
 	const failing = results.filter((r) => r.result === "FAIL");
-	const untested = tasks().filter((t) => !results.some((r) => r.task === t.name));
 	for (const r of failing) console.error(`FAIL  ${r.task} (${r.group}, ${r.where}): ${r.step}`);
-	if (untested.length) console.error(`no test run recorded for: ${untested.map((t) => t.name).join(", ")}`);
-	if (failing.length || untested.length) {
+	if (failing.length) {
 		console.error("The record is not green: mise run test");
 		process.exit(1);
 	}
-	console.log(`green: ${results.length} recorded steps pass, every task has a test run`);
+	console.log(`green: ${results.length} recorded steps pass. Every step, on three OSes: gh run list --workflow stages --limit 1`);
 	process.exit(0);
 }
 
@@ -175,7 +176,7 @@ if (mode === "--page" && arg === "status") {
 	out.push("", "## By task", "", "| Task | Cloudflare site | Node site | Deployed site | |", "|---|---|---|---|---|");
 	for (const t of all) {
 		const cells = ["cloudflare", "node", "deployed"].map((w) => cell(t.name, w));
-		out.push(`| \`${t.name}\`${t.hidden ? " (hidden)" : ""} | ${cells.join(" | ")} | ${cells.every((c) => c === "") ? "**NOT TESTED**" : ""} |`);
+		out.push(`| \`${t.name}\`${t.hidden ? " (hidden)" : ""} | ${cells.join(" | ")} | ${cells.every((c) => c === "") ? "on CI: its steps are long ones" : ""} |`);
 	}
 	console.log(out.join("\n"));
 	process.exit(0);
@@ -188,7 +189,7 @@ if (mode === "--page" && groups.includes(arg?.replace("status-", ""))) {
 	out.push(`Run them: \`mise run test:${g}\`. The steps: \`tests/${g}/steps.mjs\`. Every group: [What works](status.md).`, "");
 	if (!rows.length) out.push("No run is recorded.");
 	for (const where of ["cloudflare", "deployed", "node"]) {
-		const mine = rows.filter((r) => r.where === where).sort((a, b) => !!a.long - !!b.long || a.order - b.order);
+		const mine = rows.filter((r) => r.where === where).sort((a, b) => Number(!!a.long) - Number(!!b.long) || a.order - b.order);
 		if (!mine.length) continue;
 		const failed = mine.filter((r) => r.result === "FAIL");
 		out.push(`## On ${siteName[where]}`, "");

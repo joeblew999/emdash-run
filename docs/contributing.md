@@ -29,6 +29,7 @@ Running a test turns on the commit check in your clone.
 | `mise run test:live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
 | `mise run test:all` | Every step of `site`, `signin` and `plugin`, about nine minutes. What CI runs, on Linux, macOS and Windows |
 | `mise run test:node` | Every step, on a Node site made from EmDash's template: before a release |
+| `mise run types` | Type-check `tests/` and `scripts/` (`tsconfig.json`). A few seconds; every test and `check` run it first |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
 | `mise run docs:setup` | Write the docs site's config and the generated pages |
@@ -48,7 +49,7 @@ A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps
 
 **Short here, everything on CI.** A group's steps are everyday or long. Your own run makes the everyday ones. The long ones, in `t.long(…)` in the steps file, run with `mise run test:all`, which is the one task the `stages` workflow runs on a push to `main`: push and keep working, and look at the workflow when it ends.
 
-A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. What a group depends on is worked out from its steps: the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
+A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
 
 The test is Node only: no shell and no Unix program, so the same files run on all three OSes.
 
@@ -89,6 +90,7 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tests/site/`, `tests/signin/`, `tests/plugin/`, `tests/live/` | One folder per group: `steps.mjs`, its steps, each naming the task it tests; `results.json`, what its last run showed |
 | `tests/run.mjs` | The runner: which groups, one test at a time, a clean environment, and what the steps are written with (`t.ok`, `t.no`, `t.long`, `t.mise`, `t.says`), listed at its top |
 | `tests/plugin/*.test.mjs`, `tests/plugin/fixtures/` | The unit tests of the plugin scripts' own functions: the edits to `astro.config.mjs` on fixture configs, and how `plugin:update` compares two releases. Every test and `mise run check` run them first |
+| `tsconfig.json`, `tests/package.json` | What `mise run types` checks, and the TypeScript it checks with |
 | `tests/record.mjs` | Writes each group's record, says whether a group is proven, and prints the pages ([What works](reference/status.md) and one per group) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
