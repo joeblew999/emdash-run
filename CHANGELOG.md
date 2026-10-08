@@ -7,6 +7,9 @@
   `docs/rules.md`, the issue forms and labels, and this repo's own tasks (`repo`, `docs:check`,
   `issues`, `upstream:status`) included from charter instead of written here. The README is
   short and points at the docs. Nothing changes for a project that includes `tasks.toml`.
+  The tasks page is written by charter from `tasks.toml` (`charter docs-tasks`), charter's
+  `repo-check` workflow runs the docs and repo checks on every push, and every file charter
+  writes says so in its first lines (`charter files` lists them).
 
 ## 1.2.0 — 2026-10-08
 

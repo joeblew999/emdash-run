@@ -27,10 +27,12 @@ Don't edit these: change what they are written from.
 
 | Page or file | Written by | From |
 |---|---|---|
-| [Tasks](reference/tasks.md) | `mise run docs:setup` | each task's `description` in `tasks.toml`, in the order `tests/replay.sh` uses them |
+| [Tasks](reference/tasks.md) | `mise run docs:setup` (`charter docs-tasks`) | each task's `description`, arguments and flags in `tasks.toml`, in the order they are written there |
 | [What works](reference/status.md) | `mise run docs:setup` | `tests/results.json`, which every test run updates |
 | `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md) | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
-| `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | `mise run repo` | charter |
+| `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv`, `.github/workflows/repo-check.yml`, `renovate.json` | `mise run repo` | charter |
+
+Every file charter writes says so in its first lines. `charter files` lists them all, and whether each still matches.
 
 ## Index
 

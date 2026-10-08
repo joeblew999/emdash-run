@@ -232,6 +232,11 @@ code=$?
 # one of this repo's tools on a developer's machine (the test's clean environment has no PATH to
 # it: mise says where it is); a CI runner installs no charter and commits nothing.
 CHARTER=$(command -v charter 2>/dev/null || mise which charter 2>/dev/null) || true
-[ -n "$CHARTER" ] && "$CHARTER" docs >/dev/null && grep -m1 "steps pass" docs/reference/status.md
+if [ -n "$CHARTER" ]; then
+  # with the developer's own config folder, not the test's empty one: charter asks gh about the repo
+  if [ -n "${REAL_CONFIG:-}" ]; then export XDG_CONFIG_HOME=$REAL_CONFIG; else unset XDG_CONFIG_HOME; fi
+  if "$CHARTER" docs > "$WORK/charter-docs.txt" 2>&1; then grep -m1 "steps pass" docs/reference/status.md
+  else echo "The pages were not rewritten (mise run docs:setup):"; tail -3 "$WORK/charter-docs.txt"; fi
+fi
 rm -rf "$WORK"
 exit $code

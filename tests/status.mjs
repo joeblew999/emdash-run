@@ -1,14 +1,12 @@
-// What the tests saw, kept in tests/results.json, and the two pages of docs/ that are written
-// from it and from tasks.toml. charter writes those pages (docs/_generated.toml names the two
-// commands below) and checks they are fresh; this prints them.
+// What the tests saw, kept in tests/results.json, and the page of docs/ that is written from it.
+// charter writes that page (docs/_generated.toml names the command below) and checks it is fresh;
+// this prints it. The tasks page is charter's own: `charter docs-tasks`, from tasks.toml.
 //
 //   node tests/status.mjs <rows file> <tier> <tasks from> <commit> <took seconds>   record a run
-//   node tests/status.mjs --page tasks      print docs/reference/tasks.md, from its # title on
-//   node tests/status.mjs --page status     print docs/reference/status.md
+//   node tests/status.mjs --page status     print docs/reference/status.md, from its # title on
 //   node tests/status.mjs --coverage        every task has a test step, every step a task
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,45 +41,8 @@ if (mode === "--coverage") {
 }
 
 const results = existsSync(store) ? JSON.parse(readFileSync(store, "utf8")) : [];
-// The order a developer uses the tasks in is the order the test first USES each one (a refusal
-// is not a use): on this machine, then on the deployed site.
-const part = { local: script.slice(script.indexOf("local_site() {"), script.indexOf("live_site() {")), deployed: script.slice(script.indexOf("live_site() {")) };
-const firstUse = (where) => stepped(part[where], "ok").filter((n, i, all) => all.indexOf(n) === i);
 // a description can hold <name>, a | or two dashes: each would break a table on the docs site
 const cellText = (t) => t.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("--", "\\-\\-");
-
-if (mode === "--page" && arg === "tasks") {
-	const all = tasks();
-	const visible = all.filter((t) => !t.hidden);
-	const describe = Object.fromEntries(visible.map((t) => [t.name, cellText(t.description)]));
-	const out = ["# Tasks: every one, in the order you use them", ""];
-	out.push("Run one with `mise run <task>`; arguments and flags go after `--`. In your own project `mise tasks` lists them, and `mise run <task> --help` shows one. What each showed in the last test run: [What works](status.md).", "");
-	for (const [where, heading] of [["local", "On this machine"], ["deployed", "On the deployed site"]]) {
-		const ordered = firstUse(where).filter((n) => describe[n] !== undefined && !(where === "deployed" && n.startsWith("site:")));
-		out.push(`## ${heading}`, "", "| | Task | What it does |", "|---|---|---|");
-		ordered.forEach((n, i) => out.push(`| ${i + 1} | [\`${n}\`](#${n.replaceAll(":", "")}) | ${describe[n]} |`));
-		out.push("");
-	}
-	// Each task with its arguments and flags, as mise itself documents it (mise generate
-	// task-docs), asked from an empty project that includes only tasks.toml — what a developer's
-	// project gets. mise lists them alphabetically: here they follow the order above.
-	const view = mkdtempSync(join(tmpdir(), "emdash-run-tasks-"));
-	writeFileSync(join(view, "mise.toml"), `[task_config]\nincludes = [${JSON.stringify(join(repo, "tasks.toml").replaceAll("\\", "/"))}]\n`);
-	const made = execFileSync("mise", ["generate", "task-docs", "--style", "detailed"], { cwd: view, encoding: "utf8", env: { ...process.env, MISE_TRUSTED_CONFIG_PATHS: view } });
-	rmSync(view, { recursive: true, force: true });
-	const inFile = [...readFileSync(join(repo, "tasks.toml"), "utf8").matchAll(/^\["?([a-z:]+)"?\]/gm)].map((m) => m[1]);
-	const wanted = [...firstUse("local"), ...firstUse("deployed"), ...inFile].filter((n, i, list) => list.indexOf(n) === i);
-	const place = (block) => {
-		const at = wanted.indexOf((block.match(/^## `([a-z:]+)`/) || [])[1]);
-		return at < 0 ? wanted.length : at;
-	};
-	const blocks = made.split(/^(?=## `)/m).filter((b) => b.startsWith("## `")).sort((x, y) => place(x) - place(y));
-	out.push("## Each task", "");
-	// one level down, under "Each task"; the hidden steps a task depends on are not something to run
-	out.push(blocks.join("\n").split("\n").filter((l) => !l.startsWith("- Depends:")).map((l) => l.replace(/^## `/, "### `").replace(/^### (Arguments|Flags)$/, "**$1**")).join("\n").replace(/\n{3,}/g, "\n\n").trim());
-	console.log(out.join("\n"));
-	process.exit(0);
-}
 
 if (mode === "--page" && arg === "status") {
 	const all = tasks();
@@ -121,7 +82,7 @@ if (mode === "--page" && arg === "status") {
 // truth for each kind of site it ran on: older steps for those go, so a renamed step cannot linger.
 const [rowsFile, tier, from, commit, took] = process.argv.slice(2);
 if (!rowsFile || !existsSync(rowsFile)) {
-	console.error("usage: node tests/status.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page tasks|status | --coverage");
+	console.error("usage: node tests/status.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page status | --coverage");
 	process.exit(1);
 }
 const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";

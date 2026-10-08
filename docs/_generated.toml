@@ -2,7 +2,7 @@
 # `mise run repo:check` and the commit check fail when one is stale.
 [[generated]]
 page = "reference/tasks.md"
-run = "node tests/status.mjs --page tasks"
+run = "charter docs-tasks -only tasks.toml"
 
 [[generated]]
 page = "reference/status.md"
