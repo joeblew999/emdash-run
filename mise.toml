@@ -38,31 +38,35 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.test]
-description = "The test: every group that is not proven. The groups are named as the tasks are (site, signin, plugin, live); each runs alone, on a copy of this repo's site/, and keeps its own record (tests/<group>/results.json) and page (docs/reference/status-<group>.md). Proven: every step passed and nothing the group depends on has changed since, so it is not run again; -- --again runs it anyway. One test at a time on a machine: a second waits"
-run = "bash tests/run.sh"
+description = "The test, as you run it while working: the everyday steps of the site, signin and plugin groups that are not proven, about a minute a group, on a copy of this repo's site/. Proven: they passed and nothing the group depends on has changed since (node tests/record.mjs --depends), so it is not run again; -- --again runs it anyway. Never deploys. One test at a time on a machine: a second waits. Each group keeps its own record (tests/<group>/results.json) and page (docs/reference/status-<group>.md)"
+run = "node tests/run.mjs"
 
 [tasks."test:site"]
-description = "The site group alone: making, running, checking and deleting a site. -- --again when it is proven"
-run = "bash tests/run.sh site"
+description = "The site group alone: making, running, checking and deleting a site. -- --all for its long steps too, -- --again when it is proven"
+run = "node tests/run.mjs site"
 
 [tasks."test:signin"]
-description = "The signin group alone: the CLI and a browser window as an administrator of the built site. -- --again when it is proven"
-run = "bash tests/run.sh signin"
+description = "The signin group alone: the CLI and a browser window as an administrator of the built site. -- --all for its long steps too, -- --again when it is proven"
+run = "node tests/run.mjs signin"
 
 [tasks."test:plugin"]
-description = "The plugin group alone: a plugin of your own, and plugins from EmDash's registry. -- --again when it is proven"
-run = "bash tests/run.sh plugin"
+description = "The plugin group alone: a plugin of your own, and plugins from EmDash's registry. -- --all for its long steps too, -- --again when it is proven"
+run = "node tests/run.mjs plugin"
 
 [tasks."test:live"]
-description = "The live group alone: the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). -- --again when it is proven"
-run = "bash tests/run.sh live"
+description = "REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes: run it after changing a live: task, not every day"
+run = "node tests/run.mjs live"
+
+[tasks."test:all"]
+description = "Every step of the site, signin and plugin groups, the long ones too: about nine minutes. What the stages workflow runs on Linux, macOS and Windows, so a pass here is a pass there"
+run = "node tests/run.mjs --all"
 
 [tasks."test:node"]
-description = "The site, signin and plugin groups on a Node site made from EmDash's template: before a release, not every day"
-run = "bash tests/run.sh --node"
+description = "Every step of the site, signin and plugin groups on a Node site made from EmDash's template: before a release, not every day"
+run = "node tests/run.mjs --node --all"
 
 [tasks.check]
-description = "Every check but the tests themselves, in seconds: the unit tests of the scripts' own functions (tests/plugin/*.test.mjs), every task has a test step, no group's record has a failure or an untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; run mise run test before that"
+description = "Every check but the tests themselves, in seconds: the unit tests of the scripts' own functions (tests/plugin/*.test.mjs), every task has a test step, no group's record has a failure or an untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; the stages workflow runs mise run test:all"
 run = ["node --test \"tests/**/*.test.mjs\"", "node tests/record.mjs --coverage", "node tests/record.mjs --green", { task = "repo:ci" }]
 
 [tasks.src]

@@ -1,12 +1,14 @@
-# The same test a developer runs, on macOS, Linux and Windows: mise run test. On a runner no group
-# is skipped as proven, and the live group is not run (no deployed test site there).
+# Every step of the test, on macOS, Linux and Windows: mise run test:all — one task, the same one a
+# developer can run. A developer's own run (mise run test) is the everyday steps, in a minute or
+# two; the long ones are run here. The live group is not: a runner has no deployed test site.
 #
-# Started by hand, or by a release tag. Never by a push: the test runs locally after every change,
-# and docs/reference/status.md is its record.
+# Started by a push to main that changes what the test depends on, by a release tag, or by hand.
 name: stages
 on:
   workflow_dispatch:
   push:
+    branches: [main]
+    paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", ".github/workflows/stages.yml", "!tests/*/results.json"]
     tags: ["v*"]
 concurrency:
   group: stages-${{ github.ref }}
@@ -37,8 +39,8 @@ jobs:
           # different mise could word them differently. Move this with min_version in mise.toml
           version: 2026.10.4
           install_args: node pnpm
-      - name: mise run test
-        run: mise run test
+      - name: mise run test:all
+        run: mise run test:all
       # What this run recorded (tests/<group>/results.json), as the page docs/reference/status.md is written
       # from it. Not the committed page: a runner has no charter to rewrite it, so that one would
       # show the developer's last run, not this one.

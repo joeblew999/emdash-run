@@ -34,8 +34,8 @@ if (what === "new") {
 	if (existsSync(join(siteDir, "node_modules", "astro"))) {
 		spawnSync("pnpm", ["exec", "astro", "dev", "stop"], { cwd: siteDir, stdio: "inherit", shell: win });
 		spawnSync("pnpm", ["exec", "astro", "preview", "stop"], { cwd: siteDir, stdio: "inherit", shell: win });
-		// and a Node site's sandbox process, which outlives the site (scripts/plugin.mjs, leftover)
-		spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "plugin.mjs"), "leftover", siteDir], { stdio: "inherit" });
+		// and a Node site's sandbox process, which outlives the site (scripts/site-stop.mjs)
+		spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "site-stop.mjs"), siteDir], { stdio: "inherit" });
 	}
 	rmSync(siteDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 	console.log(`Deleted [${basename(siteDir)}].`);

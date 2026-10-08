@@ -44,7 +44,7 @@ run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }
 description = "Stop the dev site and the built site"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop", "node \"{{ env.MISE_TASK_DIR }}/scripts/plugin.mjs\" leftover \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
+run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop", "node \"{{ env.MISE_TASK_DIR }}/scripts/site-stop.mjs\" \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
 
 ["site:logs"]
 description = "Follow the dev site's log"

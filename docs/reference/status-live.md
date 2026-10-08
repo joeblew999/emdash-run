@@ -8,11 +8,11 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status-live` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Run them: `mise run test:live`. The steps: `tests/live/steps.sh`. Every group: [What works](status.md).
+Run them: `mise run test:live`. The steps: `tests/live/steps.mjs`. Every group: [What works](status.md).
 
 ## On the deployed site
 
-**22 of 22 steps pass, in 5 min 33 s.** State: proven. Run 2026-10-08 04:50 UTC at commit `cad9abe`, on macOS.
+**22 of 22 steps pass, in 5 min 33 s.** State: changed since it passed. Run 2026-10-08 04:50 UTC at commit `cad9abe`, on macOS.
 
 | | Task | Step | Seconds |
 |---|---|---|---|

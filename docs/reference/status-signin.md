@@ -8,11 +8,11 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status-signin` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Run them: `mise run test:signin`. The steps: `tests/signin/steps.sh`. Every group: [What works](status.md).
+Run them: `mise run test:signin`. The steps: `tests/signin/steps.mjs`. Every group: [What works](status.md).
 
 ## On a Cloudflare site
 
-**9 of 9 steps pass, in 1 min 43 s.** State: proven. Run 2026-10-08 04:39 UTC at commit `ada7563+uncommitted`, on macOS.
+**9 of 9 steps pass, in 1 min 43 s.** State: changed since it passed. Run 2026-10-08 04:39 UTC at commit `ada7563+uncommitted`, on macOS.
 
 | | Task | Step | Seconds |
 |---|---|---|---|

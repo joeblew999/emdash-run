@@ -8,39 +8,31 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status-site` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Run them: `mise run test:site`. The steps: `tests/site/steps.sh`. Every group: [What works](status.md).
+Run them: `mise run test:site`. The steps: `tests/site/steps.mjs`. Every group: [What works](status.md).
 
 ## On a Cloudflare site
 
-**25 of 25 steps pass, in 2 min 33 s.** State: proven. Run 2026-10-08 04:37 UTC at commit `ada7563+uncommitted`, on macOS.
+**17 of 17 steps pass, in 1 min 13 s.** State: proven. Run 2026-10-08 05:03 UTC at commit `4c9d7c9+uncommitted`, on macOS.
 
 | | Task | Step | Seconds |
 |---|---|---|---|
-| pass | `site:ports` | gives the project two ports of its own | 1 |
+| pass | `site:ports` | gives the project two ports of its own | 0 |
 | pass | `site:ports` | run again: it keeps them | 0 |
-| pass | `site:new` | run again: the site is left alone | 1 |
-| pass | `site:start` | starts the dev site; EmDash's welcome dialog is closed | 19 |
+| pass | `site:new` | run again: the site is left alone | 0 |
+| pass | `site:start` | starts the dev site; EmDash's welcome dialog is closed | 18 |
 | pass | `site:start` | run again: it is already running | 2 |
-| pass | `site:start` | the dev site answers; dev sign-in works | 1 |
+| pass | `site:start` | the dev site answers; dev sign-in works | 0 |
 | pass | `site:logs` | shows the dev site log | 5 |
 | pass | `emdash` | a quoted JSON argument arrives whole | 1 |
-| pass | `emdash` | whoami on the dev site | 1 |
+| pass | `emdash` | whoami on the dev site | 0 |
 | pass | `emdash` | \-\-live with no LIVE_URL says so (it must refuse) | 0 |
 | pass | `content:pull` | with no LIVE_URL says so (it must refuse) | 0 |
 | pass | `site:check` | passes on a sound site | 17 |
-| pass | `site:check` | fails on a type error | 6 |
 | pass | `model:sync` | records an added field in .emdash/ | 1 |
 | pass | `site:preview` | serves the built site; dev sign-in is off there | 7 |
-| pass | `live:check` | the deploy rehearses with no account | 10 |
-| pass | `emdash:update` | updates, type-checks and builds | 19 |
-| pass | `site:reset` | empties the local content | 25 |
-| pass | `site:reset` | refuses with nobody to ask (it must refuse) | 0 |
-| pass | `site:delete` | refuses with nobody to ask (it must refuse) | 1 |
 | pass | `site:stop` | stops both sites; twice is fine | 3 |
-| pass | `site:delete` | removes the site folder | 5 |
-| pass | `site:delete` | run again: nothing to delete | 1 |
-| pass | `site:start` | with no site, says so and stops (it must refuse) | 0 |
-| pass | `site:new` | makes a site from nothing, from EmDash's template | 12 |
+| pass | `site:delete` | removes the site folder | 6 |
+| pass | `site:delete` | run again: nothing to delete | 0 |
 
 ## On a Node site
 

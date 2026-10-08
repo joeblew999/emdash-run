@@ -3,8 +3,6 @@
 // This file only says which job a task asked for. Each job is a file of its own:
 //
 //   node plugin.mjs sandbox <site folder>                       plugin:sandbox                      plugin-sandbox.mjs
-//   node plugin.mjs leftover <site folder>                      site:stop — a Node site's sandbox   plugin-sandbox.mjs
-//                                                                process, left running
 //   node plugin.mjs config  <site folder> <package>             plugin:add, plugin:new — a          plugin-sandbox.mjs
 //                                                                sandboxed plugin's lines in
 //                                                                astro.config.mjs; a native
@@ -27,9 +25,7 @@ const [what, ...argv] = process.argv.slice(2);
 const flags = argv.filter((a) => a.startsWith("--"));
 const args = argv.filter((a) => !a.startsWith("--"));
 
-if (what === "leftover") {
-	(await import("./plugin-sandbox.mjs")).stopLeftover(args[0]);
-} else if (what === "sandbox") {
+if (what === "sandbox") {
 	const [siteDir] = args;
 	console.error(`-> site folder: ${resolve(siteDir)}`);
 	const changed = (await import("./plugin-sandbox.mjs")).sandbox(siteDir);
@@ -46,5 +42,5 @@ if (what === "leftover") {
 } else if (what === "works") {
 	await (await import("./plugin-works.mjs")).works(args, flags);
 } else {
-	fail("usage: node plugin.mjs sandbox|leftover|config|install|update|remove|works …");
+	fail("usage: node plugin.mjs sandbox|config|install|update|remove|works …");
 }
