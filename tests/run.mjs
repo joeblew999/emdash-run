@@ -39,7 +39,7 @@
 //   t.status(url)               the HTTP status a GET gets, redirects not followed; 0 when no answer
 //   t.until(fn)                 fn every 3 seconds until it returns true, ten times
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -92,7 +92,9 @@ const todo = want.filter((g) => {
 if (!todo.length) process.exit(0);
 
 // What must be undone when the test ends, however it ends.
-const work = mkdtempSync(join(tmpdir(), "emdash-run-test-"));
+// (its real name: on Windows the temporary folder is given as a short name, C:\\Users\\RUNNER~1\\…,
+// and a dev server started in a folder named that way exits before it is ready)
+const work = realpathSync.native(mkdtempSync(join(tmpdir(), "emdash-run-test-")));
 const undo = [() => rmSync(work, { recursive: true, force: true, maxRetries: 3 })];
 let ended = false;
 const end = () => {

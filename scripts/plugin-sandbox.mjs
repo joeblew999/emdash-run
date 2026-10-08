@@ -129,6 +129,13 @@ export const sandbox = (siteDir) => {
 
 // plugin:add and plugin:new: the package is in the site; now its two lines in astro.config.mjs.
 export const addToConfig = (siteDir, given) => {
+	// On Windows `pnpm add file:./plugins/x` writes the folder into package.json with a backslash and
+	// into its lockfile with a slash. The two then disagree, and on a CI runner (a frozen lockfile)
+	// every pnpm command after it refuses: ERR_PNPM_OUTDATED_LOCKFILE. A slash is right on every OS.
+	const pkgFile = join(siteDir, "package.json");
+	const pkgText = readFileSync(pkgFile, "utf8");
+	const slashed = pkgText.replace(/"file:[^"]*"/g, (m) => m.replaceAll("\\\\", "/"));
+	if (slashed !== pkgText) writeFileSync(pkgFile, slashed);
 	// `pnpm add` takes a version or a folder too: the name is what is in package.json.
 	const have = sitePackages(siteDir);
 	const pkg = have[given] ? given : Object.keys(have).find((n) => have[n] === given || have[n] === `file:${given.replace(/^file:/, "")}` || given.startsWith(`${n}@`));

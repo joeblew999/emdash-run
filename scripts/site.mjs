@@ -68,6 +68,11 @@ if (what === "new") {
 	}
 	// siteDir is the first word of the command here: what follows `one-at-a-time` is the command
 	const r = spawnSync(siteDir, rest, { stdio: "inherit", shell: process.platform === "win32" });
+	// A site started in the background that died says only that it did: its own log says why.
+	if (r.status !== 0 && rest.includes("--background")) {
+		console.error("What the site's own log says:");
+		spawnSync(siteDir, [...rest.slice(0, rest.indexOf("--background")), "logs"], { stdio: "inherit", shell: process.platform === "win32", timeout: 20_000 });
+	}
 	// Its turn lasts until the site has answered once. The first request is when a site does its
 	// slow work — the dev site builds its pages, EmDash makes its database. On a slow CI runner the
 	// CLI was told "Not authenticated" straight after "Dev server running", twice in one run; why
