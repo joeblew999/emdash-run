@@ -11,12 +11,16 @@ import { sitePackages } from "./plugin-site.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 
 export const works = async (args, flags) => {
-	// "It works", as one line per check. This machine only: it builds the site. No name: every
-	// plugin the site has.
+	// One line per check. No name: every plugin the site has.
+	//   this machine     builds, starts, listed, routes, admin page, log, sandbox
+	//   a deployed site  answers, listed, routes, admin page — it is not built, restarted or signed in
+	//                    to from here, and its log is not kept anywhere this can read it afterwards
 	const [given, siteDir, ...names] = args;
-	const url = siteAddress(given, flags.includes("--deployed"));
+	const deployed = flags.includes("--deployed");
+	const url = siteAddress(given, deployed);
 	console.error(`-> ${whereIs(url)}`);
 	const api = client(url, siteDir);
+	const visitor = client(url, siteDir, true);
 	let failed = 0;
 	const line = (state, check, detail) => {
 		if (state === "FAIL") failed++;
@@ -26,15 +30,24 @@ export const works = async (args, flags) => {
 		const r = spawnSync("mise", ["run", ...task], { cwd: projectDir, encoding: "utf8", shell: win });
 		return { ok: r.status === 0, tail: `${r.stdout}${r.stderr}`.replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-4).join(" | ").slice(0, 400) };
 	};
-	// 1. the site, with its plugins in it, still passes its checks
-	const check = run(["site:check"]);
-	line(check.ok ? "ok" : "FAIL", "builds", check.ok ? "seed valid, types check, site builds (mise run site:check)" : check.tail);
-	// 2. it starts — from stopped, so every plugin is loaded the way a deploy or a restart loads it
-	const start = run(["site:preview"]);
-	const up = await api("GET", "/");
-	line(start.ok && up.status === 200 ? "ok" : "FAIL", "starts", start.ok ? `the built site answers ${up.status} after a restart` : start.tail);
-	if (up.status !== 200) process.exit(1);
-	if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) mise(["signin:token"]);
+	if (deployed) {
+		line("skip", "builds", "a deployed site is not built from here: what is deployed is not this folder's files (mise run live:check rehearses a deploy of them)");
+		line("skip", "starts", "a deployed site is not restarted from here");
+		const up = await visitor("GET", "/");
+		line(up.status > 0 && up.status < 400 ? "ok" : "FAIL", "answers", `the deployed site answers a visitor ${up.status || `nothing — ${up.text}`}`);
+		if (up.status === 0) process.exit(1);
+		if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) fail(`FAIL listed: the deployed site did not accept this machine's sign-in — GET /_emdash/api/admin/plugins answered ${said(await api("GET", "/_emdash/api/admin/plugins"))}\nSign in first: mise run signin:token -- --live`);
+	} else {
+		// 1. the site, with its plugins in it, still passes its checks
+		const check = run(["site:check"]);
+		line(check.ok ? "ok" : "FAIL", "builds", check.ok ? "seed valid, types check, site builds (mise run site:check)" : check.tail);
+		// 2. it starts — from stopped, so every plugin is loaded the way a deploy or a restart loads it
+		const start = run(["site:preview"]);
+		const up = await api("GET", "/");
+		line(start.ok && up.status === 200 ? "ok" : "FAIL", "starts", start.ok ? `the built site answers ${up.status} after a restart` : start.tail);
+		if (up.status !== 200) process.exit(1);
+		if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) mise(["signin:token"]);
+	}
 	const list = await api("GET", "/_emdash/api/admin/plugins");
 	if (list.status !== 200) fail(`FAIL listed: GET /_emdash/api/admin/plugins answered ${said(list)}`);
 	const items = list.data.items;
@@ -84,36 +97,42 @@ export const works = async (args, flags) => {
 		const answers = [];
 		for (const { r, open } of routes.filter((x) => !seen.has(x.r) && seen.add(x.r))) {
 			// a public route is asked with no sign-in, as a visitor would
-			const res = open ? await client(url, join(siteDir, "nobody"))("GET", `/_emdash/api/plugins/${plugin.id}/${r}`) : await api("GET", `/_emdash/api/plugins/${plugin.id}/${r}`);
+			const res = await (open ? visitor : api)("GET", `/_emdash/api/plugins/${plugin.id}/${r}`);
 			// Not there: no answer, a 5xx, EmDash's own "Plugin route not found", a plugin that could not be
 			// started, or a sign-in refused. A 400, 404 or 405 in the plugin's own words is the route answering.
 			const gone = res.error?.code === "NOT_FOUND" || /Failed to start Worker|No such module|sandbox unavailable|workerd (failed|crashed|exited)/i.test(res.error?.message ?? "");
-			const shut = open ? res.error?.code === "UNAUTHORIZED" : res.status === 401 || res.status === 403;
-			answers.push({ r, status: res.status, why: res.error?.message ?? res.text, bad: res.status === 0 || res.status >= 500 || gone || shut });
+			// (a visitor sent to a sign-in page — Cloudflare Access in front of the route — is shut out too)
+			const shut = open ? res.error?.code === "UNAUTHORIZED" || (res.status >= 300 && res.status < 400 && /cloudflareaccess\.com|\/login/.test(res.location)) : res.status === 401 || res.status === 403;
+			answers.push({ r, open, status: res.status, why: res.error?.message ?? (res.location ? `sent to ${res.location.split("?")[0]}` : res.text), bad: res.status === 0 || res.status >= 500 || gone || shut });
 		}
-		if (answers.length) line(answers.some((a) => a.bad) ? "FAIL" : "ok", `${n} routes`, `${answers.length} declared, each asked with a GET: ${answers.map((a) => `${a.r} ${a.status || "no answer"}${a.bad ? ` (${String(a.why).replace(/\s+/g, " ").slice(0, 120)})` : ""}`).join(", ")}${answers.some((a) => !a.bad && a.status >= 400) ? " (a 400, 404 or 405 is the route itself refusing a bare GET: it is there)" : ""}`);
+		if (answers.length) line(answers.some((a) => a.bad) ? "FAIL" : "ok", `${n} routes`, `${answers.length} declared, each asked with a GET${answers.some((a) => a.open) ? ` (${answers.filter((a) => a.open).length} open to visitors, asked with no sign-in)` : ""}: ${answers.map((a) => `${a.r} ${a.status || "no answer"}${a.bad ? ` (${String(a.why).replace(/\s+/g, " ").slice(0, 120)})` : ""}`).join(", ")}${answers.some((a) => !a.bad && a.status >= 400) ? " (a 400, 404 or 405 is the route itself refusing a bare GET: it is there)" : ""}`);
 		else line("skip", `${n} routes`, "it declares none that can be listed");
 		// 5. its admin pages load, in a real browser, signed in with the saved token (the one Playwright script)
 		const pages = inAdmin?.adminPages ?? [];
 		if (!pages.length) line("skip", `${n} admin page`, "it has none");
 		else {
-			const r = spawnSync(process.execPath, [join(here, "first-admin.mjs"), url, siteDir, ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
+			const r = spawnSync(process.execPath, [join(here, "first-admin.mjs"), url, siteDir, ...(deployed ? ["--deployed"] : []), ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
 			const lines = r.stdout.trim().split("\n").filter((l) => /^(ok|FAIL)/.test(l));
 			for (const l of lines) console.log(l.replace("admin page:", `${n} admin page:`));
 			failed += lines.filter((l) => l.startsWith("FAIL")).length;
 			// the browser script stopped before it had a line for every page: say what it said
 			if (lines.length < pages.length) line("FAIL", `${n} admin page`, `${pages.length - lines.length} of ${pages.length} pages were not checked — ${r.stderr.replace(/\s+/g, " ").slice(-300) || `the browser script ended with ${r.status ?? r.signal}`}`);
 		}
-		// 6 and 7. what the site wrote in its log meanwhile: EmDash's own "Loaded registry plugin …"
-		// line from when the site started, and no line saying one failed.
-		const log = readLog();
-		const fresh = log.slice(wanted.indexOf(plugin) === 0 ? 0 : read);
-		read = log.length;
-		const notLoaded = fresh.filter((l) => /Failed to load|not found in R2|sandbox is configured but not available|Sandboxed plugins are disabled|Plugin sandbox unavailable|workerd (failed|crashed|exited)|Uncaught \w*Error/i.test(l) && (l.includes(plugin.id) || /sandbox|workerd/i.test(l)));
-		const loaded = log.find((l) => /Loaded \w+ plugin /.test(l) && l.includes(plugin.id));
-		line(notLoaded.length ? "FAIL" : "ok", `${n} log`, notLoaded.length ? notLoaded.slice(0, 3).join(" | ").slice(0, 400) : loaded ? `the built site's log says: ${loaded.trim().slice(0, 160)}` : "the built site's log has no line saying it failed to load (EmDash writes 'Loaded … plugin' for a registry plugin, and nothing for one from the site's config)");
-		const refused = fresh.filter((l) => /Missing capability|Host not allowed|exceeded wall-time limit|Sandboxed plugin route error|Route handler failed/i.test(l));
-		line(refused.length ? "FAIL" : "ok", `${n} sandbox`, refused.length ? refused.slice(0, 3).join(" | ").slice(0, 400) : "nothing was refused while its routes and pages were asked (a refusal the plugin catches itself leaves no trace)");
+		if (deployed) {
+			line("skip", `${n} log`, "a deployed site's log is not kept where this can read it: mise run live:logs follows it while you ask");
+			line("skip", `${n} sandbox`, "the same: a refusal would be in that log");
+		} else {
+			// 6 and 7. what the site wrote in its log meanwhile: EmDash's own "Loaded registry plugin …"
+			// line from when the site started, and no line saying one failed.
+			const log = readLog();
+			const fresh = log.slice(wanted.indexOf(plugin) === 0 ? 0 : read);
+			read = log.length;
+			const notLoaded = fresh.filter((l) => /Failed to load|not found in R2|sandbox is configured but not available|Sandboxed plugins are disabled|Plugin sandbox unavailable|workerd (failed|crashed|exited)|Uncaught \w*Error/i.test(l) && (l.includes(plugin.id) || /sandbox|workerd/i.test(l)));
+			const loaded = log.find((l) => /Loaded \w+ plugin /.test(l) && l.includes(plugin.id));
+			line(notLoaded.length ? "FAIL" : "ok", `${n} log`, notLoaded.length ? notLoaded.slice(0, 3).join(" | ").slice(0, 400) : loaded ? `the built site's log says: ${loaded.trim().slice(0, 160)}` : "the built site's log has no line saying it failed to load (EmDash writes 'Loaded … plugin' for a registry plugin, and nothing for one from the site's config)");
+			const refused = fresh.filter((l) => /Missing capability|Host not allowed|exceeded wall-time limit|Sandboxed plugin route error|Route handler failed/i.test(l));
+			line(refused.length ? "FAIL" : "ok", `${n} sandbox`, refused.length ? refused.slice(0, 3).join(" | ").slice(0, 400) : "nothing was refused while its routes and pages were asked (a refusal the plugin catches itself leaves no trace)");
+		}
 		console.log(failed > before ? `     ${n}: DOES NOT WORK — ${failed - before} check${failed - before > 1 ? "s" : ""} failed` : `     ${n}: loads and answers (its pages and routes; what a form's submit or a hook does is not tried)`);
 	}
 	process.exit(failed ? 1 : 0);

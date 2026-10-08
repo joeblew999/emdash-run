@@ -57,8 +57,9 @@ if (!local && !deployed) {
 }
 const email = process.env.ADMIN_EMAIL || (local ? "agent@emdash.local" : "");
 const name = process.env.ADMIN_NAME || "Site Admin";
-// Only making an administrator needs an address; opening a window on a site already set up does not.
-if (!email && !show) {
+// Only making an administrator needs an address; opening a window on a site already set up, or
+// checking its pages, does not.
+if (!email && !show && !checks.length) {
 	console.error("A deployed site's administrator needs an address: set ADMIN_EMAIL in the [env] block of mise.toml.");
 	process.exit(1);
 }

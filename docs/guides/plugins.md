@@ -15,10 +15,17 @@ mise run plugin:search -- forms                     # find one: it prints @publi
 mise run plugin:install -- @netdollar.dev/forms     # it prints what the plugin asks for; --yes to agree
 mise run plugin:works -- @netdollar.dev/forms       # does it load and answer? one line per check
 mise run plugin:favourites -- --yes                 # the favourites, in one go
+mise run plugin:update -- @meekmedia.bsky.social/bulletin@0.1.1   # to the release you name
 mise run plugin:remove -- @netdollar.dev/forms
 ```
 
-These act on this machine's built site (`site:preview`), starting it and signing in if needed. The dev site shares its database, so the plugins are there too. With `-- --live` they act on the deployed site, after `signin:token -- --live`.
+These act on this machine's built site (`site:preview`), starting it and signing in if needed. The dev site shares its database, so the plugins are there too. With `-- --live` they act on the deployed site, after `signin:token -- --live`; with `LIVE_PREVIEW=<name>` as well, on that [preview](preview.md) of it.
+
+`plugin:works -- --live` makes the checks that can be made from outside: the site answers a visitor, lists the plugin as active, its routes answer, its admin pages load. It prints `skip` with the reason for the rest: a deployed site is not built or restarted from here, and its log is not read.
+
+## Updating one
+
+`plugin:update` moves an installed plugin to the release you name, and to no other. Before it sends anything it prints what the installed release was granted (`plugin:install` records that on this machine, in `~/.config/emdash-run/plugins/`), what each of the two releases declares in the registry, and what the new one asks for that the installed one did not. It needs `--yes` when the new release asks for more, and always with `--live`. The site then checks the release against the plugin it is running, and stops the same way if it finds more. EmDash refuses an older release: remove the plugin and install that release (`plugin:install -- <publisher>/<slug>@<version>`).
 
 A registry plugin runs in EmDash's sandbox, which a new site does not have switched on: `plugin:install` switches it on (`plugin:sandbox`).
 
@@ -48,6 +55,7 @@ The tasks edit only the top level of the one `emdash({ … })` call, and change 
 
 - On Cloudflare, deploying a site with the sandbox on needs the Workers Paid plan.
 - `plugin:works` says a plugin loads and answers: it shows a route that wants a POST only as existing, and does not fire hooks.
-- A plugin runs with the permissions you agree to at install. `plugin:install` shows them all; hold a plugin to a release with `@<version>`, because a newer one may ask for more.
-- On a Node site, `plugin:install` and `plugin:remove` restart the built site ([Upstream issues](../upstream.md)).
+- A plugin runs with the permissions you agree to at install. `plugin:install` shows them all; hold a plugin to a release with `@<version>`, because a newer one may ask for more. `plugin:update` shows the difference before it moves one.
+- `plugin:update` has been run only between releases that ask for the same: no plugin in the registry has a release that asks for more than the one before it, so the `--yes` it then needs is tested on made-up releases only (`tests/plugin-access.test.mjs`).
+- On a Node site, `plugin:install`, `plugin:update` and `plugin:remove` restart the built site ([Upstream issues](../upstream.md)).
 - `plugin:publish` asks first, and needs a registry login of your own.

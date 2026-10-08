@@ -65,13 +65,14 @@ The tests do not use it: each run makes its own sites in a temporary folder, to 
 | `admin/plugin-config-edit.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
 | `admin/plugin-site.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
 | `admin/plugin-client.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
-| `admin/plugin-registry.mjs` | `plugin:install`, `plugin:favourites`, `plugin:remove`: the requests the admin's buttons make |
-| `admin/plugin-works.mjs` | `plugin:works`: one line per check |
+| `admin/plugin-registry.mjs` | `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`: the requests the admin's buttons make |
+| `admin/plugin-works.mjs` | `plugin:works`: one line per check, on this machine's built site or, from outside, on the deployed one |
 | `admin/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
 | `admin/again.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
 | `admin/site.mjs`, `admin/welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
 | `tests/replay.sh` | The test. Each step names the task it tests |
-| `tests/config-edit.test.mjs`, `tests/fixtures/config/` | The unit tests of those edits, on fixture configs. `mise run check` runs them |
+| `tests/config-edit.test.mjs`, `tests/fixtures/config/` | The unit tests of the edits to `astro.config.mjs`, on fixture configs. `mise run check` runs them |
+| `tests/plugin-access.test.mjs` | The unit tests of how `plugin:update` compares what two releases declare |
 | `tests/status.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own three tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |

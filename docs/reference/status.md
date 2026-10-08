@@ -8,7 +8,7 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/status.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-**133 steps pass, 0 fail, 0 of 35 tasks have no test.**
+**133 steps pass, 0 fail, 1 of 36 tasks have no test.**
 
 The last run: `full`, at commit `5ccdf89+uncommitted`, 2026-10-08 02:58 UTC, on a Mac. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
 
@@ -38,6 +38,7 @@ Every test runs as another developer would: a clean environment, an empty config
 | `plugin:remove` | pass ×2 | pass ×2 |  |  |
 | `plugin:sandbox` | pass ×2 | pass ×2 |  |  |
 | `plugin:search` | pass ×1 | pass ×1 |  |  |
+| `plugin:update` |  |  |  | **NOT TESTED** |
 | `plugin:works` | pass ×4 | pass ×4 |  |  |
 | `signin:access` |  |  | pass ×4 |  |
 | `signin:open` | pass ×2 | pass ×2 | pass ×1 |  |

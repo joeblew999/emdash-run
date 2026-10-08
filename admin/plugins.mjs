@@ -11,6 +11,8 @@
 //                                                                plugin's are printed, not written
 //   node plugins.mjs install <site address> <site folder> [--deployed] [--yes] <publisher>/<slug>…
 //                                                                plugin:install, plugin:favourites   plugin-registry.mjs
+//   node plugins.mjs update  <site address> <site folder> [--deployed] [--yes] <publisher>/<slug>@<version>…
+//                                                                plugin:update                       plugin-registry.mjs
 //   node plugins.mjs remove  <site address> <site folder> [--deployed] <publisher>/<slug>…
 //                                                                plugin:remove                       plugin-registry.mjs
 //   node plugins.mjs works   <site address> <site folder> [name…] plugin:works                       plugin-works.mjs
@@ -37,10 +39,12 @@ if (what === "leftover") {
 	(await import("./plugin-site.mjs")).addToConfig(args[0], args[1]);
 } else if (what === "install") {
 	await (await import("./plugin-registry.mjs")).install(args, flags);
+} else if (what === "update") {
+	await (await import("./plugin-registry.mjs")).update(args, flags);
 } else if (what === "remove") {
 	await (await import("./plugin-registry.mjs")).remove(args, flags);
 } else if (what === "works") {
 	await (await import("./plugin-works.mjs")).works(args, flags);
 } else {
-	fail("usage: node plugins.mjs sandbox|leftover|config|install|remove|works …");
+	fail("usage: node plugins.mjs sandbox|leftover|config|install|update|remove|works …");
 }

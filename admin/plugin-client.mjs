@@ -62,9 +62,10 @@ export const declared = (url, siteDir, key, value) => {
 	writeFileSync(f, JSON.stringify(all, null, 1), { mode: 0o600 });
 	chmodSync(f, 0o600);
 };
-export const client = (url, siteDir) => async (method, path, body) => {
-	const token = saved("tokens", url, siteDir);
-	const pass = saved("access", url, siteDir);
+// `visitor`: nothing saved is sent — the request a stranger's browser would make.
+export const client = (url, siteDir, visitor = false) => async (method, path, body) => {
+	const token = visitor ? null : saved("tokens", url, siteDir);
+	const pass = visitor ? null : saved("access", url, siteDir);
 	const headers = {
 		...(token ? { Authorization: `Bearer ${token.token}` } : {}),
 		...(pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {}),
@@ -77,7 +78,7 @@ export const client = (url, siteDir) => async (method, path, body) => {
 		try {
 			json = JSON.parse(text);
 		} catch {}
-		return { status: res.status, ok: res.ok, text, data: json?.data, error: json?.error };
+		return { status: res.status, ok: res.ok, text, data: json?.data, error: json?.error, location: res.headers.get("location") ?? "" };
 	} catch (error) {
 		// Seen three times in one plugin:works run over 17 plugins on a local Cloudflare site, and not
 		// explained: a GET that got no answer, and got one when asked again. A read is asked twice before it is called unanswered; a write never is.
@@ -103,6 +104,42 @@ export const lookUp = async (aggregatorUrl, w) => {
 	} catch (error) {
 		return { why: `${aggregatorUrl} did not answer: ${error.cause?.code || error.message}` };
 	}
+};
+// One release of a package, as the registry's aggregator lists it — the request EmDash itself makes
+// to find the release an update names (listReleases, page by page).
+export const releaseOf = async (aggregatorUrl, did, slug, version) => {
+	const base = `${aggregatorUrl.replace(/\/$/, "")}/xrpc/com.emdashcms.experimental.aggregator.listReleases?did=${encodeURIComponent(did)}&package=${encodeURIComponent(slug)}&limit=50`;
+	const seen = [];
+	try {
+		for (let cursor = "", page = 0; page < 20; page++) {
+			const res = await fetch(base + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""), { signal: AbortSignal.timeout(60_000) });
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok) return { why: `${res.status} ${json.error ?? ""}: ${json.message ?? ""}`, versions: seen };
+			for (const r of json.releases ?? []) seen.push(r.version);
+			const found = (json.releases ?? []).find((r) => r.version === version);
+			if (found) return { release: found, versions: seen };
+			if (!json.cursor) break;
+			cursor = json.cursor;
+		}
+		return { why: "the registry has no such release", versions: seen };
+	} catch (error) {
+		return { why: `${aggregatorUrl} did not answer: ${error.cause?.code || error.message}`, versions: seen };
+	}
+};
+// What a release says it needs, one line each, in the registry's own words: `content.write`,
+// `network.request to api.example.com`. Two releases listed this way can be compared like for like.
+export const accessOf = (release) => {
+	const access = release?.release?.extensions?.["com.emdashcms.experimental.package.releaseExtension"]?.declaredAccess ?? {};
+	const lines = [];
+	for (const [area, verbs] of Object.entries(access)) {
+		for (const [verb, options] of Object.entries(verbs ?? {})) {
+			if (area !== "network") lines.push(`${area}.${verb}`);
+			// no list of hosts is any host; a list, even an empty one, is those hosts only (the lexicon's meaning)
+			else if (!Array.isArray(options?.allowedHosts)) lines.push(`${area}.${verb} to any host`);
+			else lines.push(...(options.allowedHosts.length ? options.allowedHosts.map((h) => `${area}.${verb} to ${h}`) : [`${area}.${verb} to no host`]));
+		}
+	}
+	return lines.sort();
 };
 // A Node site, after a plugin was installed or removed while it ran: EmDash restarts its sandbox
 // process in place, the old one keeps the port, and from then on no sandboxed plugin answers

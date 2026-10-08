@@ -30,10 +30,11 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add \-\- &lt;package&gt;. Run again: nothing changes. Stops the site: start it again afterwards |
 | [`plugin:search`](#pluginsearch) | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
 | [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes |
-| [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
+| [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; for that release and no other, newest or not. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
+| [`plugin:update`](#pluginupdate) | Update an installed registry plugin to a release you name: mise run plugin:update \-\- &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt;. Before anything is sent it prints what the installed release was granted (what plugin:install recorded on this machine, in ~/.config/emdash-run/plugins/) and what each of the two releases declares in the registry, and says what the new one asks for that the installed one did not. A release that asks for more, and any update with \-\-live, needs \-\-yes; the site then checks the release against the plugin it is running, and that too stops without \-\-yes. This machine's built site, starting it and signing in if needed; \-\-live is the deployed one. An older release is refused by EmDash: remove the plugin and install that release. Run again: nothing to update |
 | [`plugin:remove`](#pluginremove) | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed |
 | [`plugin:favourites`](#pluginfavourites) | Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs \-\-yes: some can change content or reach outside the site. Add \-\-live for deployed |
-| [`plugin:works`](#pluginworks) | Does a plugin load and answer? One line per check: the site builds, starts, lists the plugin, its routes answer a GET, its admin pages load, the log and the sandbox show no refusal. It does not try a form's submit or fire a hook. Restarts the built site, and signs in if needed. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin |
+| [`plugin:works`](#pluginworks) | Does a plugin load and answer? One line per check. This machine's built site: it builds, starts, lists the plugin as active, its routes answer a GET (those open to visitors asked with no sign-in), its admin pages load in Chrome with the saved sign-in, the log and the sandbox show no refusal; it restarts the built site, and signs in if needed. With \-\-live, the deployed site (or its preview, with LIVE_PREVIEW): it answers a visitor, lists the plugin as active, its routes answer, its admin pages load — and it says which checks it skipped and why: nothing is built, restarted or signed in to, and the log is not read. Sign in first: mise run signin:token \-\- \-\-live. It does not try a form's submit or fire a hook. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin |
 | [`plugin:publish`](#pluginpublish) | Publish a plugin to EmDash's registry. Asks first |
 | [`plugin`](#plugin) | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; |
 | [`signin:token`](#signintoken) | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) |
@@ -168,7 +169,7 @@ Let the site run sandboxed plugins, which every registry plugin is: sandboxRunne
 
 ### `plugin:install`
 
-Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>, or <publisher>/<slug>@<version> to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with --live, needs --yes
+Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>, or <publisher>/<slug>@<version> for that release and no other, newest or not. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with --live, needs --yes
 
 - **Usage:** `plugin:install [--live] [--yes] <plugin>…`
 
@@ -178,6 +179,19 @@ Install a plugin from EmDash's registry, no clicking: mise run plugin:install --
 **Flags**
 - **`--live`** — The deployed site at LIVE_URL instead of the local production build
 - **`--yes`** — Agree to what the plugin asks for. Needed when it can change things or reach outside the site, and always with --live
+
+### `plugin:update`
+
+Update an installed registry plugin to a release you name: mise run plugin:update -- <publisher>/<slug>@<version>. Before anything is sent it prints what the installed release was granted (what plugin:install recorded on this machine, in ~/.config/emdash-run/plugins/) and what each of the two releases declares in the registry, and says what the new one asks for that the installed one did not. A release that asks for more, and any update with --live, needs --yes; the site then checks the release against the plugin it is running, and that too stops without --yes. This machine's built site, starting it and signing in if needed; --live is the deployed one. An older release is refused by EmDash: remove the plugin and install that release. Run again: nothing to update
+
+- **Usage:** `plugin:update [--live] [--yes] <plugin>…`
+
+**Arguments**
+- **`<plugin>…`** — The plugin and the release to move it to, e.g. @meekmedia.bsky.social/bulletin@0.1.1
+
+**Flags**
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
+- **`--yes`** — Agree to what the new release asks for. Needed when it asks for more than the installed one, and always with --live
 
 ### `plugin:remove`
 
@@ -203,12 +217,15 @@ Install the favourite registry plugins in one go, each at the release that was t
 
 ### `plugin:works`
 
-Does a plugin load and answer? One line per check: the site builds, starts, lists the plugin, its routes answer a GET, its admin pages load, the log and the sandbox show no refusal. It does not try a form's submit or fire a hook. Restarts the built site, and signs in if needed. mise run plugin:works -- <name>. No name: every plugin
+Does a plugin load and answer? One line per check. This machine's built site: it builds, starts, lists the plugin as active, its routes answer a GET (those open to visitors asked with no sign-in), its admin pages load in Chrome with the saved sign-in, the log and the sandbox show no refusal; it restarts the built site, and signs in if needed. With --live, the deployed site (or its preview, with LIVE_PREVIEW): it answers a visitor, lists the plugin as active, its routes answer, its admin pages load — and it says which checks it skipped and why: nothing is built, restarted or signed in to, and the log is not read. Sign in first: mise run signin:token -- --live. It does not try a form's submit or fire a hook. mise run plugin:works -- <name>. No name: every plugin
 
-- **Usage:** `plugin:works [name]…`
+- **Usage:** `plugin:works [--live] [name]…`
 
 **Arguments**
 - **`[name]…`** — &lt;publisher>/&lt;slug> of a registry plugin, or the name of one in plugins/. None: every plugin the site has
+
+**Flags**
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build: only the checks that can be made from outside
 
 ### `plugin:publish`
 

@@ -1,4 +1,5 @@
-// The registry plugin tasks that change a site: plugin:install and plugin:favourites, plugin:remove.
+// The registry plugin tasks that change a site: plugin:install and plugin:favourites, plugin:update,
+// plugin:remove.
 // EmDash has no command for these: a registry plugin is installed in the admin only.
 // Asked of EmDash, as an idea (emdash-cms/emdash discussion 3999): `emdash plugin install|remove`.
 //
@@ -8,7 +9,13 @@
 // gets it: the registry's aggregator, whose address the site gives (resolvePackage). Not from
 // `emdash-plugin info`: that looks the handle up at the publisher's own host first, and fails
 // when that host is down (docs/upstream.md).
-import { agreed, client, declared, fail, lookUp, ready, reference, restartNode, said, siteAddress, whereIs } from "./plugin-client.mjs";
+//
+// UPDATE sends the admin's Update request, POST …/admin/plugins/registry/<id>/update, for the release
+// that was named. EmDash has no request that only says what an update would ask for: sent with no
+// agreement, it refuses a release that asks for more (CAPABILITY_ESCALATION and the like, with the
+// difference) and otherwise updates there and then. So before anything is sent, the two releases
+// are read from the registry's aggregator and compared; the site's own refusal is the second gate.
+import { accessOf, agreed, client, declared, fail, lookUp, ready, reference, releaseOf, restartNode, said, siteAddress, whereIs } from "./plugin-client.mjs";
 import { sandbox } from "./plugin-site.mjs";
 
 export const install = async (args, flags) => {
@@ -43,16 +50,17 @@ export const install = async (args, flags) => {
 		const list = await api("GET", "/_emdash/api/admin/plugins");
 		const there = list.data?.items?.find((p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
 		if (there && w.version && there.version !== w.version) {
-			console.log(`FAIL ${w.name}: you asked for ${w.version} and the site has ${there.version}. Remove it first (mise run plugin:remove -- ${w.name}), or ask for ${there.version}`);
+			console.log(`FAIL ${w.name}: you asked for ${w.version} and the site has ${there.version}. To move it to a newer release: mise run plugin:update -- ${w.name}@${w.version}. To an older one: remove it first (mise run plugin:remove -- ${w.name})`);
 			failed++;
 			continue;
 		}
 		if (there) {
-			console.log(`ok   ${w.name}: already installed — ${there.version}, ${there.status}, id ${there.id}${pkg.latestVersion && pkg.latestVersion !== there.version ? ` (the registry has ${pkg.latestVersion}: update it in the admin, Plugins)` : ""}`);
+			console.log(`ok   ${w.name}: already installed — ${there.version}, ${there.status}, id ${there.id}${pkg.latestVersion && pkg.latestVersion !== there.version ? ` (the registry has ${pkg.latestVersion}: mise run plugin:update -- ${w.name}@${pkg.latestVersion})` : ""}`);
 			continue;
 		}
 		// 1. what the admin's consent dialog shows: the site reads the publisher's signed records
-		const verify = await api("POST", "/_emdash/api/admin/plugins/registry/verify", { did: pkg.did, slug: w.slug });
+		// a release asked for by version is the one verified and installed, newest or not
+		const verify = await api("POST", "/_emdash/api/admin/plugins/registry/verify", { did: pkg.did, slug: w.slug, ...(w.version ? { version: w.version } : {}) });
 		if (!verify.ok) {
 			console.log(`FAIL ${w.name}: the site would not verify it — ${said(verify)}`);
 			failed++;
@@ -61,7 +69,7 @@ export const install = async (args, flags) => {
 		const v = verify.data;
 		// A version asked for is the one installed, or none: a newer release may ask for more.
 		if (w.version && v.version !== w.version) {
-			console.log(`FAIL ${w.name}: you asked for ${w.version} and the registry's release is ${v.version}. Read what ${v.version} asks for (mise run plugin -- info ${w.publisher} ${w.slug}), then ask for it by that version`);
+			console.log(`FAIL ${w.name}: you asked for ${w.version} and the site verified ${v.version}. Read what ${v.version} asks for (mise run plugin -- info ${w.publisher} ${w.slug}), then ask for it by that version`);
 			failed++;
 			continue;
 		}
@@ -102,6 +110,115 @@ export const install = async (args, flags) => {
 	}
 	if (!deployed && installed) restartNode(siteDir);
 	if (!deployed) console.log(`The plugins are in the site's database and storage, which the dev site (site:start) shares. Check them: mise run plugin:works`);
+	process.exit(failed ? 1 : 0);
+};
+
+export const update = async (args, flags) => {
+	// The admin's Update, for a registry plugin, to the release that is named.
+	const [given, siteDir, ...refs] = args;
+	const deployed = flags.includes("--deployed");
+	const url = siteAddress(given, deployed);
+	const wanted = refs.flatMap((r) => r.split(/[\s,]+/)).filter(Boolean).map(reference);
+	if (!wanted.length) fail("Which plugin, and to which release? mise run plugin:update -- <publisher>/<slug>@<version>");
+	console.error(`-> ${whereIs(url)}`);
+	const api = client(url, siteDir);
+	if (!deployed) await ready(url, siteDir, api, false);
+	const manifest = await api("GET", "/_emdash/api/manifest");
+	if (manifest.status !== 200) fail(`The site did not accept this machine's sign-in: GET /_emdash/api/manifest answered ${said(manifest)}\nSign in first: mise run signin:token${deployed ? " -- --live" : ""}`);
+	if (!manifest.data.registry) fail("This site has no registry configured, so it has no registry plugin to update.");
+	const yes = agreed(flags);
+	const list = (a) => a.join(", ") || "nothing";
+	let failed = 0;
+	let updated = 0;
+	for (const w of wanted) {
+		const stop = (state, why) => {
+			console.log(`${state} ${w.name}: ${why}`);
+			failed++;
+		};
+		const { pkg, why } = await lookUp(manifest.data.registry.aggregatorUrl, w);
+		if (!pkg) {
+			stop("FAIL", `the registry does not have it — ${why}`);
+			continue;
+		}
+		const items = (await api("GET", "/_emdash/api/admin/plugins")).data?.items ?? [];
+		const there = items.find((p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
+		if (!there) {
+			stop("FAIL", `not installed, so there is nothing to update. Install it: mise run plugin:install -- ${w.name}${w.version ? `@${w.version}` : ""}`);
+			continue;
+		}
+		if (!w.version) {
+			stop("FAIL", `to which release? The site has ${there.version} and the registry's newest is ${pkg.latestVersion ?? "unknown"}. Name it: mise run plugin:update -- ${w.name}@${pkg.latestVersion ?? "<version>"}`);
+			continue;
+		}
+		if (there.version === w.version) {
+			console.log(`ok   ${w.name}: already at ${there.version} — nothing to update (id ${there.id})`);
+			continue;
+		}
+		// What each release says it needs, from the registry — nothing is sent to the site yet.
+		const aggregator = manifest.data.registry.aggregatorUrl;
+		const next = await releaseOf(aggregator, pkg.did, w.slug, w.version);
+		if (!next.release) {
+			stop("FAIL", `release ${w.version} — ${next.why}. It has: ${list(next.versions)}`);
+			continue;
+		}
+		const now = await releaseOf(aggregator, pkg.did, w.slug, there.version);
+		const key = `${pkg.did}/${w.slug}`;
+		const kept = declared(url, siteDir, key);
+		const granted = kept?.version === there.version ? kept : null;
+		const asks = accessOf(next.release);
+		const had = now.release ? accessOf(now.release) : null;
+		const more = had ? asks.filter((a) => !had.includes(a)) : asks;
+		const less = had ? had.filter((a) => !asks.includes(a)) : [];
+		console.log(`     ${w.name}: ${there.version} -> ${w.version}`);
+		console.log(`       ${there.version}, installed, was granted: ${granted ? list(granted.capabilities) : `not recorded — this machine did not install ${there.version} with plugin:install`}`);
+		console.log(`       ${there.version} declares, by the registry: ${had ? list(had) : `unknown — ${now.why}`}`);
+		console.log(`       ${w.version} declares, by the registry: ${list(asks)}`);
+		console.log(`       so ${w.version} asks for ${more.length ? `MORE: ${list(more)}` : "nothing more"}${had ? "" : ` (all of it counted as more: what ${there.version} declares is not known)`}${less.length ? `; and no longer for: ${list(less)}` : ""}`);
+		if ((more.length || deployed) && !yes) {
+			stop("STOP", `not updated, and nothing was sent to the site. ${deployed ? "This is the deployed site" : "The new release asks for more than the installed one"}: say yes to the lines above with  -- --yes`);
+			continue;
+		}
+		// The site's own gate. It compares the new release with the bundle it is running, and
+		// refuses — one kind of difference at a time — what was not agreed to.
+		const body = { version: w.version };
+		let done = null;
+		let shown = { added: [], removed: [], newlyPublic: [] };
+		for (let attempt = 0; attempt < 4 && !done; attempt++) {
+			const res = await api("POST", `/_emdash/api/admin/plugins/registry/${encodeURIComponent(there.id)}/update`, body);
+			const details = res.error?.details ?? {};
+			if (res.ok) done = res;
+			else if (res.error?.code === "ALREADY_UP_TO_DATE") break;
+			else if (["CAPABILITY_ESCALATION", "ROUTE_VISIBILITY_ESCALATION", "MCP_TOOL_CONSENT_REQUIRED"].includes(res.error?.code) && attempt < 3) {
+				const added = details.capabilityChanges?.added ?? [];
+				const newlyPublic = details.routeVisibilityChanges?.newlyPublic ?? [];
+				const tools = (details.mcpTools ?? []).map((t) => `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`);
+				console.log(`       the site says ${w.version} needs agreement (${res.error.code}):${added.length ? ` new permissions: ${list(added)};` : ""}${newlyPublic.length ? ` addresses newly open to visitors: ${list(newlyPublic)};` : ""}${tools.length ? ` tools it gives to agents (MCP): ${list(tools)}` : ""}`);
+				if (!yes) {
+					stop("STOP", "not updated: the site found more than the registry's listing showed. Say yes to the line above with  -- --yes");
+					break;
+				}
+				shown = { added, removed: details.capabilityChanges?.removed ?? [], newlyPublic };
+				if (res.error.code === "CAPABILITY_ESCALATION") body.confirmCapabilityChanges = true;
+				if (newlyPublic.length) body.acknowledgedPublicRoutes = newlyPublic;
+				if (res.error.code === "MCP_TOOL_CONSENT_REQUIRED") body.confirmMcpTools = true;
+				body.acknowledgedProfileCid = details.verification?.profileCid;
+				body.acknowledgedReleaseCid = details.verification?.releaseCid;
+			} else {
+				stop("FAIL", `the site would not update it — ${said(res)}`);
+				break;
+			}
+		}
+		if (!done) continue;
+		updated++;
+		// What it is granted now, for the next update and for plugin:works: the site's account of the difference.
+		const changes = done.data.capabilityChanges ?? shown;
+		const capabilities = granted ? [...granted.capabilities.filter((c) => !(changes.removed ?? []).includes(c)), ...(changes.added ?? []).filter((c) => !granted.capabilities.includes(c))] : null;
+		const publicRoutes = kept?.publicRoutes ? [...new Set([...kept.publicRoutes, ...(done.data.routeVisibilityChanges?.newlyPublic ?? shown.newlyPublic)])] : null;
+		if (capabilities && publicRoutes) declared(url, siteDir, key, { version: done.data.newVersion, capabilities, publicRoutes });
+		console.log(`ok   ${w.name}: updated — ${done.data.oldVersion} -> ${done.data.newVersion}, id ${done.data.pluginId}${(changes.added ?? []).length ? `; newly granted: ${list(changes.added)}` : ""}`);
+	}
+	if (!deployed && updated) restartNode(siteDir);
+	if (updated) console.log(`Check ${updated > 1 ? "them" : "it"}: mise run plugin:works${deployed ? " -- --live" : ""}`);
 	process.exit(failed ? 1 : 0);
 };
 
