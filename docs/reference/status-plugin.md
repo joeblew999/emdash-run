@@ -1,6 +1,6 @@
 ---
 title: "The plugin tests: a plugin of your own, and plugins from EmDash's registry"
-nav_order: 104
+nav_order: 105
 parent: "Reference"
 ---
 

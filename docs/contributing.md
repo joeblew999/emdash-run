@@ -22,34 +22,11 @@ Running a test turns on the commit check in your clone.
 
 ## The tasks of this repo
 
-| Task | What it does |
-|---|---|
-| `mise run dev:test --level smoke` | The basics, in half a minute: the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. Run it first |
-| `mise run dev:test` | Level `fast`, the default: the everyday steps of the `site`, `signin` and `plugin` groups that are not proven. About a minute a group. Never deploys |
-| `mise run dev:test --level all` | Every step of `site`, `signin` and `plugin`, the long ones too: about nine minutes |
-| `mise run dev:ci --level all` | REMOTE: have GitHub run a level on Linux, macOS and Windows (`smoke` when no level is given) |
-| `mise run dev:test plugin` | One group, or several, at any level: `site`, `signin`, `plugin`, `live` |
-| `mise run dev:test live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
-| `mise run dev:test --node --level all` | Every step, on a Node site made from EmDash's template: before a release |
-| `mise run dev:types` | Type-check `tests/` and `scripts/` (`tsconfig.json`). A few seconds; every test and `check` run it first |
-| `mise run dev:src` | EmDash's source into `.src/emdash`, to read |
-| `mise run issues` | The open issues, newest first. Start here |
-| `mise run docs:setup` | Write the docs site's config and the generated pages |
-| `mise run docs:check` | The generated pages are fresh, and `docs/` passes the lint (`docs:lint` alone: the lint) |
-| `mise run docs:review` | Have Claude bring `docs/` into line with [Writing docs](writing.md) |
-| `mise run repo` | REMOTE: keep the repo in shape from `charter.toml`: docs site, issue forms, labels, description, topics, GitHub Pages |
-| `mise run repo:check` | The same, changing nothing: fails if something drifted |
-| `mise run check` | What must pass before a release: `mise run dev:test` (nothing to run when every group is proven) and `repo:ci`. What `release` runs before it tags |
-| `mise run release -- vX.Y.Z` | REMOTE: cut a release from this machine ([Releases](#releases)) |
-| `mise run repo:ci` | Everything the `repo-check` workflow runs, here: `docs:check`, `repo:check`, `upstream:status`. The workflow runs this one task, so a pass here is a pass on GitHub |
-| `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
-| `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
+[The tasks for working on this repo](reference/dev-tasks.md) lists them, written from the tasks themselves: `dev:*` and `check` are this repo's own (`dev.toml`), the rest are charter's. `mise run dev:test --help` shows the levels and flags.
 
 Each test runs as another developer would: a clean environment, an empty config folder, a copy of `site/` in a temporary folder. 
 
 A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps.mjs`) and what its last run showed (`results.json`), and a page written from that; [What works](reference/status.md) is the index of them. Each group runs alone, on a site of its own, so you run the one you are working on.
-
-**Three levels, the same here and on CI: `smoke`, `fast`, `all`.** Start with `smoke`; go up a level when the one below holds. The `stages` workflow runs the same task at the level it is given, on Linux, macOS and Windows: `smoke` on a push to `main`, `all` on a release tag, and from your machine the level you choose (`mise run dev:ci --level fast`). A group's long steps, the ones only `all` runs, are in `long(…)` in its steps file.
 
 A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run dev:test plugin --again` runs it anyway. To work on one task, `mise run dev:test site --only site:check` runs only the steps whose name has those words, and records nothing. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
 
@@ -97,7 +74,8 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tsconfig.json`, `tests/package.json` | What `mise run dev:types` checks, and the TypeScript it checks with |
 | `tests/record.mjs` | The records from the command line: `--page`, `--coverage`, `--depends` |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
-| `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
+| `dev.toml` | This repo's own tasks: `dev:*` and `check`. `mise.toml` includes it; no other repo does |
+| `mise.toml`, `charter.toml` | The tools, and which task files are included (`tasks.toml`, `dev.toml`, charter's `tasks/repo`); the repo as charter keeps it |
 | `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run dev:test --level <level>` on three OSes — `smoke` on a push to `main`, `all` on a tag, by hand the level you choose. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
 
 ## Reading EmDash

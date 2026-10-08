@@ -1,6 +1,6 @@
 ---
 title: "The signin tests: the CLI and a browser window as an administrator of the built site"
-nav_order: 103
+nav_order: 104
 parent: "Reference"
 ---
 

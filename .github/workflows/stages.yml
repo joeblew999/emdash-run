@@ -1,10 +1,6 @@
-# The test on macOS, Linux and Windows, at the level asked for. Nothing is decided here: each job
-# installs mise and runs `mise run dev:test --level <level>`, the task a developer runs, so a pass on
-# your machine is a pass on GitHub. The three levels are written in tests/run.mjs.
-#
-#   a push to main    smoke — the basics, a few minutes
-#   by hand           the level you choose:  gh workflow run stages.yml -f level=all
-#   a release tag     all
+# Runs one mise task, dev:test, at a level, on Linux, macOS and Windows. Nothing is decided here:
+# what the task does is in dev.toml and tests/run.mjs. Started from a developer's machine by
+# mise run dev:ci; by itself, smoke on a push to main and all on a release tag.
 name: stages
 on:
   workflow_dispatch:
@@ -16,7 +12,7 @@ on:
         default: smoke
   push:
     branches: [main]
-    paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", "tsconfig.json", ".github/workflows/stages.yml", "!tests/*/results.json"]
+    paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", "dev.toml", "tsconfig.json", ".github/workflows/stages.yml", "!tests/*/results.json"]
     tags: ["v*"]
 concurrency:
   group: stages-${{ github.ref }}

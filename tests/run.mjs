@@ -2,19 +2,7 @@
 // folder here with its steps (steps.mjs: tests of Node's own runner) and what its last run showed
 // (results.json), and a page in docs/reference/. Each runs alone, on a site of its own.
 //
-// THREE LEVELS, the same on a developer's machine and on CI:
-//   mise run dev:test --level smoke   THE BASICS, half a minute: the types and unit tests pass, a
-//                                 project is made, its tasks run, the site starts, answers and
-//                                 stops. Run it first; a push runs it on three OSes
-//   mise run dev:test                 fast (the default): the everyday steps of site, signin and
-//                                 plugin — the groups not proven. About a minute a group
-//   mise run dev:test --level all     every step, the long ones too (long(…) in a steps file)
-//
-//   mise run dev:test plugin          one group, or several, at any level
-//   mise run dev:test live            the live group: it deploys to the Worker kept for testing
-//   mise run dev:test --node          on a Node site made from EmDash's template
-//   mise run dev:test --again         run a group even though it is proven
-//   mise run dev:test site --only site:check   only the steps named so; nothing is recorded
+// The levels, the groups and the flags are the dev:test task's (dev.toml): mise run dev:test --help
 //
 // PROVEN: the group's steps passed and nothing it depends on has changed since (tests/lib/depends.mjs;
 // node tests/record.mjs --depends). A proven group is not run again; on a CI runner nothing is skipped.

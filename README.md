@@ -42,7 +42,8 @@ Then: [Getting started](docs/getting-started.md).
 | `tasks.toml` | The tasks: what your repo includes |
 | `scripts/` | The few scripts behind them, where no command of EmDash's exists |
 | `tests/` | The test that runs every task from an empty folder |
-| `mise.toml`, `charter.toml` | This repo's own automation, kept by [charter](https://github.com/joeblew999/charter) |
+| `dev.toml` | The tasks for working on emdash-run itself (`dev:*`, `check`) |
+| `mise.toml`, `charter.toml` | The tools and the task files included; the repo as kept by [charter](https://github.com/joeblew999/charter) |
 | `docs/` | Everything else: [start here](docs/README.md), rendered at https://joeblew999.github.io/emdash-run/ |
 
 Something wrong? [Open an issue](https://github.com/joeblew999/emdash-run/issues/new/choose). To help: [How to help](docs/contributing.md).
