@@ -55,6 +55,45 @@ export const site = {
 				throw new Error(`The site at ${project.dev} was started and has not answered in two minutes.`);
 			}),
 	},
+	// The production build — what a deploy ships. Not made again while nothing it is made from has
+	// changed since the last one. Both sites are stopped first: a running site holds the build's
+	// files (on Windows the build then cannot empty its folder), and serves the old one.
+	"site:built": {
+		needs: () => ["site:key"],
+		done: ({ world, project }) => {
+			const at = (/** @type {string[]} */ ...f) => f.map((x) => join(project.site, x));
+			const built = world.newest(at("dist"));
+			const plugins = world.exists(join(project.site, "plugins")) ? at("plugins") : [];
+			return built > 0 && built > world.newest([...at("src", "public", "seed", "astro.config.mjs", "astro.config.ts", "package.json", "pnpm-lock.yaml", "wrangler.jsonc", "tsconfig.json", ".env"), ...plugins]);
+		},
+		work: (ctx) => {
+			ctx.world.run("pnpm", ["exec", "astro", "dev", "stop"], ctx.project.site);
+			ctx.world.run("pnpm", ["exec", "astro", "preview", "stop"], ctx.project.site);
+			must(ctx, "pnpm", ["exec", "astro", "build"]);
+		},
+	},
+	// The built site, served on this machine as a deployed one behaves. Started again when the build
+	// under it was just made again.
+	"site:built-running": {
+		needs: () => ["site:built"],
+		done: async (ctx) => !ctx.did.includes("site:built") && (await answers(ctx, ctx.project.built)),
+		work: (ctx) =>
+			ctx.world.alone("starting-a-site", async () => {
+				const { world, project } = ctx;
+				world.run("pnpm", ["exec", "astro", "preview", "stop"], project.site);
+				must(ctx, "pnpm", ["exec", "astro", "preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort]);
+				for (let waited = 0; waited < 180; waited += 0.5) {
+					if ((await world.ask(`${project.built}/`, { seconds: 180 })).status !== 0) return;
+					await world.sleep(0.5);
+				}
+				throw new Error(`The built site at ${project.built} was started and has not answered in three minutes.`);
+			}),
+	},
+	// The task site:preview
+	"site:preview": {
+		needs: () => ["site:built-running"],
+		work: ({ world, project }) => world.say(`the built site: http://localhost:${project.builtPort}`),
+	},
 	// NOT YET CONVERTED: this runs the old emdash.mjs, a program a test cannot call into.
 	// Upstream: emdash-cms/emdash#3995 (when fixed: this can be `emdash whoami`, the command made for it)
 	"site:dev-cli-answers": {

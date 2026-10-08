@@ -56,7 +56,7 @@ run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:seed" 
 
 ["site:preview"]
 description = "Build the site and serve it locally (port 4322) — behaves like a deployed site"
-run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:install" }, { task = "step:key" }, { task = "step:build" }, { task = "step:preview" }, { task = "step:preview-up" }]
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:preview"
 
 ["site:reset"]
 description = "Empty the local database and start again from the seed. Asks first"
@@ -242,10 +242,8 @@ run = "pnpm dlx @emdash-cms/plugin-cli@latest"
 
 ["signin:token"]
 description = "Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add -- --live for the deployed one (Cloudflare sites only)"
-depends = ["step:there"]
-dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/scripts/signin-token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:token --live={{ usage.live | default(value=false) }}"
 
 ["signin:access"]
 description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"

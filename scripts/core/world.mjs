@@ -2,8 +2,10 @@
 // file, waiting, a lock. The nodes are given a World and never reach outside by themselves — so a
 // test gives them a made-up one (tests/core/fake-world.mjs) and sees what they would do.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { homedir, hostname } from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { dirname, join } from "node:path";
 
 /**
@@ -13,8 +15,15 @@ import { dirname, join } from "node:path";
  * @property {(program: string, args: string[], cwd: string) => number} run          a command, shown before it runs; its exit code
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string }>} ask   status 0: nothing answered
+ * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
+ * @property {(path: string, text: string) => void} keep     write a file only this user can read, making its folder
+ * @property {(paths: string[]) => number} newest            when the newest file among these files and folders was changed; 0 when there is none
+ * @property {(file: string, sql: string) => void} sqlite    run SQL on a SQLite file
+ * @property {string} config                                 the user's config folder
+ * @property {string} machine                                this machine's name
+ * @property {() => { raw: string, hash: string, ids: [string, string], now: string }} mint   a new API token as EmDash makes one, two ids and the time
  * @property {(seconds: number) => Promise<void>} sleep
  * @property {<T>(name: string, fn: () => Promise<T>) => Promise<T>} alone             while no other project on this machine does the same
  * @property {(pid: number) => void} kill
@@ -43,8 +52,42 @@ export const realWorld = (env) => {
 				return { status: 0, text: "" };
 			}
 		},
+		exec: (program, args, cwd) => {
+			const r = spawnSync(program, args, { cwd, env, encoding: "utf8", shell: win && program !== process.execPath });
+			return { code: r.status ?? 1, out: r.stdout || "", err: r.stderr || "" };
+		},
 		exists: existsSync,
 		read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : ""),
+		keep: (path, text) => {
+			mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+			writeFileSync(path, text, { mode: 0o600 });
+			chmodSync(path, 0o600);
+		},
+		newest: (paths) => {
+			const of = (p, depth = 0) => {
+				if (!existsSync(p)) return 0;
+				const st = statSync(p);
+				if (!st.isDirectory()) return st.mtimeMs;
+				let t = 0;
+				if (depth < 12) for (const e of readdirSync(p)) if (e !== "node_modules") t = Math.max(t, of(join(p, e), depth + 1));
+				return t;
+			};
+			return Math.max(0, ...paths.map((p) => of(p)));
+		},
+		sqlite: (file, sql) => {
+			const db = new DatabaseSync(file);
+			db.exec("PRAGMA busy_timeout = 10000");
+			db.exec(sql);
+			db.close();
+		},
+		config: env.XDG_CONFIG_HOME || join(homedir(), ".config"),
+		machine: hostname(),
+		// As EmDash makes one: ec_pat_ + 32 random bytes, base64url; stored as the base64url SHA-256.
+		mint: () => {
+			const raw = "ec_pat_" + randomBytes(32).toString("base64url");
+			const id = () => randomUUID().replaceAll("-", "").toUpperCase().slice(0, 26);
+			return { raw, hash: createHash("sha256").update(raw).digest("base64url"), ids: [id(), id()], now: new Date().toISOString() };
+		},
 		sleep,
 		// A folder in the user's config is the lock; one left by a run that died is taken after 3 minutes.
 		alone: async (name, fn) => {

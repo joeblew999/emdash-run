@@ -10,7 +10,8 @@
  * @typedef {Record<string, string | boolean>} Flags
  * @typedef {import("./world.mjs").World} World
  * @typedef {import("./project.mjs").Project} Project
- * @typedef {{ world: World, project: Project, flags: Flags }} Ctx
+ * @typedef {{ world: World, project: Project, flags: Flags, env: Record<string, string | undefined>, did: string[] }} Ctx
+ *   did: the states this run has had to reach so far — a state can ask whether one it stands on was just redone
  * @typedef {object} Node
  * @property {(flags: Flags) => string[]} [needs]
  * @property {(ctx: Ctx) => boolean | Promise<boolean>} [done]
@@ -39,11 +40,14 @@ export const plan = (graph, target, flags = {}) => {
 
 /**
  * Bring the site to a state: each node of the plan in order, skipping those already reached.
- * @param {Graph} graph @param {string} target @param {Ctx} ctx @returns {Promise<{ did: string[], skipped: string[] }>}
+ * @param {Graph} graph @param {string} target @param {Omit<Ctx, "did" | "env"> & { env?: Ctx["env"] }} given @returns {Promise<{ did: string[], skipped: string[] }>}
  */
-export const reach = async (graph, target, ctx) => {
+export const reach = async (graph, target, given) => {
+	/** @type {string[]} */
 	const did = [];
 	const skipped = [];
+	/** @type {Ctx} */
+	const ctx = { env: {}, ...given, did };
 	for (const name of plan(graph, target, ctx.flags)) {
 		const node = graph[name];
 		ctx.world.at(name);
