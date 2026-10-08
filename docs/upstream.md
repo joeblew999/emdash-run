@@ -6,7 +6,7 @@ nav_order: 60
 # Reports for upstream — written, not sent
 
 Things in EmDash, its scaffolders and wrangler that behaved differently from their docs, or that a
-task here has to work around. Thirteen of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
+task here has to work around. Nineteen of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
 Windows) with EmDash 1.2.0, `@emdash-cms/plugin-cli` 0.13.3, `create-emdash@latest`, Astro 7.3.5,
 wrangler 4.147.0, Node 26, pnpm 12.
 
@@ -139,3 +139,82 @@ says which. Until then the workaround in the last line of each entry is what `ta
 - **Proposed:** map a service token to a named machine user, or document the API-token route as
   the way for CI.
 - **Here:** `signin:token -- --live`.
+
+Reports 14 to 19 are about plugins. Each was run on 2026-10-07 or 2026-10-08 on macOS with EmDash
+1.2.0, `@emdash-cms/sandbox-workerd` 0.9.3, workerd 1.20261006.1, `@emdash-cms/plugin-cli` 0.13.3
+and `create-emdash@latest`.
+
+## 14. No command installs a registry plugin
+
+- **Seen:** `emdash --help` and `emdash-plugin --help` have no install. The docs
+  (`plugins/installing`) give the admin's Install button as the only way.
+- **Found:** the admin's two requests work with an administrator API token:
+  `POST /_emdash/api/admin/plugins/registry/verify` → 200, then `…/registry/install` with what
+  verify answered as the acknowledgement → 201.
+- **Proposed:** `emdash plugin install <publisher>/<slug>`.
+- **Here:** `plugin:install` sends those two requests.
+
+## 15. `create-emdash --sandboxed-plugins` does not switch the sandbox on
+
+- **Run:** `pnpm dlx create-emdash@latest sb --template cloudflare:starter --pm pnpm --no-install
+  --sandboxed-plugins --yes`.
+- **Got:** "Enabled sandboxed plugins (worker_loaders in wrangler.jsonc; requires a Workers paid
+  plan)". `wrangler.jsonc` has the binding; `astro.config.mjs` has no `sandboxRunner`, which
+  `deployment/plugin-sandbox` step 3 says selects the runner. Whether an install is then refused
+  was not run.
+- **Here:** `plugin:sandbox` writes both.
+
+## 16. `emdash-plugin info <handle> <slug>` fails when the publisher's own host is down
+
+- **Run:** `pnpm dlx @emdash-cms/plugin-cli@latest info nookeshk.bsky.social seo-suite` — a
+  plugin `emdash-plugin search seo` had just listed under that handle.
+- **Got:** "PublisherCheckError: could not resolve handle "nookeshk.bsky.social" to a DID: failed
+  to resolve handle", `code: 'MANIFEST_PUBLISHER_UNRESOLVED'`. At that moment
+  `https://nookeshk.bsky.social/.well-known/atproto-did` answered 502, and the registry's own
+  `…/xrpc/com.emdashcms.experimental.aggregator.resolvePackage?handle=nookeshk.bsky.social&slug=seo-suite`
+  answered 200 with the DID.
+- **Expected:** `info` to ask the aggregator, as the admin does and as its own source comment says.
+- **Here:** `plugin:install` asks the aggregator.
+
+## 17. On a Node site the sandbox process outlives the site, and then blocks it
+
+- **Run:** a `node:starter` site with `sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox"`,
+  served with `astro preview`. Install one registry plugin, then a second; or stop the site and
+  start it again.
+- **Got:** in the site's log, repeated: "`[emdash:workerd] *** Fatal uncaught kj::Exception:
+  rust/cxx/kj-rs-io/ffi.rs:209: failed: bind(): Address already in use (os error 48)`",
+  "`workerd exited with code 1`", "`workerd failed to start within 10 seconds`". Every sandboxed
+  plugin's page then shows "Plugin responded with 400: … ROUTE_ERROR … workerd failed to start
+  within 10 seconds". `ps` showed the first `workerd serve` still running with parent 1 and
+  listening on `127.0.0.1:18788`, more than an hour after `astro preview stop`.
+- **Why:** the runner starts `node_modules/workerd/bin/workerd`, which is a Node launcher that
+  runs the real binary with `execFileSync`; the runner's `SIGTERM` stops the launcher and the
+  binary lives on, holding the port (`runner.ts`: `nextPluginPort = 18788`). Read in the source,
+  not run: with that fixed port, two Node sites with sandboxed plugins on one machine would
+  collide the same way.
+- **Here:** `site:stop` also stops a `workerd` run from that site's own `node_modules`, and on a
+  Node site `plugin:install` and `plugin:remove` restart the built site.
+
+## 18. On a Node site one plugin that cannot start takes every sandboxed plugin down
+
+- **Run:** the same Node site with eleven registry plugins, one of them `@solspace.com/freeform`
+  0.1.3.
+- **Got:** "`[emdash:workerd] service plugin-r_f5zatpijxyewomb3_0_1_3: Uncaught SyntaxError: The
+  requested module 'emdash' does not provide an export named 'PluginRouteError'`", then
+  "`workerd exited with code 1`" and the restart loop; another plugin's route
+  (`/_emdash/api/plugins/<forms id>/info`) gave no answer in 30 seconds. On a Cloudflare site the
+  same plugin fails alone ("Failed to start Worker: Uncaught Error: No such module "emdash"") and
+  the other fourteen answer.
+- **Expected:** a plugin that fails to start to be left out, as on Cloudflare.
+- **Here:** `plugin:works` reports it; `plugin:remove` takes the plugin out.
+
+## 19. Nothing lists what an installed registry plugin declares
+
+- **Run:** with `@netdollar.dev/forms` installed, `GET /_emdash/api/admin/plugins`; and
+  `POST …/registry/verify` for it again.
+- **Got:** the list gives it `"capabilities":[]`, `"hasAdminPages":false`, `"hasHooks":false`,
+  though verify had answered `"capabilities":["email:send"]` before the install and
+  `/_emdash/api/manifest` gives it an admin page. Verify now answers "409 ALREADY_INSTALLED".
+  No request gives its public routes.
+- **Here:** `plugin:install` keeps what verify answered (in `~/.config/emdash-run/plugins/`) so
+  that `plugin:works` can ask the public routes.

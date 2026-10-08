@@ -177,16 +177,37 @@ Or set `CLOUDFLARE_API_TOKEN` in your environment any other way.
 
 ## Plugins
 
+From EmDash's registry — no package, no config line, no clicking in the admin:
+
+```
+mise run plugin:search -- forms                     find one; it prints @publisher/slug
+mise run plugin:install -- @netdollar.dev/forms     install it, as the admin's Install button does
+mise run plugin:works -- @netdollar.dev/forms       does it work? one line per check
+mise run plugin:works                               every plugin the site has
+mise run plugin:favourites                          the favourites, in one go
+mise run plugin:remove -- @netdollar.dev/forms
+```
+
+The favourites, why each is one, and what was rejected: [`docs/favourite-plugins.md`](docs/favourite-plugins.md).
+Your own list: `PLUGINS = "@a/one @b/two"` under `[env]`.
+
+These act on this machine's built site (`site:preview`), starting it and signing in if needed;
+the dev site shares its database, so the plugins are there too. With `-- --live` they act on the
+deployed site, after `signin:token -- --live`.
+
+A registry plugin runs in EmDash's sandbox, which a new site does not have switched on.
+`plugin:install` switches it on (`plugin:sandbox`: one line in `astro.config.mjs`, and on
+Cloudflare the `worker_loaders` line in `wrangler.jsonc`; on Node two packages). **On Cloudflare,
+deploying a site with the sandbox on needs the Workers Paid plan.**
+
+Your own, or one from npm — the task writes its lines in `astro.config.mjs`:
+
 ```
 mise run plugin:new -- save-log        your own, inside the site
 mise run plugin:add -- <npm package>   someone else's
 mise run plugin:check -- save-log
-mise run plugin:search -- forms
 mise run plugin -- <anything else in EmDash's plugin CLI>
 ```
-
-After `plugin:new` or `plugin:add` you add two lines to the site's `astro.config.mjs`; the task
-prints them.
 
 ## Settings
 
@@ -202,6 +223,7 @@ All optional, under `[env]` in your `mise.toml`.
 | `ADMIN_EMAIL` | — | who may sign in to the deployed site |
 | `SITE_SEED` | — | `none` if the site has no seed file |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | needed by `plugin:new` |
+| `PLUGINS` | the favourites | what `plugin:favourites` installs: `@publisher/slug`, separated by spaces |
 
 ## Several sites, or several agents, at once
 
@@ -219,10 +241,13 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 
 - **Every task is safe to run again.** `site:new` leaves a site that is there alone, `site:start`
   leaves a running one running, `signin:token` replaces its own token, `plugin:new` does not
-  scaffold twice, `site:delete` with no site has nothing to delete. The test runs each of them
+  scaffold twice, `plugin:install` leaves an installed plugin alone, `site:delete` with no site
+  has nothing to delete. The test runs each of them
   twice.
 - `site:reset`, `site:delete` and `plugin:publish` ask first. In CI nothing asks.
 - `plugin:new` and `plugin:add` stop the site; start it again afterwards.
+- On a Node site, `plugin:install` and `plugin:remove` restart the built site: EmDash's sandbox
+  process does not survive a change of plugins ([upstream bugs](docs/upstream.md)).
 - `content:pull` and `live:backup` write to `backups/` in the site. Keep it out of git.
 - There is no SQL dump in `live:backup`: Cloudflare's export refuses an EmDash database.
 - `signin:token -- --live` works for Cloudflare sites only.
