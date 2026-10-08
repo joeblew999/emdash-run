@@ -8,7 +8,7 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-**139 steps pass, 0 fail, 0 of 36 tasks have no test.**
+**140 steps pass, 0 fail, 0 of 36 tasks have no test.**
 
 The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the groups that are not proven; a run replaces everything recorded for its group. [How to help](../contributing.md) says more.
 
@@ -17,7 +17,7 @@ The test is in four groups, named as the tasks are. Each runs alone, on a site o
 | [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test:site` | proven | 25 | 2 min 33 s | 2026-10-08 04:37 UTC | `ada7563+uncommitted` |
 | [`signin`](status-signin.md) | the CLI and a browser window as an administrator of the built site | `mise run test:signin` | proven | 9 | 1 min 43 s | 2026-10-08 04:39 UTC | `ada7563+uncommitted` |
 | [`plugin`](status-plugin.md) | a plugin of your own, and plugins from EmDash's registry | `mise run test:plugin` | proven | 29 | 4 min 26 s | 2026-10-08 04:44 UTC | `ada7563+uncommitted` |
-| [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test:live` | changed since it passed | 21 |  | 2026-10-08 02:58 UTC | `5ccdf89+uncommitted` |
+| [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test:live` | proven | 22 | 5 min 33 s | 2026-10-08 04:50 UTC | `cad9abe` |
 
 On a Node site (`mise run test:node`, before a release): 55 of 55 steps pass, last run 2026-10-08 01:44 UTC.
 
@@ -46,7 +46,7 @@ On a Node site (`mise run test:node`, before a release): 55 of 55 steps pass, la
 | `plugin:sandbox` | pass ×2 | pass ×2 |  |  |
 | `plugin:search` | pass ×1 | pass ×1 |  |  |
 | `plugin:update` | pass ×5 |  |  |  |
-| `plugin:works` | pass ×4 | pass ×4 |  |  |
+| `plugin:works` | pass ×4 | pass ×4 | pass ×1 |  |
 | `signin:access` |  |  | pass ×4 |  |
 | `signin:open` | pass ×2 | pass ×2 | pass ×1 |  |
 | `signin:passkey` | pass ×1 | pass ×1 |  |  |

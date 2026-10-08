@@ -6,11 +6,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 30,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 0,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 0
  },
  {
   "task": "signin:access",
@@ -19,11 +22,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 2,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 1,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 1
  },
  {
   "task": "signin:access",
@@ -32,11 +38,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 0,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 2,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 2
  },
  {
   "task": "emdash",
@@ -45,11 +54,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 13,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 3,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 3
  },
  {
   "task": "live:ship",
@@ -58,11 +70,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 46,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 4,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 4
  },
  {
   "task": "signin:access",
@@ -71,11 +86,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 2,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 5,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 5
  },
  {
   "task": "signin:token",
@@ -84,11 +102,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 3,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 6,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 6
  },
  {
   "task": "signin:token",
@@ -97,11 +118,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 3,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 7,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 7
  },
  {
   "task": "emdash",
@@ -110,11 +134,30 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 6,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 8,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 8
+ },
+ {
+  "task": "plugin:works",
+  "where": "deployed",
+  "step": "--live: the deployed site is checked from outside; it says what it skips, and builds and restarts nothing",
+  "result": "PASS",
+  "detail": "",
+  "refusal": false,
+  "seconds": 2,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
+  "from": "the local files",
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 9
  },
  {
   "task": "model:sync",
@@ -123,11 +166,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 1,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 9,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 10
  },
  {
   "task": "content:pull",
@@ -136,11 +182,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 41,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 10,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 11
  },
  {
   "task": "live:backup",
@@ -149,11 +198,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 46,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 11,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 12
  },
  {
   "task": "live:preview",
@@ -162,11 +214,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 42,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 12,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 13
  },
  {
   "task": "live:preview",
@@ -175,11 +230,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 31,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 13,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 14
  },
  {
   "task": "signin:token",
@@ -188,11 +246,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 7,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 14,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 15
  },
  {
   "task": "live:preview",
@@ -201,11 +262,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 6,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 15,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 16
  },
  {
   "task": "live:logs",
@@ -214,11 +278,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 22,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 16,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 17
  },
  {
   "task": "signin:open",
@@ -227,11 +294,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 9,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 17,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 18
  },
  {
   "task": "signin:access",
@@ -240,11 +310,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 1,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 18,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 19
  },
  {
   "task": "live:undo",
@@ -253,11 +326,14 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 15,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 19,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 20
  },
  {
   "task": "site:delete",
@@ -266,10 +342,13 @@
   "result": "PASS",
   "detail": "",
   "refusal": false,
+  "seconds": 5,
+  "proof": "4e43bbe6dd62",
+  "runSeconds": 333,
   "from": "the local files",
-  "commit": "5ccdf89+uncommitted",
-  "when": "2026-10-08 02:58 UTC",
-  "order": 20,
-  "proof": ""
+  "commit": "cad9abe",
+  "when": "2026-10-08 04:50 UTC",
+  "os": "macOS",
+  "order": 21
  }
 ]
