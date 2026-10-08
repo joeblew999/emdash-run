@@ -10,7 +10,7 @@ Written by `charter docs` from what `node tests/status.mjs --page status` prints
 
 **133 steps pass, 0 fail, 1 of 36 tasks have no test.**
 
-The last run: `full`, at commit `5ccdf89+uncommitted`, 2026-10-08 02:58 UTC, on macOS. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
+The last run: `quick`, at commit `e62bc4e`, 2026-10-08 03:58 UTC, on macOS. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
 
 Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).
 
@@ -64,10 +64,10 @@ Every test runs as another developer would: a clean environment, an empty config
 | `content:pull` | node | with no LIVE_URL says so | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `emdash:update` | cloudflare | updates, type-checks and builds | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `emdash:update` | node | updates, type-checks and builds | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash` | cloudflare | a quoted JSON argument arrives whole | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `emdash` | cloudflare | whoami on the dev site | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `emdash` | cloudflare | \-\-live with no LIVE_URL says so | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `emdash` | cloudflare | \-\-preview writes to the built site | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `emdash` | cloudflare | a quoted JSON argument arrives whole | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `emdash` | cloudflare | whoami on the dev site | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `emdash` | cloudflare | \-\-live with no LIVE_URL says so | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `emdash` | cloudflare | \-\-preview writes to the built site | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `emdash` | deployed | a site set to Cloudflare Access: the dev site starts and the CLI works on it | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `emdash` | deployed | \-\-live reads and writes the deployed site | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `emdash` | node | a quoted JSON argument arrives whole | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
@@ -82,7 +82,7 @@ Every test runs as another developer would: a clean environment, an empty config
 | `live:preview` | deployed | \-\-delete removes it; again: nothing to delete | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `live:ship` | deployed | deploys; the site answers with the change | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `live:undo` | deployed | puts the previous version back: the change is gone | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `model:sync` | cloudflare | records an added field in .emdash/ | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `model:sync` | cloudflare | records an added field in .emdash/ | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `model:sync` | deployed | \-\-live records the deployed model | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `model:sync` | node | records an added field in .emdash/ | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `plugin:add` | cloudflare | adds a package from npm, and its lines in the site's config | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
@@ -140,8 +140,8 @@ Every test runs as another developer would: a clean environment, an empty config
 | `signin:open` | node | opens a signed-in window (passkey) | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `signin:passkey` | cloudflare | completes the EmDash wizard on a fresh database | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `signin:passkey` | node | completes the EmDash wizard on a fresh database | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | cloudflare | the CLI is an administrator of the built site | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `signin:token` | cloudflare | run again: still an administrator | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `signin:token` | cloudflare | the CLI is an administrator of the built site | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `signin:token` | cloudflare | run again: still an administrator | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `signin:token` | cloudflare | starts the built site when it is stopped | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `signin:token` | cloudflare | the saved token goes when the local database does | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `signin:token` | deployed | \-\-live: the CLI is an administrator of the deployed site | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
@@ -153,42 +153,42 @@ Every test runs as another developer would: a clean environment, an empty config
 | `signin:token` | node | the saved token goes when the local database does | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:admin` | cloudflare | a fresh built site, signed in, in one go | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:admin` | node | a fresh built site, signed in, in one go | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:check` | cloudflare | passes on a sound site | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:check` | cloudflare | fails on a type error | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:check` | cloudflare | passes on a sound site | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `site:check` | cloudflare | fails on a type error | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:check` | node | passes on a sound site | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:check` | node | fails on a type error | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:delete` | cloudflare | removes the site folder | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:delete` | cloudflare | run again: nothing to delete | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:delete` | cloudflare | removes the site folder | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `site:delete` | cloudflare | run again: nothing to delete | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:delete` | cloudflare | refuses with nobody to ask | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:delete` | deployed | removes the local site folder | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `site:delete` | node | refuses with nobody to ask | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:delete` | node | removes the site folder | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:delete` | node | run again: nothing to delete | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:logs` | cloudflare | shows the dev site log | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:logs` | cloudflare | shows the dev site log | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:logs` | node | shows the dev site log | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
+| `site:new` | cloudflare | run again: the site is left alone | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:new` | cloudflare | makes the site | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:new` | cloudflare | run again: the site is left alone | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
 | `site:new` | deployed | makes the site that will be deployed | PASS | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
 | `site:new` | node | makes the site | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:new` | node | run again: the site is left alone | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:ports` | cloudflare | gives the project two ports of its own | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:ports` | cloudflare | run again: it keeps them | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:ports` | cloudflare | gives the project two ports of its own | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `site:ports` | cloudflare | run again: it keeps them | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:ports` | cloudflare | three sites at once, each on its own ports with only its own content | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:ports` | node | gives the project two ports of its own | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:ports` | node | run again: it keeps them | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:preview` | cloudflare | serves the built site; dev sign-in is off there | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:preview` | cloudflare | serves the built site; dev sign-in is off there | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:preview` | node | serves the built site; dev sign-in is off there | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:reset` | cloudflare | empties the local content | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:reset` | cloudflare | refuses with nobody to ask | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:reset` | node | empties the local content | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:reset` | node | refuses with nobody to ask | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:start` | cloudflare | with no site, says so and stops | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:start` | cloudflare | starts the dev site; EmDash's welcome dialog is closed | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:start` | cloudflare | run again: it is already running | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:start` | cloudflare | the dev site answers; dev sign-in works | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:start` | cloudflare | starts the dev site; EmDash's welcome dialog is closed | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `site:start` | cloudflare | run again: it is already running | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
+| `site:start` | cloudflare | the dev site answers; dev sign-in works | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:start` | node | with no site, says so and stops | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:start` | node | starts the dev site; EmDash's welcome dialog is closed | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:start` | node | run again: it is already running | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
 | `site:start` | node | the dev site answers; dev sign-in works | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:stop` | cloudflare | stops both sites; twice is fine | PASS | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
+| `site:stop` | cloudflare | stops both sites; twice is fine | PASS | quick | `e62bc4e` | 2026-10-08 03:58 UTC |
 | `site:stop` | node | stops both sites; twice is fine | PASS | full | `201a653` | 2026-10-08 01:44 UTC |
