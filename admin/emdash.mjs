@@ -44,7 +44,8 @@ for (const arg of given) {
 			console.error("--live needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
 			process.exit(1);
 		}
-		rest.push("--url", process.env.LIVE_URL);
+		// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+		rest.push("--url", (await import("./site.mjs")).deployedAddress(process.env.LIVE_URL));
 	} else if (arg === "--preview") {
 		rest.push("--url", `http://localhost:${process.env.PREVIEW_PORT || "4322"}`);
 	} else {
@@ -102,7 +103,10 @@ if (URL.canParse(url)) {
 			} catch {}
 		}
 	}
-	const access = read("access");
+	// a preview of the Worker is behind the live site's Access application: the same pass
+	const { previewOf } = await import("./site.mjs");
+	const preview = previewOf(url, siteDir);
+	const access = read("access") ?? (preview && existsSync(join(dir, "access", `${preview.liveHost}.json`)) ? JSON.parse(readFileSync(join(dir, "access", `${preview.liveHost}.json`), "utf8")) : null);
 	if (access && !inStore && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
 }
 // Upstream: emdash-cms/emdash#3994 (when fixed: take out option B here and option A in token.mjs)

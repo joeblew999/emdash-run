@@ -85,6 +85,32 @@ if (what === "new") {
 	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "tokens");
 	const mine = `_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}.json`;
 	for (const f of existsSync(dir) ? readdirSync(dir) : []) if (f.endsWith(mine)) rmSync(join(dir, f), { force: true });
+} else if (what === "one-at-a-time") {
+	// Start a site while no other site on this machine is starting. Cloudflare's Vite plugin picks
+	// its debugger port by looking for a free one from 9229 and only then listening on it: two sites
+	// started in the same moment pick the same port, and the loser answers 500 to everything
+	// ("listen EADDRINUSE … 9229"; seen with three sites at once, here and on a CI runner).
+	// A folder in the user's config is the lock; one left by a start that died is taken after 3 min.
+	const { mkdirSync, rmdirSync, statSync } = await import("node:fs");
+	const lock = join(process.env.EMDASH_RUN_LOCKS || join(homedir(), ".config", "emdash-run", "locks"), "starting-a-site");
+	mkdirSync(dirname(lock), { recursive: true });
+	for (let waited = 0; ; waited++) {
+		try {
+			mkdirSync(lock);
+			break;
+		} catch {
+			let age = 0;
+			try { age = Date.now() - statSync(lock).mtimeMs; } catch {}
+			if (age > 180_000 || waited > 400) { try { rmdirSync(lock); } catch {} continue; }
+			await new Promise((done) => setTimeout(done, 500));
+		}
+	}
+	// siteDir is the first word of the command here: what follows `one-at-a-time` is the command
+	const r = spawnSync(siteDir, rest, { stdio: "inherit", shell: process.platform === "win32" });
+	// the port is taken a moment after the command says it started: hold on briefly before the next
+	await new Promise((done) => setTimeout(done, 1500));
+	try { rmdirSync(lock); } catch {}
+	process.exit(r.status ?? 1);
 } else if (what === "ports") {
 	// siteDir is the PROJECT folder here. Two ports nothing is using, written to mise.local.toml —
 	// which git ignores and mise reads — so this project, or this agent's copy of it, never

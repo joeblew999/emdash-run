@@ -96,6 +96,18 @@ try {
 		app = await api("POST", "apps", { name, type: "self_hosted", domain, session_duration: "24h", app_launcher_visible: false });
 		console.log(`access: application "${name}" made over ${domain}`);
 	}
+	// The same application over every preview address of this Worker (mise run live:preview):
+	// <preview name>-<worker>.<account>.workers.dev. One application, so one audience — the site's
+	// `auth: access(…)` line fits the previews as it fits the live site. Without this a preview's
+	// admin, and on a new preview its setup wizard, is open to anyone who has the address.
+	const previews = `*-${host}/_emdash`;
+	const over = app.self_hosted_domains || [app.domain];
+	if (host.endsWith(".workers.dev") && !over.includes(previews)) {
+		app = await api("PUT", `apps/${app.id}`, { name: app.name, type: "self_hosted", domain, self_hosted_domains: [...new Set([domain, ...over, previews])], session_duration: app.session_duration || "24h", app_launcher_visible: false });
+		console.log(`access: and over this Worker's preview addresses (${previews})`);
+	} else if (over.includes(previews)) {
+		console.log("access: already over this Worker's preview addresses");
+	}
 	const policies = app.policies || [];
 
 	// 2. people
@@ -124,10 +136,15 @@ try {
 	// shows are served from under it: without this, a visitor's browser is sent to the sign-in page
 	// for every image. A second application over that one path, which lets everyone through.
 	const mediaDomain = `${host}/_emdash/api/media/file`;
-	if ((await api("GET", "apps")).some((a) => a.domain === mediaDomain)) {
+	const mediaOver = host.endsWith(".workers.dev") ? [mediaDomain, `*-${host}/_emdash/api/media/file`] : [mediaDomain];
+	const mediaApp = (await api("GET", "apps")).find((a) => a.domain === mediaDomain);
+	if (mediaApp && mediaOver.every((d) => (mediaApp.self_hosted_domains || [mediaApp.domain]).includes(d))) {
 		console.log("access: uploaded media is already public");
+	} else if (mediaApp) {
+		await api("PUT", `apps/${mediaApp.id}`, { name: mediaApp.name, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
+		console.log("access: uploaded media stays public on the preview addresses too");
 	} else {
-		const media = await api("POST", "apps", { name: `${name}: media`, type: "self_hosted", domain: mediaDomain, session_duration: "24h", app_launcher_visible: false });
+		const media = await api("POST", "apps", { name: `${name}: media`, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
 		await api("POST", `apps/${media.id}/policies`, { name: "everyone", decision: "bypass", include: [{ everyone: {} }] });
 		console.log(`access: uploaded media stays public (${mediaDomain})`);
 	}

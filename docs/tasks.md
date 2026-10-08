@@ -49,9 +49,10 @@ description in `tasks.toml` is its documentation.
 | 5 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
 | 6 | `content:pull` | Download the deployed site's content as a package into backups/ in the site (keep that folder out of git) | yes |
 | 7 | `live:backup` | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database | yes |
-| 8 | `live:logs` | Follow the deployed site's log | yes |
-| 9 | `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
-| 10 | `live:undo` | Roll the deployed site back to the previous version (code only) | yes |
+| 8 | `live:preview` | Deploy the site as it is in this folder as a PREVIEW: an address of its own, with a database, bucket and sessions of its own, beside the live site and without touching it (Cloudflare's Worker Previews). Named after the git branch, or: mise run live:preview \-\- &lt;name&gt;. Run again: the same preview, updated. The first time it makes the preview's database, bucket and session store and writes a previews block into wrangler.jsonc. A new preview has no content. To act on one, give its address as LIVE_URL to any task that takes \-\-live. Remove it: mise run live:preview \-\- &lt;name&gt; \-\-delete | yes |
+| 9 | `live:logs` | Follow the deployed site's log | yes |
+| 10 | `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
+| 11 | `live:undo` | Roll the deployed site back to the previous version (code only) | yes |
 
 <!-- in-order:end -->
 
@@ -241,6 +242,18 @@ Download the deployed site's content as a package into backups/ in the site (kee
 - **Usage:** `live:backup`
 
 Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database
+
+## `live:preview`
+
+Deploy the site as it is in this folder as a PREVIEW: an address of its own, with a database, bucket and sessions of its own, beside the live site and without touching it (Cloudflare's Worker Previews). Named after the git branch, or: mise run live:preview -- <name>. Run again: the same preview, updated. The first time it makes the preview's database, bucket and session store and writes a previews block into wrangler.jsonc. A new preview has no content. To act on one, give its address as LIVE_URL to any task that takes --live. Remove it: mise run live:preview -- <name> --delete
+
+- **Usage:** `live:preview [--delete] [name]`
+
+### Arguments
+- **`[name]`** — The preview's name: part of its address. Left out, the git branch
+
+### Flags
+- **`--delete`** — Delete this preview instead (its database, bucket and session store are kept)
 
 ## `live:logs`
 

@@ -209,6 +209,19 @@ run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %
 description = "Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's"
 run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
 
+["live:preview"]
+description = "Deploy the site as it is in this folder as a PREVIEW: an address of its own, with a database, bucket and sessions of its own, beside the live site and without touching it (Cloudflare's Worker Previews). Named after the git branch, or: mise run live:preview -- <name>. Run again: the same preview, updated. The first time it makes the preview's database, bucket and session store and writes a previews block into wrangler.jsonc. A new preview has no content. To act on one, give its address as LIVE_URL to any task that takes --live. Remove it: mise run live:preview -- <name> --delete"
+depends = ["step:there"]
+usage = '''
+arg "[name]" help="The preview's name: part of its address. Left out, the git branch"
+flag "--delete" help="Delete this preview instead (its database, bucket and session store are kept)"
+'''
+run = [
+  { task = "step:account" },
+  "{% if usage.delete %}node -e \"console.log('-> deleting a preview: nothing is built')\"{% else %}mise run live:check{% endif %}",
+  "node \"{{ env.MISE_TASK_DIR }}/admin/preview.mjs\" \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }}{% if usage.delete %} --delete{% endif %}",
+]
+
 ["live:undo"]
 description = "Roll the deployed site back to the previous version (code only)"
 depends = ["step:live", "step:there"]
@@ -300,9 +313,9 @@ run = "pnpm exec emdash secrets generate --write .env"
 
 ["step:dev"]
 hide = true
-description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock"
+description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock. Started while no other site on the machine is starting: two Cloudflare sites starting in the same moment take the same debugger port, and one answers 500"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
 # Upstream: emdash-cms/emdash#3995 (when fixed: this can be `emdash whoami`, the command made for it)
 ["step:up"]
@@ -419,7 +432,7 @@ hide = true
 description = "The production build, served by Astro in the background — the same build a deploy ships, so it signs in the way a deployed site does: no dev sign-in. EMDASH_SITE_URL tells EmDash its address: a Node build otherwise takes itself to be on port 4321 and refuses a passkey made anywhere else"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_SITE_URL = "http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}" }
-run = "pnpm exec astro preview --background --host 127.0.0.1 --port {{ env.PREVIEW_PORT | default(value='4322') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro preview --background --host 127.0.0.1 --port {{ env.PREVIEW_PORT | default(value='4322') }}"
 
 ["step:preview-up"]
 hide = true

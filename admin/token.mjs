@@ -19,7 +19,9 @@ import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const where = args.includes("--remote") ? "--remote" : "--local";
-const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
+let [url, siteDir] = args.filter((a) => !a.startsWith("--"));
+// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+if (args.includes("--remote")) url = (await import("./site.mjs")).deployedAddress(url);
 if (!url || !URL.canParse(url) || !siteDir) {
 	console.error("usage: node token.mjs <site address> <site folder> --local | --remote");
 	process.exit(1);
@@ -105,12 +107,32 @@ const sql = [
 // A Cloudflare site's database is D1, written with wrangler. A Node site's is a SQLite file in the
 // site folder, written with Node's own SQLite.
 const cloudflare = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
+// A preview (mise run live:preview) has a database of its own, named in the `previews` block —
+// the binding DB is the live site's. The address says which one this is.
+const { previewOf } = await import("./site.mjs");
+const preview = where === "--remote" ? previewOf(url, siteDir) : null;
+if (preview && !preview.database) {
+	console.error(`token: ${host} is a preview of this Worker, but wrangler.jsonc has no "previews" block naming its database. Run: mise run live:preview`);
+	process.exit(1);
+}
+if (preview) console.error(`-> the PREVIEW "${preview.name}": its own database, ${preview.database}`);
 try {
 	if (cloudflare) {
-		execFileSync(process.execPath, [siteBin("wrangler", "wrangler"), "d1", "execute", "DB", where, "--yes", "--command", sql], {
-			cwd: siteDir,
-			stdio: ["ignore", "ignore", "pipe"],
-		});
+		// EmDash makes its tables while answering its first request, and a site that has just been
+		// started or deployed may still be at it: "no such table" is asked again for half a minute.
+		for (let attempt = 1; ; attempt++) {
+			try {
+				execFileSync(process.execPath, [siteBin("wrangler", "wrangler"), "d1", "execute", preview ? preview.database : "DB", where, "--yes", "--command", sql], {
+					cwd: siteDir,
+					stdio: ["ignore", "ignore", "pipe"],
+				});
+				break;
+			} catch (error) {
+				if (attempt >= 6 || !/no such table/i.test(String(error.stderr || error.message))) throw error;
+				await fetch(new URL("/_emdash/api/setup/status", origin), { redirect: "manual", signal: AbortSignal.timeout(60_000) }).catch(() => {});
+				await new Promise((done) => setTimeout(done, 5000));
+			}
+		}
 	} else if (where === "--remote") {
 		throw new Error("this is a Node site: its deployed database is wherever you host it, which this task cannot reach. Run signin:token on the server, without --live.");
 	} else {
@@ -140,7 +162,7 @@ let stored = false;
 if (where === "--remote") {
 	const config = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
 	const authFile = join(config, "emdash", "auth.json");
-	const accessFile = join(config, "emdash-run", "access", `${host}.json`);
+	const accessFile = join(config, "emdash-run", "access", `${preview ? preview.liveHost : host}.json`);
 	const store = existsSync(authFile) ? JSON.parse(readFileSync(authFile, "utf8")) : {};
 	const pass = existsSync(accessFile) ? JSON.parse(readFileSync(accessFile, "utf8")) : null;
 	store[origin] = {
@@ -158,7 +180,7 @@ if (where === "--remote") {
 }
 // EmDash's welcome dialog, closed for this user the way its own button does it (welcome.mjs)
 {
-	const accessFile = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "access", `${host}.json`);
+	const accessFile = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "access", `${preview ? preview.liveHost : host}.json`);
 	const pass = existsSync(accessFile) ? JSON.parse(readFileSync(accessFile, "utf8")) : null;
 	const { dismissWelcome } = await import("./welcome.mjs");
 	await dismissWelcome(origin, raw, pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {});
