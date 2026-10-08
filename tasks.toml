@@ -137,7 +137,7 @@ usage = 'arg "<words>" help="What to look for, e.g. forms"'
 run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
 
 ["plugin:sandbox"]
-description = "Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes"
+description = "Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. On a Node site also its two packages, and workerd's install script allowed in pnpm-workspace.yaml, so the sandbox process stops when EmDash stops it. Stops the site when it changes packages. Run again: nothing changes"
 depends = ["step:there"]
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" sandbox \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
@@ -363,7 +363,7 @@ run = "pnpm exec emdash secrets generate --write .env"
 
 ["step:dev"]
 hide = true
-description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock. Started while no other site on the machine is starting: two Cloudflare sites starting in the same moment take the same debugger port, and one answers 500"
+description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock. Started while no other site on the machine is starting, and its turn lasts until it has answered one request (two minutes at most): two Cloudflare sites starting in the same moment take the same debugger port, and one answers 500"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
@@ -472,7 +472,7 @@ run = "node -e \"console.log('Two copies were taken. They are different things:'
 
 ["step:preview"]
 hide = true
-description = "The production build, served by Astro in the background — the same build a deploy ships, so it signs in the way a deployed site does: no dev sign-in. EMDASH_SITE_URL tells EmDash its address: a Node build otherwise takes itself to be on port 4321 and refuses a passkey made anywhere else"
+description = "The production build, served by Astro in the background — the same build a deploy ships, so it signs in the way a deployed site does: no dev sign-in. EMDASH_SITE_URL tells EmDash its address: a Node build otherwise takes itself to be on port 4321 and refuses a passkey made anywhere else. Started one site at a time, as the dev site is"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_SITE_URL = "http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}" }
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro preview --background --host 127.0.0.1 --port {{ env.PREVIEW_PORT | default(value='4322') }}"

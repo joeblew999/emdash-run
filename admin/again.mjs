@@ -110,8 +110,29 @@ if (what === "new") {
 	}
 	// siteDir is the first word of the command here: what follows `one-at-a-time` is the command
 	const r = spawnSync(siteDir, rest, { stdio: "inherit", shell: process.platform === "win32" });
-	// the port is taken a moment after the command says it started: hold on briefly before the next
-	await new Promise((done) => setTimeout(done, 1500));
+	// Its turn lasts until the site has answered once. The first request is when a site does its
+	// slow work — the dev site builds its pages, EmDash makes its database. On a slow CI runner the
+	// CLI was told "Not authenticated" straight after "Dev server running", twice in one run; why
+	// was not seen, and a second site starting or the CLI signing in during that first request are
+	// the two things this keeps apart. Two minutes at most: a lock is
+	// taken from a start that died after three. Any answer ends the wait; a 5xx is printed, because
+	// what the site says then is the only account of why the next step fails.
+	const port = rest[rest.indexOf("--port") + 1];
+	if (r.status === 0 && rest.includes("--port") && /^\d+$/.test(port)) {
+		const began = Date.now();
+		let answer = null;
+		while (!answer && Date.now() - began < 120_000) {
+			try {
+				answer = await fetch(`http://127.0.0.1:${port}/`, { redirect: "manual", signal: AbortSignal.timeout(120_000 - (Date.now() - began)) });
+			} catch {
+				await new Promise((done) => setTimeout(done, 500));
+			}
+		}
+		if (!answer) console.error(`The site at http://127.0.0.1:${port} was started and has not answered in two minutes.`);
+		else if (answer.status >= 500) console.error(`The site at http://127.0.0.1:${port} answers ${answer.status}: ${(await answer.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400)}`);
+	} else {
+		await new Promise((done) => setTimeout(done, 1500));
+	}
 	try { rmdirSync(lock); } catch {}
 	process.exit(r.status ?? 1);
 } else if (what === "ports") {

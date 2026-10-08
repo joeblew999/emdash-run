@@ -29,7 +29,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin:check`](#plugincheck) | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; |
 | [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards |
 | [`plugin:search`](#pluginsearch) | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
-| [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes |
+| [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. On a Node site also its two packages, and workerd's install script allowed in pnpm-workspace.yaml, so the sandbox process stops when EmDash stops it. Stops the site when it changes packages. Run again: nothing changes |
 | [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
 | [`plugin:remove`](#pluginremove) | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed |
 | [`plugin:favourites`](#pluginfavourites) | Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs \-\-yes: some can change content or reach outside the site. Add \-\-live for deployed |
@@ -164,7 +164,7 @@ Search EmDash's plugin registry. mise run plugin:search -- forms
 
 - **Usage:** `plugin:sandbox`
 
-Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes
+Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. On a Node site also its two packages, and workerd's install script allowed in pnpm-workspace.yaml, so the sandbox process stops when EmDash stops it. Stops the site when it changes packages. Run again: nothing changes
 
 ### `plugin:install`
 
