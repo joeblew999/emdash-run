@@ -5,7 +5,7 @@ Everything about this repo is in [docs/](docs/README.md), the same pages develop
 Read, in this order:
 
 1. [docs/README.md](docs/README.md): what this is, the map, and the index of every page.
-2. [docs/rules.md](docs/rules.md): the working rules. They are binding.
+2. The rules, which are binding: [docs/repo/rules.md](docs/repo/rules.md), the same in every repo charter keeps, and [docs/rules.md](docs/rules.md), this repo's own.
 3. [docs/reference/status.md](docs/reference/status.md): what works at this commit, task by task. Then the open issues: `mise run issues`.
 4. The page for the part you are changing, from the index.
 5. [docs/writing.md](docs/writing.md) before you write or change a page in `docs/`.

@@ -26,6 +26,6 @@ Everything else is already separate:
 
 - A git worktree each, and `mise run site:ports` in each.
 - Sign in with `signin:token`, not `emdash login` ([Upstream issues](../upstream.md)).
-- The rest is in [Rules](../rules.md#working-beside-other-agents).
+- The rest is in [Rules](../rules.md#working-beside-other-agents-here).
 
 The full test runs three sites at once this way.

@@ -29,7 +29,7 @@ Don't edit these: change what they are written from.
 |---|---|---|
 | [Tasks](reference/tasks.md) | `mise run docs:setup` (`charter docs-tasks`) | each task's `description`, arguments and flags in `tasks.toml`, in the order they are written there |
 | [What works](reference/status.md) | `mise run docs:setup` | `tests/results.json`, which every test run updates |
-| `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md) | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
+| `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md), [How this repo is kept](repo.md) and `repo/` | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
 | `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv`, `.github/workflows/repo-check.yml`, `renovate.json` | `mise run repo` | charter |
 
 Every file charter writes says so in its first lines. `charter files` lists them all, and whether each still matches.
@@ -55,6 +55,7 @@ Every file charter writes says so in its first lines. `charter files` lists them
 | [Favourite plugins](reference/favourite-plugins.md) | What `plugin:favourites` installs, and why |
 | **How to help** | |
 | [How to help](contributing.md) | Setting up, the tests, reporting a bug, how it is built |
-| [Rules](rules.md) | The working rules, for developers and agents |
+| [How this repo is kept](repo.md) | What is the same in every repo charter keeps: [the rules they share](repo/rules.md) |
+| [Rules](rules.md) | This repo's own rules, which add to those |
 | [Upstream issues](upstream.md) | Every workaround, and the issue it waits for |
 | [Writing docs](writing.md) | How these pages are written |
