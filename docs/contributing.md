@@ -32,6 +32,7 @@ Running a test turns on the commit check in your clone.
 | `mise run docs:review` | Have Claude bring `docs/` into line with [Writing docs](writing.md) |
 | `mise run repo` | REMOTE: keep the repo in shape from `charter.toml`: docs site, issue forms, labels, description, topics, GitHub Pages |
 | `mise run repo:check` | The same, changing nothing: fails if something drifted |
+| `mise run repo:ci` | Everything the `repo-check` workflow runs, here: `docs:check`, `repo:check`, `upstream:status`. The workflow runs this one task, so a pass here is a pass on GitHub |
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
 | `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
 
@@ -54,7 +55,7 @@ Each test runs as another developer would: a clean environment, an empty config 
 | `tests/status.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own three tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
-| `.github/workflows/` | `stages.yml`: the test on three OSes, by hand or on a tag. `repo-check.yml`: charter's, the docs and repo checks on every push |
+| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test` or `test:full` on three OSes, by hand or on a tag. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
 
 ## Reading EmDash
 
