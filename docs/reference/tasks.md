@@ -25,11 +25,11 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`site:delete`](#sitedelete) | Delete the site folder. Asks first. No site is nothing to delete |
 | [`model:sync`](#modelsync) | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site |
 | [`content:pull`](#contentpull) | Download the deployed site's content as a package into backups/ in the site (keep that folder out of git) |
-| [`plugin:new`](#pluginnew) | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it. Stops the site: start it again afterwards |
+| [`plugin:new`](#pluginnew) | Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it. Stops the site: start it again afterwards |
 | [`plugin:check`](#plugincheck) | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; |
-| [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards |
+| [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add \-\- &lt;package&gt;. Run again: nothing changes. Stops the site: start it again afterwards |
 | [`plugin:search`](#pluginsearch) | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
-| [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes |
+| [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes |
 | [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
 | [`plugin:remove`](#pluginremove) | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed |
 | [`plugin:favourites`](#pluginfavourites) | Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs \-\-yes: some can change content or reach outside the site. Add \-\-live for deployed |
@@ -126,7 +126,7 @@ Download the deployed site's content as a package into backups/ in the site (kee
 
 ### `plugin:new`
 
-Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards
+Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards
 
 - **Usage:** `plugin:new <name>`
 
@@ -144,7 +144,7 @@ Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- 
 
 ### `plugin:add`
 
-Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add -- <package>. Stops the site: start it again afterwards
+Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add -- <package>. Run again: nothing changes. Stops the site: start it again afterwards
 
 - **Usage:** `plugin:add <package>`
 
@@ -164,7 +164,7 @@ Search EmDash's plugin registry. mise run plugin:search -- forms
 
 - **Usage:** `plugin:sandbox`
 
-Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes
+Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes
 
 ### `plugin:install`
 

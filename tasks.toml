@@ -94,7 +94,7 @@ run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" 
 # plugin:install, plugin:favourites and plugin:works act on this machine's built site, as signin:* do.
 
 ["plugin:new"]
-description = "Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards"
+description = "Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards"
 depends = ["step:there", "step:plugin-details"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
@@ -123,7 +123,7 @@ run = [
 ]
 
 ["plugin:add"]
-description = "Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add -- <package>. Stops the site: start it again afterwards"
+description = "Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add -- <package>. Run again: nothing changes. Stops the site: start it again afterwards"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
@@ -137,7 +137,7 @@ usage = 'arg "<words>" help="What to look for, e.g. forms"'
 run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
 
 ["plugin:sandbox"]
-description = "Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes"
+description = "Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes"
 depends = ["step:there"]
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" sandbox \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""

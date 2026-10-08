@@ -35,6 +35,15 @@ mise run plugin -- info <publisher> <slug>           # anything else in EmDash's
 
 `plugin:new` needs `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR` and `PLUGIN_SECURITY_EMAIL` ([Settings](../reference/settings.md)). `plugin:new` and `plugin:add` stop the site: start it again afterwards.
 
+What the tasks write in `astro.config.mjs`, and what they leave to you:
+
+| Plugin | In `astro.config.mjs` | Who writes it |
+|---|---|---|
+| Sandboxed: made by `plugin:new`, or a package built with `emdash-plugin build` | `import saveLog from "save-log";` and `sandboxed: [saveLog]` in `emdash({ … })` | The task |
+| Native: a package that runs in the site itself, such as `@emdash-cms/plugin-forms` | `import { formsPlugin } from "@emdash-cms/plugin-forms";` and `plugins: [formsPlugin()]` | You. `plugin:add` adds the package, prints the two lines and stops: which export makes the plugin is for its README to say |
+
+The tasks edit only the top level of the one `emdash({ … })` call, and change nothing that is already there. A config where that call is not written out (its options in a variable, a spread among them, two calls) is left as it is, and the task prints the lines to add by hand.
+
 ## Limits
 
 - On Cloudflare, deploying a site with the sandbox on needs the Workers Paid plan.

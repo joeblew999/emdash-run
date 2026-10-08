@@ -3,7 +3,8 @@
 //
 //   node plugins.mjs sandbox <site folder>                       plugin:sandbox
 //   node plugins.mjs leftover <site folder>                      site:stop — a Node site's sandbox process, left running
-//   node plugins.mjs config  <site folder> <package>             plugin:add, plugin:new — the lines in astro.config.mjs
+//   node plugins.mjs config  <site folder> <package>             plugin:add, plugin:new — a sandboxed plugin's lines in astro.config.mjs;
+//                                                                a native plugin's are printed, not written
 //   node plugins.mjs install <site address> <site folder> [--deployed] <publisher>/<slug>…
 //                                                                plugin:install, plugin:favourites
 //   node plugins.mjs remove  <site address> <site folder> [--deployed] <publisher>/<slug>…
@@ -31,7 +32,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CannotEdit, addImport, addSandboxedPlugin, addToList, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-config-edit.mjs";
+import { CannotEdit, addSandboxedPlugin, imports, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-config-edit.mjs";
 import { deployedAddress, parseJsonc, previewOf, wranglerFile } from "./site.mjs";
 
 const [what, ...argv] = process.argv.slice(2);
@@ -281,17 +282,22 @@ if (what === "leftover") {
 		const wrote = writeConfig(file, now, edited(file, now, (t) => addSandboxedPlugin(t, pkg, local), sandboxedPluginLines(pkg, local)));
 		console.log(wrote ? `config: ${file}: import ${local} from "${pkg}"  and  sandboxed: [${local}]` : `config: [${pkg}] is already in ${file} — nothing changed.`);
 	} else {
-		// A native plugin exports a function that makes it; EmDash's own are all named <something>Plugin.
-		const entry = typeof meta.exports?.["."] === "string" ? meta.exports["."] : meta.exports?.["."]?.import ?? meta.exports?.["."]?.default ?? meta.module ?? meta.main ?? "index.js";
-		const source = existsSync(join(siteDir, "node_modules", pkg, entry)) ? readFileSync(join(siteDir, "node_modules", pkg, entry), "utf8") : "";
-		const makers = [...new Set([...source.matchAll(/export\s+(?:function|const)\s+(\w+Plugin)\b/g), ...source.matchAll(/export\s*\{[^}]*?\b(?:\w+\s+as\s+)?(\w+Plugin)\b[^}]*\}/g)].map((m) => m[1]))].filter((n) => n !== "createPlugin");
-		const byHand = [`import { ${makers[0] ?? "thePlugin"} } from "${pkg}";`, `plugins: [${makers[0] ?? "thePlugin"}()],   // inside emdash({ … })`];
-		if (makers.length !== 1) fail(`${file} was not changed: [${pkg}] is a native plugin and this cannot tell what it exports to make it (found: ${makers.join(", ") || "nothing named …Plugin"}). Its README says.\nAdd by hand:\n${byHand.map((l) => `  ${l}`).join("\n")}`);
-		const wrote = writeConfig(file, before, edited(file, before, (t) => {
-			const withImport = addImport(t, { module: pkg, named: makers[0] });
-			return addToList(withImport.text, "plugins", `${withImport.local}()`);
-		}, byHand));
-		console.log(wrote ? `config: ${file}: import { ${makers[0]} } from "${pkg}"  and  plugins: [${makers[0]}()]  — a native plugin: it runs in the site itself, not in the sandbox` : `config: [${pkg}] is already in ${file} — nothing changed.`);
+		// A native plugin exports a function that makes it, under a name only its README gives:
+		// nothing in the package says which export that is. EmDash's own are all named
+		// <something>Plugin, so one such export is offered as the likely name — and not written.
+		if (imports(before).some((i) => i.module === pkg)) {
+			console.log(`config: [${pkg}] is already in ${file} — nothing changed.`);
+		} else {
+			const entry = typeof meta.exports?.["."] === "string" ? meta.exports["."] : meta.exports?.["."]?.import ?? meta.exports?.["."]?.default ?? meta.module ?? meta.main ?? "index.js";
+			const source = existsSync(join(siteDir, "node_modules", pkg, entry)) ? readFileSync(join(siteDir, "node_modules", pkg, entry), "utf8") : "";
+			const makers = [...new Set([...source.matchAll(/export\s+(?:function|const)\s+(\w+Plugin)\b/g), ...source.matchAll(/export\s*\{[^}]*?\b(?:\w+\s+as\s+)?(\w+Plugin)\b[^}]*\}/g)].map((m) => m[1]))].filter((n) => n !== "createPlugin");
+			const name = makers.length === 1 ? makers[0] : "thePlugin";
+			fail(
+				`config: [${pkg}] is in package.json. ${file} was not changed: it is a native plugin (it runs in the site itself, not in the sandbox), and which of its exports makes the plugin is for its README to say — this does not guess.\n` +
+					`Add by hand${makers.length === 1 ? ` (it exports ${name}: check that is the one)` : makers.length ? ` (it exports ${makers.join(", ")}: its README says which)` : " (thePlugin stands for the name its README gives)"}:\n` +
+					`  import { ${name} } from "${pkg}";\n  plugins: [${name}()],   // inside emdash({ … })`,
+			);
+		}
 	}
 } else if (what === "install") {
 	const [given, siteDir, ...refs] = args;
