@@ -10,9 +10,10 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 
 test("every task in tasks.toml has a step, and every step names a task", () => {
-	/** @type {{ name: string, source: string }[]} */
+	/** @type {{ name: string, source: string, description: string }[]} */
 	const listed = JSON.parse(execFileSync("mise", ["tasks", "ls", "--hidden", "--json"], { cwd: join(here, ".."), encoding: "utf8" }));
-	const tasks = listed.filter((t) => t.source.endsWith("tasks.toml") && !t.name.startsWith("step:")).map((t) => t.name);
+	// (a task whose description starts "Internal:" is a part of others, tested with them)
+	const tasks = listed.filter((t) => t.source.endsWith("tasks.toml") && !t.description.startsWith("Internal:")).map((t) => t.name);
 	const stepped = new Set();
 	for (const group of readdirSync(here, { withFileTypes: true }).filter((d) => d.isDirectory())) {
 		let steps = "";

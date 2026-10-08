@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 
 const groups = ["site", "signin", "plugin", "live"];
 const argv = process.argv.slice(2);
-const flag = (name) => (argv.includes(name) ? argv.splice(argv.indexOf(name), 2)[1] : "");
+const flag = (/** @type {string} */ name) => (argv.includes(name) ? argv.splice(argv.indexOf(name), 2)[1] : "");
 const level = flag("--level") || "fast";
 // smoke: the steps that make a project, start the site, ask it and stop it
 const only = level === "smoke" ? "site:(ports|start|stop)" : flag("--only");
@@ -23,7 +23,7 @@ if (!["smoke", "fast", "all"].includes(level) || argv.some((a) => !groups.includ
 // live is run when it is asked for by name: it deploys
 const want = level === "smoke" ? ["site"] : asked.length ? asked : ["site", "signin", "plugin"];
 
-const test = (...args) => spawnSync(process.execPath, ["--test", ...args], { stdio: "inherit", env: { ...process.env, TEST_LEVEL: level, TEST_SITE: onNode ? "node" : "cloudflare" } }).status ?? 1;
+const test = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, ["--test", ...args], { stdio: "inherit", env: { ...process.env, TEST_LEVEL: level, TEST_SITE: onNode ? "node" : "cloudflare" } }).status ?? 1;
 // the unit tests first: a second, and a broken script fails here, not minutes in
 let failed = test("tests/**/*.test.mjs") !== 0;
 if (!failed) failed = test("--test-concurrency=1", ...(only ? [`--test-name-pattern=${only}`] : []), ...want.map((g) => `tests/${g}/steps.mjs`)) !== 0;

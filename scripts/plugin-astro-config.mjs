@@ -22,16 +22,16 @@ const COMMENT = 1;
 const TEXT = 2; // a string, template text or a regular expression: its quotes too
 
 // What each character of the source is: code, comment or text.
-export const kinds = (text) => {
+export const kinds = (/** @type {string} */ text) => {
 	const kind = new Uint8Array(text.length);
 	const n = text.length;
-	const mark = (from, to, as) => kind.fill(as, from, Math.min(to, n));
-	/** @type {{ template: boolean, depth?: number, inTemplate?: boolean }[]} */
+	const mark = (/** @type {number} */ from, /** @type {number} */ to, /** @type {number} */ as) => kind.fill(as, from, Math.min(to, n));
+	/** @type {{ template: boolean, depth: number, inTemplate: boolean }[]} */
 	const modes = [{ template: false, depth: 0, inTemplate: false }];
 	let prev = ""; // the last character of code that was not white space
 	let i = 0;
 	while (i < n) {
-		const top = modes.at(-1);
+		const top = /** @type {(typeof modes)[number]} */ (modes.at(-1));
 		const c = text[i];
 		const d = text[i + 1];
 		if (top.template) {
@@ -72,7 +72,7 @@ export const kinds = (text) => {
 			i = j + 1;
 		} else if (c === "`") {
 			mark(i, i + 1, TEXT);
-			modes.push({ template: true });
+			modes.push({ template: true, depth: 0, inTemplate: false });
 			i++;
 		} else if (c === "/" && (prev === "" || "(,=:[!&|?{;+-*%<>~^".includes(prev))) {
 			// a regular expression, where a value can start; anywhere else a / divides
@@ -105,20 +105,20 @@ export const kinds = (text) => {
 	return kind;
 };
 
-const eolOf = (text) => (text.includes("\r\n") ? "\r\n" : "\n");
-const escaped = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+const eolOf = (/** @type {string} */ text) => (text.includes("\r\n") ? "\r\n" : "\n");
+const escaped = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 // Past white space and comments.
-const skipSpace = (text, kind, i, end = text.length) => {
+const skipSpace = (/** @type {string} */ text, /** @type {Uint8Array} */ kind, /** @type {number} */ i, end = text.length) => {
 	while (i < end && (kind[i] === COMMENT || (kind[i] === CODE && /\s/.test(text[i])))) i++;
 	return i;
 };
 // Back over white space and comments: the index after the last character that is neither.
-const trimBack = (text, kind, i, start) => {
+const trimBack = (/** @type {string} */ text, /** @type {Uint8Array} */ kind, /** @type {number} */ i, /** @type {number} */ start) => {
 	while (i > start && (kind[i - 1] === COMMENT || (kind[i - 1] === CODE && /\s/.test(text[i - 1])))) i--;
 	return i;
 };
 // The bracket that closes the one at `open`.
-const closing = (text, kind, open) => {
+const closing = (/** @type {string} */ text, /** @type {Uint8Array} */ kind, /** @type {number} */ open) => {
 	let depth = 0;
 	for (let i = open; i < text.length; i++) {
 		if (kind[i] !== CODE) continue;
@@ -129,7 +129,7 @@ const closing = (text, kind, open) => {
 };
 // The comma-separated items between two brackets, at their own level: where each starts and ends
 // (`end` is its comma, or the closing bracket).
-const items = (text, kind, open, close) => {
+const items = (/** @type {string} */ text, /** @type {Uint8Array} */ kind, /** @type {number} */ open, /** @type {number} */ close) => {
 	const found = [];
 	let i = open + 1;
 	for (;;) {
@@ -148,9 +148,9 @@ const items = (text, kind, open, close) => {
 	}
 };
 // The white space a line starts with.
-const indentAt = (text, i) => /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", i - 1) + 1, i))[0];
+const indentAt = (/** @type {string} */ text, /** @type {number} */ i) => /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", i - 1) + 1, i))?.[0] ?? "";
 // One more item in a bracketed list, after the ones there, laid out as they are.
-const appendItem = (text, kind, open, close, entry) => {
+const appendItem = (/** @type {string} */ text, /** @type {Uint8Array} */ kind, /** @type {number} */ open, /** @type {number} */ close, /** @type {string} */ entry) => {
 	const all = items(text, kind, open, close);
 	if (!all.length) {
 		const inner = text.slice(open + 1, close);
@@ -160,7 +160,7 @@ const appendItem = (text, kind, open, close, entry) => {
 		if (lineStart <= open || text.slice(lineStart, close).trim() !== "") return text.slice(0, close) + entry + text.slice(close);
 		return text.slice(0, lineStart) + `${text.slice(lineStart, close)}\t${entry},${eolOf(text)}` + text.slice(lineStart);
 	}
-	const last = all.at(-1);
+	const last = /** @type {(typeof all)[number]} */ (all.at(-1));
 	const trailing = last.end < close; // a comma after the last item
 	const lastEnd = trimBack(text, kind, last.end, last.start);
 	if (!text.slice(open, all[0].start).includes("\n")) return text.slice(0, lastEnd) + `, ${entry}` + text.slice(lastEnd);
@@ -171,7 +171,7 @@ const appendItem = (text, kind, open, close, entry) => {
 // ── imports ──────────────────────────────────────────────────────────────────────────────────
 
 // Every import statement: its module, what it binds, and where it is.
-export const imports = (text, kind = kinds(text)) => {
+export const imports = (/** @type {string} */ text, kind = kinds(text)) => {
 	const found = [];
 	for (const m of text.matchAll(/^([ \t]*)import\b\s*(?:([^;'"()]*?)\s*\bfrom\s*)?(["'])([^"'\n]+)\3[ \t]*;?[ \t]*(?:\r?\n|$)/gm)) {
 		const start = m.index + m[1].length;
@@ -182,7 +182,7 @@ export const imports = (text, kind = kinds(text)) => {
 		const close = clause.lastIndexOf("}");
 		const before = (open < 0 ? clause : clause.slice(0, open)).replace(/,\s*$/, "").trim();
 		const typeOnly = /^type\s+[\w${*]/.test(clause);
-		const named = open < 0 ? [] : clause.slice(open + 1, close).split(",").map((s) => s.trim().replace(/^type\s+/, "")).filter(Boolean).map((s) => {
+		const named = open < 0 ? [] : clause.slice(open + 1, close).split(",").map((/** @type {string} */ s) => s.trim().replace(/^type\s+/, "")).filter(Boolean).map((/** @type {string} */ s) => {
 			const [imported, local] = s.split(/\s+as\s+/);
 			return { imported, local: local ?? imported };
 		});
@@ -219,7 +219,7 @@ export const addImport = (text, { module, default: byDefault, named }) => {
 		const there = named && i.named.find((n) => n.imported === named);
 		if (there) return { text, local: there.local };
 	}
-	const local = byDefault ?? named;
+	const local = byDefault ?? named ?? "";
 	const bound = all.some((i) => i.default === local || i.namespace === local || i.named.some((n) => n.local === local));
 	const declared = [...text.matchAll(new RegExp(`\\b(?:const|let|var|function|class)\\s+${escaped(local)}\\b`, "g"))].some((m) => kind[m.index] === CODE);
 	if (bound || declared) throw new CannotEdit(`it already uses the name ${local} for something else`);
@@ -237,7 +237,7 @@ export const addImport = (text, { module, default: byDefault, named }) => {
 // ── the emdash({ … }) call ───────────────────────────────────────────────────────────────────
 
 // The one call of EmDash's integration, and the braces of its options.
-export const emdashCall = (text, kind = kinds(text)) => {
+export const emdashCall = (/** @type {string} */ text, kind = kinds(text)) => {
 	const name = imports(text, kind).find((i) => i.module === "emdash/astro" && !i.typeOnly)?.default;
 	if (!name) throw new CannotEdit('it does not import EmDash\'s integration:  import emdash from "emdash/astro"');
 	const calls = [...text.matchAll(new RegExp(`(?<![\\w$.])${escaped(name)}\\s*\\(`, "g"))].filter((m) => kind[m.index] === CODE);
@@ -254,17 +254,17 @@ export const emdashCall = (text, kind = kinds(text)) => {
 	});
 	return { name, open, close, props, kind };
 };
-const option = (call, name) => {
+const option = (/** @type {ReturnType<typeof emdashCall>} */ call, /** @type {string} */ name) => {
 	const found = call.props.find((p) => p.name === name && !p.spread);
 	if (!found && call.props.some((p) => p.spread)) throw new CannotEdit(`the options of ${call.name}({ … }) include a spread (...), so this cannot tell whether ${name} is already set`);
 	return found ?? null;
 };
 
 // Is this option set, at the top level of emdash({ … })?
-export const hasOption = (text, name) => option(emdashCall(text), name) !== null;
+export const hasOption = (/** @type {string} */ text, /** @type {string} */ name) => option(emdashCall(text), name) !== null;
 
 // One option in emdash({ … }), as its first. Nothing when the option is already set.
-export const addOption = (text, name, value) => {
+export const addOption = (/** @type {string} */ text, /** @type {string} */ name, /** @type {string} */ value) => {
 	const call = emdashCall(text);
 	if (option(call, name)) return text;
 	const { open, close, props } = call;
@@ -282,7 +282,7 @@ export const addOption = (text, name, value) => {
 
 // One entry in a list option of emdash({ … }): `sandboxed: [a]` or `plugins: [a()]`. Nothing when
 // the list already has it — the same name, called with or without arguments.
-export const addToList = (text, name, entry) => {
+export const addToList = (/** @type {string} */ text, /** @type {string} */ name, /** @type {string} */ entry) => {
 	const call = emdashCall(text);
 	const found = option(call, name);
 	if (!found) return addOption(text, name, `[${entry}]`);
@@ -301,9 +301,9 @@ export const addToList = (text, name, entry) => {
 // ── what the tasks ask for ───────────────────────────────────────────────────────────────────
 
 // The sandbox runner, as EmDash's docs give it (deployment/plugin-sandbox).
-export const sandboxRunnerLines = (cloudflare) =>
+export const sandboxRunnerLines = (/** @type {boolean} */ cloudflare) =>
 	cloudflare ? ['import { sandbox } from "@emdash-cms/cloudflare";', "sandboxRunner: sandbox(),   // inside emdash({ … })"] : ['sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox",   // inside emdash({ … })'];
-export const setSandboxRunner = (text, cloudflare) => {
+export const setSandboxRunner = (/** @type {string} */ text, /** @type {boolean} */ cloudflare) => {
 	if (hasOption(text, "sandboxRunner")) return text;
 	if (!cloudflare) return addOption(text, "sandboxRunner", '"@emdash-cms/sandbox-workerd/sandbox"');
 	const withImport = addImport(text, { module: "@emdash-cms/cloudflare", named: "sandbox" });
@@ -311,8 +311,8 @@ export const setSandboxRunner = (text, cloudflare) => {
 };
 
 // A sandboxed plugin package, whose default export is its descriptor (what `emdash-plugin build` makes).
-export const sandboxedPluginLines = (pkg, local) => [`import ${local} from "${pkg}";`, `sandboxed: [${local}],   // inside emdash({ … })`];
-export const addSandboxedPlugin = (text, pkg, local) => {
+export const sandboxedPluginLines = (/** @type {string} */ pkg, /** @type {string} */ local) => [`import ${local} from "${pkg}";`, `sandboxed: [${local}],   // inside emdash({ … })`];
+export const addSandboxedPlugin = (/** @type {string} */ text, /** @type {string} */ pkg, /** @type {string} */ local) => {
 	emdashCall(text);
 	const withImport = addImport(text, { module: pkg, default: local });
 	return addToList(withImport.text, "sandboxed", withImport.local);

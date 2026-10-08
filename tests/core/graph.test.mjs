@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { graph } from "../../scripts/core/cli.mjs";
 import { plan, reach } from "../../scripts/core/graph.mjs";
 import { site } from "../../scripts/core/site.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
@@ -22,8 +23,8 @@ test("a state nobody defined, and a circle, are said plainly", () => {
 	assert.throws(() => plan(site, "site:nothing"), /is not a state the tasks know/);
 	assert.throws(() => plan({ a: { needs: () => ["b"], work: () => {} }, b: { needs: () => ["a"], work: () => {} } }, "a"), /a circle: a -> b -> a/);
 });
-test("every need in the site graph is a node of it", () => {
-	for (const name of Object.keys(site)) plan(site, name);
+test("every task: every state it needs is one the graph has, with and without --live", () => {
+	for (const name of Object.keys(graph)) for (const live of [false, true]) plan(graph, name, live ? { live } : {});
 });
 test("reach: a state already reached is skipped, the rest are done in order", async () => {
 	/** @type {string[]} */

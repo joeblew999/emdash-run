@@ -17,8 +17,9 @@
 // are read from the registry's aggregator and compared; the site's own refusal is the second gate.
 import { accessOf, agreed, client, declared, fail, lookUp, ready, reference, releaseOf, restartNode, said, siteAddress, whereIs } from "./plugin-api.mjs";
 import { sandbox } from "./plugin-sandbox.mjs";
+import { Exit } from "./core/calls.mjs";
 
-export const install = async (args, flags) => {
+export const install = async (/** @type {string[]} */ args, /** @type {string[]} */ flags) => {
 	const [given, siteDir, ...refs] = args;
 	const deployed = flags.includes("--deployed");
 	const url = siteAddress(given, deployed);
@@ -27,7 +28,7 @@ export const install = async (args, flags) => {
 	console.error(`-> ${whereIs(url)}`);
 	const api = client(url, siteDir);
 	if (!deployed) {
-		const changed = sandbox(siteDir);
+		const changed = await sandbox(siteDir);
 		for (const line of changed) console.log(`sandbox: ${line}`);
 		await ready(url, siteDir, api, changed.length > 0);
 	}
@@ -48,7 +49,7 @@ export const install = async (args, flags) => {
 			continue;
 		}
 		const list = await api("GET", "/_emdash/api/admin/plugins");
-		const there = list.data?.items?.find((p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
+		const there = list.data?.items?.find((/** @type {any} */ p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
 		if (there && w.version && there.version !== w.version) {
 			console.log(`FAIL ${w.name}: you asked for ${w.version} and the site has ${there.version}. To move it to a newer release: mise run plugin:update -- ${w.name}@${w.version}. To an older one: remove it first (mise run plugin:remove -- ${w.name})`);
 			failed++;
@@ -74,8 +75,8 @@ export const install = async (args, flags) => {
 			continue;
 		}
 		// What the admin's consent dialog shows, all of it — this task agrees to it on your behalf.
-		const strong = v.capabilities.filter((c) => /:write$|:patch$|unrestricted|^email:|^network:/.test(c));
-		const tools = v.mcpTools.map((t) => (typeof t === "string" ? t : `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`));
+		const strong = v.capabilities.filter((/** @type {any} */ c) => /:write$|:patch$|unrestricted|^email:|^network:/.test(c));
+		const tools = v.mcpTools.map((/** @type {any} */ t) => (typeof t === "string" ? t : `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`));
 		console.log(`     ${w.name} ${v.version} asks for:`);
 		console.log(`       permissions: ${v.capabilities.join(", ") || "none"}`);
 		if (strong.length) console.log(`       of those, it can change things or reach outside the site: ${strong.join(", ")}`);
@@ -108,12 +109,12 @@ export const install = async (args, flags) => {
 		declared(url, siteDir, `${pkg.did}/${w.slug}`, { version: v.version, capabilities: v.capabilities, publicRoutes: v.publicRoutes });
 		console.log(`ok   ${w.name}: installed — ${install.data.version}, id ${install.data.pluginId}`);
 	}
-	if (!deployed && installed) restartNode(siteDir);
+	if (!deployed && installed) await restartNode(siteDir);
 	if (!deployed) console.log(`The plugins are in the site's database and storage, which the dev site (site:start) shares. Check them: mise run plugin:works`);
-	process.exit(failed ? 1 : 0);
+	throw new Exit(failed ? 1 : 0);
 };
 
-export const update = async (args, flags) => {
+export const update = async (/** @type {string[]} */ args, /** @type {string[]} */ flags) => {
 	// The admin's Update, for a registry plugin, to the release that is named.
 	const [given, siteDir, ...refs] = args;
 	const deployed = flags.includes("--deployed");
@@ -127,11 +128,11 @@ export const update = async (args, flags) => {
 	if (manifest.status !== 200) fail(`The site did not accept this machine's sign-in: GET /_emdash/api/manifest answered ${said(manifest)}\nSign in first: mise run signin:token${deployed ? " -- --live" : ""}`);
 	if (!manifest.data.registry) fail("This site has no registry configured, so it has no registry plugin to update.");
 	const yes = agreed(flags);
-	const list = (a) => a.join(", ") || "nothing";
+	const list = (/** @type {string[]} */ a) => a.join(", ") || "nothing";
 	let failed = 0;
 	let updated = 0;
 	for (const w of wanted) {
-		const stop = (state, why) => {
+		const stop = (/** @type {string} */ state, /** @type {string} */ why) => {
 			console.log(`${state} ${w.name}: ${why}`);
 			failed++;
 		};
@@ -141,7 +142,7 @@ export const update = async (args, flags) => {
 			continue;
 		}
 		const items = (await api("GET", "/_emdash/api/admin/plugins")).data?.items ?? [];
-		const there = items.find((p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
+		const there = items.find((/** @type {any} */ p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
 		if (!there) {
 			stop("FAIL", `not installed, so there is nothing to update. Install it: mise run plugin:install -- ${w.name}${w.version ? `@${w.version}` : ""}`);
 			continue;
@@ -180,6 +181,7 @@ export const update = async (args, flags) => {
 		}
 		// The site's own gate. It compares the new release with the bundle it is running, and
 		// refuses — one kind of difference at a time — what was not agreed to.
+		/** @type {Record<string, unknown>} */
 		const body = { version: w.version };
 		let done = null;
 		let shown = { added: [], removed: [], newlyPublic: [] };
@@ -188,19 +190,19 @@ export const update = async (args, flags) => {
 			const details = res.error?.details ?? {};
 			if (res.ok) done = res;
 			else if (res.error?.code === "ALREADY_UP_TO_DATE") break;
-			else if (["CAPABILITY_ESCALATION", "ROUTE_VISIBILITY_ESCALATION", "MCP_TOOL_CONSENT_REQUIRED"].includes(res.error?.code) && attempt < 3) {
+			else if (["CAPABILITY_ESCALATION", "ROUTE_VISIBILITY_ESCALATION", "MCP_TOOL_CONSENT_REQUIRED"].includes(res.error?.code ?? "") && attempt < 3) {
 				const added = details.capabilityChanges?.added ?? [];
 				const newlyPublic = details.routeVisibilityChanges?.newlyPublic ?? [];
-				const tools = (details.mcpTools ?? []).map((t) => `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`);
-				console.log(`       the site says ${w.version} needs agreement (${res.error.code}):${added.length ? ` new permissions: ${list(added)};` : ""}${newlyPublic.length ? ` addresses newly open to visitors: ${list(newlyPublic)};` : ""}${tools.length ? ` tools it gives to agents (MCP): ${list(tools)}` : ""}`);
+				const tools = (details.mcpTools ?? []).map((/** @type {any} */ t) => `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`);
+				console.log(`       the site says ${w.version} needs agreement (${res.error?.code}):${added.length ? ` new permissions: ${list(added)};` : ""}${newlyPublic.length ? ` addresses newly open to visitors: ${list(newlyPublic)};` : ""}${tools.length ? ` tools it gives to agents (MCP): ${list(tools)}` : ""}`);
 				if (!yes) {
 					stop("STOP", "not updated: the site found more than the registry's listing showed. Say yes to the line above with  -- --yes");
 					break;
 				}
 				shown = { added, removed: details.capabilityChanges?.removed ?? [], newlyPublic };
-				if (res.error.code === "CAPABILITY_ESCALATION") body.confirmCapabilityChanges = true;
+				if (res.error?.code === "CAPABILITY_ESCALATION") body.confirmCapabilityChanges = true;
 				if (newlyPublic.length) body.acknowledgedPublicRoutes = newlyPublic;
-				if (res.error.code === "MCP_TOOL_CONSENT_REQUIRED") body.confirmMcpTools = true;
+				if (res.error?.code === "MCP_TOOL_CONSENT_REQUIRED") body.confirmMcpTools = true;
 				body.acknowledgedProfileCid = details.verification?.profileCid;
 				body.acknowledgedReleaseCid = details.verification?.releaseCid;
 			} else {
@@ -212,17 +214,17 @@ export const update = async (args, flags) => {
 		updated++;
 		// What it is granted now, for the next update and for plugin:works: the site's account of the difference.
 		const changes = done.data.capabilityChanges ?? shown;
-		const capabilities = granted ? [...granted.capabilities.filter((c) => !(changes.removed ?? []).includes(c)), ...(changes.added ?? []).filter((c) => !granted.capabilities.includes(c))] : null;
+		const capabilities = granted ? [...granted.capabilities.filter((/** @type {any} */ c) => !(changes.removed ?? []).includes(c)), ...(changes.added ?? []).filter((/** @type {any} */ c) => !granted.capabilities.includes(c))] : null;
 		const publicRoutes = kept?.publicRoutes ? [...new Set([...kept.publicRoutes, ...(done.data.routeVisibilityChanges?.newlyPublic ?? shown.newlyPublic)])] : null;
 		if (capabilities && publicRoutes) declared(url, siteDir, key, { version: done.data.newVersion, capabilities, publicRoutes });
 		console.log(`ok   ${w.name}: updated — ${done.data.oldVersion} -> ${done.data.newVersion}, id ${done.data.pluginId}${(changes.added ?? []).length ? `; newly granted: ${list(changes.added)}` : ""}`);
 	}
-	if (!deployed && updated) restartNode(siteDir);
+	if (!deployed && updated) await restartNode(siteDir);
 	if (updated) console.log(`Check ${updated > 1 ? "them" : "it"}: mise run plugin:works${deployed ? " -- --live" : ""}`);
-	process.exit(failed ? 1 : 0);
+	throw new Exit(failed ? 1 : 0);
 };
 
-export const remove = async (args, flags) => {
+export const remove = async (/** @type {string[]} */ args, /** @type {string[]} */ flags) => {
 	// The admin's Uninstall, for a registry plugin. Its stored data is kept, as the admin keeps it
 	// by default. One that is not installed is nothing to remove.
 	const [given, siteDir, ...refs] = args;
@@ -239,7 +241,7 @@ export const remove = async (args, flags) => {
 	for (const w of refs.map(reference)) {
 		const items = (await api("GET", "/_emdash/api/admin/plugins")).data?.items ?? [];
 		const { pkg } = manifest.data.registry ? await lookUp(manifest.data.registry.aggregatorUrl, w) : {};
-		const there = items.find((p) => p.source === "registry" && p.registrySlug === w.slug && (!pkg || p.registryPublisherDid === pkg.did));
+		const there = items.find((/** @type {any} */ p) => p.source === "registry" && p.registrySlug === w.slug && (!pkg || p.registryPublisherDid === pkg.did));
 		if (!there) {
 			console.log(`ok   ${w.name}: not installed — nothing to remove`);
 			continue;
@@ -249,6 +251,6 @@ export const remove = async (args, flags) => {
 		else removed++;
 		console.log(gone.ok ? `ok   ${w.name}: removed (${there.version}, id ${there.id}); what it stored is kept` : `FAIL ${w.name}: the site would not remove it — ${said(gone)}`);
 	}
-	if (!deployed && removed) restartNode(siteDir);
-	process.exit(failed ? 1 : 0);
+	if (!deployed && removed) await restartNode(siteDir);
+	throw new Exit(failed ? 1 : 0);
 };

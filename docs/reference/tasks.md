@@ -48,6 +48,8 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`live:backup`](#livebackup) | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database |
 | [`emdash:update`](#emdashupdate) | Update the site to the newest EmDash, then type-check and build |
 | [`emdash`](#emdash) | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site |
+| [`live:check`](#livecheck) | Hidden. site:check, then a dry run of the deploy |
+| [`site:admin`](#siteadmin) | Hidden. Fresh built site + signin:passkey in one go. Empties the local database |
 
 ## Each task
 
@@ -326,3 +328,15 @@ Update the site to the newest EmDash, then type-check and build
 - **Usage:** `emdash`
 
 EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site
+
+### `live:check`
+
+- **Usage:** `live:check`
+
+Hidden. site:check, then a dry run of the deploy
+
+### `site:admin`
+
+- **Usage:** `site:admin`
+
+Hidden. Fresh built site + signin:passkey in one go. Empties the local database

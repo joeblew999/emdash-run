@@ -16,8 +16,8 @@ parent: How to help
 | [emdash#3996](https://github.com/emdash-cms/emdash/issues/3996) | The CLI's sign-in file is written without a lock: two sign-ins at once lose one | `signin:token` keeps a file per site; the test gives each site a config folder | Share one config folder in the test |
 | EmDash, not filed | No setup and no CLI sign-in without a browser; `emdash login` always opens one | `signin:token` writes the administrator and the token into the database | Use EmDash's way |
 | EmDash, not filed | Under Cloudflare Access a machine cannot sign in by any documented route | `signin:token -- --live` | Use the documented route |
-| EmDash, not filed | A local sign-in is kept per project folder and outlives the database | `signin:token` does not use `emdash login`; `step:forget` removes the saved token | |
-| EmDash, not filed | The welcome dialog has no setting | `site:start` and `signin:token` close it with the call its own button makes (`scripts/site-welcome.mjs`) | Set the option |
+| EmDash, not filed | A local sign-in is kept per project folder and outlives the database | `signin:token` does not use `emdash login`; `site:reset` removes the saved token with the database | |
+| EmDash, not filed | The welcome dialog has no setting | `site:start` and `signin:token` close it with the call its own button makes (`scripts/core/site.mjs`, `scripts/core/signin.mjs`) | Set the option |
 | EmDash, not filed | A Node build takes itself to be on port 4321 | `site:preview` sets `EMDASH_SITE_URL` | |
 | EmDash, not filed | `emdash export-seed` and `emdash doctor` cannot reach a Cloudflare template's local database | `model:sync` records the model with `emdash types`; the seed is not refreshed | Refresh the seed too |
 | EmDash, not filed | `emdash migrate` cannot use wrangler's sign-in | No migration step: EmDash migrates on the first request | |

@@ -13,7 +13,7 @@ const administrator = async () => saysAnyCase(await mise("emdash", "whoami", "--
 const answers = async () => says(await mise("emdash", "schema", "list", "--preview"), "slug");
 const open = { env: { SIGNIN_OPEN_SECONDS: "3" } };
 const savedTokens = () => {
-	const dir = join(env.XDG_CONFIG_HOME, "emdash-run", "tokens");
+	const dir = join(env.XDG_CONFIG_HOME ?? "", "emdash-run", "tokens");
 	return existsSync(dir) ? readdirSync(dir) : [];
 };
 
@@ -43,7 +43,7 @@ long(() => {
 	// a passkey, on a fresh database
 	step("signin:passkey", "completes the EmDash wizard on a fresh database", async () => {
 		await attempt("site:stop");
-		await attempt("step:forget");
+		await attempt("site:forget");
 		await cmd("pnpm", ["exec", "emdash", "logout"], { cwd: "site" });
 		await mise("signin:passkey");
 		await answers();
@@ -55,7 +55,7 @@ long(() => {
 		await mise("signin:token");
 		check(savedTokens().length > 0, "a saved token");
 		await mise("site:stop");
-		await mise("step:forget");
+		await mise("site:forget");
 		check(savedTokens().length === 0, "no saved token");
 	});
 

@@ -20,27 +20,31 @@
 import { resolve } from "node:path";
 
 import { fail } from "./plugin-api.mjs";
+import { Exit } from "./core/calls.mjs";
 
-const [what, ...argv] = process.argv.slice(2);
-const flags = argv.filter((a) => a.startsWith("--"));
-const args = argv.filter((a) => !a.startsWith("--"));
+/** @param {string[]} argv */
+export async function main(argv) {
+	const [what, ...rest] = argv;
+	const flags = rest.filter((a) => a.startsWith("--"));
+	const args = rest.filter((a) => !a.startsWith("--"));
 
-if (what === "sandbox") {
-	const [siteDir] = args;
-	console.error(`-> site folder: ${resolve(siteDir)}`);
-	const changed = (await import("./plugin-sandbox.mjs")).sandbox(siteDir);
-	for (const line of changed) console.log(`sandbox: ${line}`);
-	console.log(changed.length ? "sandbox: this site can now run sandboxed plugins. Build it again for that to take effect (mise run site:preview, or site:start)." : "sandbox: already set up — nothing changed.");
-} else if (what === "config") {
-	(await import("./plugin-sandbox.mjs")).addToConfig(args[0], args[1]);
-} else if (what === "install") {
-	await (await import("./plugin-install.mjs")).install(args, flags);
-} else if (what === "update") {
-	await (await import("./plugin-install.mjs")).update(args, flags);
-} else if (what === "remove") {
-	await (await import("./plugin-install.mjs")).remove(args, flags);
-} else if (what === "works") {
-	await (await import("./plugin-works.mjs")).works(args, flags);
-} else {
-	fail("usage: node plugin.mjs sandbox|config|install|update|remove|works …");
+	if (what === "sandbox") {
+		const [siteDir] = args;
+		console.error(`-> site folder: ${resolve(siteDir)}`);
+		const changed = await (await import("./plugin-sandbox.mjs")).sandbox(siteDir);
+		for (const line of changed) console.log(`sandbox: ${line}`);
+		console.log(changed.length ? "sandbox: this site can now run sandboxed plugins. Build it again for that to take effect (mise run site:preview, or site:start)." : "sandbox: already set up — nothing changed.");
+	} else if (what === "config") {
+		await (await import("./plugin-sandbox.mjs")).addToConfig(args[0], args[1]);
+	} else if (what === "install") {
+		await (await import("./plugin-install.mjs")).install(args, flags);
+	} else if (what === "update") {
+		await (await import("./plugin-install.mjs")).update(args, flags);
+	} else if (what === "remove") {
+		await (await import("./plugin-install.mjs")).remove(args, flags);
+	} else if (what === "works") {
+		await (await import("./plugin-works.mjs")).works(args, flags);
+	} else {
+		fail("usage: node plugin.mjs sandbox|config|install|update|remove|works …");
+	}
 }

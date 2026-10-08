@@ -34,6 +34,8 @@ export const fakeWorld = (given = {}) => {
 			execd.push(command);
 			return { out: "", err: "", ...(given.execs?.(command) ?? { code: 0 }) };
 		},
+		mkdir: () => {},
+		remove: (path) => void delete files[path.replaceAll("\\", "/")],
 		keep: (path, text) => void (files[path.replaceAll("\\", "/")] = text),
 		newest: (paths) => Math.max(0, ...paths.map((p) => given.changed?.[p.replaceAll("\\", "/")] ?? 0)),
 		sqlite: (file, sql) => void sqls.push({ file: file.replaceAll("\\", "/"), sql }),

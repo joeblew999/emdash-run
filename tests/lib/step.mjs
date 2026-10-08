@@ -16,6 +16,7 @@ const limit = (Number(process.env.STEP_LIMIT) || 300) * 1000;
 let inLong = false;
 let stuck = "";
 
+/** @param {boolean} refusal @returns {(task: string, what: string, fn: () => unknown) => void} */
 const define = (refusal) => (task, what, fn) => {
 	const long = inLong;
 	test(`${task} — ${what}${refusal ? " (must refuse)" : ""}`, { skip: long && !all, timeout: limit }, async (t) => {
@@ -28,11 +29,12 @@ const define = (refusal) => (task, what, fn) => {
 			stuck = `${task}: ${what} did not end`;
 			running.stop();
 		});
+		/** @type {Error | null} */
 		let threw = null;
 		try {
 			await fn();
 		} catch (e) {
-			threw = e;
+			threw = e instanceof Error ? e : new Error(String(e));
 		}
 		ended = true;
 		if (refusal && !threw) throw new Error("it should have refused");

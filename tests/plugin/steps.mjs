@@ -7,6 +7,7 @@ import { long, refuses, setup, step } from "../lib/step.mjs";
 setup(aSite);
 
 const config = () => read("site/astro.config.mjs");
+/** @param {string} out @param {string} words */
 const lines = (out, words) => out.split("\n").filter((l) => l.includes(words)).length;
 const forms = "@masonjames.com/contact-forms";
 const bulletin = "@meekmedia.bsky.social/bulletin";

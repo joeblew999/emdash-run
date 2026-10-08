@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const [printed, site] = process.argv.slice(2);
 const lines = readFileSync(printed, "utf8").split("\n").map((l) => l.replace(/\x1b\[[0-9;]*m/g, "").replace(/^\[[^\]]*\]\s*/, "").trim()); // mise puts [task] before each line
-const find = (start) => {
+const find = (/** @type {string} */ start) => {
 	const line = lines.find((l) => l.startsWith(start));
 	if (!line) throw new Error(`signin:access did not print a line starting ${start}`);
 	return line;

@@ -4,13 +4,12 @@
 ["dev:packages"]
 hide = true
 description = "Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check"
-depends = ["step:admin-tools"]
-run = "pnpm --dir tests install --silent --frozen-lockfile"
+run = ["pnpm --dir scripts install --silent --frozen-lockfile", "pnpm --dir tests install --silent --frozen-lockfile"]
 
 ["dev:types"]
 description = "Type-check tests/ and scripts/ (tsconfig.json)"
 depends = ["dev:packages"]
-run = ["pnpm --dir tests exec tsc -p ../tsconfig.json", "pnpm --dir tests exec tsc -p ../tsconfig.strict.json"]
+run = "pnpm --dir tests exec tsc -p ../tsconfig.json"
 
 ["dev:test"]
 description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine"

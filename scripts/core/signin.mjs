@@ -52,9 +52,8 @@ const siteBin = (/** @type {Ctx} */ { world, project }, /** @type {string} */ pk
 export const signin = {
 	// The deployed site answers. Only reported: nothing here can bring a deployed site up.
 	"live:answers": {
-		needs: () => ["site:exists"],
+		needs: () => ["live:set", "site:exists"],
 		work: async ({ world, project }) => {
-			if (!project.live) throw new Error("LIVE_URL is not set: say where the deployed site is, in the project's mise.toml ([env] LIVE_URL).");
 			const url = deployedAddress(project.live);
 			if ((await world.ask(new URL(url).origin, { seconds: 15 })).status === 0) throw new Error(`Nothing is answering at ${new URL(url).origin}. Is the site deployed? mise run live:ship`);
 		},

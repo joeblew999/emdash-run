@@ -10,7 +10,8 @@
  * @typedef {Record<string, string | boolean>} Flags
  * @typedef {import("./world.mjs").World} World
  * @typedef {import("./project.mjs").Project} Project
- * @typedef {{ world: World, project: Project, flags: Flags, env: Record<string, string | undefined>, did: string[] }} Ctx
+ * @typedef {{ world: World, project: Project, flags: Flags, args: string[], argv: string[], env: Record<string, string | undefined>, did: string[] }} Ctx
+ *   args: what the task was given that is not a flag; argv: everything it was given, untouched (for a task that passes it on)
  *   did: the states this run has had to reach so far — a state can ask whether one it stands on was just redone
  * @typedef {object} Node
  * @property {(flags: Flags) => string[]} [needs]
@@ -40,14 +41,14 @@ export const plan = (graph, target, flags = {}) => {
 
 /**
  * Bring the site to a state: each node of the plan in order, skipping those already reached.
- * @param {Graph} graph @param {string} target @param {Omit<Ctx, "did" | "env"> & { env?: Ctx["env"] }} given @returns {Promise<{ did: string[], skipped: string[] }>}
+ * @param {Graph} graph @param {string} target @param {Omit<Ctx, "did" | "env" | "args" | "argv"> & Partial<Pick<Ctx, "env" | "args" | "argv">>} given @returns {Promise<{ did: string[], skipped: string[] }>}
  */
 export const reach = async (graph, target, given) => {
 	/** @type {string[]} */
 	const did = [];
 	const skipped = [];
 	/** @type {Ctx} */
-	const ctx = { env: {}, ...given, did };
+	const ctx = { env: {}, args: [], argv: [], ...given, did };
 	for (const name of plan(graph, target, ctx.flags)) {
 		const node = graph[name];
 		ctx.world.at(name);

@@ -31,7 +31,7 @@ export const env = win ? { ...process.env } : Object.fromEntries(keep.filter((k)
 if (env.GITHUB_TOKEN && !env.GIGET_AUTH) env.GIGET_AUTH = env.GITHUB_TOKEN;
 env.XDG_CONFIG_HOME = join(work, "config");
 
-export const sleep = (seconds) => new Promise((r) => setTimeout(r, seconds * 1000));
+export const sleep = (/** @type {number} */ seconds) => new Promise((r) => setTimeout(r, seconds * 1000));
 
 // One group at a time on a machine: two at once were handed the same ports and spoiled each other.
 const lock = join(homedir(), ".config", "emdash-run", "locks", "test");
@@ -57,12 +57,14 @@ export const running = { log: "", stop: () => {} };
 
 // A program, to its end. Its output goes to a file, not a pipe: a site the task leaves running
 // would keep a pipe open, and the step would wait for ever.
+/** @param {string} program @param {string[]} args @param {{ cwd?: string, env?: NodeJS.ProcessEnv }} [o] */
 const start = (program, args, o = {}) => {
 	const file = join(work, `out-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
 	const fd = openSync(file, "w");
 	const child = spawn(program, args, { cwd: o.cwd || dir, env: o.env || env, stdio: ["ignore", fd, fd], detached: !win, shell: win && program !== "mise" && program !== process.execPath });
 	closeSync(fd);
 	const stop = () => {
+		if (!child.pid) return;
 		if (win) spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
 		else try { process.kill(-child.pid, "SIGTERM"); } catch {}
 	};
@@ -77,6 +79,7 @@ const start = (program, args, o = {}) => {
 	});
 	return { done, stop };
 };
+/** @param {string} program @param {string[]} args @param {{ cwd?: string, env?: NodeJS.ProcessEnv }} [o] */
 const toEnd = async (program, args, o) => {
 	const p = start(program, args, o);
 	running.stop = p.stop;
@@ -90,9 +93,11 @@ const toEnd = async (program, args, o) => {
  * that answers for them (no CI, no MISE_YES).
  * @typedef {{ yes?: boolean, env?: Record<string, string>, alone?: boolean }} How
  */
-const split = (a) => (typeof a[0] === "object" ? [a[0], a.slice(1)] : [{}, a]);
+/** @param {(How | string)[]} a @returns {[How, string[]]} */
+const split = (a) => (typeof a[0] === "object" ? [a[0], /** @type {string[]} */ (a.slice(1))] : [{}, /** @type {string[]} */ (a)]);
+/** @param {How} how @param {string} task @param {string[]} args */
 const miseArgs = (how, task, args) => ["run", ...(how.yes ? ["--yes"] : []), task, ...(args.length ? ["--", ...args] : [])];
-const envFor = (how) => {
+const envFor = (/** @type {How} */ how) => {
 	const e = { ...env, ...(how.env || {}) };
 	if (how.alone) for (const k of ["CI", "MISE_YES"]) delete e[k];
 	return e;
@@ -110,6 +115,7 @@ export const mise = async (...a) => {
 	return result.out;
 };
 /** A task that never ends, stopped after some seconds: what it printed. */
+/** @param {number} seconds @param {string} task @param {...string} args */
 export const forSeconds = async (seconds, task, ...args) => {
 	const p = start("mise", miseArgs({}, task, args));
 	await sleep(seconds);
@@ -117,22 +123,28 @@ export const forSeconds = async (seconds, task, ...args) => {
 	return (await p.done).out;
 };
 /** Any other program, in the project or (cwd) a folder inside it. */
+/** @param {string} program @param {string[]} args @param {{ cwd?: string }} [o] */
 export const cmd = (program, args, o = {}) => toEnd(program, args, { cwd: o.cwd ? join(dir, o.cwd) : dir });
 
+/** @param {unknown} condition @param {string} expected */
 export const check = (condition, expected) => {
 	if (!condition) throw new Error(`expected: ${expected}`);
 };
+/** @param {string} out @param {string} words */
 export const says = (out, words) => check(out.includes(words), `the output to say "${words}"`);
+/** @param {string} out @param {string} words */
 export const saysAnyCase = (out, words) => check(out.toLowerCase().includes(words.toLowerCase()), `the output to say "${words}"`);
 
 // files, by a path inside the project
-export const read = (f) => (existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8") : "");
+export const read = (/** @type {string} */ f) => (existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8") : "");
+/** @param {string} f @param {string} text */
 export const write = (f, text) => writeFileSync(join(dir, f), text);
-export const remove = (f) => rmSync(join(dir, f), { recursive: true, force: true });
-export const exists = (f) => existsSync(join(dir, f));
-export const list = (f) => (existsSync(join(dir, f)) ? readdirSync(join(dir, f)) : []);
+export const remove = (/** @type {string} */ f) => rmSync(join(dir, f), { recursive: true, force: true });
+export const exists = (/** @type {string} */ f) => existsSync(join(dir, f));
+export const list = (/** @type {string} */ f) => (existsSync(join(dir, f)) ? readdirSync(join(dir, f)) : []);
 
 /** The status a request gets, redirects not followed; 0 when nothing answers. */
+/** @param {string} url @param {{ seconds?: number, method?: string }} [o] */
 export const status = async (url, o = {}) => {
 	try {
 		return (await fetch(url, { redirect: "manual", signal: AbortSignal.timeout((o.seconds || 30) * 1000), method: o.method })).status;
@@ -140,7 +152,7 @@ export const status = async (url, o = {}) => {
 		return 0;
 	}
 };
-export const body = async (url) => {
+export const body = async (/** @type {string} */ url) => {
 	try {
 		return await (await fetch(url, { signal: AbortSignal.timeout(30_000) })).text();
 	} catch {
@@ -148,6 +160,7 @@ export const body = async (url) => {
 	}
 };
 /** fn every few seconds until it says true; throws when it never does. */
+/** @param {(attempt: number) => boolean | Promise<boolean>} fn */
 export const until = async (fn, tries = 10, wait = 3) => {
 	for (let i = 0; i < tries; i++) {
 		if (await fn(i)) return;
@@ -157,6 +170,7 @@ export const until = async (fn, tries = 10, wait = 3) => {
 };
 
 /** A project as another repo has one: a folder, a mise.toml that includes the tasks, no ports yet. */
+/** @param {string} template @param {...string} envLines */
 export const project = (template, ...envLines) => {
 	mkdirSync(dir, { recursive: true });
 	if (env.XDG_CONFIG_HOME) mkdirSync(env.XDG_CONFIG_HOME, { recursive: true }); // (the live group uses the developer's own)
@@ -181,7 +195,7 @@ export const copySite = () => {
 	}
 	for (const f of [".wrangler", "dist", ".astro", ".env", "backups"]) remove(`site/${f}`);
 };
-const port = (name) => (read("mise.local.toml").match(new RegExp(`^${name} = "(\\d+)"`, "m")) || [])[1];
+const port = (/** @type {string} */ name) => (read("mise.local.toml").match(new RegExp(`^${name} = "(\\d+)"`, "m")) || [])[1];
 /** The project's two ports, once site:ports has given them. */
 export const ports = () => ({ dev: port("SITE_PORT"), built: port("PREVIEW_PORT") });
 export const devSite = () => `http://localhost:${ports().dev}`;

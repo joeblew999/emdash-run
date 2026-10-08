@@ -56,7 +56,7 @@ export const site = {
 			}),
 	},
 	// The production build — what a deploy ships. Not made again while nothing it is made from has
-	// changed since the last one. Both sites are stopped first: a running site holds the build's
+	// changed since the last one. The built site is stopped first: running, it holds the build's
 	// files (on Windows the build then cannot empty its folder), and serves the old one.
 	"site:built": {
 		needs: () => ["site:key"],
@@ -67,7 +67,6 @@ export const site = {
 			return built > 0 && built > world.newest([...at("src", "public", "seed", "astro.config.mjs", "astro.config.ts", "package.json", "pnpm-lock.yaml", "wrangler.jsonc", "tsconfig.json", ".env"), ...plugins]);
 		},
 		work: (ctx) => {
-			ctx.world.run("pnpm", ["exec", "astro", "dev", "stop"], ctx.project.site);
 			ctx.world.run("pnpm", ["exec", "astro", "preview", "stop"], ctx.project.site);
 			must(ctx, "pnpm", ["exec", "astro", "build"]);
 		},
@@ -76,12 +75,13 @@ export const site = {
 	// under it was just made again.
 	"site:built-running": {
 		needs: () => ["site:built"],
-		done: async (ctx) => !ctx.did.includes("site:built") && (await answers(ctx, ctx.project.built)),
+		done: async (ctx) => !ctx.flags.restart && !ctx.did.includes("site:built") && (await answers(ctx, ctx.project.built)),
 		work: (ctx) =>
 			ctx.world.alone("starting-a-site", async () => {
 				const { world, project } = ctx;
 				world.run("pnpm", ["exec", "astro", "preview", "stop"], project.site);
-				must(ctx, "pnpm", ["exec", "astro", "preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort]);
+				const code = world.run("pnpm", ["exec", "astro", "preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort], project.site, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
+				if (code !== 0) throw new Error("the built site did not start");
 				for (let waited = 0; waited < 180; waited += 0.5) {
 					if ((await world.ask(`${project.built}/`, { seconds: 180 })).status !== 0) return;
 					await world.sleep(0.5);

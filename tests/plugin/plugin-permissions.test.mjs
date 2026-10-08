@@ -4,8 +4,8 @@ import { test } from "node:test";
 
 import { accessOf, reference } from "../../scripts/plugin-api.mjs";
 
-const release = (declaredAccess) => ({ version: "1.0.0", release: { extensions: { "com.emdashcms.experimental.package.releaseExtension": { declaredAccess } } } });
-const more = (from, to) => accessOf(to).filter((a) => !accessOf(from).includes(a));
+const release = (/** @type {Record<string, unknown>} */ declaredAccess) => ({ version: "1.0.0", release: { extensions: { "com.emdashcms.experimental.package.releaseExtension": { declaredAccess } } } });
+const more = (/** @type {unknown} */ from, /** @type {unknown} */ to) => accessOf(to).filter((a) => !accessOf(from).includes(a));
 
 test("a release's declared access, one line each", () => {
 	assert.deepEqual(accessOf(release({ content: { read: {}, write: {} }, email: { send: {} } })), ["content.read", "content.write", "email.send"]);

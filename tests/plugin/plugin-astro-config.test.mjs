@@ -11,12 +11,12 @@ import { fileURLToPath } from "node:url";
 import { CannotEdit, addImport, addOption, addSandboxedPlugin, addToList, emdashCall, hasOption, imports, setSandboxRunner } from "../../scripts/plugin-astro-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixture = (name) => readFileSync(join(here, "fixtures", "astro-config", `${name}.mjs`), "utf8");
+const fixture = (/** @type {string} */ name) => readFileSync(join(here, "fixtures", "astro-config", `${name}.mjs`), "utf8");
 const tmp = mkdtempSync(join(tmpdir(), "config-edit-"));
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
 let n = 0;
 // Node can still read it.
-const parses = (text) => {
+const parses = (/** @type {string} */ text) => {
 	const f = join(tmp, `c${n++}.mjs`);
 	writeFileSync(f, text);
 	const r = spawnSync(process.execPath, ["--check", f], { encoding: "utf8" });
@@ -24,22 +24,22 @@ const parses = (text) => {
 };
 // What the three tasks do to a config, one after the other: plugin:sandbox, plugin:new, and a
 // native plugin's two lines.
-const everything = (text, cloudflare) => {
+const everything = (/** @type {string} */ text, /** @type {boolean} */ cloudflare) => {
 	const a = setSandboxRunner(text, cloudflare);
 	const b = addSandboxedPlugin(a, "save-log", "saveLog");
 	const c = addImport(b, { module: "@emdash-cms/plugin-forms", named: "formsPlugin" });
 	return addToList(c.text, "plugins", `${c.local}()`);
 };
 // The options of emdash({ … }) as text, and everything outside them.
-const inside = (text) => {
+const inside = (/** @type {string} */ text) => {
 	const { open, close } = emdashCall(text);
 	return text.slice(open, close + 1);
 };
-const outside = (text) => {
+const outside = (/** @type {string} */ text) => {
 	const { open, close } = emdashCall(text);
 	return text.slice(0, open) + text.slice(close + 1);
 };
-const count = (text, part) => text.split(part).length - 1;
+const count = (/** @type {string} */ text, /** @type {string} */ part) => text.split(/** @type {string} */ part).length - 1;
 
 test("the starter template, Cloudflare: the runner, a sandboxed plugin and a native one", () => {
 	const after = everything(fixture("starter-cloudflare"), true);
@@ -149,7 +149,8 @@ test("an import with a default joins a module's named import, and the other way 
 });
 
 test("a shape it cannot edit safely: it says why, and returns nothing", () => {
-	const refuses = (name, edit, why) => assert.throws(() => edit(fixture(name)), (e) => e instanceof CannotEdit && why.test(e.message), name);
+	/** @param {string} name @param {(text: string) => unknown} edit @param {RegExp} why */
+	const refuses = (name, edit, why) => assert.throws(() => edit(fixture(name)), (/** @type {unknown} */ e) => e instanceof CannotEdit && why.test(e.message), name);
 	refuses("refuse-spread", (t) => setSandboxRunner(t, true), /spread/);
 	refuses("refuse-spread", (t) => addSandboxedPlugin(t, "save-log", "saveLog"), /spread/);
 	refuses("refuse-variable", (t) => setSandboxRunner(t, false), /not given its options written out/);

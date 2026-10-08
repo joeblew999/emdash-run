@@ -12,28 +12,31 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { fail, mise, win } from "./plugin-api.mjs";
+import { fail, win } from "./plugin-api.mjs";
 import { CannotEdit, addSandboxedPlugin, imports, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-astro-config.mjs";
 import { isCloudflare, parseJsonc, wranglerFile } from "./wrangler-config.mjs";
+import { Exit, task } from "./core/calls.mjs";
 
-const configFile = (siteDir) => ["astro.config.mjs", "astro.config.ts", "astro.config.js"].map((f) => join(siteDir, f)).find(existsSync);
-export const sitePackages = (siteDir) => {
+const configFile = (/** @type {string} */ siteDir) => ["astro.config.mjs", "astro.config.ts", "astro.config.js"].map((f) => join(siteDir, f)).find(existsSync);
+export const sitePackages = (/** @type {string} */ siteDir) => {
 	const p = JSON.parse(readFileSync(join(siteDir, "package.json"), "utf8"));
-	return { ...p.dependencies, ...p.devDependencies };
+	return /** @type {Record<string, string>} */ ({ ...p.dependencies, ...p.devDependencies });
 };
 
 // The edits themselves are scripts/plugin-astro-config.mjs: text in, text out, inside emdash({ … })
 // only. A config of a shape they cannot edit safely is left as it is, and the lines to add by hand
 // are printed.
+/** @param {string} file @param {string} before @param {(text: string) => string} change @param {string[]} byHand @returns {string} */
 const edited = (file, before, change, byHand) => {
 	try {
 		return change(before);
 	} catch (error) {
 		if (!(error instanceof CannotEdit)) throw error;
-		fail(`${file} was not changed: ${error.message}.\nAdd by hand:\n${byHand.map((l) => `  ${l}`).join("\n")}`);
+		fail(`${file} was not changed: ${error.message}.\nAdd by hand:\n${byHand.map((/** @type {string} */ l) => `  ${l}`).join("\n")}`);
 	}
 };
 // Write the config only when it changed, and only when Node can still read it; else put it back.
+/** @param {string} file @param {string} before @param {string} after */
 const writeConfig = (file, before, after) => {
 	if (after === before) return false;
 	writeFileSync(file, after);
@@ -45,16 +48,16 @@ const writeConfig = (file, before, after) => {
 	}
 	return true;
 };
-const pnpm = (argsFor, cwd) => {
+const pnpm = (/** @type {string[]} */ argsFor, /** @type {string} */ cwd) => {
 	const r = spawnSync("pnpm", argsFor, { cwd, stdio: "inherit", shell: win });
-	if (r.status !== 0) process.exit(r.status ?? 1);
+	if (r.status !== 0) throw new Exit(r.status ?? 1);
 };
 
 // What a site needs before it can run a sandboxed plugin. Returns what it changed, as lines.
 const LOADER = '"worker_loaders": [{ "binding": "LOADER" }],';
 // allowBuilds: workerd: true in the site's pnpm-workspace.yaml. Returns the file when it changed it.
 // A workaround, not filed upstream yet: docs/upstream.md, "the sandbox process outlives the site".
-const allowWorkerdBuild = (siteDir) => {
+const allowWorkerdBuild = (/** @type {string} */ siteDir) => {
 	const f = join(siteDir, "pnpm-workspace.yaml");
 	const before = existsSync(f) ? readFileSync(f, "utf8") : "";
 	if (/^[ \t]+workerd:[ \t]*true\b/m.test(before)) return null;
@@ -66,7 +69,7 @@ const allowWorkerdBuild = (siteDir) => {
 	return f;
 };
 
-export const sandbox = (siteDir) => {
+export const sandbox = async (/** @type {string} */ siteDir) => {
 	const file = configFile(siteDir);
 	if (!file) fail(`There is no astro.config in ${siteDir}.`);
 	const cloudflare = isCloudflare(siteDir);
@@ -81,7 +84,7 @@ export const sandbox = (siteDir) => {
 		const byHand = `Add a Worker Loader binding named LOADER to its wrangler config by hand:\n  ${LOADER}`;
 		if (!w) fail(`This Cloudflare site has no wrangler.jsonc. ${byHand}`);
 		const wBefore = readFileSync(w, "utf8");
-		const loaders = (text) => {
+		const loaders = (/** @type {string} */ text) => {
 			try {
 				return parseJsonc(text).worker_loaders ?? null;
 			} catch {
@@ -90,14 +93,14 @@ export const sandbox = (siteDir) => {
 		};
 		const have = loaders(wBefore);
 		if (have === undefined) fail(`${w} was not changed: it cannot be read as JSON with comments. ${byHand}`);
-		if (!have?.some((l) => l.binding === "LOADER")) {
+		if (!have?.some((/** @type {{ binding?: string }} */ l) => l.binding === "LOADER")) {
 			if (have) fail(`${w} was not changed: it has worker_loaders, and none of them is named LOADER. ${byHand}`);
 			const commented = /^([ \t]*)\/\/[ \t]*("worker_loaders"\s*:.*)$/m;
 			// the root object's own brace: the first one that is not in a comment
 			const root = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*\{/.exec(wBefore);
 			const eol = wBefore.includes("\r\n") ? "\r\n" : "\n";
 			const wAfter = commented.test(wBefore) ? wBefore.replace(commented, "$1$2") : root ? wBefore.slice(0, root[0].length) + (/^[ \t]*\r?\n/.test(wBefore.slice(root[0].length)) ? `${eol}\t${LOADER}` : ` ${LOADER}`) + wBefore.slice(root[0].length) : wBefore;
-			if (!loaders(wAfter)?.some((l) => l.binding === "LOADER")) fail(`${w} was not changed: it is not laid out as wrangler writes it. ${byHand}`);
+			if (!loaders(wAfter)?.some((/** @type {{ binding?: string }} */ l) => l.binding === "LOADER")) fail(`${w} was not changed: it is not laid out as wrangler writes it. ${byHand}`);
 			writeFileSync(w, wAfter);
 			changed.push(`${w}: the worker_loaders binding LOADER — deploying it needs the Workers Paid plan`);
 		}
@@ -113,7 +116,7 @@ export const sandbox = (siteDir) => {
 		// leaves the launcher: nothing changes there.)
 		const allowed = allowWorkerdBuild(siteDir);
 		// packages change: the site is stopped first (a running site breaks on Windows otherwise)
-		if (missing.length || allowed) mise(["site:stop"]);
+		if (missing.length || allowed) await task("site:stop");
 		if (missing.length) {
 			pnpm(["add", ...missing], siteDir);
 			changed.push(`package.json: ${missing.join(", ")}`);
@@ -128,7 +131,7 @@ export const sandbox = (siteDir) => {
 };
 
 // plugin:add and plugin:new: the package is in the site; now its two lines in astro.config.mjs.
-export const addToConfig = (siteDir, given) => {
+export const addToConfig = async (/** @type {string} */ siteDir, /** @type {string} */ given) => {
 	// On Windows `pnpm add file:./plugins/x` writes the folder into package.json with a backslash and
 	// into its lockfile with a slash. The two then disagree, and on a CI runner (a frozen lockfile)
 	// every pnpm command after it refuses: ERR_PNPM_OUTDATED_LOCKFILE. A slash is right on every OS.
@@ -142,13 +145,14 @@ export const addToConfig = (siteDir, given) => {
 	if (!pkg) fail(`[${given}] is not in the site's package.json, so there is nothing to add to astro.config.mjs.`);
 	const meta = JSON.parse(readFileSync(join(siteDir, "node_modules", pkg, "package.json"), "utf8"));
 	const file = configFile(siteDir);
+	if (!file) fail(`There is no astro.config in ${siteDir}.`);
 	const before = readFileSync(file, "utf8");
-	const local = pkg.replace(/^@[^/]+\//, "").replace(/^(emdash-)?plugin-/, "").replace(/[^a-zA-Z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : "")).replace(/^[^a-zA-Z]+/, "") || "plugin";
+	const local = pkg.replace(/^@[^/]+\//, "").replace(/^(emdash-)?plugin-/, "").replace(/[^a-zA-Z0-9]+(.)?/g, (/** @type {string} */ _, /** @type {string | undefined} */ c) => (c ? c.toUpperCase() : "")).replace(/^[^a-zA-Z]+/, "") || "plugin";
 	if (meta.exports?.["./sandbox"]) {
 		// What `emdash-plugin build` makes: a descriptor as the default export, for sandboxed: [ … ].
 		// Worked out first: a config that cannot be edited stops this before the sandbox is set up.
 		edited(file, before, (t) => addSandboxedPlugin(t, pkg, local), sandboxedPluginLines(pkg, local));
-		const changed = sandbox(siteDir);
+		const changed = await sandbox(siteDir);
 		for (const line of changed) console.log(`sandbox: ${line}`);
 		const now = readFileSync(file, "utf8");
 		const wrote = writeConfig(file, now, edited(file, now, (t) => addSandboxedPlugin(t, pkg, local), sandboxedPluginLines(pkg, local)));

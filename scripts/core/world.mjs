@@ -3,7 +3,7 @@
 // test gives them a made-up one (tests/core/fake-world.mjs) and sees what they would do.
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { dirname, join } from "node:path";
@@ -12,12 +12,14 @@ import { dirname, join } from "node:path";
  * @typedef {object} World
  * @property {(node: string) => void} at                 the node being reached: what it prints is under its name
  * @property {(line: string) => void} say
- * @property {(program: string, args: string[], cwd: string) => number} run          a command, shown before it runs; its exit code
+ * @property {(program: string, args: string[], cwd: string, more?: Record<string, string>) => number} run   a command, shown before it runs (more: variables for it alone); its exit code
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string }>} ask   status 0: nothing answered
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
+ * @property {(path: string) => void} mkdir
+ * @property {(path: string) => void} remove               a file or a folder and what is in it; nothing when there is none
  * @property {(path: string, text: string) => void} keep     write a file only this user can read, making its folder
  * @property {(paths: string[]) => number} newest            when the newest file among these files and folders was changed; 0 when there is none
  * @property {(file: string, sql: string) => void} sqlite    run SQL on a SQLite file
@@ -39,9 +41,11 @@ export const realWorld = (env) => {
 		platform: process.platform,
 		at: (name) => (node = name),
 		say: (line) => console.log(`[${node}] ${line}`),
-		run: (program, args, cwd) => {
+		// On Windows pnpm is a .cmd file and needs a shell, which splits on spaces: quote what has them.
+		run: (program, args, cwd, more) => {
 			console.log(`[${node}] $ ${[program, ...args].join(" ")}`);
-			return spawnSync(program, args, { cwd, env, stdio: "inherit", shell: win && program !== process.execPath }).status ?? 1;
+			const shell = win && program !== process.execPath && program !== "git";
+			return spawnSync(program, shell ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args, { cwd, env: more ? { ...env, ...more } : env, stdio: "inherit", shell }).status ?? 1;
 		},
 		capture: (program, args, cwd) => spawnSync(program, args, { cwd, env, encoding: "utf8", shell: win && program !== process.execPath }).stdout || "",
 		ask: async (url, init = {}) => {
@@ -58,6 +62,8 @@ export const realWorld = (env) => {
 		},
 		exists: existsSync,
 		read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : ""),
+		mkdir: (path) => void mkdirSync(path, { recursive: true }),
+		remove: (path) => rmSync(path, { recursive: true, force: true }),
 		keep: (path, text) => {
 			mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
 			writeFileSync(path, text, { mode: 0o600 });

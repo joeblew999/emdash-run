@@ -3,11 +3,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { plan, reach } from "../../scripts/core/graph.mjs";
-import { savedName, signin, tokenSql } from "../../scripts/core/signin.mjs";
-import { site } from "../../scripts/core/site.mjs";
+import { graph } from "../../scripts/core/cli.mjs";
+import { savedName, tokenSql } from "../../scripts/core/signin.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
 
-const graph = { ...site, ...signin };
 const built = { "/p/site/package.json": "{}", "/p/site/.env": "EMDASH_ENCRYPTION_KEY=k\n" };
 const fresh = { "/p/site/dist": 2, "/p/site/src": 1 }; // the build is newer than what it is made from
 
@@ -15,7 +14,7 @@ test("this machine: it stands on the built site, running", () => {
 	assert.deepEqual(plan(graph, "signin:token"), ["site:exists", "site:installed", "site:key", "site:built", "site:built-running", "signin:token"]);
 });
 test("--live: it stands on the deployed site answering, and builds and starts nothing here", () => {
-	assert.deepEqual(plan(graph, "signin:token", { live: true }), ["site:exists", "live:answers", "signin:token"]);
+	assert.deepEqual(plan(graph, "signin:token", { live: true }), ["live:set", "site:exists", "live:answers", "signin:token"]);
 });
 
 test("the SQL: an administrator, the site set up, one token per machine — safe to run again", () => {
@@ -47,7 +46,7 @@ test("the build is older than the source: it is built again, and the built site 
 	const fake = fakeWorld({ files: { ...built }, changed: { "/p/site/dist": 1, "/p/site/src": 2 }, answers: () => ({ status: 200 }) });
 	const result = await reach(graph, "signin:token", { world: fake.world, project, flags: {} });
 	assert.deepEqual(result.did, ["site:installed", "site:built", "site:built-running", "signin:token"]);
-	assert.deepEqual(fake.ran.slice(1), ["pnpm exec astro dev stop", "pnpm exec astro preview stop", "pnpm exec astro build", "pnpm exec astro preview stop", "pnpm exec astro preview --background --host 127.0.0.1 --port 4322"]);
+	assert.deepEqual(fake.ran.slice(1), ["pnpm exec astro preview stop", "pnpm exec astro build", "pnpm exec astro preview stop", "pnpm exec astro preview --background --host 127.0.0.1 --port 4322"]);
 });
 
 test("a Cloudflare site: wrangler writes it; 'no such table' is asked again, another refusal is the reason given", async () => {
