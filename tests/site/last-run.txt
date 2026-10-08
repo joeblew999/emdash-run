@@ -1,0 +1,34 @@
+2026-10-08 07:50 UTC, commit b2e7424, level fast, macOS: passed in 37 s
+
+✔ site:ports — gives the project two ports of its own (269.022458ms)
+✔ site:ports — run again: it keeps them (265.477ms)
+✔ site:new — run again: the site is left alone (261.313583ms)
+✔ site:status — says where the site is, state by state, and for what is not so the task that gets it there (297.212959ms)
+✔ plan — prints the states a task stands on, in order, and starts nothing (557.979042ms)
+✔ site:start — starts the dev site; EmDash's welcome dialog is closed (402.32ms)
+✔ site:start — run again: it is already running (392.202833ms)
+✔ site:start — the dev site answers; dev sign-in works (87.983625ms)
+✔ site:logs — shows the dev site log (5016.862458ms)
+✔ emdash — a quoted JSON argument arrives whole (1127.506167ms)
+✔ emdash — whoami on the dev site (452.551334ms)
+✔ emdash — --live with no LIVE_URL says so (must refuse) (260.511333ms)
+✔ content:pull — with no LIVE_URL says so (must refuse) (259.925125ms)
+﹣ site:check — passes on a sound site (0.11975ms) # SKIP
+﹣ site:check — fails on a type error (0.028917ms) # SKIP
+✔ model:sync — records an added field in .emdash/ (1044.838333ms)
+✔ site:preview — serves the built site; dev sign-in is off there (296.180875ms)
+﹣ live:check — the deploy rehearses with no account (0.086916ms) # SKIP
+﹣ emdash:update — updates, type-checks and builds (0.0235ms) # SKIP
+﹣ site:reset — empties the local content (0.019166ms) # SKIP
+﹣ site:reset — refuses with nobody to ask (must refuse) (0.018542ms) # SKIP
+﹣ site:delete — refuses with nobody to ask (must refuse) (0.019083ms) # SKIP
+﹣ site:stop — stops both sites; twice is fine (0.015792ms) # SKIP
+﹣ site:delete — removes the site folder (0.015458ms) # SKIP
+﹣ site:delete — run again: nothing to delete (0.015167ms) # SKIP
+﹣ site:start — with no site, says so and stops (must refuse) (0.013917ms) # SKIP
+﹣ site:new — makes a site from nothing, from EmDash's template (0.013834ms) # SKIP
+ℹ tests 27
+ℹ pass 15
+ℹ fail 0
+ℹ skipped 12
+ℹ duration_ms 37080.932334

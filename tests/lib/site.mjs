@@ -2,8 +2,9 @@
 // Plain functions. The project is a folder of its own in the run's temporary folder, and every task
 // is started as another developer's machine would start it (env, below).
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,9 +14,19 @@ export const group = basename(dirname(process.argv[1] || ""));
 /** cloudflare or node: the kind of site the steps run on */
 export const where = process.env.TEST_SITE || "cloudflare";
 export const ci = !!process.env.CI;
-// The run's folder, by its real name: on Windows the temporary folder is given as a short name
-// (C:\\Users\\RUNNER~1\\…), and a dev server started in a folder named that way exits before it is ready.
-const work = realpathSync.native(mkdtempSync(join(tmpdir(), `emdash-run-${group}-`)));
+// WHERE THE STEPS WORK.
+// At the levels smoke and fast: ONE test site that is KEPT, and kept running, from one run to the
+// next (~/.cache/emdash-run/bench). Every task skips what is already so, so a step costs what the
+// task costs — seconds — and not a copy, an install, a build and a start each time. The groups
+// share it, one after the other.
+// At the level all: a folder of its own, made from nothing and removed at the end, a group to a
+// folder, side by side — the first-time paths, and the steps that stop and delete.
+export const kept = (process.env.TEST_LEVEL || "fast") !== "all" && group !== "live";
+// (By its real name: on Windows the temporary folder is given as a short name, C:\\Users\\RUNNER~1\\…,
+// and a dev server started in a folder named that way exits before it is ready.)
+const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), `emdash-run-${group}-`)));
+const work = kept ? join(homedir(), ".cache", "emdash-run", where === "node" ? "bench-node" : "bench") : scratch;
+mkdirSync(work, { recursive: true });
 /** the project's folder */
 export const dir = join(work, "project");
 const win = process.platform === "win32";
@@ -33,10 +44,22 @@ env.XDG_CONFIG_HOME = join(work, "config");
 
 export const sleep = (/** @type {number} */ seconds) => new Promise((r) => setTimeout(r, seconds * 1000));
 
-// When the group ends, however it ends: what it left running is stopped, its folder goes.
+// The kept site is one group's at a time: the next waits its turn (a group there takes seconds).
+const turn = join(work, "in-use");
+if (kept) {
+	for (let waited = 0; ; waited += 2) {
+		try { mkdirSync(turn); break; } catch {}
+		if (Date.now() - statSync(turn).mtimeMs > 15 * 60_000 || waited > 900) { try { rmdirSync(turn); } catch {} continue; }
+		await sleep(2);
+	}
+}
+// When the group ends, however it ends: a kept site is left as it is, running, for the next run;
+// a folder made for this run is stopped and removed.
 process.on("exit", () => {
-	if (existsSync(dir)) spawnSync("mise", ["run", "site:stop"], { cwd: dir, env, timeout: 60_000 });
-	rmSync(work, { recursive: true, force: true, maxRetries: 3 });
+	if (kept) {
+		try { rmdirSync(turn); } catch {}
+	} else if (existsSync(dir)) spawnSync("mise", ["run", "site:stop"], { cwd: dir, env, timeout: 60_000 });
+	rmSync(scratch, { recursive: true, force: true, maxRetries: 3 });
 });
 for (const s of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(s, () => process.exit(130));
 
@@ -48,7 +71,7 @@ export const running = { log: "", stop: () => {} };
 // would keep a pipe open, and the step would wait for ever.
 /** @param {string} program @param {string[]} args @param {{ cwd?: string, env?: NodeJS.ProcessEnv }} [o] */
 const start = (program, args, o = {}) => {
-	const file = join(work, `out-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+	const file = join(scratch, `out-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
 	const fd = openSync(file, "w");
 	const child = spawn(program, args, { cwd: o.cwd || dir, env: o.env || env, stdio: ["ignore", fd, fd], detached: !win, shell: win && program !== "mise" && program !== process.execPath });
 	closeSync(fd);
@@ -199,8 +222,17 @@ export const builtSite = () => `http://localhost:${ports().built}`;
  * made from EmDash's Node template.
  */
 export const aSite = async () => {
+	// A kept site is used again while it is a copy of the site/ that is here now, with these tasks.
+	const git = (/** @type {string[]} */ ...args) => spawnSync("git", args, { cwd: repo, encoding: "utf8" }).stdout;
+	const from = createHash("sha256").update(include).update(git("ls-files", "-s", "site")).update(git("diff", "--", "site")).digest("hex").slice(0, 16);
+	if (kept && read("copied-from") === from && exists("site/package.json")) return;
+	if (existsSync(dir)) {
+		spawnSync("mise", ["run", "site:stop"], { cwd: dir, env, timeout: 60_000 });
+		rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+	}
 	project(where === "node" ? "node:starter" : "cloudflare:blog");
 	await mise("site:ports");
 	if (where === "node") await mise("site:new");
 	else copySite();
+	if (kept) write("copied-from", from);
 };

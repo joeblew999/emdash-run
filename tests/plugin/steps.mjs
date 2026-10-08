@@ -2,10 +2,14 @@
 // The unit tests of the scripts' own functions are here too (*.test.mjs, fixtures/): they run first
 // in every test, and in mise run check.
 import { aSite, attempt, check, exists, mise, read, says, saysAnyCase } from "../lib/site.mjs";
-import { registrySteps } from "../both/registry.mjs";
+import { registryClean, registrySteps } from "../both/registry.mjs";
 import { long, refuses, setup, step } from "../lib/step.mjs";
 
-setup(aSite);
+// (what a run stopped half way may have left installed is taken out first)
+setup(async () => {
+	await aSite();
+	await registryClean({ live: false });
+});
 
 const config = () => read("site/astro.config.mjs");
 
@@ -20,15 +24,15 @@ step("plugin:sandbox", "run again: nothing changes", async () => {
 	check(before === config() + read("site/package.json"), "the config and package.json as they were");
 });
 
-// a plugin of your own
-step("plugin:new", "scaffolds, tests, builds and adds a plugin — to the site's config too, by itself", async () => {
-	await mise("plugin:new", "save-log");
-	check(exists("site/plugins/save-log/dist/plugin.mjs"), "the plugin built");
-	check(read("site/package.json").includes("save-log"), "save-log in package.json");
-	check(config().includes("sandboxed: [saveLog]"), "sandboxed: [saveLog] in astro.config.mjs");
-});
-step("plugin:check", "the plugin passes its checks", () => mise("plugin:check", "save-log"));
+// a plugin of your own: scaffolded, tested and built — half a minute, so at the level all
 long(() => {
+	step("plugin:new", "scaffolds, tests, builds and adds a plugin — to the site's config too, by itself", async () => {
+		await mise("plugin:new", "save-log");
+		check(exists("site/plugins/save-log/dist/plugin.mjs"), "the plugin built");
+		check(read("site/package.json").includes("save-log"), "save-log in package.json");
+		check(config().includes("sandboxed: [saveLog]"), "sandboxed: [saveLog] in astro.config.mjs");
+	});
+	step("plugin:check", "the plugin passes its checks", () => mise("plugin:check", "save-log"));
 	step("plugin:new", "run again: not scaffolded twice, still builds, the config is not touched", async () => {
 		const before = config();
 		says(await mise("plugin:new", "save-log"), "already there");

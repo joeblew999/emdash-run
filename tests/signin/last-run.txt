@@ -1,0 +1,16 @@
+2026-10-08 07:49 UTC, commit b2e7424, level fast, macOS: passed in 4 s
+
+✔ signin:token — this machine's built site: the CLI is an administrator of it (1483.283792ms)
+✔ signin:token — this machine's built site, run again: still an administrator (1413.855583ms)
+✔ emdash — this machine's built site: --preview reads and writes it (979.24775ms)
+﹣ signin:token — starts the built site when it is stopped (0.21025ms) # SKIP
+﹣ signin:open — opens a signed-in window (token) (0.07925ms) # SKIP
+﹣ signin:passkey — completes the EmDash wizard on a fresh database (0.059292ms) # SKIP
+﹣ signin:open — opens a signed-in window (passkey) (0.047042ms) # SKIP
+﹣ signin:token — the saved token goes when the local database does (0.052459ms) # SKIP
+﹣ site:admin — a fresh built site, signed in, in one go (0.070125ms) # SKIP
+ℹ tests 9
+ℹ pass 3
+ℹ fail 0
+ℹ skipped 6
+ℹ duration_ms 3950.38425

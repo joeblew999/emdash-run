@@ -33,7 +33,9 @@ const stale = (dir, world) => {
 	const built = world.newest([join(dir, "dist", "server")]);
 	if (built === 0) return "there is no build yet";
 	if (built <= world.newest(from.folders)) return `${world.newestPath(from.folders).slice(dir.length + 1)} changed after the last build`;
-	if (world.read(join(dir, "dist", ".built-from")) !== world.digest(from.files)) return "the site's config or packages changed since the last build";
+	// (a build made before this note was kept is judged by date, as it was then)
+	const note = world.read(join(dir, "dist", ".built-from"));
+	if (note === "" ? built <= world.newest(from.files) : note !== world.digest(from.files)) return "the site's config or packages changed since the last build";
 	return "";
 };
 

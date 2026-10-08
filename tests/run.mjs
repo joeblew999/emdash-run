@@ -35,10 +35,10 @@ if (!["smoke", "fast", "all"].includes(level) || argv.some((a) => !groups.includ
 const test = (/** @type {string[]} */ ...args) => spawnSync(process.execPath, ["--test", ...args], { stdio: "inherit", env: { ...process.env, TEST_LEVEL: level, TEST_SITE: argv.includes("--node") ? "node" : "cloudflare" } }).status ?? 1;
 
 if (argv.includes("--unit")) process.exit(test("tests/**/*.test.mjs"));
-// smoke is the site group's steps that make a project, start the site, ask it and stop it: the
-// other groups have nothing at that level
+// smoke is the site group's steps that make a project, start the site and ask it: the other
+// groups have nothing at that level
 if (level === "smoke" && group !== "site") process.exit(0);
-const pattern = level === "smoke" ? "site:(ports|start|stop)" : only;
+const pattern = level === "smoke" ? "site:(ports|start)" : only;
 const began = Date.now();
 // a whole group at fast or all is proof worth keeping: Node writes its report to a file too
 const kept = !pattern && !process.env.CI ? ["--test-reporter=spec", "--test-reporter-destination=stdout", "--test-reporter=spec", `--test-reporter-destination=${report(group)}`] : [];
