@@ -84,7 +84,8 @@ run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" content:pull"
 # rebuild (plugin:update moves one to a newer release, plugin:remove takes it out). A PACKAGE plugin (plugin:new, plugin:add) is in package.json and astro.config.mjs, and
 # the task writes both. Either kind, when sandboxed, needs plugin:sandbox once — the tasks run it.
 # plugin:install, plugin:favourites, plugin:update, plugin:remove and plugin:works act on this
-# machine's built site, as signin:* do; with --live, on the deployed one.
+# machine's built site, as signin:* do; with --live, on the deployed one. plugin:demo acts on this
+# machine's built site and no other.
 
 ["plugin:new"]
 description = "Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards"
@@ -152,6 +153,10 @@ flag "--live" help="The deployed site at LIVE_URL instead of the local productio
 flag "--fresh" help="Check, build and restart the site first even when it is already built from this code and answering"
 '''
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:works --fresh={{ usage.fresh | default(value=false) }} --live={{ usage.live | default(value=false) }} {{ usage.name | default(value=[]) | join(sep=' ') }}"
+
+["plugin:demo"]
+description = "Six plugins from EmDash's registry each do their real thing, with requests only and nobody clicking, and one line each says what was seen. SEO Suite: the organisation and the X handle its settings name are on the home page. Link Guardian: it finds a dead link in a published post. Image Alt Text Manager: an image with no alt text is in its queue, and the alt text saved there is on the image. Contact Forms, and Forms: a form named Contact, and the message a visitor sends to it, read back. LinguaDash: a French draft of a post. This machine's built site and no other: it builds, starts and signs in if needed, and installs those of the six the site lacks, each at the release that was tried, agreeing to what it asks for as plugin:install --yes does (some can change content or reach outside the site). What it makes stays in the site, each thing named after the task: a published post plugin-demo, an image plugin-demo.png, a form Contact in each forms plugin with one message, the French draft, and a few plugin settings (a value the site already has is kept). It needs a posts collection, as EmDash's templates have, and the internet: the registry, and the dead link is really asked for. Run again: every line says already so, and nothing is made twice. A plugin that did not do its thing is a FAIL line with what the site answered, and the task fails. plugin:works is the other check: that a plugin loads and answers"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:demo"
 
 ["plugin:publish"]
 description = "Publish a plugin to EmDash's registry. Asks first"

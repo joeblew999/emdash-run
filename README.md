@@ -35,6 +35,7 @@ EmDash, Astro and wrangler have good command lines, and these tasks run them. Wh
 | Get into the admin and the API with no human | A passkey in a browser: an agent or CI stops at the sign-in page | `signin:token`, on a local build, a deployed site or a preview |
 | Install, update and remove plugins | By clicking in the admin; there is no command | `plugin:install`, `plugin:update`, `plugin:remove`. What a plugin may do is printed, and one that can change things or reach outside is refused without a yes |
 | Know a plugin works | Install it and look | `plugin:works`: one line per check |
+| See a plugin do what it is for | Set it up and try it by hand in the admin | `plugin:demo`: six registry plugins each do their real thing on the local build by requests alone, and one line each says what was seen: a setting on a page, a dead link found, a visitor's message read back |
 | See a change deployed before it is live | Make a database, a bucket and a session store, write a `previews` block, switch preview addresses on, deploy | `live:preview`: an address of its own, with its own data |
 | Put sign-in in front of a deployed admin | The Cloudflare dashboard | `signin:access` |
 | Run several sites, or several agents, on one machine | They are handed the same ports, and two sites starting together break each other | `site:ports`; sites start one at a time |

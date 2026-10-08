@@ -75,3 +75,19 @@ long(() => {
 		says(await mise("plugin:works", "save-log"), "save-log routes: 1 declared, each asked with a GET: hello 200");
 	});
 });
+
+// six registry plugins, each doing what it is for — it installs them and asks the internet, so at the level all
+long(() => {
+	step("plugin:demo", "each plugin does its real thing, and run again changes nothing", async () => {
+		const six = ["seo-suite", "link-guardian", "media-alt-text-queue", "contact-forms", "forms", "linguadash"];
+		const first = await mise("plugin:demo");
+		for (const plugin of six) says(first, `ok   ${plugin}: `);
+		says(first, "all 6 plugins did their real thing");
+		const again = await mise("plugin:demo");
+		for (const plugin of six) says(again, `ok   ${plugin}: already so — `);
+		check(!again.includes(": installed"), "nothing installed the second time");
+		// no second message in either form
+		says(again, "is in the export of submissions, once");
+		says(again, "are among its entries, once");
+	});
+});
