@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **One source for each thing in the docs.** What a task does is its description in `tasks.toml`:
+  `docs/tasks.md` (written by mise, in the order you use the tasks) and every list of tasks in the
+  README are filled from it. The README says only what is not a task.
+
 ## 1.1.0 — 2026-10-08
 
 From the first real deployment (the Remy-Sport site) and from running several sites at once. The

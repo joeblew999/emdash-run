@@ -118,7 +118,17 @@ if (text.includes(begin) && text.includes(end)) {
 		lines.push("");
 	}
 	const block = `${begin}\n${lines.join("\n")}\n${end}`;
-	writeFileSync(readme, text.slice(0, text.indexOf(begin)) + block + text.slice(text.indexOf(end) + end.length));
+	let next = text.slice(0, text.indexOf(begin)) + block + text.slice(text.indexOf(end) + end.length);
+	// A section's own list of tasks: `<!-- tasks:PREFIX -->` … `<!-- /tasks -->` is filled with every
+	// visible task whose name starts with PREFIX and its description, in the order the test uses
+	// them. So a section says only what is not a task; what a task does is written once, on it.
+	const used = [...firstUse("cloudflare"), ...firstUse("deployed")];
+	const rank = (n) => (used.indexOf(n) < 0 ? 999 : used.indexOf(n));
+	next = next.replace(/<!-- tasks:([a-z:]+) -->[\s\S]*?<!-- \/tasks -->/g, (_, prefix) => {
+		const rows = tasks.filter((t) => !t.hidden && t.name.startsWith(prefix)).sort((a, b) => rank(a.name) - rank(b.name));
+		return [`<!-- tasks:${prefix} -->`, "| task | what it does |", "|---|---|", ...rows.map((t) => `| \`${t.name}\` | ${describe[t.name]} |`), "<!-- /tasks -->"].join("\n");
+	});
+	writeFileSync(readme, next);
 }
 }
 // The docs site is the README, one page per section: one source, so the two cannot drift. The home
@@ -145,7 +155,9 @@ if (text.includes(begin) && text.includes(end)) {
 		return { title, file: `${slug(title)}.md`, body: sec.slice(sec.indexOf("\n") + 1).trim(), order: i + 2 };
 	});
 	const home = pages.find((p) => p.title === "Set up");
-	const rest = pages.filter((p) => p !== home);
+	// "The tasks" is not a page of its own: its table opens tasks.md, above what mise writes
+	const order = pages.find((p) => p.title === "The tasks");
+	const rest = pages.filter((p) => p !== home && p !== order);
 	for (const p of rest) {
 		writeFileSync(join(docs, p.file), `---\ntitle: "${p.title}"\nnav_order: ${p.order}\n---\n\n${marker}\n\n# ${p.title}\n\n${p.body}\n`);
 	}
@@ -161,11 +173,21 @@ if (text.includes(begin) && text.includes(end)) {
 		const made = execFileSync("mise", ["generate", "task-docs", "--style", "detailed"], { cwd: view, encoding: "utf8", env: { ...process.env, MISE_TRUSTED_CONFIG_PATHS: view } });
 		rmSync(view, { recursive: true, force: true });
 		// the hidden steps a task depends on are not something a developer runs
-		const body = made.split("\n").filter((l) => !l.startsWith("- Depends:")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-		writeFileSync(join(docs, "tasks.md"), `---\ntitle: "Every task"\nnav_order: 3\n---\n\n${marker.replace("from a section of the repo's README.md: edit that, not this.", "by mise from tasks.toml (mise generate task-docs): edit a task's description there, not this.")}\n\n# Every task\n\nWritten by mise itself from [\`tasks.toml\`](https://github.com/joeblew999/emdash-run/blob/main/tasks.toml): each task's description, arguments and flags. In your own project the same is one command away: \`mise tasks\`, or \`mise run <task> --help\`. The order you use them in is on [The tasks](the-tasks.md); what the last test showed for each is on [What works](status.md).\n\n${body}\n`);
+		// mise lists tasks alphabetically, whatever their order in the file. Here they go in the order
+		// a developer uses them — the order of the table above, which is the test's — and any the
+		// test does not reach follow in tasks.toml's own order.
+		const inUse = [...readFileSync(join(repo, "README.md"), "utf8").matchAll(/^\| \d+ \| `([a-z:]+)`/gm)].map((m) => m[1]);
+		const inFile = [...readFileSync(join(repo, "tasks.toml"), "utf8").matchAll(/^\["?([a-z:]+)"?\]/gm)].map((m) => m[1]);
+		const wanted = [...inUse, ...inFile].filter((n, i, all) => all.indexOf(n) === i);
+		const place = (block) => {
+			const at = wanted.indexOf((block.match(/^## `([a-z:]+)`/) || [])[1]);
+			return at < 0 ? wanted.length : at;
+		};
+		const blocks = made.split(/^(?=## `)/m).sort((x, y) => place(x) - place(y));
+		const body = blocks.join("\n").split("\n").filter((l) => !l.startsWith("- Depends:")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+		writeFileSync(join(docs, "tasks.md"), `---\ntitle: "Every task"\nnav_order: 3\n---\n\n${marker.replace("from a section of the repo's README.md: edit that, not this.", "by mise from tasks.toml (mise generate task-docs): edit a task's description there, not this.")}\n\n# Every task\n\n${order ? order.body.replaceAll("](tasks.md)", "](#reference)") : ""}\n\n## Reference\n\nWritten by mise itself from [\`tasks.toml\`](https://github.com/joeblew999/emdash-run/blob/main/tasks.toml): each task's description, arguments and flags. In your own project the same is one command away: \`mise tasks\`, or \`mise run <task> --help\`. What the last test showed for each, step by step, is on [What works](status.md).\n\n${body}\n`);
 	}
 	const about = {
-		"The tasks": "every task, in the order you use them",
 		"Templates": "the eight kinds of site `site:new` can make",
 		"An existing site": "using the tasks on a repo that already is an EmDash site",
 		"This machine or deployed": "one rule: no flag is this machine, `--live` is the deployed site",
@@ -177,7 +199,7 @@ if (text.includes(begin) && text.includes(end)) {
 		"Working on emdash-run": "the tests, and where the rules are",
 	};
 	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | ${about[p.title] ?? ""} |`),
-		"| [Every task](tasks.md) | each task's description, arguments and flags — written by mise from `tasks.toml` |",
+		"| [Every task](tasks.md) | in the order you use them; each one's description, arguments and flags — written by mise from `tasks.toml` |",
 		"| [What works](status.md) | every task, and what the last test run showed |",
 		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",
 		"| [For agents](agents/README.md) | the rules for working on this repo |",
