@@ -48,7 +48,24 @@ const main = async (argv) => {
 	const base = { world, project, env: process.env };
 	// a state reached from inside another's work: the same graph, in this process
 	setReacher((name, flags = {}) => reach(graph, name, { ...base, flags, args: [], argv: [] }, true));
-	await reach(graph, target, { ...base, flags, args, argv: rest });
+	// A TASK LEAVES THE DEV SITE AS IT FOUND IT: RUNNING. A build, a change to the site's config or
+	// its packages can leave a running dev site answering 500 to everything (Vite's files changed
+	// under it). Whatever the task was, if the dev site was well before it and is not after, it is
+	// started again here — except by the tasks whose job is to stop it.
+	const well = async () => {
+		const status = (await world.ask(`${project.dev}/`, { seconds: 20 })).status;
+		return status !== 0 && status < 500;
+	};
+	const wasWell = !["site:stop", "site:delete"].includes(target) && world.exists(join(project.site, "package.json")) && (await well());
+	try {
+		await reach(graph, target, { ...base, flags, args, argv: rest });
+	} finally {
+		if (wasWell && world.exists(join(project.site, "package.json")) && !(await well())) {
+			world.at(target);
+			world.say("the dev site was running before this task and is not answering properly after it: starting it again");
+			await reach(graph, "site:dev-running", { ...base, flags: {}, args: [], argv: [] }, true);
+		}
+	}
 };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

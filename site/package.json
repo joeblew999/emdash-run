@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "emdash": {
-    "label": "Starter",
+    "label": "Blog",
     "seed": "seed/seed.json"
   },
   "scripts": {
@@ -17,9 +17,9 @@
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.1",
     "@astrojs/react": "^6.0.5",
-    "@emdash-cms/cloudflare": "^1.2.0",
+    "@emdash-cms/cloudflare": "^1.0.1",
     "astro": "^7.3.2",
-    "emdash": "^1.2.0",
+    "emdash": "^1.0.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

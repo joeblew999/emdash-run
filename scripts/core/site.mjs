@@ -186,7 +186,7 @@ export const site = {
 				["a site", world.exists(join(project.site, "package.json")), "mise run site:new"],
 				["its packages", world.exists(join(project.site, "node_modules")), "mise run site:start"],
 				["its key", /^EMDASH_ENCRYPTION_KEY=./m.test(world.read(join(project.site, ".env"))), "mise run site:start"],
-				["the dev site running", answers(ctx, project.dev), "mise run site:start"],
+				["the dev site running", world.ask(`${project.dev}/`, { seconds: 20 }).then((a) => a.status !== 0 && a.status < 500), "mise run site:start"],
 				["built, from what is here now", !!(await site["site:built"].done?.(ctx)), "mise run site:preview"],
 				["the built site running", answers(ctx, project.built), "mise run site:preview"],
 				["this machine signed in to the built site", world.exists(tokens) && world.list(tokens).some((f) => f.startsWith(`localhost_${project.builtPort}_`)), "mise run signin:token"],
