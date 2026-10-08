@@ -59,7 +59,7 @@ description = "Write the docs site's config (charter: the same for every repo of
 run = "charter docs"
 
 [tasks."docs:check"]
-description = "Check docs/: front matter, links, and that the generated files are not stale"
+description = "Check docs/ with charter: the site config is charter's, front matter, links, paths. NOT in the commit check yet: charter looks for tasks in mise.toml, ours are in tasks.toml, so every `mise run <task>` in the docs is reported — read past those lines"
 run = "charter docs -check && charter docs-lint"
 
 [tasks."docs:pages"]
