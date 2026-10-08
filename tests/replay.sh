@@ -49,6 +49,18 @@ fi
 
 # Provenance first: every task in tasks.toml has a step below, and every step names a real task.
 (cd "$REPO" && node tests/status.mjs --coverage) || exit 1
+# ONE SOURCE: the README's task tables and the pages in docs/ are written from tasks.toml, this
+# file and the README — never by hand. Two guards, so that holds without anyone remembering:
+# running the test turns on the commit check in this clone; and on a CI runner, pages that were
+# committed stale fail the run before anything else is done.
+if [ -z "${CI:-}" ]; then
+  git -C "$REPO" config core.hooksPath .githooks 2>/dev/null || true
+elif [ "$(uname -s)" = Linux ]; then
+  (cd "$REPO" && node tests/status.mjs --rebuild >/dev/null && git diff --quiet -- README.md docs) || {
+    echo "The generated pages are stale: README.md or docs/ does not match tasks.toml, tests/replay.sh and the README."
+    (cd "$REPO" && git diff --stat -- README.md docs)
+    echo "Run  mise run docs  and commit what it changes. Nothing was run."; exit 1; }
+fi
 
 # One step: the task it tests, what it shows, the command. `no` is a step that must refuse.
 step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
