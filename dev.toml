@@ -13,18 +13,17 @@ depends = ["dev:packages"]
 run = "pnpm --dir tests exec tsc -p ../tsconfig.json"
 
 ["dev:test"]
-description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the groups that changed, about a minute a group; a group whose steps passed with nothing it depends on changed since is proven, and not run again. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine"
+description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine"
 depends = ["dev:types"]
 usage = '''
 arg "[groups]..." help="site, signin, plugin, live. None: site, signin and plugin"
 flag "--level <level>" help="smoke, fast or all" default="fast" {
   choices "smoke" "fast" "all"
 }
-flag "--again" help="Run a group even though it is proven"
 flag "--node" help="On a Node site made from EmDash's template"
 flag "--only <words>" help="Only the steps whose name has these words; nothing is recorded"
 '''
-run = "node tests/run.mjs {{ usage.groups | default(value=[]) | join(sep=' ') }} --level {{ usage.level }}{% if usage.again %} --again{% endif %}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
+run = "node tests/run.mjs {{ usage.groups | default(value=[]) | join(sep=' ') }} --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
 
 ["dev:ci"]
 description = "REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag"
@@ -36,7 +35,7 @@ flag "--level <level>" help="smoke, fast or all" default="smoke" {
 run = ["gh workflow run stages.yml -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
 
 [check]
-description = "What must pass before a release, and what release runs before it tags: the test (mise run dev:test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them)"
+description = "What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them)"
 run = [{ task = "dev:test" }, { task = "repo:ci" }]
 
 ["dev:src"]
@@ -44,9 +43,9 @@ description = "EmDash's source into .src/emdash (git ignores it), to read when a
 run = "git -C .src/emdash pull --ff-only --quiet || git clone --depth 1 --quiet https://github.com/emdash-cms/emdash .src/emdash"
 
 ["dev:commit"]
-description = "What the commit check runs, in seconds: the types (dev:types), every task has a test step and every step a real task, and the docs are fresh and pass the lint (docs:check)"
+description = "What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check)"
 depends = ["dev:types"]
-run = ["node tests/record.mjs --coverage", { task = "docs:check" }]
+run = ["node --test \"tests/**/*.test.mjs\"", { task = "docs:check" }]
 
 ["dev:hooks"]
 description = "Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit"

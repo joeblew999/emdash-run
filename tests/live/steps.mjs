@@ -3,7 +3,7 @@
 // It puts a fresh starter site on a Worker kept for testing. Two settings, in this repo's gitignored
 // mise.local.toml: TEST_LIVE_URL, its address, and TEST_LIVE_NAME, the Worker's name — its database
 // is <name>, its bucket <name>-media. Without them (on CI, on a machine with no Cloudflare login)
-// the group is not run, and its record keeps what it last showed.
+// the group is not run.
 import { mkdirSync, rmdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -14,7 +14,7 @@ import { setup, step } from "../lib/step.mjs";
 const live = process.env.TEST_LIVE_URL;
 const worker = process.env.TEST_LIVE_NAME;
 if (!live || !worker) {
-	console.log("live: not run — no TEST_LIVE_URL / TEST_LIVE_NAME here. Its record keeps what it last showed.");
+	console.log("live: not run — no TEST_LIVE_URL / TEST_LIVE_NAME here.");
 	process.exit(0);
 }
 // The developer's real Cloudflare login and fnox, not the empty config folder.
@@ -27,7 +27,7 @@ try {
 	mkdirSync(lock);
 } catch {
 	if (Date.now() - statSync(lock).mtimeMs < 30 * 60_000) {
-		console.log(`live: not run — another run is using the test Worker (${lock}). Its record keeps what it last showed.`);
+		console.log(`live: not run — another run is using the test Worker (${lock}).`);
 		process.exit(0);
 	}
 	console.log("(a lock older than 30 minutes was left behind: taking it)");

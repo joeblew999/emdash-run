@@ -33,7 +33,7 @@ Then: [Getting started](docs/getting-started.md).
 - **Sign-in without a browser,** for the CLI, agents and CI, on a local build, a deployed site behind Cloudflare Access, and a preview.
 - **Plugins from EmDash's registry installed by a task,** and a task that says whether one works.
 - **Previews:** the site on an address of its own, with its own database, beside the live one.
-- **Known to work:** every task has test steps, on Cloudflare and Node sites and on a deployed site. [What works](docs/reference/status.md) is written by the last test run.
+- **Known to work:** every task has test steps, run on Linux, macOS and Windows: [![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml)
 
 ## What is in this repository
 

@@ -7,23 +7,3 @@ run = "charter docs-tasks -only tasks.toml"
 [[generated]]
 page = "reference/dev-tasks.md"
 run = "charter docs-tasks -not tasks.toml -title \"The tasks for working on this repo\""
-
-[[generated]]
-page = "reference/status.md"
-run = "node tests/record.mjs --page status"
-
-[[generated]]
-page = "reference/status-site.md"
-run = "node tests/record.mjs --page status-site"
-
-[[generated]]
-page = "reference/status-signin.md"
-run = "node tests/record.mjs --page status-signin"
-
-[[generated]]
-page = "reference/status-plugin.md"
-run = "node tests/record.mjs --page status-plugin"
-
-[[generated]]
-page = "reference/status-live.md"
-run = "node tests/record.mjs --page status-live"

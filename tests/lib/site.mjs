@@ -2,18 +2,22 @@
 // Plain functions. The project is a folder of its own in the run's temporary folder, and every task
 // is started as another developer's machine would start it (env, below).
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, cpSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const group = process.env.TEST_GROUP || "";
-/** cloudflare, node or deployed: the kind of site this run is on */
-export const where = process.env.TEST_WHERE || "cloudflare";
+/** the group whose steps file this is: the folder it is in */
+export const group = basename(dirname(process.argv[1] || ""));
+/** cloudflare or node: the kind of site the steps run on */
+export const where = process.env.TEST_SITE || "cloudflare";
 export const ci = !!process.env.CI;
-const work = process.env.TEST_WORK || "";
+// The run's folder, by its real name: on Windows the temporary folder is given as a short name
+// (C:\\Users\\RUNNER~1\\…), and a dev server started in a folder named that way exits before it is ready.
+const work = realpathSync.native(mkdtempSync(join(tmpdir(), `emdash-run-${group}-`)));
 /** the project's folder */
-export const dir = join(work, group);
+export const dir = join(work, "project");
 const win = process.platform === "win32";
 const include = process.env.TEST_FROM === "github" ? `git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=${process.env.TEST_REF || "main"}` : join(repo, "tasks.toml").replaceAll("\\", "/");
 
@@ -25,9 +29,27 @@ const keep = ["HOME", "PATH", "TERM", "CI", "GITHUB_TOKEN", "GIGET_AUTH", "TEST_
 export const env = win ? { ...process.env } : Object.fromEntries(keep.filter((k) => process.env[k]).map((k) => [k, process.env[k]]));
 // who is asking GitHub, where the machine says: EmDash's template is fetched from there (giget)
 if (env.GITHUB_TOKEN && !env.GIGET_AUTH) env.GIGET_AUTH = env.GITHUB_TOKEN;
-env.XDG_CONFIG_HOME = join(work, `config-${group}`);
+env.XDG_CONFIG_HOME = join(work, "config");
 
 export const sleep = (seconds) => new Promise((r) => setTimeout(r, seconds * 1000));
+
+// One group at a time on a machine: two at once were handed the same ports and spoiled each other.
+const lock = join(homedir(), ".config", "emdash-run", "locks", "test");
+mkdirSync(dirname(lock), { recursive: true });
+for (let waited = 0; ; waited += 10) {
+	try { mkdirSync(lock); break; } catch {}
+	if (Date.now() - statSync(lock).mtimeMs > 90 * 60_000) { rmdirSync(lock); continue; }
+	if (!waited) console.log("Another test is running on this machine: waiting for it to end…");
+	if (waited > 3600) throw new Error(`a test has held ${lock} for an hour. If none is running, remove it`);
+	await sleep(10);
+}
+// When the group ends, however it ends: what it left running is stopped, its folder goes.
+process.on("exit", () => {
+	if (existsSync(dir)) spawnSync("mise", ["run", "site:stop"], { cwd: dir, env, timeout: 60_000 });
+	rmSync(work, { recursive: true, force: true, maxRetries: 3 });
+	try { rmdirSync(lock); } catch {}
+});
+for (const s of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(s, () => process.exit(130));
 
 // What the step being run has printed, and the program it is running now (so one that does not end
 // can be stopped): tests/lib/step.mjs reads both.

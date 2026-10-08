@@ -1,4 +1,4 @@
-# The stages of working on an EmDash site, as mise tasks. What works right now: docs/reference/status.md.
+# The stages of working on an EmDash site, as mise tasks.
 #
 # HOW TO USE THEM is docs/ (docs/getting-started.md): set-up, the one rule for this machine or the deployed site, the
 # settings. WHAT EACH TASK DOES is its `description` below, and nowhere else: mise prints it

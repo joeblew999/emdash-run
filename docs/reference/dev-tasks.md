@@ -15,11 +15,11 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | Task | What it does |
 |---|---|
 | [`dev:types`](#devtypes) | Type-check tests/ and scripts/ (tsconfig.json) |
-| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the groups that changed, about a minute a group; a group whose steps passed with nothing it depends on changed since is proven, and not run again. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine |
+| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine |
 | [`dev:ci`](#devci) | REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag |
-| [`check`](#check) | What must pass before a release, and what release runs before it tags: the test (mise run dev:test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them) |
+| [`check`](#check) | What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them) |
 | [`dev:src`](#devsrc) | EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest |
-| [`dev:commit`](#devcommit) | What the commit check runs, in seconds: the types (dev:types), every task has a test step and every step a real task, and the docs are fresh and pass the lint (docs:check) |
+| [`dev:commit`](#devcommit) | What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check) |
 | [`dev:hooks`](#devhooks) | Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit |
 
 ## From `joeblew999/charter//tasks/repo`
@@ -49,7 +49,7 @@ Type-check tests/ and scripts/ (tsconfig.json)
 
 ### `dev:test`
 
-The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the groups that changed, about a minute a group; a group whose steps passed with nothing it depends on changed since is proven, and not run again. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine
+The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine
 
 - **Usage:** `dev:test [FLAGS] [groups]…`
 
@@ -62,7 +62,6 @@ The test of every task, at one of three levels, the same here and on GitHub (dev
   **Choices:** `smoke`, `fast`, `all`
 
   **Default:** `fast`
-- **`--again`** — Run a group even though it is proven
 - **`--node`** — On a Node site made from EmDash's template
 - **`--only <words>`** — Only the steps whose name has these words; nothing is recorded
 
@@ -83,7 +82,7 @@ REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the sta
 
 - **Usage:** `check`
 
-What must pass before a release, and what release runs before it tags: the test (mise run dev:test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them)
+What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them)
 
 ### `dev:src`
 
@@ -95,7 +94,7 @@ EmDash's source into .src/emdash (git ignores it), to read when a task meets som
 
 - **Usage:** `dev:commit`
 
-What the commit check runs, in seconds: the types (dev:types), every task has a test step and every step a real task, and the docs are fresh and pass the lint (docs:check)
+What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check)
 
 ### `dev:hooks`
 
