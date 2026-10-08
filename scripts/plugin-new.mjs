@@ -2,7 +2,7 @@
 // the plugin is already there. mise cannot look at the disk, so "is it already there?" is asked
 // here, and the answer decides whether EmDash's own command runs. Safe to run again.
 //
-//   node plugin-new.mjs <site folder> <name> <publisher> <author> <security email>
+//   main([<site folder> <name> <publisher> <author> <security email>])   (scripts/core/tasks.mjs calls it)
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";

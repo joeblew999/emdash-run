@@ -10,7 +10,7 @@ The rules every repo shares are in [Rules for every repo](repo/rules.md), which 
 
 | Rule | Why |
 |---|---|
-| **Use EmDash's, Astro's and wrangler's own commands.** Run `--help` before writing a step: if a command exists, the step is that command. A script in `scripts/` only where none exists | The tasks stay thin, and follow upstream by themselves |
+| **Use EmDash's, Astro's and wrangler's own commands.** Run `--help` before writing anything: if a command exists, the state's work is that command. Code in `scripts/` only where none exists, and then say in the README what it gives that the command line does not | Each thing built here is one more to keep working on every EmDash release |
 | **A task's `description` is its documentation,** with the `help` of its arguments and flags. Write it for someone who has read nothing else: what it does, where it acts, what it needs, what it stops or asks | [Tasks](reference/tasks.md) and `mise tasks` are written from it, and nothing else is |
 | **A new task gets a test step in the same commit.** A name people will look for is a task of its own, not an argument to a general one | The commit check refuses a task without a step |
 | **"It works" means the test says so.** `mise run dev:test --level smoke` first, then the group you changed; every step runs on three OSes with `mise run dev:ci --level all` | Nobody has to re-run everything to know |

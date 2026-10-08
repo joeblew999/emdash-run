@@ -15,7 +15,12 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | Task | What it does |
 |---|---|
 | [`dev:types`](#devtypes) | Type-check tests/ and scripts/ (tsconfig.json) |
-| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine |
+| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name) |
+| [`dev:test:unit`](#devtestunit) | The unit tests, in a second: the graph of states and each state with a made-up outside, the edits to a site's config, and that every task has a test step |
+| [`dev:test:site`](#devtestsite) | The site group: making, running, checking and deleting a site, on a copy of site/ |
+| [`dev:test:signin`](#devtestsignin) | The signin group: the CLI and a browser window as an administrator of the built site |
+| [`dev:test:plugin`](#devtestplugin) | The plugin group: a plugin of your own, and plugins from EmDash's registry |
+| [`dev:test:live`](#devtestlive) | REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes |
 | [`dev:ci`](#devci) | REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag |
 | [`check`](#check) | What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them) |
 | [`dev:src`](#devsrc) | EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest |
@@ -49,12 +54,9 @@ Type-check tests/ and scripts/ (tsconfig.json)
 
 ### `dev:test`
 
-The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine
+The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)
 
-- **Usage:** `dev:test [FLAGS] [groups]…`
-
-**Arguments**
-- **`[groups]…`** — site, signin, plugin, live. None: site, signin and plugin
+- **Usage:** `dev:test [--level <level>] [--node]`
 
 **Flags**
 - **`--level <level>`** — smoke, fast or all
@@ -63,7 +65,72 @@ The test of every task, at one of three levels, the same here and on GitHub (dev
 
   **Default:** `fast`
 - **`--node`** — On a Node site made from EmDash's template
-- **`--only <words>`** — Only the steps whose name has these words; nothing is recorded
+
+### `dev:test:unit`
+
+- **Usage:** `dev:test:unit`
+
+The unit tests, in a second: the graph of states and each state with a made-up outside, the edits to a site's config, and that every task has a test step
+
+### `dev:test:site`
+
+The site group: making, running, checking and deleting a site, on a copy of site/
+
+- **Usage:** `dev:test:site [FLAGS]`
+
+**Flags**
+- **`--level <level>`** — smoke, fast or all
+
+  **Choices:** `smoke`, `fast`, `all`
+
+  **Default:** `fast`
+- **`--node`** — On a Node site made from EmDash's template
+- **`--only <words>`** — Only the steps whose name has these words
+
+### `dev:test:signin`
+
+The signin group: the CLI and a browser window as an administrator of the built site
+
+- **Usage:** `dev:test:signin [FLAGS]`
+
+**Flags**
+- **`--level <level>`** — smoke, fast or all
+
+  **Choices:** `smoke`, `fast`, `all`
+
+  **Default:** `fast`
+- **`--node`** — On a Node site made from EmDash's template
+- **`--only <words>`** — Only the steps whose name has these words
+
+### `dev:test:plugin`
+
+The plugin group: a plugin of your own, and plugins from EmDash's registry
+
+- **Usage:** `dev:test:plugin [FLAGS]`
+
+**Flags**
+- **`--level <level>`** — smoke, fast or all
+
+  **Choices:** `smoke`, `fast`, `all`
+
+  **Default:** `fast`
+- **`--node`** — On a Node site made from EmDash's template
+- **`--only <words>`** — Only the steps whose name has these words
+
+### `dev:test:live`
+
+REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes
+
+- **Usage:** `dev:test:live [FLAGS]`
+
+**Flags**
+- **`--level <level>`** — smoke, fast or all
+
+  **Choices:** `smoke`, `fast`, `all`
+
+  **Default:** `fast`
+- **`--node`** — On a Node site made from EmDash's template
+- **`--only <words>`** — Only the steps whose name has these words
 
 ### `dev:ci`
 

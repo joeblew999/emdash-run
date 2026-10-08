@@ -142,7 +142,7 @@ export const works = async (/** @type {string[]} */ args, /** @type {string[]} *
 		const pages = inAdmin?.adminPages ?? [];
 		if (!pages.length) line("skip", `${n} admin page`, "it has none");
 		else {
-			const r = spawnSync(process.execPath, [join(here, "signin-browser.mjs"), url, siteDir, ...(deployed ? ["--deployed"] : []), ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((/** @type {any} */ p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
+			const r = spawnSync(process.execPath, [join(here, "core", "cli.mjs"), "browser:check", url, siteDir, ...(deployed ? ["--deployed"] : []), ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((/** @type {any} */ p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
 			const lines = r.stdout.trim().split("\n").filter((l) => /^(ok|FAIL)/.test(l));
 			for (const l of lines) console.log(l.replace("admin page:", `${n} admin page:`));
 			failed += lines.filter((l) => l.startsWith("FAIL")).length;

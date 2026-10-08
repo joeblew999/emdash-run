@@ -1,22 +1,16 @@
-// What the plugin tasks run where EmDash has no command: a registry plugin is installed in the
-// admin only, and a plugin package leaves two lines of astro.config.mjs to the developer.
-// This file only says which job a task asked for. Each job is a file of its own:
+// The plugin jobs, where EmDash has no command: a registry plugin is installed in the admin only,
+// and a plugin package leaves two lines of astro.config.mjs to the developer. This file only says
+// which job was asked for (scripts/core/tasks.mjs calls it); each job is a file of its own:
 //
-//   node plugin.mjs sandbox <site folder>                       plugin:sandbox                      plugin-sandbox.mjs
-//   node plugin.mjs config  <site folder> <package>             plugin:add, plugin:new — a          plugin-sandbox.mjs
-//                                                                sandboxed plugin's lines in
-//                                                                astro.config.mjs; a native
-//                                                                plugin's are printed, not written
-//   node plugin.mjs install <site address> <site folder> [--deployed] [--yes] <publisher>/<slug>…
-//                                                                plugin:install, plugin:favourites   plugin-install.mjs
-//   node plugin.mjs update  <site address> <site folder> [--deployed] [--yes] <publisher>/<slug>@<version>…
-//                                                                plugin:update                       plugin-install.mjs
-//   node plugin.mjs remove  <site address> <site folder> [--deployed] <publisher>/<slug>…
-//                                                                plugin:remove                       plugin-install.mjs
-//   node plugin.mjs works   <site address> <site folder> [name…] plugin:works                       plugin-works.mjs
+//   main(["sandbox", site])                                    plugin:sandbox                     plugin-sandbox.mjs
+//   main(["config", site, package])                            plugin:add, plugin:new             plugin-sandbox.mjs
+//   main(["install", address, site, …plugins])  [--deployed] [--yes]   plugin:install, plugin:favourites   plugin-install.mjs
+//   main(["update", address, site, …plugins])   [--deployed] [--yes]   plugin:update                      plugin-install.mjs
+//   main(["remove", address, site, …plugins])   [--deployed]           plugin:remove                      plugin-install.mjs
+//   main(["works", address, site, …names])      [--deployed] [--fresh] plugin:works                       plugin-works.mjs
 //
 // plugin-astro-config.mjs   the edits to astro.config.mjs, as functions from text to text
-// plugin-api.mjs        the one client the registry tasks and the works check speak to a site with
+// plugin-api.mjs            the one client the registry jobs and the works check speak to a site with
 import { resolve } from "node:path";
 
 import { fail } from "./plugin-api.mjs";

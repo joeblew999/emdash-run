@@ -1,27 +1,18 @@
-// What the site:* tasks need that no command gives. What makes them safe to run again: mise cannot look at the disk, so the "is it already
-// there?" question is asked here, and the answer decides whether EmDash's own command runs.
+// Three jobs of the site:* tasks that are more than a command (scripts/core/tasks.mjs calls them):
 //
-//   node site.mjs new <site folder> <template>          site:new    — a site that exists is left alone
-//   node site.mjs delete <site folder>                  site:delete — no site is nothing to delete
-//   node site.mjs ports <project folder>               site:ports  — a project that has its ports keeps them
-import { spawnSync } from "node:child_process";
+//   main(["delete", <site folder>])    site:delete — the site stopped and its folder removed; no site is nothing to delete
+//   main(["forget", <site folder>])    site:reset  — the token saved for a local database that is going
+//   main(["ports", <project folder>])  site:ports  — two ports of its own; a project that has its ports keeps them
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { createServer } from "node:net";
-import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { basename, join, resolve } from "node:path";
 import { Exit, task } from "./core/calls.mjs";
 
 /** @param {string[]} argv */
 export async function main(argv) {
-	const [what, siteDir, ...rest] = argv;
-	const win = process.platform === "win32";
-	// On Windows pnpm is a .cmd file and needs a shell, which splits on spaces: quote what has them.
-	const run = (/** @type {string} */ program, /** @type {string[]} */ args, /** @type {string} */ cwd) => {
-		const r = spawnSync(program, win ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args, { cwd, stdio: "inherit", shell: win });
-		if (r.status !== 0) throw new Exit(r.status ?? 1);
-	};
+	const [what, siteDir] = argv;
 
 	if (what === "delete") {
 		if (!existsSync(siteDir)) {
@@ -61,8 +52,24 @@ export async function main(argv) {
 				console.error("mise.local.toml has an [env] block that is not its last block: add SITE_PORT and PREVIEW_PORT to it by hand.");
 				throw new Exit(1);
 			}
-			if (!dev) add += `SITE_PORT = "${(dev = String(await free()))}"\n`;
-			if (!built) add += `PREVIEW_PORT = "${(built = String(await free()))}"\n`;
+			// A port the machine calls free is one nothing is listening on YET: a second project asking in
+			// the same moment was handed the same one (two test groups, side by side). So the ports handed
+			// out in the last day are remembered, one folder a port — making a folder either works or it
+			// does not, whoever else is asking — and a port that is remembered is not handed out again.
+			const given = join(process.env.EMDASH_RUN_LOCKS || join(homedir(), ".config", "emdash-run", "locks"), "ports");
+			mkdirSync(given, { recursive: true });
+			for (const old of readdirSync(given)) if (Date.now() - statSync(join(given, old)).mtimeMs > 24 * 3600_000) rmSync(join(given, old), { recursive: true, force: true });
+			const mine = async () => {
+				for (;;) {
+					const port = String(await free());
+					try {
+						mkdirSync(join(given, port));
+						return port;
+					} catch {}
+				}
+			};
+			if (!dev) add += `SITE_PORT = "${(dev = await mine())}"\n`;
+			if (!built) add += `PREVIEW_PORT = "${(built = await mine())}"\n`;
 			appendFileSync(join(siteDir, "mise.local.toml"), add);
 			console.log(`Ports of its own, in mise.local.toml: dev site ${dev}, built site ${built}.`);
 		}

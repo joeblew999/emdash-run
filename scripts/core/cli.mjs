@@ -42,7 +42,7 @@ const main = async (argv) => {
 	if (planning) return void console.log(plan(graph, target, flags).join("\n"));
 	const project = projectOf(process.env, process.cwd(), join(dirname(fileURLToPath(import.meta.url)), ".."));
 	const world = realWorld(process.env);
-	if (!["site:new", "site:ports", "site:delete"].includes(target)) console.error(`-> site folder: ${project.site}`);
+	if (!["site:new", "site:ports", "site:delete", "browser:check"].includes(target)) console.error(`-> site folder: ${project.site}`);
 	const base = { world, project, env: process.env };
 	// a state reached from inside another's work: the same graph, in this process
 	setReacher((name, flags = {}) => reach(graph, name, { ...base, flags, args: [], argv: [] }));

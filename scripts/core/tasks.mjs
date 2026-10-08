@@ -207,6 +207,10 @@ export const tasks = {
 	"signin:passkey": { needs: () => ["site:exists", "tools:browser"], work: (ctx) => job(signinBrowser, [address(ctx), ctx.project.site, ...(ctx.flags.live ? ["--deployed"] : [])]) },
 	"signin:open": { needs: () => ["site:exists", "tools:browser"], work: (ctx) => job(signinBrowser, [address(ctx), ctx.project.site, "--show", ...(ctx.flags.live ? ["--deployed"] : [])]) },
 
+	// A page of the admin, opened in a browser and looked at: what plugin:works asks for each of a
+	// plugin's pages. Given what the browser sign-in takes, untouched.
+	"browser:check": { work: (ctx) => job(signinBrowser, ctx.argv) },
+
 	// ─── the deployed site ───────────────────────────────────────────────────────────────────────
 	"live:set": {
 		work: ({ world, project }) => {

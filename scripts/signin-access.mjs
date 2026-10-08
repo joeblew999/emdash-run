@@ -2,7 +2,7 @@
 // made with the Cloudflare login wrangler already holds. Wrangler has no command for Access, so
 // this calls Cloudflare's API; it is the second and last script in this repo.
 //
-//   node signin-access.mjs <site address> <site folder>
+//   main([<site address> <site folder>])   (scripts/core/tasks.mjs calls it)
 //
 // It makes sure of three things, and changes nothing that is already there:
 //   1. an Access application over <host>/_emdash — the admin and the API; the public site stays public
@@ -175,6 +175,7 @@ export async function main(argv) {
 		if (!team) console.log("(The team's domain could not be read yet. Deploy — mise run live:ship — then run this again for it.)");
 		console.log("Then: mise run live:ship");
 	} catch (error) {
+		if (error instanceof Exit) throw error; // the task ending, not something going wrong
 		console.error(`signin:access failed: ${error instanceof Error ? error.message : String(error)}`);
 		throw new Exit(1);
 	}

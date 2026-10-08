@@ -1,7 +1,7 @@
 // What the `emdash` task runs: EmDash's CLI, with whatever this machine has saved for the site it
 // is pointed at — so no task has to carry a token.
 //
-//   node emdash.mjs <default site address> <site folder> [anything for the CLI…]
+//   main([<default site address> <site folder> [anything for the CLI…]])   (scripts/core/tasks.mjs calls it)
 //
 // The site is the CLI's own --url (or -u) when given, else the default. For that site's host:
 //   ~/.config/emdash-run/tokens/<host>.json  → EMDASH_TOKEN    (signin:token)

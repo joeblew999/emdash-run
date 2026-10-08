@@ -5,7 +5,7 @@ export async function main(argv) {
 	// The last step of `mise run live:ship`, and of live:undo: wait for the deployed site to answer
 	// with the NEW version.
 	//
-	//   node live-ship.mjs <the deployed site's address>
+	//   main([<the deployed site's address>])   (scripts/core/tasks.mjs calls it)
 	const [siteDir] = argv; // the address: named as in the code below
 
 	// The deployed site answers — the NEW version: an address nothing has cached, asked again for
@@ -34,6 +34,7 @@ export async function main(argv) {
 				throw new Exit(0);
 			}
 		} catch (error) {
+			if (error instanceof Exit) throw error; // the task ending, not something going wrong
 			last = error instanceof Error ? error.message : String(error);
 		}
 		await new Promise((done) => setTimeout(done, 3000));

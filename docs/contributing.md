@@ -43,8 +43,9 @@ Each file's first lines say what it is; this is only where to look.
 
 | Path | What is there |
 |---|---|
-| `tasks.toml` | The product: every task another repo gets. A task's `description` is its documentation |
-| `scripts/` | What the tasks run where EmDash has no command of its own. A file is named after the tasks it serves: `signin-*.mjs`, `plugin-*.mjs`, `live-*.mjs`, `site-*.mjs` |
+| `tasks.toml` | The front door: every task another repo gets, as its name, its `description` (which is its documentation), its flags, and one line. No logic |
+| `scripts/core/` | What a task does. `cli.mjs` is the one entry. `graph.mjs`: a task is a state to reach, standing on other states. `site.mjs`, `signin.mjs`, `tasks.mjs`: the states. `world.mjs`: everything outside the program, so a unit test can give a state a made-up one. `node scripts/core/cli.mjs plan <task>` prints what a task would do |
+| `scripts/*.mjs` | The work where EmDash has no command of its own, as functions the states call: `signin-*.mjs`, `plugin-*.mjs`, `live-*.mjs`. No file here runs by itself, and none starts a task |
 | `tests/<group>/steps.mjs` | The test of each task, a group to a set of tasks: `site`, `signin`, `plugin`, `live`. Ordinary tests of Node's runner |
 | `tests/lib/`, `tests/run.mjs` | What a step is written with, and what `dev:test` runs |
 | `dev.toml` | This repo's own tasks |

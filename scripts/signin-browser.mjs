@@ -6,7 +6,7 @@
 // EmDash's CLI is signed in to it — with no person. Playwright drives EmDash's own pages, and
 // Chrome's built-in simulated passkey device stands in for Touch ID.
 //
-//   node signin-browser.mjs <site address> <site folder> [--deployed] [--show] [--check=<admin path>… [--blocks]]
+//   main([<site address> <site folder> [--deployed] [--show] [--check=<admin path>… [--blocks]]])   (scripts/core/tasks.mjs calls it)
 //
 // Tasks: signin:passkey, signin:open (--show); each with --live adds --deployed. plugin:works (--check).
 //
@@ -45,7 +45,7 @@ export async function main(argv) {
 	const { deployedAddress, previewOf } = await import("./wrangler-config.mjs");
 	const url = deployed && given ? deployedAddress(given) : given;
 	if (!url || !siteDir) {
-		console.error("usage: node signin-browser.mjs <site address> <site folder> [--deployed]");
+		console.error("signin-browser: it is given <site address> <site folder> [--deployed]");
 		throw new Exit(1);
 	}
 	if (!URL.canParse(url)) {
@@ -125,6 +125,7 @@ export async function main(argv) {
 			browser = await chromium.launch({ channel, headless: !show });
 			break;
 		} catch (error) {
+			if (error instanceof Exit) throw error; // the task ending, not something going wrong
 			why = String(error instanceof Error ? error.message : error).split("\n")[0];
 		}
 	}
@@ -333,6 +334,7 @@ export async function main(argv) {
 				await signIn.or(codeBox).first().waitFor({ timeout: 20_000 });
 				break;
 			} catch (error) {
+				if (error instanceof Exit) throw error; // the task ending, not something going wrong
 				if (attempt === 4) throw error;
 			}
 		}
@@ -349,6 +351,7 @@ export async function main(argv) {
 		exit = (await exited) ?? 1;
 		console.log(exit === 0 ? "cli: signed in" : `cli: emdash login exited ${exit}`);
 	} catch (error) {
+		if (error instanceof Exit) throw error; // the task ending, not something going wrong
 		console.error(`failed: ${error instanceof Error ? error.message : String(error)}`);
 		console.error(`The page it was on: ${page.url()}`);
 		const said = await page.locator("body").innerText().catch(() => "");

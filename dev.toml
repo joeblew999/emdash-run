@@ -12,17 +12,68 @@ depends = ["dev:packages"]
 run = "pnpm --dir tests exec tsc -p ../tsconfig.json"
 
 ["dev:test"]
-description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps of the site, signin and plugin groups, about a minute a group. all: every step, the long ones too, about nine minutes. Name groups to run only those: site, signin, plugin, live (live deploys to the Worker kept for testing: only when named). One test at a time on a machine"
-depends = ["dev:types"]
+description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)"
 usage = '''
-arg "[groups]..." help="site, signin, plugin, live. None: site, signin and plugin"
 flag "--level <level>" help="smoke, fast or all" default="fast" {
   choices "smoke" "fast" "all"
 }
 flag "--node" help="On a Node site made from EmDash's template"
-flag "--only <words>" help="Only the steps whose name has these words; nothing is recorded"
 '''
-run = "node tests/run.mjs {{ usage.groups | default(value=[]) | join(sep=' ') }} --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
+depends = ["dev:test:unit", "dev:test:site --level {{ usage.level }}{% if usage.node %} --node{% endif %}", "dev:test:signin --level {{ usage.level }}{% if usage.node %} --node{% endif %}", "dev:test:plugin --level {{ usage.level }}{% if usage.node %} --node{% endif %}"]
+run = "node -e \"console.log('dev:test: every group passed')\""
+
+["dev:test:unit"]
+description = "The unit tests, in a second: the graph of states and each state with a made-up outside, the edits to a site's config, and that every task has a test step"
+depends = ["dev:types"]
+run = "node tests/run.mjs --unit"
+
+["dev:test:site"]
+description = "The site group: making, running, checking and deleting a site, on a copy of site/"
+depends = ["dev:types"]
+usage = '''
+flag "--level <level>" help="smoke, fast or all" default="fast" {
+  choices "smoke" "fast" "all"
+}
+flag "--node" help="On a Node site made from EmDash's template"
+flag "--only <words>" help="Only the steps whose name has these words"
+'''
+run = "node tests/run.mjs site --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
+
+["dev:test:signin"]
+description = "The signin group: the CLI and a browser window as an administrator of the built site"
+depends = ["dev:types"]
+usage = '''
+flag "--level <level>" help="smoke, fast or all" default="fast" {
+  choices "smoke" "fast" "all"
+}
+flag "--node" help="On a Node site made from EmDash's template"
+flag "--only <words>" help="Only the steps whose name has these words"
+'''
+run = "node tests/run.mjs signin --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
+
+["dev:test:plugin"]
+description = "The plugin group: a plugin of your own, and plugins from EmDash's registry"
+depends = ["dev:types"]
+usage = '''
+flag "--level <level>" help="smoke, fast or all" default="fast" {
+  choices "smoke" "fast" "all"
+}
+flag "--node" help="On a Node site made from EmDash's template"
+flag "--only <words>" help="Only the steps whose name has these words"
+'''
+run = "node tests/run.mjs plugin --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
+
+["dev:test:live"]
+description = "REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes"
+depends = ["dev:types"]
+usage = '''
+flag "--level <level>" help="smoke, fast or all" default="fast" {
+  choices "smoke" "fast" "all"
+}
+flag "--node" help="On a Node site made from EmDash's template"
+flag "--only <words>" help="Only the steps whose name has these words"
+'''
+run = "node tests/run.mjs live --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
 
 ["dev:ci"]
 description = "REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag"
@@ -44,7 +95,7 @@ run = "git -C .src/emdash pull --ff-only --quiet || git clone --depth 1 --quiet 
 ["dev:commit"]
 description = "What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check)"
 depends = ["dev:types"]
-run = ["node --test \"tests/**/*.test.mjs\"", { task = "docs:check" }]
+run = ["node tests/run.mjs --unit", { task = "docs:check" }]
 
 ["dev:hooks"]
 description = "Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit"

@@ -2,8 +2,8 @@
 // Plain functions. The project is a folder of its own in the run's temporary folder, and every task
 // is started as another developer's machine would start it (env, below).
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,21 +33,10 @@ env.XDG_CONFIG_HOME = join(work, "config");
 
 export const sleep = (/** @type {number} */ seconds) => new Promise((r) => setTimeout(r, seconds * 1000));
 
-// One group at a time on a machine: two at once were handed the same ports and spoiled each other.
-const lock = join(homedir(), ".config", "emdash-run", "locks", "test");
-mkdirSync(dirname(lock), { recursive: true });
-for (let waited = 0; ; waited += 10) {
-	try { mkdirSync(lock); break; } catch {}
-	if (Date.now() - statSync(lock).mtimeMs > 90 * 60_000) { rmdirSync(lock); continue; }
-	if (!waited) console.log("Another test is running on this machine: waiting for it to end…");
-	if (waited > 3600) throw new Error(`a test has held ${lock} for an hour. If none is running, remove it`);
-	await sleep(10);
-}
 // When the group ends, however it ends: what it left running is stopped, its folder goes.
 process.on("exit", () => {
 	if (existsSync(dir)) spawnSync("mise", ["run", "site:stop"], { cwd: dir, env, timeout: 60_000 });
 	rmSync(work, { recursive: true, force: true, maxRetries: 3 });
-	try { rmdirSync(lock); } catch {}
 });
 for (const s of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(s, () => process.exit(130));
 
