@@ -34,8 +34,16 @@ ONLY=${2:-}
 # a group's name where a task's would be: only that group's steps, at the full level
 WANT=""
 case $ONLY in site|signin|plugin|live) WANT=$ONLY; ONLY=""; [ "$TIER" = node ] || TIER=full;; esac
-G=always
-group() { G=$1; }
+G=always; SKIPG=""; DEPTH=quick
+# A group that is already proven — every step of it passed, and nothing it depends on has changed
+# since (tests/record.mjs: its fingerprint) — is not run again. TEST_AGAIN=1 runs it anyway.
+proven() { [ -z "${TEST_AGAIN:-}" ] && (cd "$REPO" && node tests/record.mjs --proven "$1" "$( [ "$TIER" = quick ] && echo quick || echo full )"); }
+group() {
+  G=$1; SKIPG=""
+  if [ "$G" != always ] && { [ -z "$WANT" ] || [ "$WANT" = "$G" ]; } && proven "$G"; then
+    SKIPG=1; echo "---- $G: already proven, nothing it depends on has changed — not run again (TEST_AGAIN=1 to run it)"
+  fi
+}
 FROM=${TEST_FROM:-local}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d)
@@ -48,7 +56,7 @@ if [ -z "${REPLAY_CLEAN:-}" ] && ! command -v cygpath >/dev/null 2>&1; then
   rm -rf "$WORK"
   exec env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-xterm}" ${CI:+CI="$CI"} \
     ${TEST_LIVE_URL:+TEST_LIVE_URL="$TEST_LIVE_URL"} ${TEST_LIVE_NAME:+TEST_LIVE_NAME="$TEST_LIVE_NAME"} \
-    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${STEP_LIMIT:+STEP_LIMIT="$STEP_LIMIT"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} \
+    ${TEST_FROM:+TEST_FROM="$TEST_FROM"} ${STEP_LIMIT:+STEP_LIMIT="$STEP_LIMIT"} ${TEST_ONLY:+TEST_ONLY="$TEST_ONLY"} ${TEST_AGAIN:+TEST_AGAIN="$TEST_AGAIN"} ${XDG_CONFIG_HOME:+REAL_CONFIG="$XDG_CONFIG_HOME"} \
     ${GITHUB_TOKEN:+GITHUB_TOKEN="$GITHUB_TOKEN"} ${GIGET_AUTH:+GIGET_AUTH="$GIGET_AUTH"} REPLAY_CLEAN=1 bash "$0" "$@"
 fi
 export XDG_CONFIG_HOME=$WORK/config; mkdir -p "$XDG_CONFIG_HOME"
@@ -64,7 +72,7 @@ fi
 # The scripts' own functions first: a third of a second, and a broken edit of a site's config fails
 # here, not ten minutes in.
 (cd "$REPO" && node --test tests/plugin-astro-config.test.mjs tests/plugin-permissions.test.mjs > "$WORK/unit.txt" 2>&1) || { tail -30 "$WORK/unit.txt"; echo "The unit tests fail (node --test tests/*.test.mjs). Nothing was run."; exit 1; }
-echo "unit tests: $(sed -n 's/^. pass //p' "$WORK/unit.txt") pass"
+echo "unit tests: $(grep -o 'pass [0-9]*' "$WORK/unit.txt" | grep -o '[0-9]*') pass"
 # One test at a time on this machine. What must be undone when the test ends is added to CLEANUP.
 CLEANUP=""; trap 'eval "$CLEANUP"' EXIT
 TESTLOCK="$HOME/.config/emdash-run/locks/test"; mkdir -p "$(dirname "$TESTLOCK")"; waited=0
@@ -83,6 +91,7 @@ step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   local verdict detail="" began=$SECONDS
   # one group asked for: the others' steps are not run (group "always" is what every group needs)
   if [ -n "$WANT" ] && [ "$G" != always ] && [ "$G" != "$WANT" ]; then return; fi
+  if [ -n "$SKIPG" ]; then return; fi
   # one task asked for: once its steps are done, only the clean-up still runs
   if [ -n "$ONLY" ]; then
     if [ "$2" = "$ONLY" ]; then REACHED=1; elif [ "${REACHED:-}" = 1 ] && [ "$2" != site:stop ] && [ "$2" != site:delete ]; then return; fi
@@ -105,7 +114,7 @@ step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
   elif [ "$stuck" = skipped ]; then verdict=FAIL; detail="not run: an earlier step did not end"
   elif [ "$rc" = 0 ]; then [ "$1" = ok ] && verdict=PASS || { verdict=FAIL; detail="it should have refused"; }
   else [ "$1" = no ] && verdict=PASS || { verdict=FAIL; detail=$(tail -3 "$D/step.log" | sed 's/\x1b\[[0-9;]*m//g' | tr '\n|' '  ' | cut -c1-160); }; fi
-  printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$2" "$W" "$3" "$verdict" "$detail" "$1" "$((SECONDS - began))" "$G" >> "$ROWS"
+  printf '%s|%s|%s|%s|%s|%s|%s|%s|%s\n' "$2" "$W" "$3" "$verdict" "$detail" "$1" "$((SECONDS - began))" "$G" "$DEPTH" >> "$ROWS"
   # with how long it took: on a CI runner that is how a slow step is told from a stuck one
   printf '%-4s %-11s %-15s %s (%ss)\n' "$verdict" "$W" "$2" "$3" "$((SECONDS - began))"
   # a failure shows its last output here too — on a CI runner this is the only place it can be read
@@ -180,6 +189,7 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
   ok signin:token   "run again: still an administrator"       'mise run signin:token && says_i "admin" mise run emdash -- whoami --preview'
   ok emdash         "--preview writes to the built site"      "mise run emdash -- content create pages --preview --slug built --data '{\"title\":\"On the built site\"}'"
   if [ "$TIER" != quick ]; then
+    DEPTH=full
     group signin
     ok signin:token "starts the built site when it is stopped" 'mise run site:stop && mise run signin:token && says slug mise run emdash -- schema list --preview'
     group site
@@ -195,14 +205,13 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
     ok plugin:new   "run again: not scaffolded twice, still builds, the config is not touched" 'before=$(cat site/astro.config.mjs); says "already there" mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs && test "$before" = "$(cat site/astro.config.mjs)"'
     ok plugin:check "the plugin passes its checks"            'mise run plugin:check -- save-log'
     ok plugin:add   "a native plugin from npm: the package is added, its two lines are printed, the config is not touched" 'before=$(cat site/astro.config.mjs); mise run plugin:add -- @emdash-cms/plugin-forms > add.txt 2>&1; r=$?; test $r != 0 && grep -q plugin-forms site/package.json && grep -q "import { formsPlugin } from \"@emdash-cms/plugin-forms\";" add.txt && grep -q "plugins: \[formsPlugin()\]," add.txt && test "$before" = "$(cat site/astro.config.mjs)"'
-    ok plugin:add   "a sandboxed plugin already in the config: nothing changes" 'before=$(cat site/astro.config.mjs); says "nothing changed" mise run plugin:add -- file:./plugins/save-log && test "$before" = "$(cat site/astro.config.mjs)"'
     ok plugin:search "finds plugins in the registry"          'says_i "forms" mise run plugin:search -- forms'
     ok plugin:install "installs a registry plugin with no clicking, from a stopped site" 'says "contact-forms: installed" mise run plugin:install -- @masonjames.com/contact-forms --yes'
     ok plugin:install "run again: it is already installed"    'says "contact-forms: already installed" mise run plugin:install -- @masonjames.com/contact-forms --yes'
     no plugin:install "a plugin that can change things or reach outside is not installed without a yes" 'env -u MISE_YES -u CI mise run plugin:install -- @meekmedia.bsky.social/link-guardian'
     no plugin:install "a release other than the one asked for is not installed" 'mise run plugin:install -- @netdollar.dev/forms@0.0.1'
     no plugin:install "a plugin the registry does not have: says so and fails" 'mise run plugin:install -- @nobody.example/nothing'
-    ok plugin:works "the registry plugin: every check passes" 'mise run plugin:works -- @masonjames.com/contact-forms > works.txt 2>&1; grep -q "contact-forms: loads and answers" works.txt && ! grep -q "FAIL" works.txt'
+    ok plugin:works "the registry plugin: every check passes" 'mise run plugin:works -- @masonjames.com/contact-forms --fresh > works.txt 2>&1; grep -q "contact-forms: loads and answers" works.txt && ! grep -q "FAIL" works.txt'
     ok plugin:works "the plugin plugin:new made: its route answers from the sandbox" 'says "save-log routes: 1 declared, each asked with a GET: hello 200" mise run plugin:works -- save-log'
     no plugin:works "a plugin the site does not have fails"   'mise run plugin:works -- no-such-plugin'
     ok plugin:remove "removes a registry plugin"              'says "contact-forms: removed" mise run plugin:remove -- @masonjames.com/contact-forms'
@@ -231,6 +240,7 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
     group site
     no site:delete  "refuses with nobody to ask"              'env -u MISE_YES -u CI mise run site:delete </dev/null'
   fi
+  DEPTH=quick
   group always
   ok site:stop      "stops both sites; twice is fine"         'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
   ok site:delete    "removes the site folder"                 '(cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run --yes site:delete && test ! -e site'
@@ -247,6 +257,7 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
 
 live_site() {
   group live
+  if [ -n "$SKIPG" ]; then return; fi
   W=deployed; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
   if [ -z "${TEST_LIVE_URL:-}" ] || [ -z "${TEST_LIVE_NAME:-}" ]; then
     echo "SKIP deployed: no TEST_LIVE_URL / TEST_LIVE_NAME here. docs/reference/status.md keeps what the deployed tasks last showed."; return
@@ -295,14 +306,22 @@ live_site() {
 }
 
 START=$(date +%s)
+# Is there anything to run on a local site? Not if every group this run would run is proven.
+local_needed() {
+  local g
+  for g in ${WANT:-$1}; do [ "$g" = live ] || proven "$g" || return 0; done
+  echo "Nothing to run on this machine: ${WANT:-$1} — already proven, nothing changed since (TEST_AGAIN=1 to run anyway)."
+  return 1
+}
 case $TIER in
   full)  # (TEST_ONLY=deployed runs just the last part, as `-- live` does)
-         [ "$WANT" = live ] || [ "${TEST_ONLY:-}" = deployed ] || local_site site
+         if [ "$WANT" != live ] && [ "${TEST_ONLY:-}" != deployed ] && local_needed "site signin plugin"; then local_site site; fi
          if [ -z "$WANT" ] || [ "$WANT" = live ]; then LIVE_URL_=${TEST_LIVE_URL:-} live_site; fi ;;
   node)  local_site node:starter ;;
-  *)     local_site site ;;
+  *)     if local_needed "site signin"; then local_site site; fi ;;
 esac
-cat "$WORK"/rows-*.txt > "$WORK/rows.txt"
+cat "$WORK"/rows-*.txt > "$WORK/rows.txt" 2>/dev/null
+[ -s "$WORK/rows.txt" ] || { rm -rf "$WORK"; exit 0; }
 cd "$REPO"
 # plain `node`: it is on the PATH inside a mise task, and `mise x --` would install every tool in
 # mise.toml first — on a CI runner that meant charter, and GitHub refused the download

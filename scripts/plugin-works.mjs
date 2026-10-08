@@ -1,7 +1,7 @@
 // plugin:works — does a plugin load and answer? One line per check. EmDash has no command that
 // says so: `emdash-plugin` checks a plugin's own folder, not a plugin in a running site.
 import { spawnSync } from "node:child_process";
-import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,14 +47,35 @@ export const works = async (args, flags) => {
 		if (up.status === 0) process.exit(1);
 		if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) fail(`FAIL listed: the deployed site did not accept this machine's sign-in — GET /_emdash/api/admin/plugins answered ${said(await api("GET", "/_emdash/api/admin/plugins"))}\nSign in first: mise run signin:token -- --live`);
 	} else {
-		// 1. the site, with its plugins in it, still passes its checks
-		const check = run(["site:check"]);
-		line(check.ok ? "ok" : "FAIL", "builds", check.ok ? "seed valid, types check, site builds (mise run site:check)" : check.tail);
-		// 2. it starts — from stopped, so every plugin is loaded the way a deploy or a restart loads it
-		const start = run(["site:preview"]);
-		const up = await api("GET", "/");
-		line(start.ok && up.status === 200 ? "ok" : "FAIL", "starts", start.ok ? `the built site answers ${up.status} after a restart` : start.tail);
-		if (up.status !== 200) process.exit(1);
+		// Already built from the code that is here now, and answering? Then the checks and the restart
+		// were made when it was built and started: not made again (they took a minute of every call).
+		// A plugin from the registry lives in the database, and needs neither. --fresh makes both.
+		const newest = (dir, depth = 0) => {
+			let t = 0;
+			if (!existsSync(dir)) return t;
+			for (const e of readdirSync(dir, { withFileTypes: true })) {
+				if (["node_modules", "dist", ".wrangler", ".astro", ".git", "backups", "uploads"].includes(e.name)) continue;
+				const p = join(dir, e.name);
+				t = Math.max(t, e.isDirectory() ? (depth < 8 ? newest(p, depth + 1) : 0) : statSync(p).mtimeMs);
+			}
+			return t;
+		};
+		const builtAt = existsSync(join(siteDir, "dist", "server")) ? newest(join(siteDir, "dist", "server"), 7) || statSync(join(siteDir, "dist", "server")).mtimeMs : 0;
+		const changedAt = Math.max(newest(join(siteDir, "src")), newest(join(siteDir, "plugins")), newest(join(siteDir, "seed")), ...["astro.config.mjs", "package.json", "wrangler.jsonc"].map((f) => (existsSync(join(siteDir, f)) ? statSync(join(siteDir, f)).mtimeMs : 0)));
+		const already = !flags.includes("--fresh") && builtAt > changedAt && (await api("GET", "/")).status === 200;
+		if (already) {
+			line("skip", "builds", "the built site is from the code that is here now: not checked and built again (--fresh does)");
+			line("skip", "starts", "it is already answering: not restarted (--fresh does)");
+		} else {
+			// 1. the site, with its plugins in it, still passes its checks
+			const check = run(["site:check"]);
+			line(check.ok ? "ok" : "FAIL", "builds", check.ok ? "seed valid, types check, site builds (mise run site:check)" : check.tail);
+			// 2. it starts — from stopped, so every plugin is loaded the way a deploy or a restart loads it
+			const start = run(["site:preview"]);
+			const up = await api("GET", "/");
+			line(start.ok && up.status === 200 ? "ok" : "FAIL", "starts", start.ok ? `the built site answers ${up.status} after a restart` : start.tail);
+			if (up.status !== 200) process.exit(1);
+		}
 		if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) mise(["signin:token"]);
 	}
 	const list = await api("GET", "/_emdash/api/admin/plugins");
