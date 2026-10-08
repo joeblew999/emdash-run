@@ -40,7 +40,7 @@
 //   t.status(url)               the HTTP status a GET gets, redirects not followed; 0 when no answer
 //   t.until(fn)                 fn every 3 seconds until it returns true, ten times
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -62,7 +62,9 @@ const asked = argv.filter((a) => groups.includes(a));
 const want = asked.length ? asked : ["site", "signin", "plugin"];
 const fromGitHub = process.env.TEST_FROM === "github";
 const include = fromGitHub ? `git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=${process.env.TEST_REF || "main"}` : join(repo, "tasks.toml").replaceAll("\\", "/");
-const stepLimit = Number(process.env.STEP_LIMIT) || 900;
+// A step that has not ended in five minutes is stopped and fails: the longest real one, a first
+// install on Windows, takes under two.
+const stepLimit = Number(process.env.STEP_LIMIT) || 300;
 const sleep = (s) => new Promise((r) => setTimeout(r, s * 1000));
 const plain = (text) => text.replace(/\x1b\[[0-9;]*m/g, "");
 const node = (...args) => spawnSync(process.execPath, args, { cwd: repo, encoding: "utf8" });
@@ -140,6 +142,9 @@ const runGroup = async (group) => {
 	// lock — Upstream: emdash-cms/emdash#3996.) On Windows a program needs more than that to start.
 	const keep = ["HOME", "PATH", "TERM", "CI", "GITHUB_TOKEN", "GIGET_AUTH", "TEST_LIVE_URL", "TEST_LIVE_NAME"];
 	const env = win ? { ...process.env } : Object.fromEntries(keep.filter((k) => process.env[k]).map((k) => [k, process.env[k]]));
+	// who is asking GitHub, where the machine says: EmDash's template is fetched from there (giget),
+	// and anonymous downloads are limited per address
+	if (env.GITHUB_TOKEN && !env.GIGET_AUTH) env.GIGET_AUTH = env.GITHUB_TOKEN;
 	env.XDG_CONFIG_HOME = join(work, `config-${group}`);
 	mkdirSync(env.XDG_CONFIG_HOME, { recursive: true });
 
@@ -374,4 +379,6 @@ if (charter && existsSync(charter)) {
 	if (docs.status === 0) console.log((readFileSync(join(repo, "docs", "reference", "status.md"), "utf8").match(/^\*\*.*steps pass.*$/m) || [""])[0]);
 	else console.log(`The pages were not rewritten (mise run docs:setup):\n${(docs.stdout + docs.stderr).trim().split("\n").slice(-3).join("\n")}`);
 }
+// Where the machine keeps a summary of a run (a GitHub runner does), what this run recorded goes there.
+if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, node("tests/record.mjs", "--page", "status").stdout);
 process.exit(code);

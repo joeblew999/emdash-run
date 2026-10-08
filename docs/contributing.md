@@ -53,7 +53,7 @@ A group is **proven** when its everyday steps passed and nothing it depends on h
 
 The test is Node only: no shell and no Unix program, so the same files run on all three OSes.
 
-A failing step prints its last 30 lines of output. A step that has not ended after 15 minutes is stopped and fails, and the steps after it in the group are not run; `STEP_LIMIT=<seconds>` changes the limit.
+A failing step prints its last 30 lines of output. A step that has not ended after 5 minutes is stopped and fails, and the steps after it in the group are not run; `STEP_LIMIT=<seconds>` changes the limit.
 
 ## The site in this repo
 
@@ -94,7 +94,7 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tests/record.mjs` | Writes each group's record, says whether a group is proven, and prints the pages ([What works](reference/status.md) and one per group) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
-| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: on three OSes, `mise run test` (a `fast` job: an answer in minutes) and `mise run test:all` (an `all` job: every step), on a push to `main` that changes what the test depends on, on a tag, or by hand (`gh workflow run stages.yml -f which=fast`). `repo-check.yml`: charter's, `mise run repo:ci` on every push |
+| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test` and `mise run test:all`, each on three OSes, on a push to `main` that changes what the test depends on, on a tag, or by hand. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
 
 ## Reading EmDash
 

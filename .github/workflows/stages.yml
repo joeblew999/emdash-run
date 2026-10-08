@@ -1,21 +1,13 @@
-# The test on macOS, Linux and Windows, as the two tasks a developer runs:
-#   fast   mise run test       the everyday steps: an answer in minutes
-#   all    mise run test:all   every step, the long ones too
-# Each job runs one mise task, so what passes here passes on a developer's machine and the other
-# way round. On a runner no group is skipped as proven. The live group is not run: a runner has no
-# deployed test site.
+# The test on macOS, Linux and Windows. Nothing is decided here: each job installs mise and runs
+# one mise task, the same one a developer runs, so a pass on your machine is a pass on GitHub.
+#   mise run test       the everyday steps: an answer in minutes
+#   mise run test:all   every step, the long ones too
+# What they do, how long a step may take, what they print: tests/run.mjs, not this file.
 #
-# Started by a push to main that changes what the test depends on, by a release tag, or by hand
-# (gh workflow run stages.yml -f which=fast).
+# Started by a push to main that changes what the test depends on, by a release tag, or by hand.
 name: stages
 on:
   workflow_dispatch:
-    inputs:
-      which:
-        description: "fast = mise run test; all = mise run test:all"
-        type: choice
-        options: [both, fast, all]
-        default: both
   push:
     branches: [main]
     paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", "tsconfig.json", ".github/workflows/stages.yml", "!tests/*/results.json"]
@@ -25,42 +17,20 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    # fast and all are the same job with a different task
-    name: ${{ matrix.task == 'test' && 'fast' || 'all' }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        # by hand, one of the two can be chosen; a push or a tag runs both
-        task: ${{ fromJSON(inputs.which == 'fast' && '["test"]' || inputs.which == 'all' && '["test:all"]' || '["test", "test:all"]') }}
+        task: ["test", "test:all"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    defaults:
-      run:
-        shell: bash
-    env:
-      # the test needs node and pnpm only; do not let a task pull in the other tools on a runner
-      MISE_TASK_RUN_AUTO_INSTALL: "false"
-      # GitHub limits anonymous downloads per address, and hosted runners share addresses: without a
-      # token, fetching EmDash's template (and mise fetching a tool) is refused now and then.
-      GITHUB_TOKEN: ${{ github.token }}
-      GIGET_AUTH: ${{ github.token }}
-      # a step that has not ended in five minutes is stopped and fails (15 by default): the longest
-      # real one, a first install on Windows, takes under two
-      STEP_LIMIT: "300"
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.0.1
         with:
-          # the mise that wrote the pages in docs/ — the test fails when they are stale, and a
-          # different mise could word them differently. Move this with min_version in mise.toml
-          version: 2026.10.4
-          install_args: node pnpm
-      - name: mise run ${{ matrix.task }}
-        run: mise run ${{ matrix.task }}
-      # What this run recorded (tests/<group>/results.json), as the page docs/reference/status.md is written
-      # from it. Not the committed page: a runner has no charter to rewrite it, so that one would
-      # show the developer's last run, not this one.
-      - name: what worked
-        if: always()
-        run: node tests/record.mjs --page status >> "$GITHUB_STEP_SUMMARY"
+          version: 2026.10.4 # the repo's mise.toml: min_version
+      - run: mise run ${{ matrix.task }}
+        env:
+          # the one thing a runner has to be given: who it is. GitHub limits anonymous downloads per
+          # address, and hosted runners share addresses (EmDash's template is fetched from GitHub)
+          GITHUB_TOKEN: ${{ github.token }}
