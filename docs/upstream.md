@@ -24,7 +24,7 @@ parent: How to help
 | EmDash, not filed | The skills `create-emdash` writes cannot be refreshed | `emdash:update` says they are not updated | Refresh them in `emdash:update` |
 | EmDash, not filed | `emdash-plugin init` fails on Windows beside a running dev server | `plugin:new` stops the site first | |
 | EmDash, not filed | Nothing checks a project before its first deploy | `live:check` is wrangler's dry run | |
-| EmDash, not filed | No command installs a registry plugin | `plugin:install` sends the admin's two requests (`admin/plugins.mjs`) | Use the command |
+| EmDash, not filed | No command installs a registry plugin | `plugin:install` sends the admin's two requests (`admin/plugin-registry.mjs`) | Use the command |
 | EmDash, not filed | `create-emdash --sandboxed-plugins` does not switch the sandbox on | `plugin:sandbox` writes both settings | |
 | EmDash, not filed | `emdash-plugin info <handle> <slug>` fails when the publisher's own host is down | `plugin:install` asks the registry's aggregator | |
 | EmDash, not filed | On a Node site the sandbox process outlives the site, and then blocks it | `site:stop` stops it; `plugin:install` and `plugin:remove` restart a Node site | Drop both |

@@ -61,11 +61,15 @@ The tests do not use it: each run makes its own sites in a temporary folder, to 
 | `admin/access.mjs` | `signin:access`: Cloudflare Access through Cloudflare's API |
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
 | `admin/preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
-| `admin/plugins.mjs` | The registry `plugin:*` tasks: the requests the admin's Install button makes |
+| `admin/plugins.mjs` | What the `plugin:*` tasks run: it only says which job was asked for. Each job is one of the next five files |
 | `admin/plugin-config-edit.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
+| `admin/plugin-site.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
+| `admin/plugin-client.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
+| `admin/plugin-registry.mjs` | `plugin:install`, `plugin:favourites`, `plugin:remove`: the requests the admin's buttons make |
+| `admin/plugin-works.mjs` | `plugin:works`: one line per check |
 | `admin/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
 | `admin/again.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
-| `admin/site.mjs`, `admin/welcome.mjs` | A site's `wrangler.jsonc`, read in one place; closing EmDash's welcome dialog |
+| `admin/site.mjs`, `admin/welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
 | `tests/replay.sh` | The test. Each step names the task it tests |
 | `tests/config-edit.test.mjs`, `tests/fixtures/config/` | The unit tests of those edits, on fixture configs. `mise run check` runs them |
 | `tests/status.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
