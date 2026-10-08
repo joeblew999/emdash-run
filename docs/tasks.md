@@ -27,16 +27,21 @@ description in `tasks.toml` is its documentation.
 | 8 | `site:preview` | Build the site and serve it locally (port 4322) — behaves like a deployed site | yes |
 | 9 | `signin:token` | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) | yes |
 | 10 | `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
-| 11 | `plugin:new` | Make a plugin of your own inside the site: scaffold, test, build, add — and print the two lines to put in astro.config.mjs. Stops the site: start it again afterwards. Run again: rebuilds and re-adds it. mise run plugin:new \-\- &lt;name&gt; | yes |
-| 12 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
-| 13 | `plugin:add` | Add a plugin from npm, and print the two lines to put in astro.config.mjs. Stops the site: start it again afterwards. mise run plugin:add \-\- &lt;package&gt; | yes |
-| 14 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
-| 15 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
-| 16 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
-| 17 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
-| 18 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
-| 19 | `site:stop` | Stop the dev site and the built site | yes |
-| 20 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
+| 11 | `plugin:sandbox` | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes | yes |
+| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it. Stops the site: start it again afterwards | yes |
+| 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
+| 14 | `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards | yes |
+| 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
+| 16 | `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site | **FAILS** |
+| 17 | `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin | **FAILS** |
+| 18 | `plugin:remove` | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed | **FAILS** |
+| 19 | `plugin:favourites` | Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add \-\-live for deployed | yes |
+| 20 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
+| 21 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
+| 22 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
+| 23 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
+| 24 | `site:stop` | Stop the dev site and the built site | yes |
+| 25 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
 
 **On the deployed site**
 
@@ -144,9 +149,15 @@ Open a browser window already signed in to the admin, for you to look around. Ad
 ### Flags
 - **`--live`** — The deployed site at LIVE_URL instead of the local production build
 
+## `plugin:sandbox`
+
+- **Usage:** `plugin:sandbox`
+
+Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes
+
 ## `plugin:new`
 
-Make a plugin of your own inside the site: scaffold, test, build, add — and print the two lines to put in astro.config.mjs. Stops the site: start it again afterwards. Run again: rebuilds and re-adds it. mise run plugin:new -- <name>
+Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards
 
 - **Usage:** `plugin:new <name>`
 
@@ -164,7 +175,7 @@ Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check -- 
 
 ## `plugin:add`
 
-Add a plugin from npm, and print the two lines to put in astro.config.mjs. Stops the site: start it again afterwards. mise run plugin:add -- <package>
+Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add -- <package>. Stops the site: start it again afterwards
 
 - **Usage:** `plugin:add <package>`
 
@@ -179,6 +190,48 @@ Search EmDash's plugin registry. mise run plugin:search -- forms
 
 ### Arguments
 - **`<words>`** — What to look for, e.g. forms
+
+## `plugin:install`
+
+Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>. Add --live for the deployed site
+
+- **Usage:** `plugin:install [--live] <plugin>…`
+
+### Arguments
+- **`<plugin>…`** — As plugin:search prints it, e.g. @netdollar.dev/forms
+
+### Flags
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
+
+## `plugin:works`
+
+Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works -- <name>. No name: every plugin
+
+- **Usage:** `plugin:works [name]…`
+
+### Arguments
+- **`[name]…`** — &lt;publisher>/&lt;slug> of a registry plugin, or the name of one in plugins/. None: every plugin the site has
+
+## `plugin:remove`
+
+Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove -- <publisher>/<slug>. Add --live for deployed
+
+- **Usage:** `plugin:remove [--live] <plugin>…`
+
+### Arguments
+- **`<plugin>…`** — As plugin:search prints it, e.g. @netdollar.dev/forms
+
+### Flags
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
+
+## `plugin:favourites`
+
+Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add --live for deployed
+
+- **Usage:** `plugin:favourites [--live]`
+
+### Flags
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
 
 ## `plugin`
 

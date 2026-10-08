@@ -6,14 +6,17 @@
 // EmDash's CLI is signed in to it — with no person. Playwright drives EmDash's own pages, and
 // Chrome's built-in simulated passkey device stands in for Touch ID.
 //
-//   node first-admin.mjs <site address> <site folder> [--deployed] [--show]
+//   node first-admin.mjs <site address> <site folder> [--deployed] [--show] [--check=<admin path>… [--blocks]]
 //
-// Tasks: signin:passkey, signin:open (--show); each with --live adds --deployed.
+// Tasks: signin:passkey, signin:open (--show); each with --live adds --deployed. plugin:works (--check).
 //
 // - A site that has not been set up: it completes the setup wizard (ADMIN_EMAIL, ADMIN_NAME,
 //   an empty site), then approves `emdash login`.
 // - A site it set up before: it signs in with the passkey it saved, then approves `emdash login`.
 // - A site somebody else set up: it stops. It has no way in, and should not.
+// - With --check=<path>: no window. It loads each admin page signed in with the saved token and
+//   prints one line for it — ok, or FAIL with what the browser's console said. --blocks: the page is
+//   a sandboxed plugin's, which the admin draws from the plugin's own answer; that answer is waited for.
 // - With --show: a browser window you can see, signed in to the admin with the saved passkey, for
 //   a person to use. It stays until the window is closed. The CLI is left as it is.
 //
@@ -33,6 +36,7 @@ import { chromium } from "playwright-core";
 const args = process.argv.slice(2);
 const deployed = args.includes("--deployed");
 const show = args.includes("--show");
+const checks = args.filter((a) => a.startsWith("--check=")).map((a) => a.slice(8));
 const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
 if (!url || !siteDir) {
 	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
@@ -113,14 +117,17 @@ if (!(await answering())) {
 
 // The Chrome or Edge already installed: nothing is downloaded.
 let browser;
+let why = "";
 for (const channel of ["chrome", "msedge"]) {
 	try {
 		browser = await chromium.launch({ channel, headless: !show });
 		break;
-	} catch {}
+	} catch (error) {
+		why = String(error.message).split("\n")[0];
+	}
 }
 if (!browser) {
-	console.error("This needs Google Chrome or Microsoft Edge installed; neither was found.");
+	console.error(`This needs Google Chrome or Microsoft Edge, and neither would start: ${why}`);
 	process.exit(1);
 }
 // English, whatever the machine's language: the pages are found by their words.
@@ -157,10 +164,9 @@ try {
 		return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
 	};
 	const savedToken = savedJson("tokens");
-	if (show && savedToken && !existsSync(keyFile)) {
-		// A window for a person, on a site signin:token set up: there is no passkey, so every
-		// request this window makes to the site carries the saved API token — and the Cloudflare
-		// Access pass, if there is one. Only to the site itself, never to anything else it loads.
+	// Every request this browser makes to the site carries the saved API token — and the Cloudflare
+	// Access pass, if there is one. Only to the site itself, never to anything else it loads.
+	const withSavedToken = async () => {
 		const pass = savedJson("access");
 		const extra = {
 			Authorization: `Bearer ${savedToken.token}`,
@@ -171,6 +177,39 @@ try {
 			if (new URL(request.url()).origin !== origin) return route.continue();
 			return route.continue({ headers: { ...request.headers(), ...extra } });
 		});
+	};
+	if (checks.length) {
+		if (!savedToken) throw new Error("This machine has no token saved for this site. Run  mise run signin:token  first.");
+		await withSavedToken();
+		const blocks = args.includes("--blocks");
+		let bad = 0;
+		let errors = [];
+		page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+		page.on("pageerror", (e) => errors.push(e.message));
+		for (const path of checks) {
+			errors = [];
+			// a sandboxed plugin's page is drawn from what the plugin answers to this request
+			const answered = blocks ? page.waitForResponse((r) => r.request().method() === "POST" && /\/_emdash\/api\/plugins\/[^/]+\/admin$/.test(new URL(r.url()).pathname), { timeout: 90_000 }).catch(() => null) : null;
+			await page.goto(`${origin}${path}`);
+			await page.getByText("Dashboard").first().waitFor({ timeout: 90_000 });
+			const answer = await answered;
+			await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {});
+			const shown = (await page.locator("main").last().innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+			const problems = [
+				...(blocks && !answer ? ["the plugin did not answer the page's request"] : []),
+				...(answer && !answer.ok() ? [`the plugin answered ${answer.status()}`] : []),
+				...(shown.includes("Plugin Error") ? [`the page shows: ${shown.slice(shown.indexOf("Plugin Error"), shown.indexOf("Plugin Error") + 200)}`] : []),
+				...(errors.length ? [`${errors.length} console error(s): ${errors.join(" | ").slice(0, 300)}`] : []),
+			];
+			if (problems.length) bad++;
+			console.log(problems.length ? `FAIL admin page: ${path} — ${problems.join("; ")}` : `ok   admin page: ${path} loads with no console error${answer ? `; the plugin answered ${answer.status()}` : ""} — it shows "${shown.slice(0, 80)}"`);
+		}
+		await browser.close().catch(() => {});
+		process.exit(bad ? 1 : 0);
+	}
+	if (show && savedToken && !existsSync(keyFile)) {
+		// A window for a person, on a site signin:token set up: there is no passkey, so it uses the token.
+		await withSavedToken();
 		await page.goto(`${origin}/_emdash/admin`);
 		await page.getByText("Dashboard").first().waitFor({ timeout: 90_000 });
 		const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 120);

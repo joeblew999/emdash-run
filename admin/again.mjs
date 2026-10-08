@@ -12,6 +12,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync } from "n
 import { homedir } from "node:os";
 import { createServer } from "node:net";
 import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const [what, siteDir, ...rest] = process.argv.slice(2);
 const win = process.platform === "win32";
@@ -35,6 +36,8 @@ if (what === "new") {
 	if (existsSync(join(siteDir, "node_modules", "astro"))) {
 		spawnSync("pnpm", ["exec", "astro", "dev", "stop"], { cwd: siteDir, stdio: "inherit", shell: win });
 		spawnSync("pnpm", ["exec", "astro", "preview", "stop"], { cwd: siteDir, stdio: "inherit", shell: win });
+		// and a Node site's sandbox process, which outlives the site (admin/plugins.mjs, leftover)
+		spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "plugins.mjs"), "leftover", siteDir], { stdio: "inherit" });
 	}
 	rmSync(siteDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 	console.log(`Deleted [${basename(siteDir)}].`);

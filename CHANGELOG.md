@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+Plugins from EmDash's registry: find one, install it with no clicking, and know it works. Run on
+macOS on a Cloudflare and a Node site; not yet against a deployed site, nor on Windows or Linux.
+
+- **`plugin:install -- <publisher>/<slug>`** installs a registry plugin as the admin's Install
+  button does, with the token `signin:token` saved. From a site that is not even running it
+  switches the sandbox on, builds, starts, signs in and installs. `plugin:remove` takes one out.
+- **`plugin:favourites`** installs five chosen plugins in one go — or a project's own list
+  (`PLUGINS`). The list, why, and what was rejected: [`docs/favourite-plugins.md`](docs/favourite-plugins.md).
+- **`plugin:works`** says whether a plugin works, one line per check: builds, starts, listed,
+  routes, admin pages in a real browser, log, sandbox. With no name: every plugin in the site.
+- **`plugin:sandbox`** makes the edits a sandboxed plugin needs (Cloudflare: deploying then needs
+  the Workers Paid plan).
+- **`plugin:new` and `plugin:add` write the plugin's lines in `astro.config.mjs`** — nothing is
+  left to edit by hand.
+- **`site:stop` on a Node site** also stops the sandbox process EmDash leaves running, which
+  otherwise blocks the next start. Six new entries in [`docs/upstream.md`](docs/upstream.md).
 - **One source for each thing in the docs.** What a task does is its description in `tasks.toml`:
   `docs/tasks.md` (written by mise, in the order you use the tasks) and every list of tasks in the
   README are filled from it. The README says only what is not a task.

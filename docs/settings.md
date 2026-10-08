@@ -19,3 +19,4 @@ All optional, under `[env]` in your `mise.toml`.
 | `ADMIN_EMAIL` | — | who may sign in to the deployed site |
 | `SITE_SEED` | — | `none` if the site has no seed file |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | — | needed by `plugin:new` |
+| `PLUGINS` | the favourites | what `plugin:favourites` installs: `@publisher/slug`, separated by spaces |

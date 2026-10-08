@@ -7,7 +7,7 @@ nav_order: 50
 
 Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.
 
-**105 steps pass, 0 fail, 0 of 30 tasks have no test.**
+**137 steps pass, 4 fail, 0 of 35 tasks have no test.**
 
 Last run: `full`, tasks from the local files, commit `d606b40+uncommitted`, 2026-10-08 01:23 UTC, 288s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
 
@@ -31,11 +31,16 @@ Every test runs as another developer would: a clean environment and an empty con
 | `live:undo` | — | — | pass ×1 |  |
 | `model:sync` | pass ×1 | pass ×1 | pass ×1 |  |
 | `plugin` | pass ×1 | pass ×1 | — |  |
-| `plugin:add` | pass ×2 | pass ×2 | — |  |
+| `plugin:add` | pass ×4 | pass ×4 | — |  |
 | `plugin:check` | pass ×1 | pass ×1 | — |  |
-| `plugin:new` | pass ×2 | pass ×2 | — |  |
+| `plugin:favourites` | pass ×3 | pass ×3 | — |  |
+| `plugin:install` | **FAIL** 2 of 3 | pass ×3 | — |  |
+| `plugin:new` | pass ×4 | pass ×4 | — |  |
 | `plugin:publish` | pass ×1 | pass ×1 | — |  |
+| `plugin:remove` | **FAIL** 1 of 2 | pass ×2 | — |  |
+| `plugin:sandbox` | pass ×2 | pass ×2 | — |  |
 | `plugin:search` | pass ×1 | pass ×1 | — |  |
+| `plugin:works` | **FAIL** 1 of 4 | pass ×4 | — |  |
 | `signin:access` | — | — | pass ×4 |  |
 | `signin:open` | pass ×2 | pass ×2 | pass ×1 |  |
 | `signin:passkey` | pass ×1 | pass ×1 | — |  |
@@ -50,6 +55,15 @@ Every test runs as another developer would: a clean environment and an empty con
 | `site:reset` | pass ×2 | pass ×2 | — |  |
 | `site:start` | pass ×4 | pass ×4 | — |  |
 | `site:stop` | pass ×1 | pass ×1 | — |  |
+
+## Failing
+
+| task | where | step | last output |
+|---|---|---|---|
+| `plugin:install` | cloudflare | installs a registry plugin with no clicking, from a stopped site | Sign in first: mise run signin:token Finished in 35.04s [plugin:install] ERROR task failed |
+| `plugin:install` | cloudflare | run again: it is already installed | Sign in first: mise run signin:token Finished in 911.4ms [plugin:install] ERROR task failed |
+| `plugin:works` | cloudflare | the registry plugin: every check passes |  |
+| `plugin:remove` | cloudflare | removes a registry plugin | [plugin:remove] $ node "/Users/apple/workspace/go/src/github.com/joeblew999/emd… -> this machine, built site (site:preview): http://localhost:54261 Finished i |
 
 ## Every step
 
@@ -81,20 +95,56 @@ Every test runs as another developer would: a clean environment and an empty con
 | `model:sync` | cloudflare | records an added field in .emdash/ | PASS | quick | `d606b40+uncommitted` | 2026-10-08 01:13 UTC |
 | `model:sync` | deployed | --live records the deployed model | PASS | full | `d606b40+uncommitted` | 2026-10-08 01:23 UTC |
 | `model:sync` | node | records an added field in .emdash/ | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:add` | cloudflare | adds a package from npm, and its lines in the site's config | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:add` | cloudflare | run again: the config is not touched | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin:add` | cloudflare | adds a package from npm | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:add` | cloudflare | run again: no error | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:add` | node | adds a package from npm, and its lines in the site's config | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:add` | node | run again: the config is not touched | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin:add` | node | adds a package from npm | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:add` | node | run again: no error | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:check` | cloudflare | the plugin passes its checks | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:check` | node | the plugin passes its checks | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:favourites` | cloudflare | installs the favourites in one go | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:favourites` | cloudflare | run again: all already installed | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:favourites` | cloudflare | PLUGINS in the project chooses the list | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:favourites` | node | installs the favourites in one go | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:favourites` | node | run again: all already installed | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:favourites` | node | PLUGINS in the project chooses the list | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | cloudflare | installs a registry plugin with no clicking, from a stopped site | FAIL | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | cloudflare | run again: it is already installed | FAIL | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | cloudflare | a plugin the registry does not have: says so and fails | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | node | installs a registry plugin with no clicking, from a stopped site | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | node | run again: it is already installed | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:install` | node | a plugin the registry does not have: says so and fails | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:new` | cloudflare | scaffolds, tests, builds and adds a plugin — to the site's config too, by itself | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:new` | cloudflare | run again: not scaffolded twice, still builds, the config is not touched | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin:new` | cloudflare | scaffolds, tests, builds and adds a plugin | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:new` | cloudflare | run again: not scaffolded twice, still builds | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:new` | node | scaffolds, tests, builds and adds a plugin — to the site's config too, by itself | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:new` | node | run again: not scaffolded twice, still builds, the config is not touched | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin:new` | node | scaffolds, tests, builds and adds a plugin | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:new` | node | run again: not scaffolded twice, still builds | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:publish` | cloudflare | asks first, and stops with nobody to answer (a real publish is never run) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:publish` | node | asks first, and stops with nobody to answer (a real publish is never run) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:remove` | cloudflare | removes a registry plugin | FAIL | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:remove` | cloudflare | run again: nothing to remove | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:remove` | node | removes a registry plugin | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:remove` | node | run again: nothing to remove | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:sandbox` | cloudflare | the site can run sandboxed plugins: the runner is in its config | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:sandbox` | cloudflare | run again: nothing changes | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:sandbox` | node | the site can run sandboxed plugins: the runner is in its config | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:sandbox` | node | run again: nothing changes | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin:search` | cloudflare | finds plugins in the registry | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:search` | node | finds plugins in the registry | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
+| `plugin:works` | cloudflare | the registry plugin: every check passes | FAIL | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | cloudflare | the plugin plugin:new made: its route answers from the sandbox | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | cloudflare | a plugin the site does not have fails | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | cloudflare | no name: every plugin in the site works — the favourites among them | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | node | the registry plugin: every check passes | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | node | the plugin plugin:new made: its route answers from the sandbox | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | node | a plugin the site does not have fails | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
+| `plugin:works` | node | no name: every plugin in the site works — the favourites among them | PASS | full | `a04f206` | 2026-10-08 00:45 UTC |
 | `plugin` | cloudflare | passes any command to the plugin CLI | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin` | node | passes any command to the plugin CLI | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:access` | deployed | Cloudflare Access is in front of the admin | PASS | full | `d606b40+uncommitted` | 2026-10-08 01:23 UTC |

@@ -147,6 +147,8 @@ if (text.includes(begin) && text.includes(end)) {
 		.replaceAll("](docs/)", "](README.md)")
 		.replaceAll("](docs/plans/)", "](plans/README.md)")
 		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
+		.replaceAll("](docs/favourite-plugins.md)", "](favourite-plugins.md)")
+		.replaceAll("](docs/upstream.md)", "](upstream.md)")
 		.replaceAll("](admin/)", "](https://github.com/joeblew999/emdash-run/tree/main/admin)")
 		.replace(/^Docs: .*\n/m, "");
 	const [intro, ...sections] = fix(readFileSync(join(repo, "README.md"), "utf8")).split(/^## /m);
@@ -194,13 +196,14 @@ if (text.includes(begin) && text.includes(end)) {
 		"This machine or deployed": "one rule: no flag is this machine, `--live` is the deployed site",
 		"Signing in": "the four ways, and which to use",
 		"Deploying": "putting a site on Cloudflare, undoing, logs, backups",
-		"Plugins": "making one, adding one, searching the registry",
+		"Plugins": "searching the registry, installing with no clicking, knowing one works, making your own",
 		"Settings": "everything you can set in `mise.toml`",
 		"Good to know": "what asks first, what stops the site, what is not there",
 		"Working on emdash-run": "the tests, and where the rules are",
 	};
 	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | ${about[p.title] ?? ""} |`),
 		"| [Every task](tasks.md) | in the order you use them; each one's description, arguments and flags — written by mise from `tasks.toml` |",
+		"| [Favourite plugins](favourite-plugins.md) | the registry plugins `plugin:favourites` installs, why, and what was rejected |",
 		"| [What works](status.md) | every task, and what the last test run showed |",
 		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",
 		"| [For agents](agents/README.md) | the rules for working on this repo |",
