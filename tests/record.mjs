@@ -1,189 +1,192 @@
-// What the tests saw, kept in tests/results.json, and the page of docs/ that is written from it.
-// charter writes that page (docs/_generated.toml names the command below) and checks it is fresh;
-// this prints it. The tasks page is charter's own: `charter docs-tasks`, from tasks.toml.
+// What the tests saw. Each group keeps its own record, tests/<group>/results.json, and has its own
+// page in docs/reference/, written from it; status.md is the index of them. charter writes the
+// pages (docs/_generated.toml names the commands below) and checks they are fresh; this prints them.
 //
-//   node tests/record.mjs <rows file> <tier> <tasks from> <commit> <took seconds>   record a run
-//   node tests/record.mjs --page status     print docs/reference/status.md, from its # title on
-//   node tests/record.mjs --coverage        every task has a test step, every step a task
-//   node tests/record.mjs --green           the record has no failure and no untested task
+//   node tests/record.mjs --record <group> <rows file> <where> <tasks from> <commit> <seconds>
+//   node tests/record.mjs --page status            the index: every group, every task
+//   node tests/record.mjs --page status-<group>    one group: every step, in the order it ran
+//   node tests/record.mjs --coverage               every task has a test step, every step a task
+//   node tests/record.mjs --green                  no failure recorded, no task without a run
+//   node tests/record.mjs --proven <group> [where] exit 0: it passed and nothing has changed since
+//   node tests/record.mjs --fingerprint [group]
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
-const store = join(repo, "tests", "results.json");
-const script = readFileSync(join(repo, "tests", "tasks.sh"), "utf8");
+const groups = ["site", "signin", "plugin", "live"];
+const about = {
+	site: "making, running, checking and deleting a site",
+	signin: "the CLI and a browser window as an administrator of the built site",
+	plugin: "a plugin of your own, and plugins from EmDash's registry",
+	live: "the tasks that act on a deployed site",
+};
+const read = (f) => (existsSync(join(repo, f)) ? readFileSync(join(repo, f), "utf8") : "");
+const storeOf = (g) => join(repo, "tests", g, "results.json");
+const rowsOf = (g) => (existsSync(storeOf(g)) ? JSON.parse(readFileSync(storeOf(g), "utf8")).map((r) => ({ ...r, group: g })) : []);
+const everyRow = () => groups.flatMap(rowsOf);
 // Every task a project gets: those in tasks.toml (this repo's own — test, docs:…, repo — are not
 // counted), without the hidden steps.
 const tasks = () =>
 	JSON.parse(execFileSync("mise", ["tasks", "ls", "--hidden", "--json"], { cwd: repo, encoding: "utf8" }))
 		.filter((t) => !t.name.startsWith("step:") && t.source.endsWith("tasks.toml"))
 		.map((t) => ({ name: t.name, hidden: t.hide, description: t.description }));
-// The steps of the test, by the task each names: `ok <task> "…"` and `no <task> "…"`.
-const stepped = (text, kinds = "ok|no") => [...text.matchAll(new RegExp(`^\\s*(?:\\[[^\\n]*?\\]\\s*\\|\\|\\s*|case[^\\n]*?\\)\\s*)?(?:${kinds})\\s+([a-z:]+)\\s+"`, "gm"))].map((m) => m[1]);
+// The steps of a group, by the task each names: `ok <task> "…"` and `no <task> "…"`.
+const stepped = (g) => [...read(`tests/${g}/steps.sh`).matchAll(/^\s*(?:\[[^\n]*?\]\s*\|\|\s*)?(?:ok|no)\s+([a-z:]+)\s+"/gm)].map((m) => m[1]);
+const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" });
 const [mode, arg, arg2] = process.argv.slice(2);
 
-// WHAT A GROUP OF STEPS DEPENDS ON, as one fingerprint: its tasks and the steps they share, the
-// scripts they run, its own steps in the test, and the site the test copies. A group that passed
-// at this fingerprint is PROVEN: nothing it depends on has changed, so it is not run again.
-// Change a plugin script and only the plugin group's fingerprint moves.
-const groupsOf = ["site", "signin", "plugin", "live"];
+// WHAT A GROUP DEPENDS ON, as one fingerprint: its tasks and the hidden steps they share, the
+// scripts they run, the test's runner and the group's own folder, and the site the test copies.
+// A group that passed at this fingerprint is PROVEN. Change a plugin script and only the plugin
+// group's fingerprint moves.
 const fingerprint = (group) => {
-	const read = (f) => (existsSync(join(repo, f)) ? readFileSync(join(repo, f), "utf8") : "");
 	const h = createHash("sha256");
-	// tasks.toml: this namespace's tasks, the site tasks every group stands on, and every hidden step
-	const blocks = read("tasks.toml").split(/^(?=\[)/m);
-	const mine = { site: ["site:", "model:", "emdash"], signin: ["signin:", "site:"], plugin: ["plugin", "site:", "signin:token"], live: ["live:", "content:", "signin:", "site:", "model:", "emdash"] }[group] ?? [];
-	for (const b of blocks) {
-		const name = (b.match(/^\["?([a-z:-]+)"?\]/) || [])[1];
+	const mine = { site: ["site:", "model:", "emdash", "live:check", "content:"], signin: ["signin:", "site:", "emdash"], plugin: ["plugin", "site:", "signin:token"], live: ["live:", "content:", "signin:", "site:", "model:", "emdash", "plugin:works"] }[group];
+	for (const b of read("tasks.toml").split(/^(?=\[)/m)) {
+		const name = (b.match(/^\[(?:tasks\.)?"?([a-z:-]+)"?\]/) || [])[1];
 		if (!name || name.startsWith("step:") || mine.some((p) => name.startsWith(p))) h.update(b);
 	}
-	// scripts/: what every group uses, and this namespace's own
-	const shared = ["site.mjs", "site-welcome.mjs", "wrangler-config.mjs", "emdash.mjs", "signin-token.mjs"];
-	const own = { signin: /^signin-/, plugin: /^(plugin|signin-browser)/, live: /^(live-|signin-)/ }[group];
-	for (const f of execFileSync("git", ["ls-files", "scripts"], { cwd: repo, encoding: "utf8" }).split("\n").filter(Boolean).sort()) {
+	const shared = ["site.mjs", "site-welcome.mjs", "wrangler-config.mjs", "emdash.mjs", "signin-token.mjs", "package.json"];
+	const own = { signin: /^signin-/, plugin: /^(plugin|signin-browser)/, live: /^(live-|signin-|plugin-works|plugin-api)/ }[group];
+	for (const f of git("ls-files", "scripts").split("\n").filter(Boolean).sort()) {
 		const base = f.slice("scripts/".length);
-		if (shared.includes(base) || own?.test(base) || base === "package.json") h.update(f).update(read(f));
+		if (shared.includes(base) || own?.test(base)) h.update(f).update(read(f));
 	}
-	// the test: what is common to every group, and this group's own steps
-	let current = "common";
-	for (const line of script.split("\n")) {
-		const g = (line.match(/^\s*group ([a-z]+)\s*$/) || [])[1];
-		if (g) current = g === "always" ? "common" : g;
-		if (/^(local_site|live_site)\(\) \{|^\}/.test(line)) current = "common";
-		if (current === "common" || current === group) h.update(line);
+	for (const f of ["tests/lib.sh", "tests/run.sh"]) h.update(read(f));
+	for (const f of readdirSync(join(repo, "tests", group), { recursive: true }).map(String).sort()) {
+		if (!f.endsWith("results.json") && !f.includes("fixtures") && /\.[a-z]+$/.test(f)) h.update(f).update(read(join("tests", group, f)));
 	}
-	// the site the test copies: every committed file's content, and what is changed and not committed
-	h.update(execFileSync("git", ["ls-files", "-s", "site"], { cwd: repo, encoding: "utf8" }));
-	h.update(execFileSync("git", ["diff", "--", "site"], { cwd: repo, encoding: "utf8" }));
+	if (group !== "live") h.update(git("ls-files", "-s", "site")).update(git("diff", "--", "site"));
 	return h.digest("hex").slice(0, 12);
 };
-const recorded = existsSync(store) ? JSON.parse(readFileSync(store, "utf8")) : [];
-// The steps of a group that count at a depth: a quick run is only held to the everyday steps.
-const stepsOf = (group, depth) => recorded.filter((r) => r.group === group && (depth !== "quick" || r.depth === "quick"));
-const proven = (group, depth) => {
-	const rows = stepsOf(group, depth);
-	const proof = fingerprint(group);
-	return rows.length > 0 && rows.every((r) => r.result === "PASS" && r.proof === proof);
-};
+const stateOf = (rows, group) =>
+	!rows.length ? "no run recorded" : rows.some((r) => r.result === "FAIL") ? "**a step fails**" : rows.every((r) => r.proof === fingerprint(group)) ? "proven" : "changed since it passed";
 if (mode === "--fingerprint") {
-	for (const g of arg ? [arg] : groupsOf) console.log(`${g} ${fingerprint(g)}`);
+	for (const g of arg ? [arg] : groups) console.log(`${g} ${fingerprint(g)}`);
 	process.exit(0);
 }
-// `--proven <group> [quick|full]`: exit 0 when every recorded step of the group passed with
-// nothing it depends on changed since.
-if (mode === "--proven") process.exit(proven(arg, arg2 || "full") ? 0 : 1);
+if (mode === "--proven") {
+	const rows = rowsOf(arg).filter((r) => r.where === (arg2 || (arg === "live" ? "deployed" : "cloudflare")));
+	process.exit(stateOf(rows, arg) === "proven" ? 0 : 1);
+}
 
 // PROVENANCE. It runs first in every test and in the commit check, and fails them: tasks.toml
 // cannot change without the test changing with it.
 if (mode === "--coverage") {
 	const names = tasks().map((t) => t.name);
-	const have = new Set(stepped(script));
+	const have = new Set(groups.flatMap(stepped));
 	const untested = names.filter((n) => !have.has(n));
 	const unknown = [...have].filter((n) => !names.includes(n));
-	if (untested.length) console.error(`tasks.toml has tasks with no step in tests/tasks.sh: ${untested.join(", ")}`);
-	if (unknown.length) console.error(`tests/tasks.sh has steps for tasks that are not in tasks.toml: ${unknown.join(", ")}`);
+	if (untested.length) console.error(`tasks.toml has tasks with no step in tests/*/steps.sh: ${untested.join(", ")}`);
+	if (unknown.length) console.error(`tests/*/steps.sh has steps for tasks that are not in tasks.toml: ${unknown.join(", ")}`);
 	if (untested.length || unknown.length) {
 		console.error("Change the test with the task. Nothing was run.");
 		process.exit(1);
 	}
-	console.log(`provenance: all ${names.length} tasks in tasks.toml have a step in tests/tasks.sh, and every step names a real task`);
+	console.log(`provenance: all ${names.length} tasks in tasks.toml have a step in tests/*/steps.sh, and every step names a real task`);
 	process.exit(0);
 }
 
-const results = existsSync(store) ? JSON.parse(readFileSync(store, "utf8")) : [];
-// a description can hold <name>, a | or two dashes: each would break a table on the docs site
-const cellText = (t) => t.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("--", "\\-\\-");
-
 // `--green`: what a release needs of the record — no failing step, no task without a test run.
 if (mode === "--green") {
+	const results = everyRow();
 	const failing = results.filter((r) => r.result === "FAIL");
 	const untested = tasks().filter((t) => !results.some((r) => r.task === t.name));
-	for (const r of failing) console.error(`FAIL  ${r.task} (${r.where}): ${r.step}`);
+	for (const r of failing) console.error(`FAIL  ${r.task} (${r.group}, ${r.where}): ${r.step}`);
 	if (untested.length) console.error(`no test run recorded for: ${untested.map((t) => t.name).join(", ")}`);
 	if (failing.length || untested.length) {
-		console.error("The record in tests/results.json is not green: mise run test:full");
+		console.error("The record is not green: mise run test");
 		process.exit(1);
 	}
 	console.log(`green: ${results.length} recorded steps pass, every task has a test run`);
 	process.exit(0);
 }
 
+// a description can hold <name>, a | or two dashes: each would break a table on the docs site
+const cellText = (t) => String(t).replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("--", "\\-\\-").replaceAll("{", "(").replaceAll("}", ")");
+const time = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`);
+const siteName = { cloudflare: "a Cloudflare site", node: "a Node site", deployed: "the deployed site" };
+
 if (mode === "--page" && arg === "status") {
 	const all = tasks();
-	const wheres = ["cloudflare", "node", "deployed"];
+	const results = everyRow();
+	const failures = results.filter((r) => r.result === "FAIL");
+	const notTested = all.filter((t) => !results.some((r) => r.task === t.name));
+	const out = ["# What works: every task, and what the last test run showed", ""];
+	out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${all.length} tasks have no test.**`, "");
+	out.push("The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the groups that are not proven; a run replaces everything recorded for its group. [How to help](../contributing.md) says more.", "");
+	out.push("| Group | What it tests | Run it | State | Steps | Took | Last run | Commit |", "|---|---|---|---|---|---|---|---|");
+	for (const g of groups) {
+		const rows = rowsOf(g).filter((r) => r.where !== "node");
+		const last = rows[0];
+		out.push(`| [\`${g}\`](status-${g}.md) | ${about[g]} | \`mise run test:${g}\` | ${stateOf(rows, g)} | ${rows.length} | ${last?.runSeconds ? time(last.runSeconds) : ""} | ${last?.when ?? ""} | ${last ? `\`${last.commit}\`` : ""} |`);
+	}
+	const node = results.filter((r) => r.where === "node");
+	if (node.length) out.push("", `On a Node site (\`mise run test:node\`, before a release): ${node.filter((r) => r.result === "PASS").length} of ${node.length} steps pass, last run ${node[0].when}.`);
+	if (failures.length) {
+		out.push("", "## Failing", "", "| Group | Task | On | Step | Its last output |", "|---|---|---|---|---|");
+		for (const r of failures) out.push(`| [\`${r.group}\`](status-${r.group}.md) | \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${cellText(r.detail || "")} |`);
+	}
 	const cell = (task, where) => {
 		const rows = results.filter((r) => r.task === task && r.where === where);
 		if (!rows.length) return "";
 		const failed = rows.filter((r) => r.result === "FAIL").length;
 		return failed ? `**FAIL** ${failed} of ${rows.length}` : `pass ×${rows.length}`;
 	};
-	const notTested = all.filter((t) => !results.some((r) => r.task === t.name));
-	const failures = results.filter((r) => r.result === "FAIL");
-	const last = [...results].sort((a, b) => String(b.when).localeCompare(String(a.when)))[0];
-	const out = ["# What works: every task, and what the last test run showed", ""];
-	out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${all.length} tasks have no test.**`, "");
-	const time = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`);
-	if (last) out.push(`The last run: \`${last.tier}\`, at commit \`${last.commit}\`, ${last.when}${last.runSeconds ? `, ${time(last.runSeconds)}` : ""}, on ${last.os ?? "macOS"}. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the \`stages\` workflow, on a release tag.`, "");
-	out.push("Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).", "");
-	out.push("## Proven, or changed since", "", "A group of steps is proven when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps in the test, the site. A proven group is not run again.", "", "| Group | State | Steps |", "|---|---|---|");
-	for (const g of groupsOf) {
-		const rows = results.filter((r) => r.group === g);
-		const state = !rows.length ? "no run recorded" : rows.some((r) => r.result === "FAIL") ? "**a step fails**" : rows.every((r) => r.proof === fingerprint(g)) ? "proven" : "changed since it last passed: run `mise run test -- " + g + "`";
-		out.push(`| \`${g}\` | ${state} | ${rows.length} |`);
-	}
 	out.push("", "## By task", "", "| Task | Cloudflare site | Node site | Deployed site | |", "|---|---|---|---|---|");
 	for (const t of all) {
-		const cells = wheres.map((w) => cell(t.name, w));
+		const cells = ["cloudflare", "node", "deployed"].map((w) => cell(t.name, w));
 		out.push(`| \`${t.name}\`${t.hidden ? " (hidden)" : ""} | ${cells.join(" | ")} | ${cells.every((c) => c === "") ? "**NOT TESTED**" : ""} |`);
-	}
-	if (failures.length) {
-		out.push("", "## Failing", "", "| Task | Where | Step | Its last output |", "|---|---|---|---|");
-		for (const r of failures) out.push(`| \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${cellText(r.detail || "").replaceAll("{", "(").replaceAll("}", ")")} |`);
-	}
-	// How long each run took, the last time it ran: one row per run still in the record.
-	const runs = new Map();
-	for (const r of results) if (r.runSeconds) runs.set(`${r.tier}|${r.when}`, r);
-	if (runs.size) {
-		out.push("", "## How long a run takes", "", "| Run | When | Steps recorded | Took |", "|---|---|---|---|");
-		for (const r of [...runs.values()].sort((a, b) => String(b.when).localeCompare(String(a.when)))) {
-			out.push(`| \`${r.tier}\` | ${r.when} | ${results.filter((x) => x.tier === r.tier && x.when === r.when).length} | ${time(r.runSeconds)} |`);
-		}
-	}
-	out.push("", "## Every step", "", "| Task | Where | Step | | Seconds | Run | Commit | When |", "|---|---|---|---|---|---|---|---|");
-	for (const r of [...results].sort((a, b) => (a.task + a.where).localeCompare(b.task + b.where) || a.order - b.order)) {
-		out.push(`| \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${r.result} | ${r.seconds ?? ""} | ${r.tier}${r.from === "GitHub" ? ", from GitHub" : ""} | \`${r.commit}\` | ${r.when} |`);
 	}
 	console.log(out.join("\n"));
 	process.exit(0);
 }
 
-// Record a run. Its rows replace older ones for the same step and the rest are kept, so a quick
-// run does not wipe out what the full run or the deployed part showed. A full run is the whole
-// truth for each kind of site it ran on: older steps for those go, so a renamed step cannot linger.
-const [rowsFile, tier, from, commit, took] = process.argv.slice(2);
-if (!rowsFile || !existsSync(rowsFile)) {
-	console.error("usage: node tests/record.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page status | --coverage");
-	process.exit(1);
+if (mode === "--page" && groups.includes(arg?.replace("status-", ""))) {
+	const g = arg.replace("status-", "");
+	const rows = rowsOf(g);
+	const out = [`# The ${g} tests: ${about[g]}`, ""];
+	out.push(`Run them: \`mise run test:${g}\`. The steps: \`tests/${g}/steps.sh\`. Every group: [What works](status.md).`, "");
+	if (!rows.length) out.push("No run is recorded.");
+	for (const where of ["cloudflare", "deployed", "node"]) {
+		const mine = rows.filter((r) => r.where === where).sort((a, b) => a.order - b.order);
+		if (!mine.length) continue;
+		const failed = mine.filter((r) => r.result === "FAIL");
+		out.push(`## On ${siteName[where]}`, "");
+		out.push(`**${mine.length - failed.length} of ${mine.length} steps pass${mine[0].runSeconds ? `, in ${time(mine[0].runSeconds)}` : ""}.** ${where === "node" ? "" : `State: ${stateOf(mine, g)}. `}Run ${mine[0].when} at commit \`${mine[0].commit}\`, on ${mine[0].os}${mine[0].from === "GitHub" ? ", with the tasks from GitHub" : ""}.`, "");
+		out.push("| | Task | Step | Seconds |", "|---|---|---|---|");
+		for (const r of mine) out.push(`| ${r.result === "PASS" ? "pass" : "**FAIL**"} | \`${r.task}\` | ${cellText(r.step)}${r.refusal ? " (it must refuse)" : ""}${r.result === "FAIL" && r.detail ? `<br>${cellText(r.detail)}` : ""} | ${r.seconds} |`);
+		out.push("");
+	}
+	console.log(out.join("\n").trimEnd());
+	process.exit(0);
 }
-// where it ran: the stages workflow shows this record for each of its three machines
-const os = { darwin: "macOS", linux: "Linux", win32: "Windows" }[process.platform] ?? process.platform;
-const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
-const fresh = readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line, order) => {
-	const [task, where, step, result, detail, kind, seconds, group, depth] = line.split("|").map((x) => x.trim());
-	// seconds: how long this step took; runSeconds: how long the whole run it was part of took
-	return { task, where, step, result, detail, refusal: kind === "no", seconds: Number(seconds) || 0, group: group || "", depth: depth || "full", proof: groupsOf.includes(group) ? fingerprint(group) : "", runSeconds: Number(took) || 0, tier, from, commit, when, os, order };
-});
-const key = (r) => `${r.task}|${r.where}|${r.step}`;
-const replaced = new Set(fresh.map(key));
-const ran = new Set(fresh.map((r) => r.where));
-// A full run is the whole truth for what it ran: the groups it ran, on the kinds of site it ran on.
-// A group it skipped as already proven keeps its rows.
-const ranGroups = new Set(fresh.map((r) => r.group));
-const kept = results.filter((r) => (tier === "full" ? !(ran.has(r.where) && (!r.group || ranGroups.has(r.group))) : !replaced.has(key(r))));
-writeFileSync(store, JSON.stringify(kept.concat(fresh), null, 1) + "\n");
-const bad = fresh.filter((r) => r.result === "FAIL").length;
-console.log(`${fresh.length - bad} passed, ${bad} failed in this run, ${took}s. Recorded in tests/results.json; the pages: mise run docs:setup`);
-process.exit(bad ? 1 : 0);
+
+// Record a group's run. It is the whole truth for that group on that kind of site: everything
+// recorded for it before goes, so a step that was renamed or removed cannot linger.
+if (mode === "--record") {
+	const [group, rowsFile, where, from, commit, took] = process.argv.slice(3);
+	if (!groups.includes(group) || !existsSync(rowsFile)) {
+		console.error("usage: node tests/record.mjs --record <group> <rows file> <where> <tasks from> <commit> <seconds>");
+		process.exit(1);
+	}
+	// where it ran: the stages workflow shows this record for each of its three machines
+	const os = { darwin: "macOS", linux: "Linux", win32: "Windows" }[process.platform] ?? process.platform;
+	const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+	const proof = fingerprint(group);
+	const fresh = readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line, order) => {
+		const [task, step, result, detail, kind, seconds] = line.split("|").map((x) => x.trim());
+		// seconds: how long this step took; runSeconds: how long the group's run took
+		return { task, where, step, result, detail, refusal: kind === "no", seconds: Number(seconds) || 0, proof, runSeconds: Number(took) || 0, from, commit, when, os, order };
+	});
+	const kept = rowsOf(group).filter((r) => r.where !== where).map(({ group: _, ...r }) => r);
+	writeFileSync(storeOf(group), JSON.stringify(fresh.concat(kept), null, 1) + "\n");
+	const bad = fresh.filter((r) => r.result === "FAIL").length;
+	console.log(`${group}: ${fresh.length - bad} passed, ${bad} failed, ${time(Number(took) || 0)}. Recorded in tests/${group}/results.json`);
+	process.exit(bad ? 1 : 0);
+}
+console.error("usage: node tests/record.mjs --record … | --page status | --page status-<group> | --coverage | --green | --proven <group> | --fingerprint");
+process.exit(1);

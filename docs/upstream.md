@@ -6,7 +6,7 @@ parent: How to help
 
 # Upstream issues: every workaround, and the issue it waits for
 
-`mise run upstream:status` shows the state of each issue that has one. When one closes, do what the row says, then `mise run test:full`. Seen with EmDash 1.2.0, Astro 7.3.5 and wrangler 4.147.0 unless a row says otherwise.
+`mise run upstream:status` shows the state of each issue that has one. When one closes, do what the row says, then `mise run test`. Seen with EmDash 1.2.0, Astro 7.3.5 and wrangler 4.147.0 unless a row says otherwise.
 
 | Issue | Problem | Workaround | When fixed |
 |---|---|---|---|

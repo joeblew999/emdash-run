@@ -1,17 +1,11 @@
-# The same test a developer runs, on macOS, Linux and Windows — at one of the two levels.
+# The same test a developer runs, on macOS, Linux and Windows: mise run test. On a runner no group
+# is skipped as proven, and the live group is not run (no deployed test site there).
 #
-# Started by hand, with the level chosen: quick (about 2 minutes a machine) or full. A release tag
-# runs the full one. Never started by a push: the test runs locally after every change, and
-# docs/reference/status.md is its record.
+# Started by hand, or by a release tag. Never by a push: the test runs locally after every change,
+# and docs/reference/status.md is its record.
 name: stages
 on:
   workflow_dispatch:
-    inputs:
-      level:
-        description: "quick = the everyday tasks; full = every task that needs no deployed site"
-        type: choice
-        options: [quick, full]
-        default: quick
   push:
     tags: ["v*"]
 concurrency:
@@ -43,13 +37,9 @@ jobs:
           # different mise could word them differently. Move this with min_version in mise.toml
           version: 2026.10.4
           install_args: node pnpm
-      - name: mise run test (quick)
-        if: github.event_name == 'workflow_dispatch' && inputs.level == 'quick'
+      - name: mise run test
         run: mise run test
-      - name: mise run test:full
-        if: github.event_name != 'workflow_dispatch' || inputs.level == 'full'
-        run: mise run test:full
-      # What this run recorded (tests/results.json), as the page docs/reference/status.md is written
+      # What this run recorded (tests/<group>/results.json), as the page docs/reference/status.md is written
       # from it. Not the committed page: a runner has no charter to rewrite it, so that one would
       # show the developer's last run, not this one.
       - name: what worked

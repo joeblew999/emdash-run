@@ -1,5 +1,5 @@
 // The edits the plugin tasks make to a site's astro.config.mjs, as functions from text to text.
-// No file is read or written here: scripts/plugin-sandbox.mjs does that, and tests/plugin-astro-config.test.mjs
+// No file is read or written here: scripts/plugin-sandbox.mjs does that, and tests/plugin/plugin-astro-config.test.mjs
 // runs these on fixture texts.
 //
 // Every edit

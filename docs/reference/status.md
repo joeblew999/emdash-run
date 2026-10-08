@@ -8,22 +8,18 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-**143 steps pass, 0 fail, 0 of 36 tasks have no test.**
+**139 steps pass, 0 fail, 0 of 36 tasks have no test.**
 
-The last run: `plugin`, at commit `ba9f8c6+uncommitted`, 2026-10-08 04:28 UTC, 4 min 31 s, on macOS. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
+The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the groups that are not proven; a run replaces everything recorded for its group. [How to help](../contributing.md) says more.
 
-Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).
+| Group | What it tests | Run it | State | Steps | Took | Last run | Commit |
+|---|---|---|---|---|---|---|---|
+| [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test:site` | proven | 25 | 2 min 33 s | 2026-10-08 04:37 UTC | `ada7563+uncommitted` |
+| [`signin`](status-signin.md) | the CLI and a browser window as an administrator of the built site | `mise run test:signin` | proven | 9 | 1 min 43 s | 2026-10-08 04:39 UTC | `ada7563+uncommitted` |
+| [`plugin`](status-plugin.md) | a plugin of your own, and plugins from EmDash's registry | `mise run test:plugin` | proven | 29 | 4 min 26 s | 2026-10-08 04:44 UTC | `ada7563+uncommitted` |
+| [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test:live` | changed since it passed | 21 |  | 2026-10-08 02:58 UTC | `5ccdf89+uncommitted` |
 
-## Proven, or changed since
-
-A group of steps is proven when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps in the test, the site. A proven group is not run again.
-
-| Group | State | Steps |
-|---|---|---|
-| `site` | changed since it last passed: run `mise run test -- site` | 12 |
-| `signin` | changed since it last passed: run `mise run test -- signin` | 3 |
-| `plugin` | proven | 29 |
-| `live` | no run recorded | 0 |
+On a Node site (`mise run test:node`, before a release): 55 of 55 steps pass, last run 2026-10-08 01:44 UTC.
 
 ## By task
 
@@ -40,7 +36,7 @@ A group of steps is proven when every step of it passed and nothing it depends o
 | `live:undo` |  |  | pass ×1 |  |
 | `model:sync` | pass ×1 | pass ×1 | pass ×1 |  |
 | `plugin` | pass ×1 | pass ×1 |  |  |
-| `plugin:add` | pass ×3 | pass ×2 |  |  |
+| `plugin:add` | pass ×1 | pass ×2 |  |  |
 | `plugin:check` | pass ×1 | pass ×1 |  |  |
 | `plugin:favourites` | pass ×3 | pass ×3 |  |  |
 | `plugin:install` | pass ×6 | pass ×3 |  |  |
@@ -50,7 +46,7 @@ A group of steps is proven when every step of it passed and nothing it depends o
 | `plugin:sandbox` | pass ×2 | pass ×2 |  |  |
 | `plugin:search` | pass ×1 | pass ×1 |  |  |
 | `plugin:update` | pass ×5 |  |  |  |
-| `plugin:works` | pass ×5 | pass ×4 |  |  |
+| `plugin:works` | pass ×4 | pass ×4 |  |  |
 | `signin:access` |  |  | pass ×4 |  |
 | `signin:open` | pass ×2 | pass ×2 | pass ×1 |  |
 | `signin:passkey` | pass ×1 | pass ×1 |  |  |
@@ -60,163 +56,8 @@ A group of steps is proven when every step of it passed and nothing it depends o
 | `site:delete` | pass ×3 | pass ×3 | pass ×1 |  |
 | `site:logs` | pass ×1 | pass ×1 |  |  |
 | `site:new` | pass ×2 | pass ×2 | pass ×1 |  |
-| `site:ports` | pass ×3 | pass ×2 |  |  |
+| `site:ports` | pass ×2 | pass ×2 |  |  |
 | `site:preview` | pass ×1 | pass ×1 |  |  |
 | `site:reset` | pass ×2 | pass ×2 |  |  |
 | `site:start` | pass ×4 | pass ×4 |  |  |
 | `site:stop` | pass ×1 | pass ×1 |  |  |
-
-## How long a run takes
-
-| Run | When | Steps recorded | Took |
-|---|---|---|---|
-| `plugin` | 2026-10-08 04:28 UTC | 34 | 4 min 31 s |
-| `quick` | 2026-10-08 04:13 UTC | 15 | 1 min 25 s |
-
-## Every step
-
-| Task | Where | Step | | Seconds | Run | Commit | When |
-|---|---|---|---|---|---|---|---|
-| `content:pull` | cloudflare | with no LIVE_URL says so | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `content:pull` | deployed | downloads the deployed site as a package | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `content:pull` | node | with no LIVE_URL says so | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash:update` | cloudflare | updates, type-checks and builds | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash:update` | node | updates, type-checks and builds | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash` | cloudflare | a quoted JSON argument arrives whole | PASS | 0 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `emdash` | cloudflare | whoami on the dev site | PASS | 1 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `emdash` | cloudflare | \-\-live with no LIVE_URL says so | PASS | 0 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `emdash` | cloudflare | \-\-preview writes to the built site | PASS | 1 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `emdash` | deployed | a site set to Cloudflare Access: the dev site starts and the CLI works on it | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `emdash` | deployed | \-\-live reads and writes the deployed site | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `emdash` | node | a quoted JSON argument arrives whole | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash` | node | whoami on the dev site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash` | node | \-\-live with no LIVE_URL says so | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `emdash` | node | \-\-preview writes to the built site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `live:backup` | deployed | the database bookmark and a package | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:check` | cloudflare | the deploy rehearses with no account | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `live:logs` | deployed | shows a request to the deployed site | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:preview` | deployed | a preview: an address of its own, the live site still answers | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:preview` | deployed | run again: the same preview, nothing new made | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:preview` | deployed | \-\-delete removes it; again: nothing to delete | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:ship` | deployed | deploys; the site answers with the change | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `live:undo` | deployed | puts the previous version back: the change is gone | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `model:sync` | cloudflare | records an added field in .emdash/ | PASS | 1 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `model:sync` | deployed | \-\-live records the deployed model | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `model:sync` | node | records an added field in .emdash/ | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:add` | cloudflare | a native plugin from npm: the package is added, its two lines are printed, the config is not touched | PASS | 8 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:add` | cloudflare | adds a package from npm, and its lines in the site's config | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:add` | cloudflare | run again: the config is not touched | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:add` | node | adds a package from npm, and its lines in the site's config | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:add` | node | run again: the config is not touched | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:check` | cloudflare | the plugin passes its checks | PASS | 9 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:check` | node | the plugin passes its checks | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:favourites` | cloudflare | installs the favourites in one go | PASS | 27 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:favourites` | cloudflare | run again: all already installed | PASS | 2 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:favourites` | cloudflare | PLUGINS in the project chooses the list | PASS | 5 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:favourites` | node | installs the favourites in one go | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:favourites` | node | run again: all already installed | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:favourites` | node | PLUGINS in the project chooses the list | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:install` | cloudflare | installs a registry plugin with no clicking, from a stopped site | PASS | 39 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | cloudflare | run again: it is already installed | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | cloudflare | a plugin that can change things or reach outside is not installed without a yes | PASS | 4 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | cloudflare | a release other than the one asked for is not installed | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | cloudflare | a plugin the registry does not have: says so and fails | PASS | 2 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | cloudflare | an older release, asked for by version, is the one installed | PASS | 4 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:install` | node | installs a registry plugin with no clicking, from a stopped site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:install` | node | run again: it is already installed | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:install` | node | a plugin the registry does not have: says so and fails | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:new` | cloudflare | scaffolds, tests, builds and adds a plugin — to the site's config too, by itself | PASS | 20 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:new` | cloudflare | run again: not scaffolded twice, still builds, the config is not touched | PASS | 14 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:new` | node | scaffolds, tests, builds and adds a plugin — to the site's config too, by itself | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:new` | node | run again: not scaffolded twice, still builds, the config is not touched | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:publish` | cloudflare | asks first, and stops with nobody to answer (a real publish is never run) | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:publish` | node | asks first, and stops with nobody to answer (a real publish is never run) | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:remove` | cloudflare | removes a registry plugin | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:remove` | cloudflare | run again: nothing to remove | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:remove` | node | removes a registry plugin | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:remove` | node | run again: nothing to remove | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:sandbox` | cloudflare | the site can run sandboxed plugins: the runner is in its config | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:sandbox` | cloudflare | run again: nothing changes | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:sandbox` | node | the site can run sandboxed plugins: the runner is in its config | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:sandbox` | node | run again: nothing changes | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:search` | cloudflare | finds plugins in the registry | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:search` | node | finds plugins in the registry | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:update` | cloudflare | a plugin that is not installed: says so and fails | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:update` | cloudflare | no release named: says which the site has and the registry's newest, and fails | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:update` | cloudflare | to the release named: prints what was granted and what each release declares; it asks for nothing more, so no yes is needed | PASS | 4 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:update` | cloudflare | run again: nothing to update | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:update` | cloudflare | an older release is refused | PASS | 3 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:works` | cloudflare | the registry plugin: every check passes | PASS | 57 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:works` | cloudflare | the plugin plugin:new made: its route answers from the sandbox | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:works` | cloudflare | a plugin the site does not have fails | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:works` | cloudflare | no name: every plugin in the site loads and answers — the favourites among them | PASS | 24 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin:works` | cloudflare | no name: every plugin in the site works — the favourites among them | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:works` | node | the registry plugin: every check passes | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:works` | node | the plugin plugin:new made: its route answers from the sandbox | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:works` | node | a plugin the site does not have fails | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin:works` | node | no name: every plugin in the site works — the favourites among them | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `plugin` | cloudflare | passes any command to the plugin CLI | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `plugin` | node | passes any command to the plugin CLI | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:access` | deployed | Cloudflare Access is in front of the admin | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:access` | deployed | uploaded media stays public; the team's domain is printed before any deploy | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:access` | deployed | run again: changes nothing | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:access` | deployed | a visitor reaches uploaded media and plugins' public routes without signing in | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:open` | cloudflare | opens a signed-in window (token) | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:open` | cloudflare | opens a signed-in window (passkey) | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:open` | deployed | \-\-live opens a signed-in window | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:open` | node | opens a signed-in window (token) | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:open` | node | opens a signed-in window (passkey) | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:passkey` | cloudflare | completes the EmDash wizard on a fresh database | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:passkey` | node | completes the EmDash wizard on a fresh database | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | cloudflare | the CLI is an administrator of the built site | PASS | 1 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `signin:token` | cloudflare | run again: still an administrator | PASS | 1 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `signin:token` | cloudflare | starts the built site when it is stopped | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | cloudflare | the saved token goes when the local database does | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | deployed | \-\-live: the CLI is an administrator of the deployed site | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:token` | deployed | \-\-live, run again: still an administrator | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:token` | deployed | LIVE_PREVIEW: the CLI is an administrator of the preview, in the preview's own database | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `signin:token` | node | the CLI is an administrator of the built site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | node | run again: still an administrator | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | node | starts the built site when it is stopped | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `signin:token` | node | the saved token goes when the local database does | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:admin` | cloudflare | a fresh built site, signed in, in one go | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:admin` | node | a fresh built site, signed in, in one go | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:check` | cloudflare | passes on a sound site | PASS | 18 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:check` | cloudflare | fails on a type error | PASS | 6 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:check` | node | passes on a sound site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:check` | node | fails on a type error | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:delete` | cloudflare | removes the site folder | PASS | 15 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `site:delete` | cloudflare | run again: nothing to delete | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `site:delete` | cloudflare | refuses with nobody to ask | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:delete` | deployed | removes the local site folder | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `site:delete` | node | refuses with nobody to ask | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:delete` | node | removes the site folder | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:delete` | node | run again: nothing to delete | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:logs` | cloudflare | shows the dev site log | PASS | 6 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:logs` | node | shows the dev site log | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:new` | cloudflare | run again: the site is left alone | PASS | 0 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:new` | cloudflare | makes the site | PASS |  | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:new` | deployed | makes the site that will be deployed | PASS |  | full | `5ccdf89+uncommitted` | 2026-10-08 02:58 UTC |
-| `site:new` | node | makes the site | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:new` | node | run again: the site is left alone | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:ports` | cloudflare | gives the project two ports of its own | PASS | 1 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `site:ports` | cloudflare | run again: it keeps them | PASS | 0 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `site:ports` | cloudflare | three sites at once, each on its own ports with only its own content | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:ports` | node | gives the project two ports of its own | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:ports` | node | run again: it keeps them | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:preview` | cloudflare | serves the built site; dev sign-in is off there | PASS | 7 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:preview` | node | serves the built site; dev sign-in is off there | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:reset` | cloudflare | empties the local content | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:reset` | cloudflare | refuses with nobody to ask | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:reset` | node | empties the local content | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:reset` | node | refuses with nobody to ask | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:start` | cloudflare | with no site, says so and stops | PASS |  | quick | `4b2bfce+uncommitted` | 2026-10-08 02:04 UTC |
-| `site:start` | cloudflare | starts the dev site; EmDash's welcome dialog is closed | PASS | 19 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:start` | cloudflare | run again: it is already running | PASS | 2 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:start` | cloudflare | the dev site answers; dev sign-in works | PASS | 0 | quick | `ba9f8c6` | 2026-10-08 04:13 UTC |
-| `site:start` | node | with no site, says so and stops | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:start` | node | starts the dev site; EmDash's welcome dialog is closed | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:start` | node | run again: it is already running | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:start` | node | the dev site answers; dev sign-in works | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |
-| `site:stop` | cloudflare | stops both sites; twice is fine | PASS | 10 | plugin | `ba9f8c6+uncommitted` | 2026-10-08 04:28 UTC |
-| `site:stop` | node | stops both sites; twice is fine | PASS |  | full | `201a653` | 2026-10-08 01:44 UTC |

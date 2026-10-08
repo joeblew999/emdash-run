@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { accessOf, reference } from "../scripts/plugin-api.mjs";
+import { accessOf, reference } from "../../scripts/plugin-api.mjs";
 
 const release = (declaredAccess) => ({ version: "1.0.0", release: { extensions: { "com.emdashcms.experimental.package.releaseExtension": { declaredAccess } } } });
 const more = (from, to) => accessOf(to).filter((a) => !accessOf(from).includes(a));
