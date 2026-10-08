@@ -54,6 +54,18 @@ run = "node tests/status.mjs --rebuild"
 description = "Turn on this repo's commit check: a commit that changes a task, the test or the README is refused until the test covers every task and the generated pages are rebuilt"
 run = "git config core.hooksPath .githooks"
 
+[tasks.setup]
+description = "Everything charter sets up for this repo, in one go: the docs site's config and writing rules, the issue forms, and (REMOTE) the labels on GitHub. Safe to run again. Then turns on the commit check"
+run = [{ task = "docs:setup" }, { task = "github:forms" }, { task = "github:labels" }, { task = "hooks" }]
+
+[tasks.upstream]
+description = "REMOTE (reads GitHub): the upstream issues this repo works around — every `Upstream:` tag in tasks.toml, admin/ and tests/ — and whether each is still open. A closed one: do what its tag says, and take the workaround out"
+run = "charter upstream"
+
+[tasks."github:forms"]
+description = "Write charter's issue forms and labels file into .github/ (feature, upstream, config, labels.tsv). bug.yml is this repo's own and is left alone; charter's workflows are for other kinds of repo and are not taken"
+run = "node -e \"const fs=require('fs'),os=require('os'),path=require('path'),cp=require('child_process');const t=fs.mkdtempSync(path.join(os.tmpdir(),'charter-'));cp.execFileSync('charter',['workflows','-into',t],{stdio:'ignore'});for(const f of ['ISSUE_TEMPLATE/feature.yml','ISSUE_TEMPLATE/upstream.yml','ISSUE_TEMPLATE/config.yml','labels.tsv'])fs.copyFileSync(path.join(t,'.github',f),path.join('.github',f));fs.rmSync(t,{recursive:true,force:true});console.log('issue forms and labels file written from charter')\""
+
 [tasks."docs:setup"]
 description = "Write the docs site's config (charter: the same for every repo of the owner's)"
 run = "charter docs"

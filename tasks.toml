@@ -304,6 +304,7 @@ description = "EmDash's dev server, started by Astro in the background — Astro
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
+# Upstream: emdash-cms/emdash#3995 (when fixed: this can be `emdash whoami`, the command made for it)
 ["step:up"]
 hide = true
 silent = "stdout"

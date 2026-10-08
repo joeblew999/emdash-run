@@ -103,6 +103,7 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
   # A config folder of its own. EmDash's CLI keeps every sign-in in ONE file, auth.json, which it
   # reads, changes and writes back with no lock: two `emdash login`s at once and one is lost
   # (seen 2026-10-07 — "Invalid or expired token" on one of three sites; docs/upstream.md).
+  # Upstream: emdash-cms/emdash#3996 (when fixed: the three sites can share one config folder again)
   export XDG_CONFIG_HOME=$WORK/config-$W; mkdir -p "$XDG_CONFIG_HOME"
   project "$WORK/$W" "$T"
   ok site:ports     "gives the project two ports of its own"  'mise run site:ports && test -n "$(port SITE_PORT)" && test -n "$(port PREVIEW_PORT)"'

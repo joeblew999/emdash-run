@@ -11,6 +11,8 @@ nav_order: 13
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
 mise run docs          rebuild every generated page (the tests and the commit check do it too)
+mise run setup         charter's set-up for this repo: docs site config, issue forms, labels, the commit check
+mise run upstream      the upstream bugs the code works around, and whether each is still open
 mise run hooks         once per clone: turns on the commit check
 ```
 

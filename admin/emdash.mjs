@@ -81,6 +81,7 @@ if (URL.canParse(url)) {
 	// for) has no /_emdash/api/auth/dev-bypass — EmDash leaves its own sign-in routes out — and that
 	// is the address the CLI signs in at on localhost: "Not authenticated". The setup route's dev
 	// sign-in is still there and hands out a token (?token=1): take that one, and keep it.
+	// Upstream: emdash-cms/emdash#3993 (when fixed: take this block out, and the `dev` tokens it saves)
 	if (!env.EMDASH_TOKEN || token?.dev) {
 		const { hostname, origin } = new URL(url);
 		if (["localhost", "127.0.0.1", "[::1]"].includes(hostname)) {
@@ -104,6 +105,7 @@ if (URL.canParse(url)) {
 	const access = read("access");
 	if (access && !inStore && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
 }
+// Upstream: emdash-cms/emdash#3994 (when fixed: take out option B here and option A in token.mjs)
 // OPTION B (being tried, 2026-10-07, alongside A): `whoami` with the token in the environment.
 // EmDash's `whoami` sends the token but not EMDASH_HEADERS, so behind Cloudflare Access it gets
 // the login page. Here the same question is asked with both — the request `whoami` itself makes,

@@ -3,17 +3,22 @@ title: Upstream bugs
 nav_order: 60
 ---
 
-# Reports for upstream — written, not sent
+# Reports for upstream
 
 Things in EmDash, its scaffolders and wrangler that behaved differently from their docs, or that a
-task here has to work around. Thirteen of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
-Windows) with EmDash 1.2.0, `@emdash-cms/plugin-cli` 0.13.3, `create-emdash@latest`, Astro 7.3.5,
-wrangler 4.147.0, Node 26, pnpm 12.
+task here has to work around. Each was run on macOS (and where said, in CI on Windows) with EmDash
+1.2.0, `@emdash-cms/plugin-cli` 0.13.3, `create-emdash@latest`, Astro 7.3.5, wrangler 4.147.0,
+Node 26, pnpm 12.
 
-**None of these has been sent.** Sending one is posting in public under the owner's name: the owner
-says which. Until then the workaround in the last line of each entry is what `tasks.toml` does.
+**Four are sent** (2026-10-08, to EmDash's tracker — each entry says so, with its issue). Their
+workarounds in the code carry an `Upstream:` tag, and `mise run upstream` (charter) lists them
+with the state of each issue: when one closes, the tag says what to take out. The rest are
+written and not sent: features go to EmDash's Discussions, not its tracker, and some need running
+again first.
 
 ## 1. `emdash whoami` exits 0 when no site is running
+
+**Sent 2026-10-08:** [emdash-cms/emdash#3995](https://github.com/emdash-cms/emdash/issues/3995). The workaround in the code carries an `Upstream:` tag; `charter upstream` says when it is fixed.
 
 - **Run:** stop the dev server, then `EMDASH_URL=http://localhost:4321 pnpm exec emdash whoami`.
 - **Got:** "Auth method: dev-bypass … Client will use dev bypass for localhost", exit 0.
@@ -103,6 +108,8 @@ says which. Until then the workaround in the last line of each entry is what `ta
 
 ## 10. `emdash whoami` does not send `EMDASH_HEADERS`
 
+**Sent 2026-10-08:** [emdash-cms/emdash#3994](https://github.com/emdash-cms/emdash/issues/3994). The workaround in the code carries an `Upstream:` tag; `charter upstream` says when it is fixed.
+
 - **Run:** a site behind Cloudflare Access; `EMDASH_TOKEN` and `EMDASH_HEADERS` (the Access service
   token) set; `emdash whoami --url <site>`.
 - **Got:** "Unexpected token '<', \"<!DOCTYPE \"… is not valid JSON" — Cloudflare's login page.
@@ -142,6 +149,8 @@ says which. Until then the workaround in the last line of each entry is what `ta
 
 ## 14. Two sign-ins at the same moment, and one is lost
 
+**Sent 2026-10-08:** [emdash-cms/emdash#3996](https://github.com/emdash-cms/emdash/issues/3996). The workaround in the code carries an `Upstream:` tag; `charter upstream` says when it is fixed.
+
 - **Run:** three sites side by side on one machine, each doing `emdash login` against its own built
   site (the full test, 2026-10-07).
 - **Got:** on one of the three, the next command: "Invalid or expired token". Every sign-in is kept
@@ -162,6 +171,8 @@ says which. Until then the workaround in the last line of each entry is what `ta
   (`POST /_emdash/api/auth/me`, `{"action":"dismissWelcome"}`) — `admin/welcome.mjs`.
 
 ## 16. With Cloudflare Access configured, the CLI cannot sign in to the dev site
+
+**Sent 2026-10-08:** [emdash-cms/emdash#3993](https://github.com/emdash-cms/emdash/issues/3993). The workaround in the code carries an `Upstream:` tag; `charter upstream` says when it is fixed.
 
 - **Run:** `auth: access({…})` in `astro.config.mjs`; `astro dev`; `emdash schema list`.
 - **Got:** "Not authenticated". `emdash whoami` says "Client will use dev bypass for localhost",
