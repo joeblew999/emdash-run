@@ -15,10 +15,9 @@ test("every task in tasks.toml has a step, and every step names a task", () => {
 	// (a task whose description starts "Internal:" is a part of others, tested with them)
 	const tasks = listed.filter((t) => t.source.endsWith("tasks.toml") && !t.description.startsWith("Internal:")).map((t) => t.name);
 	const stepped = new Set();
-	for (const group of readdirSync(here, { withFileTypes: true }).filter((d) => d.isDirectory())) {
-		let steps = "";
-		try { steps = readFileSync(join(here, group.name, "steps.mjs"), "utf8"); } catch {}
-		for (const m of steps.matchAll(/\b(?:step|refuses)\(\s*"([a-z:]+)"/g)) stepped.add(m[1]);
+	// a group's own steps, and the steps two groups share (tests/both)
+	for (const file of readdirSync(here, { recursive: true }).map(String).filter((f) => !f.includes("node_modules") && f.endsWith(".mjs") && (f.endsWith("steps.mjs") || f.startsWith("both")))) {
+		for (const m of readFileSync(join(here, file), "utf8").matchAll(/\b(?:step|refuses)\(\s*"([a-z:]+)"/g)) stepped.add(m[1]);
 	}
 	assert.deepEqual(tasks.filter((t) => !stepped.has(t)), [], "tasks with no step in tests/*/steps.mjs");
 	assert.deepEqual([...stepped].filter((t) => !tasks.includes(t)), [], "steps for tasks that are not in tasks.toml");

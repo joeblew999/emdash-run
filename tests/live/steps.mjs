@@ -9,6 +9,8 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { attempt, body, check, ci, cmd, env, exists, forSeconds, list, mise, ports, project, read, repo, says, saysAnyCase, sleep, status, until, write } from "../lib/site.mjs";
+import { registryClean, registrySteps } from "../both/registry.mjs";
+import { tokenSteps } from "../both/token.mjs";
 import { setup, step } from "../lib/step.mjs";
 
 const live = process.env.TEST_LIVE_URL;
@@ -37,7 +39,7 @@ process.on("exit", () => {
 });
 
 const stamp = `shipped-${Date.now()}`;
-const administrator = async (o = {}) => saysAnyCase(await mise(o, "emdash", "whoami", "--live"), "admin");
+const administrator = async (/** @type {{ env?: Record<string, string> }} */ o = {}) => saysAnyCase(await mise(o, "emdash", "whoami", "--live"), "admin");
 const preview = { env: { LIVE_PREVIEW: "test" } };
 let access = ""; // what signin:access printed the first time
 
@@ -72,7 +74,12 @@ step("emdash", "a site set to Cloudflare Access: the dev site starts and the CLI
 	await mise("site:stop");
 });
 
-// deploying
+// deploying — with the plugin sandbox set up, so that the deployed site can run registry plugins
+step("plugin:sandbox", "the site that will be deployed can run sandboxed plugins", async () => {
+	await mise("plugin:sandbox");
+	check(read("site/astro.config.mjs").includes("sandboxRunner"), "sandboxRunner in astro.config.mjs");
+	check(read("site/wrangler.jsonc").includes("worker_loaders"), "worker_loaders in wrangler.jsonc");
+});
 step("live:ship", "deploys; the site answers with the change", async () => {
 	write("site/src/pages/zz-shipped.astro", `<p>${stamp}</p>\n`);
 	await mise("live:ship");
@@ -82,19 +89,12 @@ step("signin:access", "run again: changes nothing", async () => {
 	says(await mise("signin:access"), "already");
 });
 
-// the CLI on the deployed site
-step("signin:token", "--live: the CLI is an administrator of the deployed site", async () => {
-	await mise("signin:token", "--live");
-	await administrator();
-});
-step("signin:token", "--live, run again: still an administrator", async () => {
-	await mise("signin:token", "--live");
-	await administrator();
-});
-step("emdash", "--live reads and writes the deployed site", async () => {
-	says(await mise("emdash", "schema", "list", "--live"), "slug");
-	await mise("emdash", "content", "create", "pages", "--live", "--slug", `test-${Date.now()}`, "--data", JSON.stringify({ title: "Made by the test" }));
-});
+// the CLI on the deployed site: the same steps the signin group runs on this machine
+tokenSteps({ live: true });
+
+// plugins on the deployed site: the same steps the plugin group runs on this machine
+step("plugin:install", "the deployed site: what a run stopped half way left installed is taken out first", () => registryClean({ live: true }).then(() => {}));
+registrySteps({ live: true });
 step("plugin:works", "--live: the deployed site is checked from outside; it says what it skips, and builds and restarts nothing", async () => {
 	const { out } = await attempt("plugin:works", "--live");
 	says(out, "skip builds");

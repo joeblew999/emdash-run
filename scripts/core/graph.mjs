@@ -10,7 +10,8 @@
  * @typedef {Record<string, string | boolean>} Flags
  * @typedef {import("./world.mjs").World} World
  * @typedef {import("./project.mjs").Project} Project
- * @typedef {{ world: World, project: Project, flags: Flags, args: string[], argv: string[], env: Record<string, string | undefined>, did: string[] }} Ctx
+ * @typedef {{ world: World, project: Project, flags: Flags, args: string[], argv: string[], env: Record<string, string | undefined>, did: string[], standsOn: boolean }} Ctx
+ *   standsOn: this state is being reached because another stands on it, not because it was asked for by name
  *   args: what the task was given that is not a flag; argv: everything it was given, untouched (for a task that passes it on)
  *   did: the states this run has had to reach so far — a state can ask whether one it stands on was just redone
  * @typedef {object} Node
@@ -41,16 +42,18 @@ export const plan = (graph, target, flags = {}) => {
 
 /**
  * Bring the site to a state: each node of the plan in order, skipping those already reached.
- * @param {Graph} graph @param {string} target @param {Omit<Ctx, "did" | "env" | "args" | "argv"> & Partial<Pick<Ctx, "env" | "args" | "argv">>} given @returns {Promise<{ did: string[], skipped: string[] }>}
+ * @param {Graph} graph @param {string} target @param {Omit<Ctx, "did" | "env" | "args" | "argv" | "standsOn"> & Partial<Pick<Ctx, "env" | "args" | "argv">>} given @param {boolean} [under] reached from inside another state's work
+ * @returns {Promise<{ did: string[], skipped: string[] }>}
  */
-export const reach = async (graph, target, given) => {
+export const reach = async (graph, target, given, under = false) => {
 	/** @type {string[]} */
 	const did = [];
 	const skipped = [];
 	/** @type {Ctx} */
-	const ctx = { env: {}, args: [], argv: [], ...given, did };
+	const ctx = { env: {}, args: [], argv: [], ...given, did, standsOn: true };
 	for (const name of plan(graph, target, ctx.flags)) {
 		const node = graph[name];
+		ctx.standsOn = under || name !== target;
 		ctx.world.at(name);
 		if (await node.done?.(ctx)) {
 			skipped.push(name);

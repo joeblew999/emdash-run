@@ -27,4 +27,9 @@ if (argv.includes("--unit")) process.exit(test("tests/**/*.test.mjs"));
 // other groups have nothing at that level
 if (level === "smoke" && group !== "site") process.exit(0);
 const pattern = level === "smoke" ? "site:(ports|start|stop)" : only;
-process.exit(test(...(pattern ? [`--test-name-pattern=${pattern}`] : []), `tests/${group}/steps.mjs`));
+const began = Date.now();
+const code = test(...(pattern ? [`--test-name-pattern=${pattern}`] : []), `tests/${group}/steps.mjs`);
+const took = Math.round((Date.now() - began) / 1000);
+// each step's time is on its line above; this is the group's
+console.log(`${group}, level ${level}: ${code === 0 ? "passed" : "FAILED"} in ${took >= 60 ? `${Math.floor(took / 60)} min ${took % 60} s` : `${took} s`}`);
+process.exit(code);

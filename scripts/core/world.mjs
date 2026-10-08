@@ -18,6 +18,7 @@ import { dirname, join } from "node:path";
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
+ * @property {(path: string) => string[]} list                the names in a folder; none when there is no such folder
  * @property {(path: string) => void} mkdir
  * @property {(path: string) => void} remove               a file or a folder and what is in it; nothing when there is none
  * @property {(path: string, text: string) => void} keep     write a file only this user can read, making its folder
@@ -62,6 +63,7 @@ export const realWorld = (env) => {
 		},
 		exists: existsSync,
 		read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : ""),
+		list: (path) => (existsSync(path) ? readdirSync(path) : []),
 		mkdir: (path) => void mkdirSync(path, { recursive: true }),
 		remove: (path) => rmSync(path, { recursive: true, force: true }),
 		keep: (path, text) => {

@@ -45,7 +45,7 @@ const main = async (argv) => {
 	if (!["site:new", "site:ports", "site:delete", "browser:check"].includes(target)) console.error(`-> site folder: ${project.site}`);
 	const base = { world, project, env: process.env };
 	// a state reached from inside another's work: the same graph, in this process
-	setReacher((name, flags = {}) => reach(graph, name, { ...base, flags, args: [], argv: [] }));
+	setReacher((name, flags = {}) => reach(graph, name, { ...base, flags, args: [], argv: [] }, true));
 	await reach(graph, target, { ...base, flags, args, argv: rest });
 };
 

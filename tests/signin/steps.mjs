@@ -4,12 +4,12 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { aSite, attempt, check, ci, cmd, env, list, mise, says, saysAnyCase } from "../lib/site.mjs";
+import { tokenSteps } from "../both/token.mjs";
+import { aSite, attempt, check, ci, cmd, env, mise, says } from "../lib/site.mjs";
 import { long, setup, step } from "../lib/step.mjs";
 
 setup(aSite);
 
-const administrator = async () => saysAnyCase(await mise("emdash", "whoami", "--preview"), "admin");
 const answers = async () => says(await mise("emdash", "schema", "list", "--preview"), "slug");
 const open = { env: { SIGNIN_OPEN_SECONDS: "3" } };
 const savedTokens = () => {
@@ -17,17 +17,8 @@ const savedTokens = () => {
 	return existsSync(dir) ? readdirSync(dir) : [];
 };
 
-// a token
-step("signin:token", "builds and starts the site; the CLI is an administrator of it", async () => {
-	await mise("signin:token");
-	await administrator();
-});
-step("signin:token", "run again: still an administrator", async () => {
-	await mise("signin:token");
-	await administrator();
-});
-step("emdash", "--preview writes to the built site", () =>
-	mise("emdash", "content", "create", "pages", "--preview", "--slug", "built", "--data", JSON.stringify({ title: "On the built site" })));
+// a token: the same steps the live group runs on the deployed site
+tokenSteps({ live: false });
 
 long(() => {
 	step("signin:token", "starts the built site when it is stopped", async () => {

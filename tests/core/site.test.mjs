@@ -76,3 +76,13 @@ test("site:stop: both sites, and only this site's own sandbox process", { skip: 
 	assert.deepEqual(fake.ran, ["pnpm exec astro dev stop", "pnpm exec astro preview stop"]);
 	assert.deepEqual(fake.killed, [11]);
 });
+
+test("site:status only looks: it says each state and the task that reaches it, and runs nothing", async () => {
+	const fake = fakeWorld({ files: { ...aSite, "/p/site/node_modules": "" }, answers: () => ({ status: 0 }) });
+	await reach(site, "site:status", { world: fake.world, project, flags: {} });
+	assert.deepEqual(fake.ran, []);
+	assert.ok(fake.said.includes("yes  a site"));
+	assert.ok(fake.said.includes("yes  its packages"));
+	assert.ok(fake.said.includes("no   the dev site running   — to get there: mise run site:start"));
+	assert.ok(fake.said.includes("no   this machine signed in to the built site   — to get there: mise run signin:token"));
+});

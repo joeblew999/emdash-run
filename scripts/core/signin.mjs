@@ -61,6 +61,16 @@ export const signin = {
 	"signin:token": {
 		// this machine's built site, running — or, with --live, the deployed one, answering
 		needs: (flags) => (flags.live ? ["live:answers"] : ["site:built-running"]),
+		// Already so when the token this machine saved for the site is still accepted — but only for a
+		// task that stands on being signed in: asked for by name, signin:token makes a new one.
+		done: async ({ world, project, flags, standsOn }) => {
+			if (!standsOn) return false;
+			const url = flags.live ? deployedAddress(project.live) : `http://localhost:${project.builtPort}`;
+			const file = join(world.config, "emdash-run", "tokens", `${savedName(url, project.site)}.json`);
+			if (!world.exists(file)) return false;
+			const saved = JSON.parse(world.read(file));
+			return (await world.ask(`${new URL(url).origin}/_emdash/api/auth/me`, { headers: { Authorization: `Bearer ${saved.token}` }, seconds: 20 })).status === 200;
+		},
 		work: async (ctx) => {
 			const { world, project, flags, env } = ctx;
 			const live = !!flags.live;

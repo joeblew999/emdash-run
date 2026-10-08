@@ -29,6 +29,14 @@ run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:new {{ usage.t
 description = "Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:ports"
 
+["site:status"]
+description = "Where this site is, state by state: is there a site, are its packages in, is the dev site running, is it built from what is here now, is the built site running, is this machine signed in, does the deployed site answer — and for each that is not so, the task that gets it there. It only looks: nothing is started, built or changed"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:status"
+
+[plan]
+description = "What a task would do, in order, and do nothing: every state it stands on, then the task. mise run plan -- signin:token, mise run plan -- signin:token --live"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plan"
+
 ["site:start"]
 description = "Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:start"

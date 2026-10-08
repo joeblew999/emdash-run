@@ -213,7 +213,8 @@ export async function main(argv) {
 				console.log(problems.length ? `FAIL admin page: ${path} — ${problems.join("; ")}` : `ok   admin page: ${path} loads with no console error${answer ? `; the plugin answered ${answer.status()}` : ""} — it shows "${shown.slice(0, 80)}"`);
 			}
 			await browser.close().catch(() => {});
-			throw new Exit(bad ? 1 : 0);
+			exit = bad ? 1 : 0;
+			throw new Exit(exit);
 		}
 		if (show && savedToken && !existsSync(keyFile)) {
 			// A window for a person, on a site signin:token set up: there is no passkey, so it uses the token.
@@ -230,6 +231,7 @@ export async function main(argv) {
 				if (process.env.SIGNIN_OPEN_SECONDS) setTimeout(r, Number(process.env.SIGNIN_OPEN_SECONDS) * 1000);
 			});
 			await browser.close().catch(() => {});
+			exit = 0; // what `finally` below ends the task with
 			throw new Exit(0);
 		}
 		await page.goto(`${origin}/_emdash/admin`);
@@ -263,6 +265,7 @@ export async function main(argv) {
 				if (process.env.SIGNIN_OPEN_SECONDS) setTimeout(r, Number(process.env.SIGNIN_OPEN_SECONDS) * 1000);
 			});
 			await browser.close().catch(() => {});
+			exit = 0; // what `finally` below ends the task with
 			throw new Exit(0);
 		}
 		if (page.url().includes("/setup")) {

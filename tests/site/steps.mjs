@@ -26,6 +26,19 @@ step("site:new", "run again: the site is left alone", async () => {
 	says(await mise("site:new"), "already a site");
 });
 
+// where it is, and what a task would do: both only look
+step("site:status", "before anything is started: a site, its packages, and what is not so with the task that gets it there", async () => {
+	const out = await mise("site:status");
+	says(out, "yes  a site");
+	says(out, "no   the dev site running   — to get there: mise run site:start");
+});
+step("plan", "prints the states a task stands on, in order, and starts nothing", async () => {
+	const out = await mise("plan", "signin:token");
+	check(out.indexOf("site:built") < out.indexOf("site:built-running") && out.indexOf("site:built-running") < out.indexOf("signin:token"), "site:built, then site:built-running, then signin:token");
+	says(await mise("plan", "signin:token", "--live"), "live:answers");
+	check((await status(`${devSite()}/`, { seconds: 3 })) === 0, "nothing started");
+});
+
 // the dev site
 step("site:start", "starts the dev site; EmDash's welcome dialog is closed", async () => {
 	says(await mise("site:start"), "welcome dialog is closed");

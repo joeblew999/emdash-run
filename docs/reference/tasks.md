@@ -16,6 +16,8 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 |---|---|
 | [`site:new`](#sitenew) | Make a new site. Template: mise run site:new \-\- node:blog (default cloudflare:blog). A site that is already there is left alone |
 | [`site:ports`](#siteports) | Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once |
+| [`site:status`](#sitestatus) | Where this site is, state by state: is there a site, are its packages in, is the dev site running, is it built from what is here now, is the built site running, is this machine signed in, does the deployed site answer — and for each that is not so, the task that gets it there. It only looks: nothing is started, built or changed |
+| [`plan`](#plan) | What a task would do, in order, and do nothing: every state it stands on, then the task. mise run plan \-\- signin:token, mise run plan \-\- signin:token \-\-live |
 | [`site:start`](#sitestart) | Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you |
 | [`site:stop`](#sitestop) | Stop the dev site and the built site |
 | [`site:logs`](#sitelogs) | Follow the dev site's log |
@@ -69,6 +71,18 @@ Make a new site. Template: mise run site:new -- node:blog (default cloudflare:bl
 - **Usage:** `site:ports`
 
 Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once
+
+### `site:status`
+
+- **Usage:** `site:status`
+
+Where this site is, state by state: is there a site, are its packages in, is the dev site running, is it built from what is here now, is the built site running, is this machine signed in, does the deployed site answer — and for each that is not so, the task that gets it there. It only looks: nothing is started, built or changed
+
+### `plan`
+
+- **Usage:** `plan`
+
+What a task would do, in order, and do nothing: every state it stands on, then the task. mise run plan -- signin:token, mise run plan -- signin:token --live
 
 ### `site:start`
 

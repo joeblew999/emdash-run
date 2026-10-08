@@ -44,6 +44,7 @@ export const fakeWorld = (given = {}) => {
 		mint: () => ({ raw: "ec_pat_RAW", hash: "HASH", ids: ["ID1", "ID2"], now: "2026-01-01T00:00:00.000Z" }),
 		exists: (path) => path.replaceAll("\\", "/") in files,
 		read: (path) => files[path.replaceAll("\\", "/")] ?? "",
+		list: (path) => Object.keys(files).filter((f) => f.startsWith(`${path.replaceAll("\\", "/")}/`)).map((f) => f.slice(path.length + 1).split("/")[0]),
 		sleep: async () => {},
 		alone: (_name, fn) => fn(),
 		kill: (pid) => void killed.push(pid),

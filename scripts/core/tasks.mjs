@@ -57,6 +57,9 @@ const address = ({ project, flags }) => (flags.live ? project.live || "LIVE_URL-
 const devAddress = (/** @type {Ctx} */ { project }) => `http://localhost:${project.devPort}`;
 /** What the plugin jobs are given: the site, and whether it is the deployed one. @param {Ctx} ctx @param {string} what @param {string[]} [before] */
 const pluginArgs = (ctx, what, before = []) => [what, ...before, address(ctx), ctx.project.site, ...(ctx.flags.live ? ["--deployed"] : []), ...ctx.args];
+// What a task on registry plugins stands on: on this machine, the site able to run sandboxed
+// plugins, built, running, and this machine signed in to it; with --live, the deployed site answering.
+const pluginNeeds = (/** @type {import("./graph.mjs").Flags} */ flags) => (flags.live ? ["live:answers"] : ["plugin:sandbox", "signin:token"]);
 const stamp = () => new Date().toISOString().replace("T", " ").slice(0, 19);
 /** The deployed site as one EmDash package, in the site's backups/ folder. @param {Ctx} ctx */
 const pack = async (ctx) => {
@@ -193,11 +196,11 @@ export const tasks = {
 	"plugin:search": { needs: () => ["site:exists"], work: (ctx) => pnpm(ctx, ...PLUGIN_CLI, "search", ...ctx.args) },
 	plugin: { needs: () => ["site:exists"], work: (ctx) => pnpm(ctx, ...PLUGIN_CLI, ...ctx.argv) },
 	"plugin:sandbox": { needs: () => ["site:exists"], work: (ctx) => job(pluginJob, ["sandbox", ctx.project.site]) },
-	"plugin:install": { needs: () => ["site:exists"], work: (ctx) => job(pluginJob, pluginArgs(ctx, "install", ctx.flags.yes ? ["--yes"] : [])) },
-	"plugin:update": { needs: () => ["site:exists"], work: (ctx) => job(pluginJob, pluginArgs(ctx, "update", ctx.flags.yes ? ["--yes"] : [])) },
-	"plugin:remove": { needs: () => ["site:exists"], work: (ctx) => job(pluginJob, pluginArgs(ctx, "remove")) },
+	"plugin:install": { needs: pluginNeeds, work: (ctx) => job(pluginJob, pluginArgs(ctx, "install", ctx.flags.yes ? ["--yes"] : [])) },
+	"plugin:update": { needs: pluginNeeds, work: (ctx) => job(pluginJob, pluginArgs(ctx, "update", ctx.flags.yes ? ["--yes"] : [])) },
+	"plugin:remove": { needs: pluginNeeds, work: (ctx) => job(pluginJob, pluginArgs(ctx, "remove")) },
 	"plugin:favourites": {
-		needs: () => ["site:exists"],
+		needs: pluginNeeds,
 		work: (ctx) => job(pluginJob, pluginArgs({ ...ctx, args: (ctx.env.PLUGINS || FAVOURITES).split(/\s+/).filter(Boolean) }, "install", ctx.flags.yes ? ["--yes"] : [])),
 	},
 	"plugin:works": { needs: () => ["site:exists", "tools:browser"], work: (ctx) => job(pluginJob, pluginArgs(ctx, "works", ctx.flags.fresh ? ["--fresh"] : [])) },

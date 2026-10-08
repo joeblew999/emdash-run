@@ -118,6 +118,27 @@ export const site = {
 			world.say(closed >= 200 && closed < 300 ? "welcome: EmDash's welcome dialog is closed for the dev user" : "welcome: could not close EmDash's welcome dialog — close it once in the admin");
 		},
 	},
+	// The task site:status: where the site is, state by state — and only looking. Each line is a
+	// state the other tasks reach; `done` is the same question they ask before doing anything.
+	"site:status": {
+		work: async (ctx) => {
+			const { world, project } = ctx;
+			const tokens = join(world.config, "emdash-run", "tokens");
+			/** @type {[string, boolean | Promise<boolean>, string][]} */
+			const states = [
+				["a site", world.exists(join(project.site, "package.json")), "mise run site:new"],
+				["its packages", world.exists(join(project.site, "node_modules")), "mise run site:start"],
+				["its key", /^EMDASH_ENCRYPTION_KEY=./m.test(world.read(join(project.site, ".env"))), "mise run site:start"],
+				["the dev site running", answers(ctx, project.dev), "mise run site:start"],
+				["built, from what is here now", !!(await site["site:built"].done?.(ctx)), "mise run site:preview"],
+				["the built site running", answers(ctx, project.built), "mise run site:preview"],
+				["this machine signed in to the built site", world.exists(tokens) && world.list(tokens).some((f) => f.startsWith(`localhost_${project.builtPort}_`)), "mise run signin:token"],
+				...(project.live ? /** @type {[string, Promise<boolean>, string][]} */ ([["the deployed site answering", world.ask(project.live, { seconds: 15 }).then((a) => a.status !== 0), "mise run live:ship"]]) : []),
+			];
+			for (const [what, is, how] of states) world.say(`${(await is) ? "yes" : "no "}  ${what}${(await is) ? "" : `   — to get there: ${how}`}`);
+			if (!project.live) world.say("     (no deployed site is named: LIVE_URL in the [env] block of mise.toml)");
+		},
+	},
 	// The task site:stop: both sites stopped, and a Node site's sandbox process with them. EmDash
 	// starts that process (workerd) through a launcher and stops the launcher, not workerd itself,
 	// which then outlives the site and keeps its port. This stops exactly that: a workerd run from
