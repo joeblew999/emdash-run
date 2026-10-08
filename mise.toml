@@ -13,6 +13,10 @@
 #   [task_config]
 #   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag>"]
 
+# The mise that writes docs/tasks.md here and on CI (.github/workflows/stages.yml pins the same).
+# For THIS repo only: a project that includes tasks.toml needs no particular mise.
+min_version = "2026.10.4"
+
 [settings]
 experimental = true # task includes from a git repo
 
