@@ -7,7 +7,7 @@
 // "set up" options, and the token's SHA-256 hash, written to the site's D1 database with wrangler.
 // A DEV-SITE TOOL: whoever can write to the database can do this, and that is the point.
 //
-//   node token.mjs <site address> <site folder> --local | --remote
+//   node signin-token.mjs <site address> <site folder> --local | --remote
 //
 // The token is saved in ~/.config/emdash-run/tokens/<host>.json, readable by this user only.
 import { execFileSync } from "node:child_process";
@@ -20,10 +20,10 @@ import { dirname, join, resolve } from "node:path";
 const args = process.argv.slice(2);
 const where = args.includes("--remote") ? "--remote" : "--local";
 let [url, siteDir] = args.filter((a) => !a.startsWith("--"));
-// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
-if (args.includes("--remote")) url = (await import("./site.mjs")).deployedAddress(url);
+// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (wrangler-config.mjs)
+if (args.includes("--remote")) url = (await import("./wrangler-config.mjs")).deployedAddress(url);
 if (!url || !URL.canParse(url) || !siteDir) {
-	console.error("usage: node token.mjs <site address> <site folder> --local | --remote");
+	console.error("usage: node signin-token.mjs <site address> <site folder> --local | --remote");
 	process.exit(1);
 }
 const { host, origin } = new URL(url);
@@ -109,7 +109,7 @@ const sql = [
 const cloudflare = ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
 // A preview (mise run live:preview) has a database of its own, named in the `previews` block —
 // the binding DB is the live site's. The address says which one this is.
-const { previewOf } = await import("./site.mjs");
+const { previewOf } = await import("./wrangler-config.mjs");
 const preview = where === "--remote" ? previewOf(url, siteDir) : null;
 if (preview && !preview.database) {
 	console.error(`token: ${host} is a preview of this Worker, but wrangler.jsonc has no "previews" block naming its database. Run: mise run live:preview`);
@@ -178,11 +178,11 @@ if (where === "--remote") {
 	stored = true;
 	writeFileSync(file, JSON.stringify({ url: origin, token: raw, stored }), { mode: 0o600 });
 }
-// EmDash's welcome dialog, closed for this user the way its own button does it (welcome.mjs)
+// EmDash's welcome dialog, closed for this user the way its own button does it (site-welcome.mjs)
 {
 	const accessFile = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "access", `${preview ? preview.liveHost : host}.json`);
 	const pass = existsSync(accessFile) ? JSON.parse(readFileSync(accessFile, "utf8")) : null;
-	const { dismissWelcome } = await import("./welcome.mjs");
+	const { dismissWelcome } = await import("./site-welcome.mjs");
 	await dismissWelcome(origin, raw, pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {});
 }
 console.log(`token: ${process.env.ADMIN_EMAIL ? "the address in ADMIN_EMAIL" : email} is an administrator of ${origin}, and its API token is saved on this machine${stored ? " — and in EmDash's own sign-in store" : ""}`);

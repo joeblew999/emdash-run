@@ -10,13 +10,13 @@
 //      Cloudflare now, since otherwise that waits for the next live:ship.
 //   3. `wrangler preview`, with the site's secrets (.env).
 //
-//   node preview.mjs <site folder> [name] [--delete]
+//   node live-preview.mjs <site folder> [name] [--delete]
 //
 // The name defaults to the git branch. Run again: the same preview, updated.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseJsonc, wranglerConfig, wranglerFile } from "./site.mjs";
+import { parseJsonc, wranglerConfig, wranglerFile } from "./wrangler-config.mjs";
 
 const args = process.argv.slice(2);
 const remove = args.includes("--delete");

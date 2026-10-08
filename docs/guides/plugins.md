@@ -56,6 +56,6 @@ The tasks edit only the top level of the one `emdash({ … })` call, and change 
 - On Cloudflare, deploying a site with the sandbox on needs the Workers Paid plan.
 - `plugin:works` says a plugin loads and answers: it shows a route that wants a POST only as existing, and does not fire hooks.
 - A plugin runs with the permissions you agree to at install. `plugin:install` shows them all; hold a plugin to a release with `@<version>`, because a newer one may ask for more. `plugin:update` shows the difference before it moves one.
-- `plugin:update` has been run only between releases that ask for the same: no plugin in the registry has a release that asks for more than the one before it, so the `--yes` it then needs is tested on made-up releases only (`tests/plugin-access.test.mjs`).
+- `plugin:update` has been run only between releases that ask for the same: no plugin in the registry has a release that asks for more than the one before it, so the `--yes` it then needs is tested on made-up releases only (`tests/plugin-permissions.test.mjs`).
 - On a Node site, `plugin:install`, `plugin:update` and `plugin:remove` restart the built site ([Upstream issues](../upstream.md)).
 - `plugin:publish` asks first, and needs a registry login of your own.

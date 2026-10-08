@@ -6,7 +6,7 @@ parent: "Reference"
 
 # What works: every task, and what the last test run showed
 
-Written by `charter docs` from what `node tests/status.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
+Written by `charter docs` from what `node tests/record.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
 **133 steps pass, 0 fail, 1 of 36 tasks have no test.**
 

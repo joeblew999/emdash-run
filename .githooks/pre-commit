@@ -5,7 +5,7 @@
 #   3. docs/ passes charter's lint: front matter, dead links, tasks and paths that do not exist
 # charter is in this repo's [tools]; where it is not installed, 2 and 3 are skipped.
 git diff --cached --quiet -- tasks.toml tests docs README.md AGENTS.md charter.toml && exit 0
-node tests/status.mjs --coverage >/dev/null || exit 1
+node tests/record.mjs --coverage >/dev/null || exit 1
 command -v charter >/dev/null 2>&1 || exit 0
 charter docs -check >/dev/null || { echo "pre-commit: a generated page or the docs site's config is stale. Run  mise run docs:setup  and add what it changes."; exit 1; }
 charter docs-lint >/dev/null || { charter docs-lint; echo "pre-commit: charter's docs lint found the problems above."; exit 1; }

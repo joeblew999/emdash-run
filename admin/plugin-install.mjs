@@ -15,8 +15,8 @@
 // agreement, it refuses a release that asks for more (CAPABILITY_ESCALATION and the like, with the
 // difference) and otherwise updates there and then. So before anything is sent, the two releases
 // are read from the registry's aggregator and compared; the site's own refusal is the second gate.
-import { accessOf, agreed, client, declared, fail, lookUp, ready, reference, releaseOf, restartNode, said, siteAddress, whereIs } from "./plugin-client.mjs";
-import { sandbox } from "./plugin-site.mjs";
+import { accessOf, agreed, client, declared, fail, lookUp, ready, reference, releaseOf, restartNode, said, siteAddress, whereIs } from "./plugin-api.mjs";
+import { sandbox } from "./plugin-sandbox.mjs";
 
 export const install = async (args, flags) => {
 	const [given, siteDir, ...refs] = args;

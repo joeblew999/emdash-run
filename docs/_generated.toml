@@ -6,4 +6,4 @@ run = "charter docs-tasks -only tasks.toml"
 
 [[generated]]
 page = "reference/status.md"
-run = "node tests/status.mjs --page status"
+run = "node tests/record.mjs --page status"

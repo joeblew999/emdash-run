@@ -12,8 +12,8 @@
 # HOW IT IS BUILT: visible tasks are named <what>:<verb>. `step:*` tasks are hidden: each is ONE
 # command — EmDash's, Astro's, wrangler's or pnpm's — written once and reused. Where no command
 # exists a step is one line of `node -e` (a check, a message), and the scripts in admin/ cover the
-# gaps no command closes: token.mjs, access.mjs, first-admin.mjs (the only Playwright), emdash.mjs,
-# again.mjs, plugins.mjs.
+# gaps no command closes: signin-token.mjs, signin-access.mjs, signin-browser.mjs (the only Playwright), emdash.mjs,
+# site.mjs, plugin.mjs.
 # After any change here or in admin/:  mise run test   (in the emdash-run repo).
 #
 # THIS FILE, IN ORDER: the tasks you run, group by group — then, at the end, every hidden step they
@@ -29,22 +29,22 @@ arg "[template]" help="<platform>:<template>" {
   choices "cloudflare:blog" "cloudflare:starter" "cloudflare:marketing" "cloudflare:portfolio" "node:blog" "node:starter" "node:marketing" "node:portfolio"
 }
 '''
-run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" new \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %}"]
+run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" new \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.template %}{{ usage.template }}{% else %}{{ env.TEMPLATE | default(value='cloudflare:blog') }}{% endif %}"]
 
 ["site:ports"]
 description = "Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once"
 dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" ports \"{{config_root}}\""
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" ports \"{{config_root}}\""
 
 ["site:start"]
 description = "Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you"
-run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }, "node \"{{ env.MISE_TASK_DIR }}/admin/welcome.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }}"]
+run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }, "node \"{{ env.MISE_TASK_DIR }}/admin/site-welcome.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }}"]
 
 ["site:stop"]
 description = "Stop the dev site and the built site"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop", "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" leftover \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
+run = ["pnpm exec astro dev stop", "pnpm exec astro preview stop", "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" leftover \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
 
 ["site:logs"]
 description = "Follow the dev site's log"
@@ -68,7 +68,7 @@ run = [{ task = "step:there" }, { task = "site:stop" }, { task = "step:forget" }
 ["site:delete"]
 description = "Delete the site folder. Asks first. No site is nothing to delete"
 confirm = "Delete the site folder and everything in it, including the local database?"
-run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" delete \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
+run = [{ task = "step:own-folder" }, "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" delete \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""]
 
 # ═══ THE ADMIN AND THE REPO ══════════════════════════════════════════════════════════════════
 
@@ -101,12 +101,12 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
 run = [
   { task = "site:stop" },
-  "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" plugin \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }} {{ env.PLUGIN_PUBLISHER | default(value='') }} \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }}",
+  "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" plugin \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }} {{ env.PLUGIN_PUBLISHER | default(value='') }} \"{{ env.PLUGIN_AUTHOR | default(value='') }}\" {{ env.PLUGIN_SECURITY_EMAIL | default(value='') }}",
   "pnpm --dir plugins/{{ usage.name }} install",
   "pnpm --dir plugins/{{ usage.name }} run test",
   "pnpm --dir plugins/{{ usage.name }} run build",
   "pnpm add file:./plugins/{{ usage.name }}",
-  "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" config \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }}",
+  "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" config \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }}",
 ]
 
 ["plugin:check"]
@@ -128,7 +128,7 @@ description = "Add a plugin from npm: the package, and for a sandboxed plugin (o
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
-run = [{ task = "site:stop" }, "pnpm add {{ usage.package }}", "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" config \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.package }}"]
+run = [{ task = "site:stop" }, "pnpm add {{ usage.package }}", "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" config \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.package }}"]
 
 ["plugin:search"]
 description = "Search EmDash's plugin registry. mise run plugin:search -- forms"
@@ -141,7 +141,7 @@ run = "pnpm dlx @emdash-cms/plugin-cli@latest search {{ usage.words }}"
 description = "Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc; on a Node site its two packages, and workerd's install script allowed in pnpm-workspace.yaml, so the sandbox process stops when EmDash stops it. Stops the site when it changes packages. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes"
 depends = ["step:there"]
 dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" sandbox \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" sandbox \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 ["plugin:install"]
 description = "Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>, or <publisher>/<slug>@<version> for that release and no other, newest or not. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with --live, needs --yes"
@@ -152,7 +152,7 @@ arg "<plugin>" help="As plugin:search prints it, e.g. @netdollar.dev/forms; with
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
 flag "--yes" help="Agree to what the plugin asks for. Needed when it can change things or reach outside the site, and always with --live"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:update"]
 description = "Update an installed registry plugin to a release you name: mise run plugin:update -- <publisher>/<slug>@<version>. Before anything is sent it prints what the installed release was granted (what plugin:install recorded on this machine, in ~/.config/emdash-run/plugins/) and what each of the two releases declares in the registry, and says what the new one asks for that the installed one did not. A release that asks for more, and any update with --live, needs --yes; the site then checks the release against the plugin it is running, and that too stops without --yes. This machine's built site, starting it and signing in if needed; --live is the deployed one. An older release is refused by EmDash: remove the plugin and install that release. Run again: nothing to update"
@@ -163,7 +163,7 @@ arg "<plugin>" help="The plugin and the release to move it to, e.g. @meekmedia.b
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
 flag "--yes" help="Agree to what the new release asks for. Needed when it asks for more than the installed one, and always with --live"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" update {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" update {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:remove"]
 description = "Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove -- <publisher>/<slug>. Add --live for deployed"
@@ -173,7 +173,7 @@ usage = '''
 arg "<plugin>" help="As plugin:search prints it, e.g. @netdollar.dev/forms" var=#true
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" remove {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" remove {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:favourites"]
 description = "Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs --yes: some can change content or reach outside the site. Add --live for deployed"
@@ -183,7 +183,7 @@ usage = '''
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
 flag "--yes" help="Agree to what each plugin asks for. Needed: some of the favourites can change content or reach outside the site"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ env.PLUGINS | default(value='@netdollar.dev/forms@0.1.0 @nookeshk.bsky.social/seo-suite@0.2.0 @meekmedia.bsky.social/link-guardian@0.1.0 @peachfinthemes.com/instant-indexer@1.0.0 @agenticecom.net/media-alt-text-queue@0.2.1') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ env.PLUGINS | default(value='@netdollar.dev/forms@0.1.0 @nookeshk.bsky.social/seo-suite@0.2.0 @meekmedia.bsky.social/link-guardian@0.1.0 @peachfinthemes.com/instant-indexer@1.0.0 @agenticecom.net/media-alt-text-queue@0.2.1') }}"
 
 ["plugin:works"]
 description = "Does a plugin load and answer? One line per check. This machine's built site: it builds, starts, lists the plugin as active, its routes answer a GET (those open to visitors asked with no sign-in), its admin pages load in Chrome with the saved sign-in, the log and the sandbox show no refusal; it restarts the built site, and signs in if needed. With --live, the deployed site (or its preview, with LIVE_PREVIEW): it answers a visitor, lists the plugin as active, its routes answer, its admin pages load — and it says which checks it skipped and why: nothing is built, restarted or signed in to, and the log is not read. Sign in first: mise run signin:token -- --live. It does not try a form's submit or fire a hook. mise run plugin:works -- <name>. No name: every plugin"
@@ -193,7 +193,7 @@ usage = '''
 arg "[name]" help="<publisher>/<slug> of a registry plugin, or the name of one in plugins/. None: every plugin the site has" var=#true
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build: only the checks that can be made from outside"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" works {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}{% if usage.name %} {{ usage.name | join(sep=' ') }}{% endif %}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugin.mjs\" works {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}{% if usage.name %} {{ usage.name | join(sep=' ') }}{% endif %}"
 
 ["plugin:publish"]
 description = "Publish a plugin to EmDash's registry. Asks first"
@@ -233,12 +233,12 @@ run = "pnpm dlx @emdash-cms/plugin-cli@latest"
 #   (a login provider — GitHub, Google — is one more way and needs no task: two lines in the
 #   site's astro.config.mjs and an OAuth app)
 #
-# Playwright is only admin/first-admin.mjs. Nothing else here uses a browser.
+# Playwright is only admin/signin-browser.mjs. Nothing else here uses a browser.
 # signin:token and signin:passkey each want a site nobody has set up yet: they are alternatives.
 # To try the other one, start from an empty database (site:reset locally).
 #
 # Once signed in, `mise run emdash -- <command> --url <site>` adds what this machine saved for
-# that site. `whoami` behind Cloudflare Access is handled two ways (see admin/token.mjs, option A,
+# that site. `whoami` behind Cloudflare Access is handled two ways (see admin/signin-token.mjs, option A,
 # and admin/emdash.mjs, option B).
 
 ["signin:token"]
@@ -246,27 +246,27 @@ description = "Sign a machine in with no browser — the everyday way, for the C
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/signin-token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
 
 ["signin:access"]
 description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"
 depends = ["step:live", "step:there"]
 dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/signin-access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 ["signin:passkey"]
 description = "Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add -- --live for the deployed site. Needs Playwright + Chrome"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/signin-browser.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
 
 ["signin:open"]
 description = "Open a browser window already signed in to the admin, for you to look around. Add -- --live for the deployed site. Needs Playwright + Chrome"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/signin-browser.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" --show{% if usage.live %} --deployed{% endif %}"
 
 # ═══ THE DEPLOYED SITE ═══════════════════════════════════════════════════════════════════════
 
@@ -284,7 +284,7 @@ flag "--delete" help="Delete this preview instead (its database, bucket and sess
 run = [
   { task = "step:account" },
   "{% if usage.delete %}node -e \"console.log('-> deleting a preview: nothing is built')\"{% else %}mise run live:check{% endif %}",
-  "node \"{{ env.MISE_TASK_DIR }}/admin/preview.mjs\" \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }}{% if usage.delete %} --delete{% endif %}",
+  "node \"{{ env.MISE_TASK_DIR }}/admin/live-preview.mjs\" \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {{ usage.name }}{% if usage.delete %} --delete{% endif %}",
 ]
 
 ["live:undo"]
@@ -368,7 +368,7 @@ run = "pnpm exec astro build"
 hide = true
 description = "Remove the local database and uploads, so the next start makes them again from the seed — and the token signin:token saved for that database, which dies with it. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = ["node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\"", "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" forget ."]
+run = ["node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\"", "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" forget ."]
 
 ["step:key"]
 hide = true
@@ -380,7 +380,7 @@ run = "pnpm exec emdash secrets generate --write .env"
 hide = true
 description = "EmDash's dev server, started by Astro in the background — Astro keeps its pid, log and lock. Started while no other site on the machine is starting, and its turn lasts until it has answered one request (two minutes at most): two Cloudflare sites starting in the same moment take the same debugger port, and one answers 500"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" one-at-a-time pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
 # Upstream: emdash-cms/emdash#3995 (when fixed: this can be `emdash whoami`, the command made for it)
 ["step:up"]
@@ -470,7 +470,7 @@ run = "pnpm exec wrangler deployments status"
 hide = true
 description = "The deployed site answers with the new version: an address nothing has cached, asked again for up to a minute. A plain request, because none of EmDash's commands can ask a deployed site anything before someone has signed in to it. A new site with no content yet is told how to put it in"
 dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" live-up \"{{ env.LIVE_URL | default(value='') }}\""
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" live-up \"{{ env.LIVE_URL | default(value='') }}\""
 
 ["step:mark"]
 hide = true
@@ -490,7 +490,7 @@ hide = true
 description = "The production build, served by Astro in the background — the same build a deploy ships, so it signs in the way a deployed site does: no dev sign-in. EMDASH_SITE_URL tells EmDash its address: a Node build otherwise takes itself to be on port 4321 and refuses a passkey made anywhere else. Started one site at a time, as the dev site is"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 env = { EMDASH_SITE_URL = "http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}" }
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" one-at-a-time pnpm exec astro preview --background --host 127.0.0.1 --port {{ env.PREVIEW_PORT | default(value='4322') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/site.mjs\" one-at-a-time pnpm exec astro preview --background --host 127.0.0.1 --port {{ env.PREVIEW_PORT | default(value='4322') }}"
 
 ["step:preview-up"]
 hide = true
@@ -500,7 +500,7 @@ run = "curl --fail --silent --show-error --head --max-time 180 http://localhost:
 
 ["step:admin-tools"]
 hide = true
-description = "Playwright, the one package admin/first-admin.mjs needs (signin:passkey, signin:open), installed beside the script — in mise's copy of emdash-run, not in the project"
+description = "Playwright, the one package admin/signin-browser.mjs needs (signin:passkey, signin:open), installed beside the script — in mise's copy of emdash-run, not in the project"
 dir = "{{config_root}}"
 run = "pnpm --dir \"{{ env.MISE_TASK_DIR }}/admin\" install --silent"
 
@@ -508,7 +508,7 @@ run = "pnpm --dir \"{{ env.MISE_TASK_DIR }}/admin\" install --silent"
 hide = true
 description = "EmDash's setup wizard and CLI sign-in, done by a script in a headless browser with a simulated passkey. Refuses any address that is not this machine"
 dir = "{{config_root}}"
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/signin-browser.mjs\" http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 ["step:own-folder"]
 hide = true

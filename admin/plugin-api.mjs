@@ -1,5 +1,5 @@
 // What the registry plugin tasks share: how they speak to a site's admin, and to EmDash's registry.
-// One client, used by admin/plugin-registry.mjs (install, remove, update) and admin/plugin-works.mjs.
+// One client, used by admin/plugin-install.mjs (install, remove, update) and admin/plugin-works.mjs.
 //
 // A request to the site carries what this machine saved for it: the API token of `signin:token`
 // and, behind Cloudflare Access, the pass of `signin:access`. Neither is ever printed.
@@ -11,7 +11,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { deployedAddress, isCloudflare, previewOf } from "./site.mjs";
+import { deployedAddress, isCloudflare, previewOf } from "./wrangler-config.mjs";
 
 export const win = process.platform === "win32";
 export const projectDir = process.env.MISE_PROJECT_ROOT || process.env.MISE_CONFIG_ROOT || process.cwd();
@@ -22,7 +22,7 @@ export const fail = (message) => {
 // One of the project's own tasks.
 export const mise = (task, quiet = true) => spawnSync("mise", ["run", ...task], { cwd: projectDir, stdio: quiet ? ["ignore", "ignore", "inherit"] : "inherit", shell: win });
 // The site a task acts on: this machine's built site, or — `deployed` — the one at LIVE_URL, which
-// with LIVE_PREVIEW=<name> is that preview of it (site.mjs).
+// with LIVE_PREVIEW=<name> is that preview of it (wrangler-config.mjs).
 export const siteAddress = (given, deployed) => {
 	const url = deployed ? deployedAddress(given) : given;
 	if (!url || !URL.canParse(url)) fail("This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");

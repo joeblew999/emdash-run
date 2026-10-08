@@ -54,4 +54,4 @@ jobs:
       # show the developer's last run, not this one.
       - name: what worked
         if: always()
-        run: node tests/status.mjs --page status >> "$GITHUB_STEP_SUMMARY"
+        run: node tests/record.mjs --page status >> "$GITHUB_STEP_SUMMARY"

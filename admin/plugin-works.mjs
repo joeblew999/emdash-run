@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { client, declared, fail, lookUp, mise, projectDir, reference, said, siteAddress, whereIs, win } from "./plugin-client.mjs";
-import { sitePackages } from "./plugin-site.mjs";
+import { client, declared, fail, lookUp, mise, projectDir, reference, said, siteAddress, whereIs, win } from "./plugin-api.mjs";
+import { sitePackages } from "./plugin-sandbox.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -120,7 +120,7 @@ export const works = async (args, flags) => {
 		const pages = inAdmin?.adminPages ?? [];
 		if (!pages.length) line("skip", `${n} admin page`, "it has none");
 		else {
-			const r = spawnSync(process.execPath, [join(here, "first-admin.mjs"), url, siteDir, ...(deployed ? ["--deployed"] : []), ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
+			const r = spawnSync(process.execPath, [join(here, "signin-browser.mjs"), url, siteDir, ...(deployed ? ["--deployed"] : []), ...(inAdmin.sandboxed && inAdmin.adminMode === "blocks" ? ["--blocks"] : []), ...pages.map((p) => `--check=/_emdash/admin/plugins/${plugin.id}${p.path}`)], { cwd: projectDir, encoding: "utf8" });
 			const lines = r.stdout.trim().split("\n").filter((l) => /^(ok|FAIL)/.test(l));
 			for (const l of lines) console.log(l.replace("admin page:", `${n} admin page:`));
 			failed += lines.filter((l) => l.startsWith("FAIL")).length;

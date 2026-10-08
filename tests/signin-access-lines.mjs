@@ -1,5 +1,5 @@
 // The test's stand-in for a developer: puts the lines `mise run signin:access` printed into the
-// site's astro.config.mjs and wrangler.jsonc.   node tests/access-config.mjs <printed output> <site folder>
+// site's astro.config.mjs and wrangler.jsonc.   node tests/signin-access-lines.mjs <printed output> <site folder>
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 

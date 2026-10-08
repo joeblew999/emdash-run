@@ -24,7 +24,7 @@ Running a test turns on the commit check in your clone.
 
 | Task | What it does |
 |---|---|
-| `mise run test` | Quick: the everyday tasks. One group only, in full: `mise run test -- plugins` (the groups: `site`, `signin`, `plugins`, `deployed`). Up to one task: `mise run test -- signin:token` |
+| `mise run test` | Quick: the everyday tasks. One group only, in full: `mise run test -- plugin` (the groups, named as the tasks are: `site`, `signin`, `plugin`, `live`). Up to one task: `mise run test -- signin:token` |
 | `mise run test:full` | Every task, on a copy of `site/`; then a site made from nothing and deleted; then the deployed-site tasks |
 | `mise run test:node` | Every local task on a Node site made from EmDash's template: before a release |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
@@ -60,23 +60,23 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | Path | What it is |
 |---|---|
 | `tasks.toml` | Every task. Visible ones are `<what>:<verb>`; hidden `step:*` ones are single commands, reused. A task's `description` is its documentation |
-| `admin/token.mjs` | `signin:token`: an administrator and an API token written to the site's database |
-| `admin/access.mjs` | `signin:access`: Cloudflare Access through Cloudflare's API |
-| `admin/first-admin.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
-| `admin/preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
-| `admin/plugins.mjs` | What the `plugin:*` tasks run: it only says which job was asked for. Each job is one of the next five files |
-| `admin/plugin-config-edit.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
-| `admin/plugin-site.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
-| `admin/plugin-client.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
-| `admin/plugin-registry.mjs` | `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`: the requests the admin's buttons make |
+| `admin/signin-token.mjs` | `signin:token`: an administrator and an API token written to the site's database |
+| `admin/signin-access.mjs` | `signin:access`: Cloudflare Access through Cloudflare's API |
+| `admin/signin-browser.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
+| `admin/live-preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
+| `admin/plugin.mjs` | What the `plugin:*` tasks run: it only says which job was asked for. Each job is one of the next five files |
+| `admin/plugin-astro-config.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
+| `admin/plugin-sandbox.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
+| `admin/plugin-api.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
+| `admin/plugin-install.mjs` | `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`: the requests the admin's buttons make |
 | `admin/plugin-works.mjs` | `plugin:works`: one line per check, on this machine's built site or, from outside, on the deployed one |
 | `admin/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
-| `admin/again.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
-| `admin/site.mjs`, `admin/welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
-| `tests/replay.sh` | The test. Each step names the task it tests |
-| `tests/config-edit.test.mjs`, `tests/fixtures/config/` | The unit tests of the edits to `astro.config.mjs`, on fixture configs. `mise run check` runs them |
-| `tests/plugin-access.test.mjs` | The unit tests of how `plugin:update` compares what two releases declare |
-| `tests/status.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
+| `admin/site.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
+| `admin/wrangler-config.mjs`, `admin/site-welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
+| `tests/tasks.sh` | The test. Each step names the task it tests |
+| `tests/plugin-astro-config.test.mjs`, `tests/fixtures/astro-config/` | The unit tests of the edits to `astro.config.mjs`, on fixture configs. `mise run check` runs them |
+| `tests/plugin-permissions.test.mjs` | The unit tests of how `plugin:update` compares what two releases declare |
+| `tests/record.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own three tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
 | `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test` or `test:full` on three OSes, by hand or on a tag. `repo-check.yml`: charter's, `mise run repo:ci` on every push |

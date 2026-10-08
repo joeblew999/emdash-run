@@ -2,7 +2,7 @@
 // made with the Cloudflare login wrangler already holds. Wrangler has no command for Access, so
 // this calls Cloudflare's API; it is the second and last script in this repo.
 //
-//   node access.mjs <site address> <site folder>
+//   node signin-access.mjs <site address> <site folder>
 //
 // It makes sure of three things, and changes nothing that is already there:
 //   1. an Access application over <host>/_emdash — the admin and the API; the public site stays public

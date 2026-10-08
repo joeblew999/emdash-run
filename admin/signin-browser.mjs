@@ -6,7 +6,7 @@
 // EmDash's CLI is signed in to it — with no person. Playwright drives EmDash's own pages, and
 // Chrome's built-in simulated passkey device stands in for Touch ID.
 //
-//   node first-admin.mjs <site address> <site folder> [--deployed] [--show] [--check=<admin path>… [--blocks]]
+//   node signin-browser.mjs <site address> <site folder> [--deployed] [--show] [--check=<admin path>… [--blocks]]
 //
 // Tasks: signin:passkey, signin:open (--show); each with --live adds --deployed. plugin:works (--check).
 //
@@ -38,11 +38,11 @@ const deployed = args.includes("--deployed");
 const show = args.includes("--show");
 const checks = args.filter((a) => a.startsWith("--check=")).map((a) => a.slice(8));
 const [given, siteDir] = args.filter((a) => !a.startsWith("--"));
-// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
-const { deployedAddress, previewOf } = await import("./site.mjs");
+// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (wrangler-config.mjs)
+const { deployedAddress, previewOf } = await import("./wrangler-config.mjs");
 const url = deployed && given ? deployedAddress(given) : given;
 if (!url || !siteDir) {
-	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
+	console.error("usage: node signin-browser.mjs <site address> <site folder> [--deployed]");
 	process.exit(1);
 }
 if (!URL.canParse(url)) {

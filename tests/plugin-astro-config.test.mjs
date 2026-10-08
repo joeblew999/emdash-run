@@ -1,5 +1,5 @@
-// The edits the plugin tasks make to astro.config.mjs (admin/plugin-config-edit.mjs), on the
-// fixture configs in tests/fixtures/config/. Run by `mise run check`:  node --test "tests/*.test.mjs"
+// The edits the plugin tasks make to astro.config.mjs (admin/plugin-astro-config.mjs), on the
+// fixture configs in tests/fixtures/astro-config/. Run by `mise run check`:  node --test "tests/*.test.mjs"
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -8,10 +8,10 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { CannotEdit, addImport, addOption, addSandboxedPlugin, addToList, emdashCall, hasOption, imports, setSandboxRunner } from "../admin/plugin-config-edit.mjs";
+import { CannotEdit, addImport, addOption, addSandboxedPlugin, addToList, emdashCall, hasOption, imports, setSandboxRunner } from "../admin/plugin-astro-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixture = (name) => readFileSync(join(here, "fixtures", "config", `${name}.mjs`), "utf8");
+const fixture = (name) => readFileSync(join(here, "fixtures", "astro-config", `${name}.mjs`), "utf8");
 const tmp = mkdtempSync(join(tmpdir(), "config-edit-"));
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
 let n = 0;

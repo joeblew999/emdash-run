@@ -2,10 +2,10 @@
 // charter writes that page (docs/_generated.toml names the command below) and checks it is fresh;
 // this prints it. The tasks page is charter's own: `charter docs-tasks`, from tasks.toml.
 //
-//   node tests/status.mjs <rows file> <tier> <tasks from> <commit> <took seconds>   record a run
-//   node tests/status.mjs --page status     print docs/reference/status.md, from its # title on
-//   node tests/status.mjs --coverage        every task has a test step, every step a task
-//   node tests/status.mjs --green           the record has no failure and no untested task
+//   node tests/record.mjs <rows file> <tier> <tasks from> <commit> <took seconds>   record a run
+//   node tests/record.mjs --page status     print docs/reference/status.md, from its # title on
+//   node tests/record.mjs --coverage        every task has a test step, every step a task
+//   node tests/record.mjs --green           the record has no failure and no untested task
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
 const store = join(repo, "tests", "results.json");
-const script = readFileSync(join(repo, "tests", "replay.sh"), "utf8");
+const script = readFileSync(join(repo, "tests", "tasks.sh"), "utf8");
 // Every task a project gets: those in tasks.toml (this repo's own — test, docs:…, repo — are not
 // counted), without the hidden steps.
 const tasks = () =>
@@ -31,13 +31,13 @@ if (mode === "--coverage") {
 	const have = new Set(stepped(script));
 	const untested = names.filter((n) => !have.has(n));
 	const unknown = [...have].filter((n) => !names.includes(n));
-	if (untested.length) console.error(`tasks.toml has tasks with no step in tests/replay.sh: ${untested.join(", ")}`);
-	if (unknown.length) console.error(`tests/replay.sh has steps for tasks that are not in tasks.toml: ${unknown.join(", ")}`);
+	if (untested.length) console.error(`tasks.toml has tasks with no step in tests/tasks.sh: ${untested.join(", ")}`);
+	if (unknown.length) console.error(`tests/tasks.sh has steps for tasks that are not in tasks.toml: ${unknown.join(", ")}`);
 	if (untested.length || unknown.length) {
 		console.error("Change the test with the task. Nothing was run.");
 		process.exit(1);
 	}
-	console.log(`provenance: all ${names.length} tasks in tasks.toml have a step in tests/replay.sh, and every step names a real task`);
+	console.log(`provenance: all ${names.length} tasks in tasks.toml have a step in tests/tasks.sh, and every step names a real task`);
 	process.exit(0);
 }
 
@@ -107,7 +107,7 @@ if (mode === "--page" && arg === "status") {
 // truth for each kind of site it ran on: older steps for those go, so a renamed step cannot linger.
 const [rowsFile, tier, from, commit, took] = process.argv.slice(2);
 if (!rowsFile || !existsSync(rowsFile)) {
-	console.error("usage: node tests/status.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page status | --coverage");
+	console.error("usage: node tests/record.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page status | --coverage");
 	process.exit(1);
 }
 // where it ran: the stages workflow shows this record for each of its three machines

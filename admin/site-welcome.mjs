@@ -3,7 +3,7 @@
 // while /_emdash/api/auth/me says isFirstLogin). Closing it is one call to EmDash's own API, the
 // one the dialog's button makes — so the tasks that make a user make that call for them.
 //
-//   node welcome.mjs <dev site address>     the dev site's own user (mise run site:start)
+//   node site-welcome.mjs <dev site address>     the dev site's own user (mise run site:start)
 //
 // Never fails a task: a dialog is not worth one.
 export async function dismissWelcome(origin, token, headers = {}) {
@@ -21,7 +21,7 @@ export async function dismissWelcome(origin, token, headers = {}) {
 	}
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]}`).href || process.argv[1]?.endsWith("welcome.mjs")) {
+if (import.meta.url === new URL(`file://${process.argv[1]}`).href || process.argv[1]?.endsWith("site-welcome.mjs")) {
 	const origin = new URL(process.argv[2]).origin;
 	let done = false;
 	try {

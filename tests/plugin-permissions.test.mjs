@@ -1,8 +1,8 @@
-// What a release declares, as plugin:update prints and compares it (accessOf in admin/plugin-client.mjs).
+// What a release declares, as plugin:update prints and compares it (accessOf in admin/plugin-api.mjs).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { accessOf, reference } from "../admin/plugin-client.mjs";
+import { accessOf, reference } from "../admin/plugin-api.mjs";
 
 const release = (declaredAccess) => ({ version: "1.0.0", release: { extensions: { "com.emdashcms.experimental.package.releaseExtension": { declaredAccess } } } });
 const more = (from, to) => accessOf(to).filter((a) => !accessOf(from).includes(a));

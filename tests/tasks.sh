@@ -5,13 +5,13 @@
 # against the TASK it tests, in tests/results.json, and docs/reference/status.md is written from that.
 #
 # THE LEVELS:
-#   bash tests/replay.sh quick     the everyday tasks — about a minute
-#   bash tests/replay.sh full      every task: the plugins, a site made from nothing and deleted,
+#   bash tests/tasks.sh quick     the everyday tasks — about a minute
+#   bash tests/tasks.sh full      every task: the plugins, a site made from nothing and deleted,
 #                                  then the tasks that act on a deployed site
-#   bash tests/replay.sh node      every local task on a Node site made from EmDash's template:
+#   bash tests/tasks.sh node      every local task on a Node site made from EmDash's template:
 #                                  before a release, not every day
-# ONE GROUP: the steps are in four groups — site, signin, plugins, deployed. Name one and only its
-# steps run (with what they need: the site, its ports, the clean-up): `mise run test -- plugins`.
+# ONE GROUP: the steps are in four groups, named as the tasks are — site, signin, plugin, live. Name one and only its
+# steps run (with what they need: the site, its ports, the clean-up): `mise run test -- plugin`.
 # ONE TEST AT A TIME on a machine: a second one waits for the first. Two at once were handed the
 # same ports and spoiled each other.
 # ONE TASK: add its name — `mise run test -- signin:token` — and the test runs the steps up to and
@@ -33,7 +33,7 @@ TIER=${1:-quick}
 ONLY=${2:-}
 # a group's name where a task's would be: only that group's steps, at the full level
 WANT=""
-case $ONLY in site|signin|plugins|deployed) WANT=$ONLY; ONLY=""; [ "$TIER" = node ] || TIER=full;; esac
+case $ONLY in site|signin|plugin|live) WANT=$ONLY; ONLY=""; [ "$TIER" = node ] || TIER=full;; esac
 G=always
 group() { G=$1; }
 FROM=${TEST_FROM:-local}
@@ -60,10 +60,10 @@ else
 fi
 
 # Provenance first: every task in tasks.toml has a step below, and every step names a real task.
-(cd "$REPO" && node tests/status.mjs --coverage) || exit 1
+(cd "$REPO" && node tests/record.mjs --coverage) || exit 1
 # The scripts' own functions first: a third of a second, and a broken edit of a site's config fails
 # here, not ten minutes in.
-(cd "$REPO" && node --test tests/config-edit.test.mjs tests/plugin-access.test.mjs > "$WORK/unit.txt" 2>&1) || { tail -30 "$WORK/unit.txt"; echo "The unit tests fail (node --test tests/*.test.mjs). Nothing was run."; exit 1; }
+(cd "$REPO" && node --test tests/plugin-astro-config.test.mjs tests/plugin-permissions.test.mjs > "$WORK/unit.txt" 2>&1) || { tail -30 "$WORK/unit.txt"; echo "The unit tests fail (node --test tests/*.test.mjs). Nothing was run."; exit 1; }
 echo "unit tests: $(sed -n 's/^. pass //p' "$WORK/unit.txt") pass"
 # One test at a time on this machine. What must be undone when the test ends is added to CLEANUP.
 CLEANUP=""; trap 'eval "$CLEANUP"' EXIT
@@ -188,7 +188,7 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
     # a window needs a screen: not on a CI runner
     group signin
     [ -n "${CI:-}" ] || ok signin:open "opens a signed-in window (token)" 'SIGNIN_OPEN_SECONDS=3 says "open: signed in" mise run signin:open'
-    group plugins
+    group plugin
     ok plugin:sandbox "the site can run sandboxed plugins: the runner is in its config" 'mise run plugin:sandbox && grep -q "sandboxRunner" site/astro.config.mjs'
     ok plugin:sandbox "run again: nothing changes"            'before=$(cat site/astro.config.mjs site/package.json); says "nothing changed" mise run plugin:sandbox && test "$before" = "$(cat site/astro.config.mjs site/package.json)"'
     ok plugin:new   "scaffolds, tests, builds and adds a plugin — to the site's config too, by itself" 'mise run plugin:new -- save-log && test -f site/plugins/save-log/dist/plugin.mjs && grep -q save-log site/package.json && grep -q "sandboxed: \[saveLog\]" site/astro.config.mjs'
@@ -246,7 +246,7 @@ local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make
 }
 
 live_site() {
-  group deployed
+  group live
   W=deployed; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
   if [ -z "${TEST_LIVE_URL:-}" ] || [ -z "${TEST_LIVE_NAME:-}" ]; then
     echo "SKIP deployed: no TEST_LIVE_URL / TEST_LIVE_NAME here. docs/reference/status.md keeps what the deployed tasks last showed."; return
@@ -270,7 +270,7 @@ live_site() {
   mise run site:ports >/dev/null 2>&1
   ok site:new       "makes the site that will be deployed"    'mise run site:new && sed -i.bak "s/\"my-emdash-site\"/\"$TEST_LIVE_NAME\"/g; s/\"my-emdash-media\"/\"$TEST_LIVE_NAME-media\"/" site/wrangler.jsonc && mise run site:start && mise run site:stop'
   ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access > access.txt 2>&1; grep -q "access: application" access.txt'
-  ok signin:access  "uploaded media stays public; the team's domain is printed before any deploy" 'grep -q "uploaded media" access.txt && grep -q "teamDomain: \"[a-z0-9-]*.cloudflareaccess.com\"" access.txt && node "$REPO/tests/access-config.mjs" access.txt site'
+  ok signin:access  "uploaded media stays public; the team's domain is printed before any deploy" 'grep -q "uploaded media" access.txt && grep -q "teamDomain: \"[a-z0-9-]*.cloudflareaccess.com\"" access.txt && node "$REPO/tests/signin-access-lines.mjs" access.txt site'
   ok emdash         "a site set to Cloudflare Access: the dev site starts and the CLI works on it" 'grep -q "auth: access(" site/astro.config.mjs && grep -q CF_ACCESS_AUDIENCE site/wrangler.jsonc && mise run site:start && says slug mise run emdash -- schema list && mise run site:stop'
   STAMP=shipped-$(date +%s)
   ok live:ship      "deploys; the site answers with the change" "printf '<p>%s</p>\n' $STAMP > site/src/pages/zz-shipped.astro && mise run live:ship && (for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS \$LIVE_URL_/zz-shipped 2>/dev/null | grep -q $STAMP && exit 0; sleep 3; done; exit 1)"
@@ -296,9 +296,9 @@ live_site() {
 
 START=$(date +%s)
 case $TIER in
-  full)  # (TEST_ONLY=deployed runs just the last part, as `-- deployed` does)
-         [ "$WANT" = deployed ] || [ "${TEST_ONLY:-}" = deployed ] || local_site site
-         if [ -z "$WANT" ] || [ "$WANT" = deployed ]; then LIVE_URL_=${TEST_LIVE_URL:-} live_site; fi ;;
+  full)  # (TEST_ONLY=deployed runs just the last part, as `-- live` does)
+         [ "$WANT" = live ] || [ "${TEST_ONLY:-}" = deployed ] || local_site site
+         if [ -z "$WANT" ] || [ "$WANT" = live ]; then LIVE_URL_=${TEST_LIVE_URL:-} live_site; fi ;;
   node)  local_site node:starter ;;
   *)     local_site site ;;
 esac
@@ -306,8 +306,8 @@ cat "$WORK"/rows-*.txt > "$WORK/rows.txt"
 cd "$REPO"
 # plain `node`: it is on the PATH inside a mise task, and `mise x --` would install every tool in
 # mise.toml first — on a CI runner that meant charter, and GitHub refused the download
-node tests/status.mjs "$WORK/rows.txt" "$( if [ -n "$WANT" ]; then echo "$WANT"; elif [ "$TIER" = node ]; then echo full; else echo "$TIER"; fi )" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
-  "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/replay.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
+node tests/record.mjs "$WORK/rows.txt" "$( if [ -n "$WANT" ]; then echo "$WANT"; elif [ "$TIER" = node ]; then echo full; else echo "$TIER"; fi )" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
+  "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/tasks.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
 code=$?
 # The pages written from what was just recorded (docs/_generated.toml): charter writes them. It is
 # one of this repo's tools on a developer's machine (the test's clean environment has no PATH to

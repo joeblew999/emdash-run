@@ -1,6 +1,6 @@
 // What the plugin tasks do to the SITE'S FILES — its astro.config.mjs, wrangler.jsonc and packages —
 // and to a sandbox process a stopped site left behind. Nothing here speaks to a running site.
-// The edits to astro.config.mjs themselves are admin/plugin-config-edit.mjs.
+// The edits to astro.config.mjs themselves are admin/plugin-astro-config.mjs.
 //
 // A registry plugin always runs in the sandbox, so the site needs a sandbox runner (EmDash docs:
 // deployment/plugin-sandbox). `sandbox` makes the edits those docs give, and changes nothing when
@@ -12,9 +12,9 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { fail, mise, win } from "./plugin-client.mjs";
-import { CannotEdit, addSandboxedPlugin, imports, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-config-edit.mjs";
-import { isCloudflare, parseJsonc, wranglerFile } from "./site.mjs";
+import { fail, mise, win } from "./plugin-api.mjs";
+import { CannotEdit, addSandboxedPlugin, imports, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-astro-config.mjs";
+import { isCloudflare, parseJsonc, wranglerFile } from "./wrangler-config.mjs";
 
 const configFile = (siteDir) => ["astro.config.mjs", "astro.config.ts", "astro.config.js"].map((f) => join(siteDir, f)).find(existsSync);
 export const sitePackages = (siteDir) => {
@@ -22,7 +22,7 @@ export const sitePackages = (siteDir) => {
 	return { ...p.dependencies, ...p.devDependencies };
 };
 
-// The edits themselves are admin/plugin-config-edit.mjs: text in, text out, inside emdash({ … })
+// The edits themselves are admin/plugin-astro-config.mjs: text in, text out, inside emdash({ … })
 // only. A config of a shape they cannot edit safely is left as it is, and the lines to add by hand
 // are printed.
 const edited = (file, before, change, byHand) => {

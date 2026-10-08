@@ -1,6 +1,6 @@
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
-import { mine } from "./plugins.mjs";
+import { mine } from "./plugin.mjs";
 
 export default defineConfig({
 	integrations: [
