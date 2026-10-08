@@ -42,7 +42,7 @@ EmDash, Astro and wrangler have good command lines, and these tasks run them. Wh
 
 The other tasks (`site:start`, `site:check`, `live:ship` and the like) are those tools' own commands in the order they have to run, each safe to run again: a convenience, and the states the tasks above stand on. `node scripts/core/cli.mjs plan <task>` prints what any task will do.
 
-**Known to work:** every task has test steps: [![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml). On Windows only the basics are proven so far.
+**Known to work:** every task has test steps, and [what the last run showed](docs/reference/tests.md), step by step with times, is in the docs. On three operating systems: [![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml). On Windows only the basics are proven so far.
 
 ## What is in this repository
 

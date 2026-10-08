@@ -28,6 +28,7 @@ Don't edit these: change what they are written from.
 | Page or file | Written by | From |
 |---|---|---|
 | [Tasks](reference/tasks.md), [The tasks for working on this repo](reference/dev-tasks.md) | `mise run docs:setup` (`charter docs-tasks`) | each task's `description`, arguments and flags in `tasks.toml`, in the order they are written there |
+| [What the tests showed](reference/tests.md) | `mise run docs:setup` | `tests/<group>/last-run.txt`, which Node's test runner writes when a group is run |
 | `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md), [How this repo is kept](repo.md) and `repo/` | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
 | `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv`, `.github/workflows/repo-check.yml`, `renovate.json` | `mise run repo` | charter |
 
@@ -48,6 +49,7 @@ Every file charter writes says so in its first lines. `charter files` lists them
 | [Several sites at once](guides/several-sites.md) | Two projects, or several agents, on one machine |
 | **[Reference](reference.md)** | Tables: tasks, settings, templates |
 | [Tasks](reference/tasks.md) | Every task: what it does, its arguments and flags |
+| [What the tests showed](reference/tests.md) | Every test step of the last run, passed or failed, with its time |
 | [Settings](reference/settings.md) | Everything you can set in `mise.toml` |
 | [Templates](reference/templates.md) | The eight kinds of site `site:new` makes |
 | [Favourite plugins](reference/favourite-plugins.md) | What `plugin:favourites` installs, and why |

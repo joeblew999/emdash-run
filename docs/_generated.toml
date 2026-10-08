@@ -7,3 +7,7 @@ run = "charter docs-tasks -only tasks.toml"
 [[generated]]
 page = "reference/dev-tasks.md"
 run = "charter docs-tasks -not tasks.toml -title \"The tasks for working on this repo\""
+
+[[generated]]
+page = "reference/tests.md"
+run = "node tests/run.mjs --report"

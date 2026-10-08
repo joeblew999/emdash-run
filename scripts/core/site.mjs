@@ -8,8 +8,45 @@ const must = ({ world, project }, program, args) => {
 	const code = world.run(program, args, project.site);
 	if (code !== 0) throw new Error(`${[program, ...args].join(" ")} failed (exit ${code})`);
 };
+/** One of the site's own tools, which must succeed. @param {Ctx} ctx @param {string} name @param {string[]} args */
+const tool = ({ world, project }, name, args) => {
+	const code = world.tool(name, args, project.site);
+	if (code !== 0) throw new Error(`${[name, ...args].join(" ")} failed (exit ${code})`);
+};
 /** Does the site at this address answer at all? @param {Ctx} ctx @param {string} url */
 const answers = async ({ world }, url) => (await world.ask(`${url}/`, { seconds: 5 })).status !== 0;
+
+/**
+ * What a site's build is made from. The server part of the build is what is compared with these: a
+ * dist/ with only its client half is not a build (one stopped half way left exactly that).
+ * @param {string} dir the site's folder @param {import("./world.mjs").World} world
+ */
+const madeFrom = (dir, world) => ({
+	// folders: a file in them changed after the build
+	folders: [join(dir, "src"), join(dir, "public"), join(dir, "seed"), ...(world.exists(join(dir, "plugins")) ? [join(dir, "plugins")] : [])],
+	// single files: what they hold changed — not their date, which pnpm moves without changing them
+	files: ["astro.config.mjs", "astro.config.ts", "package.json", "pnpm-lock.yaml", "wrangler.jsonc", "tsconfig.json", ".env"].map((f) => join(dir, f)),
+});
+/** Why the build is not of what is here now; "" when it is. @param {string} dir @param {import("./world.mjs").World} world */
+const stale = (dir, world) => {
+	const from = madeFrom(dir, world);
+	const built = world.newest([join(dir, "dist", "server")]);
+	if (built === 0) return "there is no build yet";
+	if (built <= world.newest(from.folders)) return `${world.newestPath(from.folders).slice(dir.length + 1)} changed after the last build`;
+	if (world.read(join(dir, "dist", ".built-from")) !== world.digest(from.files)) return "the site's config or packages changed since the last build";
+	return "";
+};
+
+/**
+ * Does the lockfile have every package package.json asks for, as it asks for it? (A package added
+ * to package.json by hand is not in it until pnpm installs.)
+ * @param {string} packageJson @param {string} lock
+ */
+export const lockCovers = (packageJson, lock) => {
+	const pkg = JSON.parse(packageJson || "{}");
+	const escaped = (/** @type {string} */ t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return Object.entries({ ...pkg.dependencies, ...pkg.devDependencies }).every(([name, spec]) => new RegExp(`^\\s+'?${escaped(name)}'?:\\r?\\n\\s+specifier: '?${escaped(String(spec))}'?\\s*$`, "m").test(lock));
+};
 
 /** @type {Graph} */
 export const site = {
@@ -21,17 +58,28 @@ export const site = {
 	},
 	"site:installed": {
 		needs: () => ["site:exists"],
-		// pnpm says "Already up to date" in a moment when they are
+		// Already so when what pnpm last installed is what the lockfile says: pnpm keeps its own copy
+		// of the lockfile it installed from, beside the packages. Not asking pnpm matters: an install
+		// under a RUNNING dev site changes files Vite has in hand, and the site answers 500 from then on.
+		done: ({ world, project }) => {
+			const lock = world.read(join(project.site, "pnpm-lock.yaml"));
+			return lock !== "" && lock === world.read(join(project.site, "node_modules", ".pnpm", "lock.yaml")) && lockCovers(world.read(join(project.site, "package.json")), lock);
+		},
 		work: (ctx) => must(ctx, "pnpm", ["install"]),
 	},
 	"site:key": {
 		needs: () => ["site:installed"],
 		done: ({ world, project }) => /^EMDASH_ENCRYPTION_KEY=./m.test(world.read(join(project.site, ".env"))),
-		work: (ctx) => must(ctx, "pnpm", ["exec", "emdash", "secrets", "generate", "--write", ".env"]),
+		work: (ctx) => tool(ctx, "emdash", ["secrets", "generate", "--write", ".env"]),
 	},
 	"site:dev-running": {
 		needs: () => ["site:key"],
-		done: (ctx) => answers(ctx, ctx.project.dev),
+		// answering, and not with a server error: a dev site that answers 500 to its front page is
+		// broken (its packages were changed under it), and is started again
+		done: async ({ world, project }) => {
+			const status = (await world.ask(`${project.dev}/`, { seconds: 20 })).status;
+			return status !== 0 && status < 500;
+		},
 		// Started while no other site on the machine is starting: Cloudflare's Vite plugin picks its
 		// debugger port by looking for a free one from 9229 and only then listening on it, so two sites
 		// started in the same moment pick the same port and the loser answers 500 to everything. Its
@@ -39,11 +87,16 @@ export const site = {
 		work: (ctx) =>
 			ctx.world.alone("starting-a-site", async () => {
 				const { world, project } = ctx;
-				const code = world.run("pnpm", ["exec", "astro", "dev", "--background", "--host", "127.0.0.1", "--port", project.devPort], project.site);
+				if (await answers(ctx, project.dev)) {
+					world.say("the dev site answers with a server error: stopping it, and starting it again");
+					world.tool("astro", ["dev", "stop"], project.site);
+					world.remove(join(project.site, "node_modules", ".vite"));
+				}
+				const code = world.tool("astro", ["dev", "--background", "--host", "127.0.0.1", "--port", project.devPort], project.site);
 				if (code !== 0) {
 					// a site started in the background that died says only that it did: its own log says why
 					world.say("What the site's own log says:");
-					world.run("pnpm", ["exec", "astro", "dev", "logs"], project.site);
+					world.tool("astro", ["dev", "logs"], project.site);
 					throw new Error("the dev site did not start");
 				}
 				for (let waited = 0; waited < 120; waited += 0.5) {
@@ -60,15 +113,13 @@ export const site = {
 	// files (on Windows the build then cannot empty its folder), and serves the old one.
 	"site:built": {
 		needs: () => ["site:key"],
-		done: ({ world, project }) => {
-			const at = (/** @type {string[]} */ ...f) => f.map((x) => join(project.site, x));
-			const built = world.newest(at("dist"));
-			const plugins = world.exists(join(project.site, "plugins")) ? at("plugins") : [];
-			return built > 0 && built > world.newest([...at("src", "public", "seed", "astro.config.mjs", "astro.config.ts", "package.json", "pnpm-lock.yaml", "wrangler.jsonc", "tsconfig.json", ".env"), ...plugins]);
-		},
+		done: ({ world, project }) => stale(project.site, world) === "",
 		work: (ctx) => {
-			ctx.world.run("pnpm", ["exec", "astro", "preview", "stop"], ctx.project.site);
-			must(ctx, "pnpm", ["exec", "astro", "build"]);
+			const { world, project } = ctx;
+			world.say(`building: ${stale(project.site, world)}`); // why, so that a build nobody expected explains itself
+			world.tool("astro", ["preview", "stop"], project.site);
+			tool(ctx, "astro", ["build"]);
+			world.keep(join(project.site, "dist", ".built-from"), world.digest(madeFrom(project.site, world).files));
 		},
 	},
 	// The built site, served on this machine as a deployed one behaves. Started again when the build
@@ -79,9 +130,13 @@ export const site = {
 		work: (ctx) =>
 			ctx.world.alone("starting-a-site", async () => {
 				const { world, project } = ctx;
-				world.run("pnpm", ["exec", "astro", "preview", "stop"], project.site);
-				const code = world.run("pnpm", ["exec", "astro", "preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort], project.site, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
-				if (code !== 0) throw new Error("the built site did not start");
+				world.tool("astro", ["preview", "stop"], project.site);
+				const code = world.tool("astro", ["preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort], project.site, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
+				if (code !== 0) {
+					world.say("What the built site's own log says:");
+					world.tool("astro", ["preview", "logs"], project.site);
+					throw new Error("the built site did not start");
+				}
 				for (let waited = 0; waited < 180; waited += 0.5) {
 					if ((await world.ask(`${project.built}/`, { seconds: 180 })).status !== 0) return;
 					await world.sleep(0.5);
@@ -146,8 +201,8 @@ export const site = {
 	"site:stop": {
 		needs: () => ["site:exists"],
 		work: ({ world, project }) => {
-			world.run("pnpm", ["exec", "astro", "dev", "stop"], project.site);
-			world.run("pnpm", ["exec", "astro", "preview", "stop"], project.site);
+			world.tool("astro", ["dev", "stop"], project.site);
+			world.tool("astro", ["preview", "stop"], project.site);
 			if (world.platform === "win32" || !world.exists(join(project.site, "node_modules", "workerd"))) return;
 			const mine = `${join(resolve(project.site), "node_modules")}/`;
 			for (const line of world.capture("ps", ["-axo", "pid=,command="], project.site).split("\n")) {

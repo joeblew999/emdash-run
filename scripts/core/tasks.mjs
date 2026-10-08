@@ -44,6 +44,11 @@ const must = ({ world, project }, program, args) => {
 };
 /** @param {Ctx} ctx @param {...string} args */
 const pnpm = (ctx, ...args) => must(ctx, "pnpm", args);
+/** One of the site's own tools (astro, emdash, wrangler), run directly. @param {Ctx} ctx @param {string} name @param {...string} args */
+const tool = ({ world, project }, name, ...args) => {
+	const code = world.tool(name, args, project.site);
+	if (code !== 0) throw new Exit(code);
+};
 /** One of the scripts' jobs, to its end: one that ends by saying "done, nothing wrong" goes on. @param {(argv: string[]) => Promise<unknown>} job @param {string[]} argv */
 const job = async (job, argv) => {
 	try {
@@ -90,12 +95,12 @@ export const tasks = {
 		},
 	},
 	"site:ports": { work: (ctx) => job(siteJob, ["ports", ctx.project.root]) },
-	"site:logs": { needs: () => ["site:exists"], work: (ctx) => pnpm(ctx, "exec", "astro", "dev", "logs", "--follow") },
+	"site:logs": { needs: () => ["site:exists"], work: (ctx) => tool(ctx, "astro", "dev", "logs", "--follow") },
 	"site:check": {
 		needs: () => ["site:installed"],
 		work: async (ctx) => {
-			if (ctx.env.SITE_SEED !== "none") pnpm(ctx, "exec", "emdash", "seed", "--validate");
-			pnpm(ctx, "exec", "astro", "check");
+			if (ctx.env.SITE_SEED !== "none") tool(ctx, "emdash", "seed", "--validate");
+			tool(ctx, "astro", "check");
 			await task("site:built");
 		},
 	},
@@ -134,7 +139,7 @@ export const tasks = {
 		needs: () => ["site:exists"],
 		work: async (ctx) => {
 			pnpm(ctx, "up", "--latest", "emdash", "@emdash-cms/cloudflare");
-			pnpm(ctx, "exec", "astro", "check");
+			tool(ctx, "astro", "check");
 			await task("site:built");
 			for (const line of UPDATE_HOW) console.log(line);
 		},
@@ -224,23 +229,23 @@ export const tasks = {
 	"live:check": {
 		work: async (ctx) => {
 			await task("site:check");
-			pnpm(ctx, "exec", "wrangler", "deploy", "--dry-run");
+			tool(ctx, "wrangler", "deploy", "--dry-run");
 		},
 	},
 	"live:ship": {
 		needs: () => ["live:set"],
 		work: async (ctx) => {
-			pnpm(ctx, "exec", "wrangler", "whoami");
+			tool(ctx, "wrangler", "whoami");
 			await task("live:check");
-			pnpm(ctx, "exec", "wrangler", "deploy", "--strict", "--secrets-file", ".env", "--message", `live:ship ${stamp()} UTC`);
-			pnpm(ctx, "exec", "wrangler", "deployments", "status");
+			tool(ctx, "wrangler", "deploy", "--strict", "--secrets-file", ".env", "--message", `live:ship ${stamp()} UTC`);
+			tool(ctx, "wrangler", "deployments", "status");
 			await job(liveUp, [ctx.project.live]);
 		},
 	},
 	"live:preview": {
 		needs: () => ["site:exists"],
 		work: async (ctx) => {
-			pnpm(ctx, "exec", "wrangler", "whoami");
+			tool(ctx, "wrangler", "whoami");
 			if (ctx.flags.delete) ctx.world.say("-> deleting a preview: nothing is built");
 			else await task("live:check");
 			await job(livePreview, [ctx.project.site, ...ctx.args.slice(0, 1), ...(ctx.flags.delete ? ["--delete"] : [])]);
@@ -249,18 +254,18 @@ export const tasks = {
 	"live:undo": {
 		needs: () => ["live:set", "site:exists"],
 		work: async (ctx) => {
-			pnpm(ctx, "exec", "wrangler", "whoami");
-			pnpm(ctx, "exec", "wrangler", "rollback", ...ctx.args.slice(0, 1), "--yes", "--message", "live:undo");
-			pnpm(ctx, "exec", "wrangler", "deployments", "status");
+			tool(ctx, "wrangler", "whoami");
+			tool(ctx, "wrangler", "rollback", ...ctx.args.slice(0, 1), "--yes", "--message", "live:undo");
+			tool(ctx, "wrangler", "deployments", "status");
 			await job(liveUp, [ctx.project.live]);
 		},
 	},
-	"live:logs": { needs: () => ["site:exists"], work: (ctx) => pnpm(ctx, "exec", "wrangler", "tail", "--format", "pretty") },
+	"live:logs": { needs: () => ["site:exists"], work: (ctx) => tool(ctx, "wrangler", "tail", "--format", "pretty") },
 	"live:backup": {
 		needs: () => ["live:set", "site:exists"],
 		work: async (ctx) => {
-			pnpm(ctx, "exec", "wrangler", "whoami");
-			pnpm(ctx, "exec", "wrangler", "d1", "time-travel", "info", "DB");
+			tool(ctx, "wrangler", "whoami");
+			tool(ctx, "wrangler", "d1", "time-travel", "info", "DB");
 			await pack(ctx);
 			for (const line of BACKUP_HOW) console.log(line);
 		},

@@ -13,6 +13,10 @@ import { dirname, join } from "node:path";
  * @property {(node: string) => void} at                 the node being reached: what it prints is under its name
  * @property {(line: string) => void} say
  * @property {(program: string, args: string[], cwd: string, more?: Record<string, string>) => number} run   a command, shown before it runs (more: variables for it alone); its exit code
+ * @property {(tool: string, args: string[], site: string, more?: Record<string, string>) => number} tool   a program one of the site's packages installs (astro, emdash, wrangler), run by Node itself; its exit code.
+ *   Not through `pnpm exec`: in a site with a local plugin that installs everything again first, every time —
+ *   seconds each, a changed lockfile date, and on a CI runner on Windows a refusal.
+ * @property {(paths: string[]) => string} digest             one value for what these files hold now; it changes when one of them does
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string }>} ask   status 0: nothing answered
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
@@ -22,6 +26,7 @@ import { dirname, join } from "node:path";
  * @property {(path: string) => void} mkdir
  * @property {(path: string) => void} remove               a file or a folder and what is in it; nothing when there is none
  * @property {(path: string, text: string) => void} keep     write a file only this user can read, making its folder
+ * @property {(paths: string[]) => string} newestPath       the file among these files and folders that was changed last; "" when there is none
  * @property {(paths: string[]) => number} newest            when the newest file among these files and folders was changed; 0 when there is none
  * @property {(file: string, sql: string) => void} sqlite    run SQL on a SQLite file
  * @property {string} config                                 the user's config folder
@@ -48,6 +53,21 @@ export const realWorld = (env) => {
 			const shell = win && program !== process.execPath && program !== "git";
 			return spawnSync(program, shell ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args, { cwd, env: more ? { ...env, ...more } : env, stdio: "inherit", shell }).status ?? 1;
 		},
+		tool: (tool, args, site, more) => {
+			console.log(`[${node}] $ ${[tool, ...args].join(" ")}`);
+			const dir = join(site, "node_modules", tool);
+			if (!existsSync(join(dir, "package.json"))) {
+				console.error(`${tool} is not installed in this site (${dir}): mise run site:start installs its packages.`);
+				return 1;
+			}
+			const bin = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).bin;
+			return spawnSync(process.execPath, [join(dir, typeof bin === "string" ? bin : bin[tool]), ...args], { cwd: site, env: more ? { ...env, ...more } : env, stdio: "inherit" }).status ?? 1;
+		},
+		digest: (paths) => {
+			const h = createHash("sha256");
+			for (const p of paths) h.update(p).update(existsSync(p) ? readFileSync(p) : "");
+			return h.digest("hex").slice(0, 16);
+		},
 		capture: (program, args, cwd) => spawnSync(program, args, { cwd, env, encoding: "utf8", shell: win && program !== process.execPath }).stdout || "",
 		ask: async (url, init = {}) => {
 			try {
@@ -70,6 +90,17 @@ export const realWorld = (env) => {
 			mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
 			writeFileSync(path, text, { mode: 0o600 });
 			chmodSync(path, 0o600);
+		},
+		newestPath: (paths) => {
+			let best = { at: 0, path: "" };
+			const look = (/** @type {string} */ p, depth = 0) => {
+				if (!existsSync(p)) return;
+				const st = statSync(p);
+				if (!st.isDirectory()) return void (st.mtimeMs > best.at && (best = { at: st.mtimeMs, path: p }));
+				if (depth < 12) for (const e of readdirSync(p)) if (e !== "node_modules") look(join(p, e), depth + 1);
+			};
+			for (const p of paths) look(p);
+			return best.path;
 		},
 		newest: (paths) => {
 			/** @param {string} p @returns {number} */

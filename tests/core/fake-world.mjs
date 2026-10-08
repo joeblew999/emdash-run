@@ -26,6 +26,12 @@ export const fakeWorld = (given = {}) => {
 			ran.push(command);
 			return given.exits?.(command) ?? 0;
 		},
+		tool: (tool, args) => {
+			const command = [tool, ...args].join(" ");
+			ran.push(command);
+			return given.exits?.(command) ?? 0;
+		},
+		digest: (paths) => paths.map((p) => files[p.replaceAll("\\", "/")] ?? "").join("|"),
 		capture: (program, args) => given.output?.([program, ...args].join(" ")) ?? "",
 		ask: async (url, init) => ({ text: "", ...(given.answers?.(url, init) ?? { status: 0 }) }),
 		// paths with a slash, whatever the machine the test runs on joins them with
@@ -37,6 +43,7 @@ export const fakeWorld = (given = {}) => {
 		mkdir: () => {},
 		remove: (path) => void delete files[path.replaceAll("\\", "/")],
 		keep: (path, text) => void (files[path.replaceAll("\\", "/")] = text),
+		newestPath: (paths) => paths.map((p) => p.replaceAll("\\", "/")).sort((x, y) => (given.changed?.[y] ?? 0) - (given.changed?.[x] ?? 0))[0] ?? "",
 		newest: (paths) => Math.max(0, ...paths.map((p) => given.changed?.[p.replaceAll("\\", "/")] ?? 0)),
 		sqlite: (file, sql) => void sqls.push({ file: file.replaceAll("\\", "/"), sql }),
 		config: "/config",

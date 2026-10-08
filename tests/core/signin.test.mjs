@@ -7,8 +7,9 @@ import { graph } from "../../scripts/core/cli.mjs";
 import { savedName, tokenSql } from "../../scripts/core/signin.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
 
-const built = { "/p/site/package.json": "{}", "/p/site/.env": "EMDASH_ENCRYPTION_KEY=k\n" };
-const fresh = { "/p/site/dist": 2, "/p/site/src": 1 }; // the build is newer than what it is made from
+// a site whose build was made from the config and packages it has now (dist/.built-from holds what they held)
+const built = { "/p/site/package.json": "{}", "/p/site/.env": "EMDASH_ENCRYPTION_KEY=k\n", "/p/site/dist/.built-from": "||{}||||EMDASH_ENCRYPTION_KEY=k\n" };
+const fresh = { "/p/site/dist/server": 2, "/p/site/src": 1 }; // the build is newer than what it is made from // the build is newer than what it is made from
 
 test("this machine: it stands on the built site, running", () => {
 	assert.deepEqual(plan(graph, "signin:token"), ["site:exists", "site:installed", "site:key", "site:built", "site:built-running", "signin:token"]);
@@ -35,7 +36,7 @@ test("a Node site, built and running: the SQL goes to its database file, the tok
 	const fake = fakeWorld({ files: { ...built }, changed: fresh, answers: () => ({ status: 200 }) });
 	const result = await reach(graph, "signin:token", { world: fake.world, project, flags: {} });
 	assert.deepEqual(result.did, ["site:installed", "signin:token"]);
-	assert.deepEqual(fake.ran, ["pnpm install"]);
+	assert.deepEqual(fake.ran, ["pnpm install"]); // (this made-up site has no record of an install)
 	assert.equal(fake.sqls[0].file, "/p/site/data.db");
 	const saved = JSON.parse(Object.entries(fake.files).find(([f]) => f.startsWith("/config/emdash-run/tokens/"))?.[1] ?? "{}");
 	assert.deepEqual(saved, { url: "http://localhost:4322", token: "ec_pat_RAW" });
@@ -43,10 +44,10 @@ test("a Node site, built and running: the SQL goes to its database file, the tok
 });
 
 test("the build is older than the source: it is built again, and the built site started again", async () => {
-	const fake = fakeWorld({ files: { ...built }, changed: { "/p/site/dist": 1, "/p/site/src": 2 }, answers: () => ({ status: 200 }) });
+	const fake = fakeWorld({ files: { ...built }, changed: { "/p/site/dist/server": 1, "/p/site/src": 2 }, answers: () => ({ status: 200 }) });
 	const result = await reach(graph, "signin:token", { world: fake.world, project, flags: {} });
 	assert.deepEqual(result.did, ["site:installed", "site:built", "site:built-running", "signin:token"]);
-	assert.deepEqual(fake.ran.slice(1), ["pnpm exec astro preview stop", "pnpm exec astro build", "pnpm exec astro preview stop", "pnpm exec astro preview --background --host 127.0.0.1 --port 4322"]);
+	assert.deepEqual(fake.ran.slice(1), ["astro preview stop", "astro build", "astro preview stop", "astro preview --background --host 127.0.0.1 --port 4322"]);
 });
 
 test("a Cloudflare site: wrangler writes it; 'no such table' is asked again, another refusal is the reason given", async () => {
@@ -66,4 +67,11 @@ test("ADMIN_EMAIL is used and never printed", async () => {
 	await reach(graph, "signin:token", { world: fake.world, project, flags: {}, env: { ADMIN_EMAIL: "owner@private.test" } });
 	assert.ok(fake.sqls[0].sql.includes("owner@private.test"));
 	assert.ok(!fake.said.join("\n").includes("owner@private.test"));
+});
+
+test("a build with only its client half is not a build: it is built again", async () => {
+	const fake = fakeWorld({ files: { ...built }, changed: { "/p/site/dist/client": 9, "/p/site/src": 1 }, answers: () => ({ status: 200 }) });
+	const result = await reach(graph, "site:built", { world: fake.world, project, flags: {} });
+	assert.ok(result.did.includes("site:built"));
+	assert.ok(fake.ran.includes("astro build"));
 });

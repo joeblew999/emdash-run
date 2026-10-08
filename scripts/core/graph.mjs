@@ -51,16 +51,24 @@ export const reach = async (graph, target, given, under = false) => {
 	const skipped = [];
 	/** @type {Ctx} */
 	const ctx = { env: {}, args: [], argv: [], ...given, did, standsOn: true };
+	// every state says how long it took: reaching it, or finding it already so
+	const took = (/** @type {number} */ since) => {
+		const ms = Date.now() - since;
+		return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+	};
 	for (const name of plan(graph, target, ctx.flags)) {
 		const node = graph[name];
+		const began = Date.now();
 		ctx.standsOn = under || name !== target;
 		ctx.world.at(name);
 		if (await node.done?.(ctx)) {
 			skipped.push(name);
-			ctx.world.say("already so");
+			ctx.world.say(`already so (${took(began)})`);
 			continue;
 		}
 		await node.work(ctx);
+		ctx.world.at(name);
+		ctx.world.say(`done in ${took(began)}`);
 		did.push(name);
 	}
 	return { did, skipped };

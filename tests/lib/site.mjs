@@ -93,9 +93,14 @@ const envFor = (/** @type {How} */ how) => {
 };
 
 /** mise run <task> -- <args>, whatever it ends with. @param {...(How | string)} a */
-export const attempt = (...a) => {
+export const attempt = async (...a) => {
 	const [how, [task, ...args]] = split(a);
-	return toEnd("mise", miseArgs(how, task, args), { env: envFor(how) });
+	const began = Date.now();
+	const result = await toEnd("mise", miseArgs(how, task, args), { env: envFor(how) });
+	// where the time went, when it went somewhere: each state a task reaches says how long it took
+	const slow = [...result.out.matchAll(/^\[([a-z:-]+)\] done in ([\d.]+) s$/gm)].filter((m) => Number(m[2]) >= 1).map((m) => `${m[1]} ${m[2]} s`);
+	if (Date.now() - began >= 2000) console.log(`      ${task}: ${((Date.now() - began) / 1000).toFixed(1)} s${slow.length ? ` — ${slow.join(", ")}` : ""}`);
+	return result;
 };
 /** mise run <task> -- <args>: what it printed. Throws when the task fails. @param {...(How | string)} a */
 export const mise = async (...a) => {
