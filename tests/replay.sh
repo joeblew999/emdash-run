@@ -132,6 +132,8 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
     ok plugin:search "finds plugins in the registry"          'mise run plugin:search -- forms | grep -qi "forms"'
     ok plugin:install "installs a registry plugin with no clicking, from a stopped site" 'mise run plugin:install -- @masonjames.com/contact-forms | grep -q "contact-forms: installed"'
     ok plugin:install "run again: it is already installed"    'mise run plugin:install -- @masonjames.com/contact-forms | grep -q "contact-forms: already installed"'
+    no plugin:install "a plugin that can change things or reach outside is not installed without a yes" 'env -u MISE_YES -u CI mise run plugin:install -- @meekmedia.bsky.social/link-guardian'
+    no plugin:install "a release other than the one asked for is not installed" 'mise run plugin:install -- @netdollar.dev/forms@0.0.1'
     no plugin:install "a plugin the registry does not have: says so and fails" 'mise run plugin:install -- @nobody.example/nothing'
     ok plugin:works "the registry plugin: every check passes" 'mise run plugin:works -- @masonjames.com/contact-forms > works.txt 2>&1; grep -q "contact-forms: works" works.txt && ! grep -q "FAIL" works.txt'
     ok plugin:works "the plugin plugin:new made: its route answers from the sandbox" 'mise run plugin:works -- save-log 2>&1 | grep -q "save-log routes: 1 declared, each asked with a GET: hello 200"'

@@ -30,10 +30,10 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards |
 | [`plugin:search`](#pluginsearch) | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
 | [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes |
-| [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site |
+| [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
 | [`plugin:remove`](#pluginremove) | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed |
-| [`plugin:favourites`](#pluginfavourites) | Install the favourite registry plugins in one go (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add \-\-live for deployed |
-| [`plugin:works`](#pluginworks) | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin |
+| [`plugin:favourites`](#pluginfavourites) | Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs \-\-yes: some can change content or reach outside the site. Add \-\-live for deployed |
+| [`plugin:works`](#pluginworks) | Does a plugin load and answer? One line per check: the site builds, starts, lists the plugin, its routes answer a GET, its admin pages load, the log and the sandbox show no refusal. It does not try a form's submit or fire a hook. Restarts the built site, and signs in if needed. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin |
 | [`plugin:publish`](#pluginpublish) | Publish a plugin to EmDash's registry. Asks first |
 | [`plugin`](#plugin) | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; |
 | [`signin:token`](#signintoken) | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) |
@@ -168,15 +168,16 @@ Let the site run sandboxed plugins, which every registry plugin is: the runner i
 
 ### `plugin:install`
 
-Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>. Add --live for the deployed site
+Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>, or <publisher>/<slug>@<version> to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with --live, needs --yes
 
-- **Usage:** `plugin:install [--live] <plugin>…`
+- **Usage:** `plugin:install [--live] [--yes] <plugin>…`
 
 **Arguments**
-- **`<plugin>…`** — As plugin:search prints it, e.g. @netdollar.dev/forms
+- **`<plugin>…`** — As plugin:search prints it, e.g. @netdollar.dev/forms; with @&lt;version> to hold it to that release
 
 **Flags**
 - **`--live`** — The deployed site at LIVE_URL instead of the local production build
+- **`--yes`** — Agree to what the plugin asks for. Needed when it can change things or reach outside the site, and always with --live
 
 ### `plugin:remove`
 
@@ -192,16 +193,17 @@ Remove a registry plugin from the site; what it stored is kept. mise run plugin:
 
 ### `plugin:favourites`
 
-Install the favourite registry plugins in one go (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add --live for deployed
+Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs --yes: some can change content or reach outside the site. Add --live for deployed
 
-- **Usage:** `plugin:favourites [--live]`
+- **Usage:** `plugin:favourites [--live] [--yes]`
 
 **Flags**
 - **`--live`** — The deployed site at LIVE_URL instead of the local production build
+- **`--yes`** — Agree to what each plugin asks for. Needed: some of the favourites can change content or reach outside the site
 
 ### `plugin:works`
 
-Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works -- <name>. No name: every plugin
+Does a plugin load and answer? One line per check: the site builds, starts, lists the plugin, its routes answer a GET, its admin pages load, the log and the sandbox show no refusal. It does not try a form's submit or fire a hook. Restarts the built site, and signs in if needed. mise run plugin:works -- <name>. No name: every plugin
 
 - **Usage:** `plugin:works [name]…`
 

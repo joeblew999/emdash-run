@@ -143,14 +143,15 @@ dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" sandbox \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 ["plugin:install"]
-description = "Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>. Add --live for the deployed site"
+description = "Install a plugin from EmDash's registry, no clicking: mise run plugin:install -- <publisher>/<slug>, or <publisher>/<slug>@<version> to hold it to a release. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with --live, needs --yes"
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = '''
-arg "<plugin>" help="As plugin:search prints it, e.g. @netdollar.dev/forms" var=#true
+arg "<plugin>" help="As plugin:search prints it, e.g. @netdollar.dev/forms; with @<version> to hold it to that release" var=#true
 flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
+flag "--yes" help="Agree to what the plugin asks for. Needed when it can change things or reach outside the site, and always with --live"
 '''
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:remove"]
 description = "Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove -- <publisher>/<slug>. Add --live for deployed"
@@ -163,14 +164,17 @@ flag "--live" help="The deployed site at LIVE_URL instead of the local productio
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" remove {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:favourites"]
-description = "Install the favourite registry plugins in one go (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add --live for deployed"
+description = "Install the favourite registry plugins in one go, each at the release that was tried (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. It prints what each asks for and needs --yes: some can change content or reach outside the site. Add --live for deployed"
 depends = ["step:there"]
 dir = "{{config_root}}"
-usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
-run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ env.PLUGINS | default(value='@netdollar.dev/forms @nookeshk.bsky.social/seo-suite @meekmedia.bsky.social/link-guardian @peachfinthemes.com/instant-indexer @agenticecom.net/media-alt-text-queue') }}"
+usage = '''
+flag "--live" help="The deployed site at LIVE_URL instead of the local production build"
+flag "--yes" help="Agree to what each plugin asks for. Needed: some of the favourites can change content or reach outside the site"
+'''
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" install {% if usage.yes %}--yes {% endif %}{% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ env.PLUGINS | default(value='@netdollar.dev/forms@0.1.0 @nookeshk.bsky.social/seo-suite@0.2.0 @meekmedia.bsky.social/link-guardian@0.1.0 @peachfinthemes.com/instant-indexer@1.0.0 @agenticecom.net/media-alt-text-queue@0.2.1') }}"
 
 ["plugin:works"]
-description = "Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works -- <name>. No name: every plugin"
+description = "Does a plugin load and answer? One line per check: the site builds, starts, lists the plugin, its routes answer a GET, its admin pages load, the log and the sandbox show no refusal. It does not try a form's submit or fire a hook. Restarts the built site, and signs in if needed. mise run plugin:works -- <name>. No name: every plugin"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'arg "[name]" help="<publisher>/<slug> of a registry plugin, or the name of one in plugins/. None: every plugin the site has" var=#true'

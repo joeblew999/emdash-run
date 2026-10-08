@@ -12,9 +12,9 @@ Two kinds. A **registry** plugin is installed into the site's database, as the a
 
 ```sh
 mise run plugin:search -- forms                     # find one: it prints @publisher/slug
-mise run plugin:install -- @netdollar.dev/forms     # install it
-mise run plugin:works -- @netdollar.dev/forms       # does it work? one line per check
-mise run plugin:favourites                          # the favourites, in one go
+mise run plugin:install -- @netdollar.dev/forms     # it prints what the plugin asks for; --yes to agree
+mise run plugin:works -- @netdollar.dev/forms       # does it load and answer? one line per check
+mise run plugin:favourites -- --yes                 # the favourites, in one go
 mise run plugin:remove -- @netdollar.dev/forms
 ```
 
@@ -38,6 +38,7 @@ mise run plugin -- info <publisher> <slug>           # anything else in EmDash's
 ## Limits
 
 - On Cloudflare, deploying a site with the sandbox on needs the Workers Paid plan.
-- `plugin:works` shows a route that wants a POST only as existing, and does not fire hooks.
+- `plugin:works` says a plugin loads and answers: it shows a route that wants a POST only as existing, and does not fire hooks.
+- A plugin runs with the permissions you agree to at install. `plugin:install` shows them all; hold a plugin to a release with `@<version>`, because a newer one may ask for more.
 - On a Node site, `plugin:install` and `plugin:remove` restart the built site ([Upstream issues](../upstream.md)).
 - `plugin:publish` asks first, and needs a registry login of your own.

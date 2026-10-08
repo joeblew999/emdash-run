@@ -196,9 +196,10 @@ const client = (url, siteDir) => async (method, path, body) => {
 };
 const said = (r) => `${r.status || "no answer"} ${r.error ? `${r.error.code}: ${r.error.message}` : r.text.replace(/\s+/g, " ").slice(0, 300)}`;
 const reference = (ref) => {
-	const m = /^@?([^/\s]+)\/([a-zA-Z][a-zA-Z0-9_-]*)$/.exec(ref);
-	if (!m) fail(`[${ref}] is not <publisher>/<slug> — as the search prints it, e.g. @netdollar.dev/forms`);
-	return { publisher: m[1], slug: m[2], name: `@${m[1]}/${m[2]}` };
+	// with a version to hold it to: @publisher/slug@1.2.3
+	const m = /^@?([^/\s]+)\/([a-zA-Z][a-zA-Z0-9_-]*)(?:@(\d[\w.+-]*))?$/.exec(ref);
+	if (!m) fail(`[${ref}] is not <publisher>/<slug> — as the search prints it, e.g. @netdollar.dev/forms, or with a version: @netdollar.dev/forms@0.1.0`);
+	return { publisher: m[1], slug: m[2], name: `@${m[1]}/${m[2]}`, version: m[3] || null };
 };
 // <publisher>/<slug> → the registry's record of it (did, latestVersion), asked of the aggregator as
 // the admin asks: resolvePackage for a handle, getPackage for a DID.
@@ -327,6 +328,11 @@ if (what === "leftover") {
 		}
 		const list = await api("GET", "/_emdash/api/admin/plugins");
 		const there = list.data?.items?.find((p) => p.source === "registry" && p.registryPublisherDid === pkg.did && p.registrySlug === w.slug);
+		if (there && w.version && there.version !== w.version) {
+			console.log(`FAIL ${w.name}: you asked for ${w.version} and the site has ${there.version}. Remove it first (mise run plugin:remove -- ${w.name}), or ask for ${there.version}`);
+			failed++;
+			continue;
+		}
 		if (there) {
 			console.log(`ok   ${w.name}: already installed — ${there.version}, ${there.status}, id ${there.id}${pkg.latestVersion && pkg.latestVersion !== there.version ? ` (the registry has ${pkg.latestVersion}: update it in the admin, Plugins)` : ""}`);
 			continue;
@@ -339,7 +345,28 @@ if (what === "leftover") {
 			continue;
 		}
 		const v = verify.data;
-		console.log(`     ${w.name} ${v.version} asks for: ${v.capabilities.join(", ") || "nothing"}; public routes: ${v.publicRoutes.join(", ") || "none"}; MCP tools: ${v.mcpTools.length}`);
+		// A version asked for is the one installed, or none: a newer release may ask for more.
+		if (w.version && v.version !== w.version) {
+			console.log(`FAIL ${w.name}: you asked for ${w.version} and the registry's release is ${v.version}. Read what ${v.version} asks for (mise run plugin -- info ${w.publisher} ${w.slug}), then ask for it by that version`);
+			failed++;
+			continue;
+		}
+		// What the admin's consent dialog shows, all of it — this task agrees to it on your behalf.
+		const strong = v.capabilities.filter((c) => /:write$|:patch$|unrestricted|^email:|^network:/.test(c));
+		const tools = v.mcpTools.map((t) => (typeof t === "string" ? t : `${t.name ?? JSON.stringify(t)}${t.destructive ? " (destructive)" : ""}`));
+		console.log(`     ${w.name} ${v.version} asks for:`);
+		console.log(`       permissions: ${v.capabilities.join(", ") || "none"}`);
+		if (strong.length) console.log(`       of those, it can change things or reach outside the site: ${strong.join(", ")}`);
+		const hosts = v.allowedHosts ?? v.declaredAccess?.allowedHosts ?? v.declaredAccess?.network?.hosts;
+		if (hosts?.length) console.log(`       hosts it may call: ${hosts.join(", ")}`);
+		console.log(`       addresses open to visitors: ${v.publicRoutes.join(", ") || "none"}`);
+		console.log(`       tools it gives to agents (MCP): ${tools.join(", ") || "none"}`);
+		const agreed = flags.includes("--yes") || ["1", "true", "yes"].includes(String(process.env.MISE_YES || "").toLowerCase()) || !!process.env.CI;
+		if ((strong.length || deployed) && !agreed) {
+			console.log(`STOP ${w.name}: not installed. ${deployed ? "This is the deployed site" : "It asks for more than reading"}: say yes to the list above with  -- --yes`);
+			failed++;
+			continue;
+		}
 		// 2. the install, agreeing to exactly what was shown
 		const install = await api("POST", "/_emdash/api/admin/plugins/registry/install", {
 			did: pkg.did,
@@ -499,7 +526,7 @@ if (what === "leftover") {
 		line(notLoaded.length ? "FAIL" : "ok", `${n} log`, notLoaded.length ? notLoaded.slice(0, 3).join(" | ").slice(0, 400) : loaded ? `the built site's log says: ${loaded.trim().slice(0, 160)}` : "the built site's log has no line saying it failed to load (EmDash writes 'Loaded … plugin' for a registry plugin, and nothing for one from the site's config)");
 		const refused = fresh.filter((l) => /Missing capability|Host not allowed|exceeded wall-time limit|Sandboxed plugin route error|Route handler failed/i.test(l));
 		line(refused.length ? "FAIL" : "ok", `${n} sandbox`, refused.length ? refused.slice(0, 3).join(" | ").slice(0, 400) : "nothing was refused while its routes and pages were asked (a refusal the plugin catches itself leaves no trace)");
-		console.log(failed > before ? `     ${n}: DOES NOT WORK — ${failed - before} check${failed - before > 1 ? "s" : ""} failed` : `     ${n}: works`);
+		console.log(failed > before ? `     ${n}: DOES NOT WORK — ${failed - before} check${failed - before > 1 ? "s" : ""} failed` : `     ${n}: loads and answers (its pages and routes; what a form's submit or a hook does is not tried)`);
 	}
 	process.exit(failed ? 1 : 0);
 } else {
