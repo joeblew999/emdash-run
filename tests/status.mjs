@@ -73,7 +73,8 @@ if (mode === "--page" && arg === "status") {
 	const last = [...results].sort((a, b) => String(b.when).localeCompare(String(a.when)))[0];
 	const out = ["# What works: every task, and what the last test run showed", ""];
 	out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${all.length} tasks have no test.**`, "");
-	if (last) out.push(`The last run: \`${last.tier}\`, at commit \`${last.commit}\`, ${last.when}, on ${last.os ?? "macOS"}. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the \`stages\` workflow, on a release tag.`, "");
+	const time = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`);
+	if (last) out.push(`The last run: \`${last.tier}\`, at commit \`${last.commit}\`, ${last.when}${last.runSeconds ? `, ${time(last.runSeconds)}` : ""}, on ${last.os ?? "macOS"}. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the \`stages\` workflow, on a release tag.`, "");
 	out.push("Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).", "");
 	out.push("## By task", "", "| Task | Cloudflare site | Node site | Deployed site | |", "|---|---|---|---|---|");
 	for (const t of all) {
@@ -84,9 +85,18 @@ if (mode === "--page" && arg === "status") {
 		out.push("", "## Failing", "", "| Task | Where | Step | Its last output |", "|---|---|---|---|");
 		for (const r of failures) out.push(`| \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${cellText(r.detail || "").replaceAll("{", "(").replaceAll("}", ")")} |`);
 	}
-	out.push("", "## Every step", "", "| Task | Where | Step | | Run | Commit | When |", "|---|---|---|---|---|---|---|");
+	// How long each run took, the last time it ran: one row per run still in the record.
+	const runs = new Map();
+	for (const r of results) if (r.runSeconds) runs.set(`${r.tier}|${r.when}`, r);
+	if (runs.size) {
+		out.push("", "## How long a run takes", "", "| Run | When | Steps recorded | Took |", "|---|---|---|---|");
+		for (const r of [...runs.values()].sort((a, b) => String(b.when).localeCompare(String(a.when)))) {
+			out.push(`| \`${r.tier}\` | ${r.when} | ${results.filter((x) => x.tier === r.tier && x.when === r.when).length} | ${time(r.runSeconds)} |`);
+		}
+	}
+	out.push("", "## Every step", "", "| Task | Where | Step | | Seconds | Run | Commit | When |", "|---|---|---|---|---|---|---|---|");
 	for (const r of [...results].sort((a, b) => (a.task + a.where).localeCompare(b.task + b.where) || a.order - b.order)) {
-		out.push(`| \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${r.result} | ${r.tier}${r.from === "GitHub" ? ", from GitHub" : ""} | \`${r.commit}\` | ${r.when} |`);
+		out.push(`| \`${r.task}\` | ${r.where} | ${cellText(r.step)} | ${r.result} | ${r.seconds ?? ""} | ${r.tier}${r.from === "GitHub" ? ", from GitHub" : ""} | \`${r.commit}\` | ${r.when} |`);
 	}
 	console.log(out.join("\n"));
 	process.exit(0);
@@ -104,8 +114,9 @@ if (!rowsFile || !existsSync(rowsFile)) {
 const os = { darwin: "macOS", linux: "Linux", win32: "Windows" }[process.platform] ?? process.platform;
 const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
 const fresh = readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line, order) => {
-	const [task, where, step, result, detail, kind] = line.split("|").map((x) => x.trim());
-	return { task, where, step, result, detail, refusal: kind === "no", tier, from, commit, when, os, order };
+	const [task, where, step, result, detail, kind, seconds, group] = line.split("|").map((x) => x.trim());
+	// seconds: how long this step took; runSeconds: how long the whole run it was part of took
+	return { task, where, step, result, detail, refusal: kind === "no", seconds: Number(seconds) || 0, group: group || "", runSeconds: Number(took) || 0, tier, from, commit, when, os, order };
 });
 const key = (r) => `${r.task}|${r.where}|${r.step}`;
 const replaced = new Set(fresh.map(key));

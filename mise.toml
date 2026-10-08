@@ -38,7 +38,7 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.test]
-description = "Quick test: the everyday tasks, on a copy of this repo's site/, about a minute. One test at a time on a machine: a second waits. One task: mise run test -- signin:token. Records what it saw (tests/results.json) and rewrites the generated pages"
+description = "Quick test: the everyday tasks, on a copy of this repo's site/, about a minute. One test at a time on a machine: a second waits. One group only, at the full level: mise run test -- plugins (the groups: site, signin, plugins, deployed). Up to one task: mise run test -- signin:token. Records what it saw (tests/results.json) and rewrites the generated pages"
 run = "bash tests/replay.sh quick"
 
 [tasks."test:full"]

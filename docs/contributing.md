@@ -24,7 +24,7 @@ Running a test turns on the commit check in your clone.
 
 | Task | What it does |
 |---|---|
-| `mise run test` | Quick: the everyday tasks, one template. One task only: `mise run test -- signin:token` |
+| `mise run test` | Quick: the everyday tasks. One group only, in full: `mise run test -- plugins` (the groups: `site`, `signin`, `plugins`, `deployed`). Up to one task: `mise run test -- signin:token` |
 | `mise run test:full` | Every task, on a copy of `site/`; then a site made from nothing and deleted; then the deployed-site tasks |
 | `mise run test:node` | Every local task on a Node site made from EmDash's template: before a release |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
