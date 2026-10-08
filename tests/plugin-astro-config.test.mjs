@@ -1,4 +1,4 @@
-// The edits the plugin tasks make to astro.config.mjs (admin/plugin-astro-config.mjs), on the
+// The edits the plugin tasks make to astro.config.mjs (scripts/plugin-astro-config.mjs), on the
 // fixture configs in tests/fixtures/astro-config/. Run by `mise run check`:  node --test "tests/*.test.mjs"
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { CannotEdit, addImport, addOption, addSandboxedPlugin, addToList, emdashCall, hasOption, imports, setSandboxRunner } from "../admin/plugin-astro-config.mjs";
+import { CannotEdit, addImport, addOption, addSandboxedPlugin, addToList, emdashCall, hasOption, imports, setSandboxRunner } from "../scripts/plugin-astro-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => readFileSync(join(here, "fixtures", "astro-config", `${name}.mjs`), "utf8");

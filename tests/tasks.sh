@@ -307,7 +307,7 @@ cd "$REPO"
 # plain `node`: it is on the PATH inside a mise task, and `mise x --` would install every tool in
 # mise.toml first — on a CI runner that meant charter, and GitHub refused the download
 node tests/record.mjs "$WORK/rows.txt" "$( if [ -n "$WANT" ]; then echo "$WANT"; elif [ "$TIER" = node ]; then echo full; else echo "$TIER"; fi )" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
-  "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/tasks.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
+  "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml scripts tests/tasks.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
 code=$?
 # The pages written from what was just recorded (docs/_generated.toml): charter writes them. It is
 # one of this repo's tools on a developer's machine (the test's clean environment has no PATH to

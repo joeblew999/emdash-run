@@ -1,5 +1,5 @@
 // What the registry plugin tasks share: how they speak to a site's admin, and to EmDash's registry.
-// One client, used by admin/plugin-install.mjs (install, remove, update) and admin/plugin-works.mjs.
+// One client, used by scripts/plugin-install.mjs (install, remove, update) and scripts/plugin-works.mjs.
 //
 // A request to the site carries what this machine saved for it: the API token of `signin:token`
 // and, behind Cloudflare Access, the pass of `signin:access`. Neither is ever printed.

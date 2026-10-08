@@ -294,7 +294,7 @@ try {
 	}
 
 	// 2. EmDash's own CLI sign-in: it prints a code, this browser approves it. EmDash also opens
-	// the page in the default browser, with no option not to — admin/quiet/ puts a do-nothing
+	// the page in the default browser, with no option not to — scripts/quiet/ puts a do-nothing
 	// `open` first on the PATH for this one command. (On Windows pnpm is a .cmd file, which only
 	// a shell can start, and the default browser does open.)
 	login = spawn("pnpm", ["exec", "emdash", "login", "--url", origin], {

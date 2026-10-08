@@ -60,19 +60,19 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | Path | What it is |
 |---|---|
 | `tasks.toml` | Every task. Visible ones are `<what>:<verb>`; hidden `step:*` ones are single commands, reused. A task's `description` is its documentation |
-| `admin/signin-token.mjs` | `signin:token`: an administrator and an API token written to the site's database |
-| `admin/signin-access.mjs` | `signin:access`: Cloudflare Access through Cloudflare's API |
-| `admin/signin-browser.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
-| `admin/live-preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
-| `admin/plugin.mjs` | What the `plugin:*` tasks run: it only says which job was asked for. Each job is one of the next five files |
-| `admin/plugin-astro-config.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
-| `admin/plugin-sandbox.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
-| `admin/plugin-api.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
-| `admin/plugin-install.mjs` | `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`: the requests the admin's buttons make |
-| `admin/plugin-works.mjs` | `plugin:works`: one line per check, on this machine's built site or, from outside, on the deployed one |
-| `admin/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
-| `admin/site.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
-| `admin/wrangler-config.mjs`, `admin/site-welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
+| `scripts/signin-token.mjs` | `signin:token`: an administrator and an API token written to the site's database |
+| `scripts/signin-access.mjs` | `signin:access`: Cloudflare Access through Cloudflare's API |
+| `scripts/signin-browser.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
+| `scripts/live-preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
+| `scripts/plugin.mjs` | What the `plugin:*` tasks run: it only says which job was asked for. Each job is one of the next five files |
+| `scripts/plugin-astro-config.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
+| `scripts/plugin-sandbox.mjs` | The site's files: the sandbox runner in `astro.config.mjs` and `wrangler.jsonc`, a plugin package's lines, and (for `site:stop`) a Node site's leftover sandbox process |
+| `scripts/plugin-api.mjs` | The one client the registry tasks and the works check speak to a site and to the registry with; what `plugin:install` records about a plugin |
+| `scripts/plugin-install.mjs` | `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`: the requests the admin's buttons make |
+| `scripts/plugin-works.mjs` | `plugin:works`: one line per check, on this machine's built site or, from outside, on the deployed one |
+| `scripts/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
+| `scripts/site.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
+| `scripts/wrangler-config.mjs`, `scripts/site-welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
 | `tests/tasks.sh` | The test. Each step names the task it tests |
 | `tests/plugin-astro-config.test.mjs`, `tests/fixtures/astro-config/` | The unit tests of the edits to `astro.config.mjs`, on fixture configs. `mise run check` runs them |
 | `tests/plugin-permissions.test.mjs` | The unit tests of how `plugin:update` compares what two releases declare |

@@ -40,7 +40,7 @@ Then: [Getting started](docs/getting-started.md).
 | Path | What it is |
 |---|---|
 | `tasks.toml` | The tasks: what your repo includes |
-| `admin/` | The few scripts behind them, where no command of EmDash's exists |
+| `scripts/` | The few scripts behind them, where no command of EmDash's exists |
 | `tests/` | The test that runs every task from an empty folder |
 | `mise.toml`, `charter.toml` | This repo's own automation, kept by [charter](https://github.com/joeblew999/charter) |
 | `docs/` | Everything else: [start here](docs/README.md), rendered at https://joeblew999.github.io/emdash-run/ |

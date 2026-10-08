@@ -147,7 +147,7 @@ export const works = async (args, flags) => {
 	process.exit(failed ? 1 : 0);
 };
 
-// A program one of the site's packages installs, run with Node itself (see admin/emdash.mjs).
+// A program one of the site's packages installs, run with Node itself (see scripts/emdash.mjs).
 function siteBin(siteDir, pkg, name) {
 	const dir = join(siteDir, "node_modules", pkg);
 	const bin = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).bin;
