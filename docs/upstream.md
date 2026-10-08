@@ -155,7 +155,7 @@ says which. Until then the workaround in the last line of each entry is what `ta
 ## 15. The welcome dialog has no setting
 
 - **Seen:** the admin opens a welcome dialog on top of the page for every new user
-  (`admin/src/components/Shell.tsx`, while `/_emdash/api/auth/me` says `isFirstLogin`). A fresh
+  (EmDash's admin package, src/components/Shell.tsx, while `/_emdash/api/auth/me` says `isFirstLogin`). A fresh
   local database means a new user, so a developer sees it after every `site:reset`.
 - **Proposed:** an option on `emdash()` to leave it out, or not showing it to the dev sign-in's user.
 - **Here:** `site:start` and `signin:token` close it with the call its own button makes

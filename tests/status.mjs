@@ -144,6 +144,7 @@ if (text.includes(begin) && text.includes(end)) {
 	const fix = (t) => t
 		.replaceAll("](docs/status.md)", "](status.md)")
 		.replaceAll("](docs/tasks.md)", "](tasks.md)")
+		.replaceAll("](docs/)", "](README.md)")
 		.replaceAll("](docs/plans/)", "](plans/README.md)")
 		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
 		.replaceAll("](admin/)", "](https://github.com/joeblew999/emdash-run/tree/main/admin)")

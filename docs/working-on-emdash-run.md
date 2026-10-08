@@ -17,7 +17,7 @@ mise run hooks         once per clone: turns on the commit check
 The commit check keeps three things together (running a test turns it on too, and CI fails on
 stale pages). A commit that touches `tasks.toml`, the test or this
 README is refused if a task has no test step, if a test step names a task that is gone, or if the
-pages built from them (the task table above, [`docs/`](docs/)) are out of date — it rebuilds them
+pages built from them (the task table above, [`docs/`](README.md)) are out of date — it rebuilds them
 and asks you to add them.
 
 Each runs as another developer would — a clean environment, an empty config folder, its own site
