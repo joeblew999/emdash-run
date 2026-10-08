@@ -9,11 +9,15 @@ import { main as liveUp } from "../live-ship.mjs";
 import { main as pluginNew } from "../plugin-new.mjs";
 import { main as pluginJob } from "../plugin.mjs";
 import { main as signinAccess } from "../signin-access.mjs";
-import { main as signinBrowser } from "../signin-browser.mjs";
 import { main as siteJob } from "../site.mjs";
 import { Exit, task } from "./calls.mjs";
 
 /** @typedef {import("./graph.mjs").Graph} Graph @typedef {import("./graph.mjs").Ctx} Ctx */
+
+// The browser sign-in is loaded when a task needs it, not when the program starts: it needs
+// Playwright, which is installed (tools:browser) only for the tasks that use a browser. Loaded at
+// the top, no task at all could start in a project that had not installed it yet.
+const signinBrowser = async (/** @type {string[]} */ argv) => (await import("../signin-browser.mjs")).main(argv);
 
 const IMPORT_HOW = [
 	"The package is in backups/. To load it into an EMPTY local site (mise run site:reset, then open /_emdash/api/setup/dev-bypass?content=0):",
