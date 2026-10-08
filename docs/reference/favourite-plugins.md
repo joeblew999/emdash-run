@@ -1,9 +1,10 @@
 ---
 title: Favourite plugins
-nav_order: 45
+nav_order: 5
+parent: Reference
 ---
 
-# Favourite plugins
+# Favourite plugins: what `plugin:favourites` installs, and why
 
 The plugins from EmDash's registry that `mise run plugin:favourites` installs into a site, why each
 is on the list, and what was looked at and left off. Read it before you rely on one, or to choose
@@ -59,7 +60,7 @@ What it cannot check:
 - **Hooks are not fired.** A plugin that only acts when content is saved or a comment arrives
   (`comment-notify`) is checked for loading only.
 - **A registry plugin not installed by `plugin:install` on this machine** has its public routes
-  skipped: EmDash has no request that lists them ([upstream bugs](upstream.md), 22).
+  skipped: EmDash has no request that lists them ([upstream bugs](../upstream.md), 22).
 
 ## Every plugin tried
 
@@ -88,7 +89,7 @@ What the two failures printed:
   page: /_emdash/admin/plugins/r_f5zatpijxyewomb3/forms — the plugin answered 400; the page shows:
   Plugin Error Plugin responded with 400: … ROUTE_ERROR … Failed to start Worker: Uncaught Error:
   No such module "emdash"". On the Node site its failure to start stopped the sandbox process
-  for every plugin ([upstream bugs](upstream.md), 21); `mise run plugin:remove -- @solspace.com/freeform`
+  for every plugin ([upstream bugs](../upstream.md), 21); `mise run plugin:remove -- @solspace.com/freeform`
   put the others back.
 - **`@swiss.ky/linguadash`**, both sites, `mise run plugin:install -- @swiss.ky/linguadash`: "FAIL
   @swiss.ky/linguadash: the site would not verify it — 400 RECORD_VERIFICATION_FAILED: The signed
@@ -103,7 +104,7 @@ Not surveyed: search, backups. Redirects are covered by `seo-suite` and `link-gu
 - **A deployed site:** `plugin:install -- … --live`, `plugin:favourites -- --live` and
   `plugin:remove -- … --live` have not been run against a deployed site.
 - **Node:** installing or removing a plugin restarts the built site, and one plugin that cannot
-  start takes the rest down ([upstream bugs](upstream.md), 20 and 21).
+  start takes the rest down ([upstream bugs](../upstream.md), 20 and 21).
 - **Windows and Linux:** none of the plugin tasks has been run there.
 - **These are other people's plugins.** A new release can break one; `mise run test:full` installs
   the list and runs `plugin:works` on it, on both kinds of site.

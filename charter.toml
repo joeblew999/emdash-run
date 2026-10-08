@@ -1,0 +1,4 @@
+# The repo as `charter repo` keeps it (mise run repo; mise run repo:check changes nothing).
+description = "mise tasks for working on an EmDash site: make one, run it, check it, sign in, add plugins, deploy it and preview it on Cloudflare. Each task runs EmDash's, Astro's and wrangler's own commands."
+homepage = "https://joeblew999.github.io/emdash-run/"
+topics = ["astro", "cloudflare-workers", "cms", "emdash", "mise", "mise-tasks"]

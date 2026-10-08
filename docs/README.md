@@ -4,55 +4,55 @@ nav_order: 1
 permalink: /
 ---
 
-<!-- Written by tests/status.mjs from a section of the repo's README.md: edit that, not this. -->
-
 # emdash-run
 
-Work on an [EmDash](https://docs.emdashcms.com) site with a few `mise` tasks: make a site, run it,
-check it, sign in, deploy it. Each task runs EmDash's own commands in the right order.
+Work on an [EmDash](https://docs.emdashcms.com) site with a few `mise` tasks: make a site, run it, check it, sign in, add plugins, deploy it, preview it. Each task runs EmDash's, Astro's and wrangler's own commands in the right order, and is safe to run again.
 
-https://github.com/joeblew999/emdash-run
+Start with [Getting started](getting-started.md). What works at this commit, task by task: [What works](reference/status.md).
 
-**What works right now: [`docs/status.md`](status.md)** — the last test run, step by step.
+## The map
 
-## Set up
+| You have | It gives you | Tasks |
+|---|---|---|
+| An empty repo, or an EmDash site | A site on this machine: the dev site, and the built site that behaves like a deployed one | `site:*`, `emdash`, `model:sync` |
+| A site that needs someone signed in | A machine or a person signed in, with or without a browser | `signin:*` |
+| A site that needs plugins | Your own, one from npm, or one from EmDash's registry, and a check that it works | `plugin:*` |
+| A Cloudflare account | The site deployed, backed up, rolled back, and previewed beside itself | `live:*`, `content:pull` |
 
-You need [mise](https://mise.jdx.dev). Put this in a `mise.toml` in your repo:
+One rule says where a task acts: no flag is this machine, `--live` is the deployed site ([This machine or deployed](guides/local-or-deployed.md)).
 
-```toml
-[settings]
-experimental = true
+## What is generated
 
-[tools]
-node = "26"
-pnpm = "12"
-fnox = "1.36.0"   # keeps your Cloudflare token; only needed for signin:access
+Don't edit these: change what they are written from.
 
-[task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.2.0"]
-```
+| Page or file | Written by | From |
+|---|---|---|
+| [Tasks](reference/tasks.md) | `mise run docs:setup` | each task's `description` in `tasks.toml`, in the order `tests/replay.sh` uses them |
+| [What works](reference/status.md) | `mise run docs:setup` | `tests/results.json`, which every test run updates |
+| `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md) | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
+| `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | `mise run repo` | charter |
 
-That pins release `v1.2.0`; change the tag to update. `ref=main` follows development, but mise
-keeps the copy it fetched first: run `mise cache clear` to take a newer one.
+## Index
 
-## In these docs
-
-| | |
+| Page | What it is for |
 |---|---|
-| [Templates](templates.md) | the eight kinds of site `site:new` can make |
-| [An existing site](an-existing-site.md) | using the tasks on a repo that already is an EmDash site |
-| [This machine or deployed](this-machine-or-deployed.md) | one rule: no flag is this machine, `--live` is the deployed site |
-| [Signing in](signing-in.md) | the four ways, and which to use |
-| [Deploying](deploying.md) | putting a site on Cloudflare, undoing, logs, backups |
-| [Plugins](plugins.md) | searching the registry, installing with no clicking, knowing one works, making your own |
-| [Settings](settings.md) | everything you can set in `mise.toml` |
-| [Several sites, or several agents, at once](several-sites-or-several-agents-at-once.md) |  |
-| [Good to know](good-to-know.md) | what asks first, what stops the site, what is not there |
-| [Working on emdash-run](working-on-emdash-run.md) | the tests, and where the rules are |
-| [Every task](tasks.md) | in the order you use them; each one's description, arguments and flags — written by mise from `tasks.toml` |
-| [Favourite plugins](favourite-plugins.md) | the registry plugins `plugin:favourites` installs, why, and what was rejected |
-| [What works](status.md) | every task, and what the last test run showed |
-| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |
-| [For agents](agents/README.md) | the rules for working on this repo |
-| [Plans](plans/README.md) | what is next, and what was done |
-| [Writing docs](writing.md) | how these pages are written |
+| [Getting started](getting-started.md) | From nothing to a running site you are signed in to |
+| **[Guides](guides.md)** | One job per page |
+| [An existing site](guides/existing-site.md) | Using the tasks on a repo that already is an EmDash site |
+| [This machine or deployed](guides/local-or-deployed.md) | The one rule, and the three sites a project has |
+| [Sign in](guides/sign-in.md) | The four ways, and which to use |
+| [Deploy](guides/deploy.md) | Putting a site on Cloudflare, with sign-in and content |
+| [Preview](guides/preview.md) | The site on an address of its own, beside the live one |
+| [Plugins](guides/plugins.md) | Making one, adding one, installing from the registry |
+| [Several sites at once](guides/several-sites.md) | Two projects, or several agents, on one machine |
+| **[Reference](reference.md)** | Tables: tasks, settings, templates |
+| [Tasks](reference/tasks.md) | Every task: what it does, its arguments and flags |
+| [What works](reference/status.md) | Every task, and what the last test run showed |
+| [Settings](reference/settings.md) | Everything you can set in `mise.toml` |
+| [Templates](reference/templates.md) | The eight kinds of site `site:new` makes |
+| [Favourite plugins](reference/favourite-plugins.md) | What `plugin:favourites` installs, and why |
+| **How to help** | |
+| [How to help](contributing.md) | Setting up, the tests, reporting a bug, how it is built |
+| [Rules](rules.md) | The working rules, for developers and agents |
+| [Upstream issues](upstream.md) | Every workaround, and the issue it waits for |
+| [Writing docs](writing.md) | How these pages are written |

@@ -24,60 +24,27 @@ experimental = true # task includes from a git repo
 node = "26"
 pnpm = "12"
 fnox = "1.36.0" # secrets: the Cloudflare token for the live: tasks — fnox exec -- mise run live:…
-# charter writes and checks the docs site the same way in every repo of the owner's (docs:setup).
-"github:joeblew999/charter" = "0.13.1"
+# charter keeps this repo the way it keeps every repo of the owner's: docs site, generated pages,
+# issue forms, labels (charter.toml; mise run repo). Its tasks come from tasks/repo, below.
+"github:joeblew999/charter" = "0.14.0"
 
 [env]
 TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is given no argument
 
 [task_config]
-includes = ["tasks.toml"]
+includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks/repo?ref=v0.14.0"]
 
 # This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
+# Everything else this repo runs is charter's, from tasks/repo above: repo, repo:check, issue, issues,
+# upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.test]
-description = "Quick test: the everyday tasks from an empty folder, about a minute. One task: mise run test -- signin:token. Updates docs/status.md"
+description = "Quick test: the everyday tasks from an empty folder, about a minute. One task: mise run test -- signin:token. Records what it saw (tests/results.json) and rewrites the generated pages"
 run = "bash tests/replay.sh quick"
 
 [tasks."test:full"]
-description = "Full test: every task, both templates, then the deployed-site tasks. About 8 minutes. Updates docs/status.md"
+description = "Full test: every task, three sites at once, then the deployed-site tasks. About 20 minutes. Records what it saw and rewrites the generated pages"
 run = "bash tests/replay.sh full"
 
-[tasks.issues]
-description = "What developers have reported and nobody has dealt with: the open issues, newest first. Look here first"
-run = "gh issue list --state open --limit 30"
-
-[tasks.docs]
-description = "Rebuild every generated page: docs/tasks.md (mise's own task docs, from tasks.toml), the README's task table, the docs site's pages, docs/status.md. The commit check and every test run do this too"
-run = "node tests/status.mjs --rebuild"
-
 [tasks.hooks]
-description = "Turn on this repo's commit check: a commit that changes a task, the test or the README is refused until the test covers every task and the generated pages are rebuilt"
+description = "Turn on the commit check in this clone (running a test does it too): every task has a test step, the generated pages are fresh, docs/ passes the lint"
 run = "git config core.hooksPath .githooks"
-
-[tasks.setup]
-description = "Everything charter sets up for this repo, in one go: the docs site's config and writing rules, the issue forms, and (REMOTE) the labels on GitHub. Safe to run again. Then turns on the commit check"
-run = [{ task = "docs:setup" }, { task = "github:forms" }, { task = "github:labels" }, { task = "hooks" }]
-
-[tasks.upstream]
-description = "REMOTE (reads GitHub): the upstream issues this repo works around — every `Upstream:` tag in tasks.toml, admin/ and tests/ — and whether each is still open. A closed one: do what its tag says, and take the workaround out"
-run = "charter upstream"
-
-[tasks."github:forms"]
-description = "Write charter's issue forms and labels file into .github/ (feature, upstream, config, labels.tsv). bug.yml is this repo's own and is left alone; charter's workflows are for other kinds of repo and are not taken"
-run = "node -e \"const fs=require('fs'),os=require('os'),path=require('path'),cp=require('child_process');const t=fs.mkdtempSync(path.join(os.tmpdir(),'charter-'));cp.execFileSync('charter',['workflows','-into',t],{stdio:'ignore'});for(const f of ['ISSUE_TEMPLATE/feature.yml','ISSUE_TEMPLATE/upstream.yml','ISSUE_TEMPLATE/config.yml','labels.tsv'])fs.copyFileSync(path.join(t,'.github',f),path.join('.github',f));fs.rmSync(t,{recursive:true,force:true});console.log('issue forms and labels file written from charter')\""
-
-[tasks."docs:setup"]
-description = "Write the docs site's config (charter: the same for every repo of the owner's)"
-run = "charter docs"
-
-[tasks."docs:check"]
-description = "Check docs/ with charter: the site config is charter's; front matter, dead links and anchors, tasks and paths that do not exist. The commit check runs it too"
-run = "charter docs -check && charter docs-lint"
-
-[tasks."docs:pages"]
-description = "REMOTE, once: turn on GitHub Pages for docs/ on main"
-run = 'gh api -X POST "repos/{owner}/{repo}/pages" -f "source[branch]=main" -f "source[path]=/docs"'
-
-[tasks."github:labels"]
-description = "REMOTE: create or update this repo's issue labels from .github/labels.tsv (charter)"
-run = "charter labels"

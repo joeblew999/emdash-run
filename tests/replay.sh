@@ -49,18 +49,8 @@ fi
 
 # Provenance first: every task in tasks.toml has a step below, and every step names a real task.
 (cd "$REPO" && node tests/status.mjs --coverage) || exit 1
-# ONE SOURCE: the README's task tables and the pages in docs/ are written from tasks.toml, this
-# file and the README — never by hand. Two guards, so that holds without anyone remembering:
-# running the test turns on the commit check in this clone; and on a CI runner, pages that were
-# committed stale fail the run before anything else is done.
-if [ -z "${CI:-}" ]; then
-  git -C "$REPO" config core.hooksPath .githooks 2>/dev/null || true
-elif [ "$(uname -s)" = Linux ]; then
-  (cd "$REPO" && node tests/status.mjs --rebuild >/dev/null && git diff --quiet -- README.md docs) || {
-    echo "The generated pages are stale: README.md or docs/ does not match tasks.toml, tests/replay.sh and the README."
-    (cd "$REPO" && git diff --stat -- README.md docs)
-    echo "Run  mise run docs  and commit what it changes. Nothing was run."; exit 1; }
-fi
+# Running the test turns on the commit check in this clone (the generated pages, the docs lint).
+[ -n "${CI:-}" ] || git -C "$REPO" config core.hooksPath .githooks 2>/dev/null || true
 
 # One step: the task it tests, what it shows, the command. `no` is a step that must refuse.
 step() { # $1 = PASS-expected (ok|no)  $2 = task  $3 = what  $4 = command
@@ -238,5 +228,10 @@ cd "$REPO"
 node tests/status.mjs "$WORK/rows.txt" "$TIER" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
   "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/replay.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
 code=$?
+# The pages written from what was just recorded (docs/_generated.toml): charter writes them. It is
+# one of this repo's tools on a developer's machine (the test's clean environment has no PATH to
+# it: mise says where it is); a CI runner installs no charter and commits nothing.
+CHARTER=$(command -v charter 2>/dev/null || mise which charter 2>/dev/null) || true
+[ -n "$CHARTER" ] && "$CHARTER" docs >/dev/null && grep -m1 "steps pass" docs/reference/status.md
 rm -rf "$WORK"
 exit $code

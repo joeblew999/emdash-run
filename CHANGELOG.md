@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The repo is kept by [charter](https://github.com/joeblew999/charter)**, like the owner's other
+  repos: the docs in its layout (Getting started, Guides, Reference, How to help), the rules in
+  `docs/rules.md`, the issue forms and labels, and this repo's own tasks (`repo`, `docs:check`,
+  `issues`, `upstream:status`) included from charter instead of written here. The README is
+  short and points at the docs. Nothing changes for a project that includes `tasks.toml`.
+
 ## 1.2.0 — 2026-10-08
 
 Plugins from EmDash's registry, and previews. The full test on a Mac: 133 steps, every one of the

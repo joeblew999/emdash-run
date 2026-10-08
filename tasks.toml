@@ -1,8 +1,8 @@
-# The stages of working on an EmDash site, as mise tasks. What works right now: docs/status.md.
+# The stages of working on an EmDash site, as mise tasks. What works right now: docs/reference/status.md.
 #
-# HOW TO USE THEM is the README: set-up, the one rule for this machine or the deployed site, the
+# HOW TO USE THEM is docs/ (docs/getting-started.md): set-up, the one rule for this machine or the deployed site, the
 # settings. WHAT EACH TASK DOES is its `description` below, and nowhere else: mise prints it
-# (`mise tasks`), and docs/tasks.md and the README's tables are written from it. So write a
+# (`mise tasks`), and docs/reference/tasks.md is written from it. So write a
 # description for a developer who has read nothing else — what it does, where it acts, what it
 # needs, what it stops or asks.
 #
@@ -163,7 +163,7 @@ flag "--live" help="The deployed site at LIVE_URL instead of the local productio
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/plugins.mjs\" remove {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %} {{ usage.plugin | join(sep=' ') }}"
 
 ["plugin:favourites"]
-description = "Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add --live for deployed"
+description = "Install the favourite registry plugins in one go (docs/reference/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add --live for deployed"
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'

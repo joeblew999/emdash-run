@@ -12,7 +12,7 @@
 #   ---
 # The start page, README.md, also needs `permalink: /` there: it is the site's home page.
 title: emdash-run
-description: "mise tasks for working on an EmDash site: make it, run it, check it, sign in, deploy it. Each task runs EmDash's own commands in order."
+description: "mise tasks for working on an EmDash site: make one, run it, check it, sign in, add plugins, deploy it and preview it on Cloudflare. Each task runs EmDash's, Astro's and wrangler's own commands."
 aux_links:
   "GitHub": ["https://github.com/joeblew999/emdash-run"]
 gh_edit_repository: https://github.com/joeblew999/emdash-run

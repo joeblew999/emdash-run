@@ -1,0 +1,9 @@
+# Pages a command of this repo writes: `mise run docs:setup` runs each command and writes the page,
+# `mise run repo:check` and the commit check fail when one is stale.
+[[generated]]
+page = "reference/tasks.md"
+run = "node tests/status.mjs --page tasks"
+
+[[generated]]
+page = "reference/status.md"
+run = "node tests/status.mjs --page status"
