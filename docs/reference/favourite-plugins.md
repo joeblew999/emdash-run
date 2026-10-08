@@ -24,7 +24,7 @@ PLUGINS = "@netdollar.dev/forms@0.1.0 @meekmedia.bsky.social/bulletin"   # with 
 
 ## The list
 
-Chosen by what a new site needs first, from plugins that need nothing outside the site to be of use and load and answer on a Cloudflare site and on a Node site (below). Each is installed at the release in the table: a newer one is not taken until someone has read what it asks for.
+Chosen by what a new site needs first, from plugins that need nothing outside the site to be of use and load and answer on a Cloudflare site and on a Node site (below). Each is installed at the release in the table: a newer one is not taken until someone has read what it asks for. `mise run plugin:update -- <publisher>/<slug>@<version>` prints that, beside what the installed release was granted, and moves the plugin.
 
 | Plugin | Release | What it is for | What it may do on the site |
 |---|---|---|---|
@@ -49,6 +49,13 @@ Chosen by what a new site needs first, from plugins that need nothing outside th
 | admin page | each of its admin pages is loaded in Chrome, signed in with the saved token: the plugin's answer is 200, the page shows no "Plugin Error", the browser console has no error |
 | log | the built site's log has EmDash's "Loaded registry plugin …" line for it, and no line saying it failed to load |
 | sandbox | the log has no "Missing capability", "Host not allowed", wall-time or route error from the requests above |
+
+With `-- --live` it checks the deployed site, from outside: `builds`, `starts`, `log` and `sandbox` are printed as `skip` with the reason, and one check takes the place of the first two:
+
+| check | what is done |
+|---|---|
+| answers | the deployed site answers a visitor |
+| listed, routes, admin page | as above. A route open to visitors is asked with nothing this machine has saved: no token, no Cloudflare Access pass. A visitor sent to a sign-in page counts as shut out |
 
 What it cannot check:
 
@@ -100,8 +107,8 @@ Not surveyed: search, backups. Redirects are covered by `seo-suite` and `link-gu
 
 - **Cloudflare:** a registry plugin needs the Worker Loader binding, and deploying a site with it
   needs the Workers Paid plan. `mise run live:check` (wrangler's dry run) passes with it on.
-- **A deployed site:** `plugin:favourites -- --live` installed the five on a preview of a deployed site, and their public routes answered a visitor there. `plugin:remove -- … --live` has not been run against a deployed site, and `plugin:works` checks this machine's built site only.
-- **Node:** installing or removing a plugin restarts the built site, and one plugin that cannot
+- **A deployed site:** `plugin:favourites -- --live` installed the five on a preview of a deployed site. `LIVE_PREVIEW=stages mise run plugin:works -- --live` was run on it on 2026-10-08, with six plugins installed: five load and answer, their public routes answer a visitor, and one page fails. `link-guardian`'s dashboard page answers 400, "Too many subrequests by single Worker invocation": on a Cloudflare site that page asks for more than one Worker request may. Its other two pages and its routes answer. `plugin:remove -- … --live` and `plugin:update -- … --live` have not been run against a deployed site.
+- **Node:** installing, updating or removing a plugin restarts the built site, and one plugin that cannot
   start takes the rest down ([upstream bugs](../upstream.md), 20 and 21).
 - **Windows and Linux:** none of the plugin tasks has been run there.
 - **These are other people's plugins.** A new release can break one; `mise run test:full` installs

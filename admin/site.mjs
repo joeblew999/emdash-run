@@ -23,6 +23,8 @@ export const parseJsonc = (text) => {
 	return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
 };
 
+// A Cloudflare site is one with a wrangler config, whatever its format.
+export const isCloudflare = (siteDir) => ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
 export const wranglerFile = (siteDir) => ["wrangler.jsonc", "wrangler.json"].map((f) => join(siteDir, f)).find((f) => existsSync(f));
 export const wranglerConfig = (siteDir) => {
 	const file = wranglerFile(siteDir);
