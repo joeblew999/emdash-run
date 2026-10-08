@@ -2,7 +2,7 @@
 #
 # Started by hand, with the level chosen: quick (about 2 minutes a machine) or full. A release tag
 # runs the full one. Never started by a push: the test runs locally after every change, and
-# docs/status.md is its record.
+# docs/reference/status.md is its record.
 name: stages
 on:
   workflow_dispatch:
@@ -49,6 +49,9 @@ jobs:
       - name: mise run test:full
         if: github.event_name != 'workflow_dispatch' || inputs.level == 'full'
         run: mise run test:full
+      # What this run recorded (tests/results.json), as the page docs/reference/status.md is written
+      # from it. Not the committed page: a runner has no charter to rewrite it, so that one would
+      # show the developer's last run, not this one.
       - name: what worked
         if: always()
-        run: cat docs/status.md >> "$GITHUB_STEP_SUMMARY"
+        run: node tests/status.mjs --page status >> "$GITHUB_STEP_SUMMARY"

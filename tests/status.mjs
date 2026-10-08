@@ -73,7 +73,7 @@ if (mode === "--page" && arg === "status") {
 	const last = [...results].sort((a, b) => String(b.when).localeCompare(String(a.when)))[0];
 	const out = ["# What works: every task, and what the last test run showed", ""];
 	out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${all.length} tasks have no test.**`, "");
-	if (last) out.push(`The last run: \`${last.tier}\`, at commit \`${last.commit}\`, ${last.when}, on a Mac. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the \`stages\` workflow, on a release tag.`, "");
+	if (last) out.push(`The last run: \`${last.tier}\`, at commit \`${last.commit}\`, ${last.when}, on ${last.os ?? "macOS"}. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the \`stages\` workflow, on a release tag.`, "");
 	out.push("Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).", "");
 	out.push("## By task", "", "| Task | Cloudflare site | Node site | Deployed site | |", "|---|---|---|---|---|");
 	for (const t of all) {
@@ -100,10 +100,12 @@ if (!rowsFile || !existsSync(rowsFile)) {
 	console.error("usage: node tests/status.mjs <rows file> <tier> <tasks from> <commit> <seconds> | --page status | --coverage");
 	process.exit(1);
 }
+// where it ran: the stages workflow shows this record for each of its three machines
+const os = { darwin: "macOS", linux: "Linux", win32: "Windows" }[process.platform] ?? process.platform;
 const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
 const fresh = readFileSync(rowsFile, "utf8").split("\n").filter(Boolean).map((line, order) => {
 	const [task, where, step, result, detail, kind] = line.split("|").map((x) => x.trim());
-	return { task, where, step, result, detail, refusal: kind === "no", tier, from, commit, when, order };
+	return { task, where, step, result, detail, refusal: kind === "no", tier, from, commit, when, os, order };
 });
 const key = (r) => `${r.task}|${r.where}|${r.step}`;
 const replaced = new Set(fresh.map(key));

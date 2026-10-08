@@ -27,7 +27,8 @@ parent: How to help
 | EmDash, not filed | No command installs a registry plugin | `plugin:install` sends the admin's two requests (`admin/plugins.mjs`) | Use the command |
 | EmDash, not filed | `create-emdash --sandboxed-plugins` does not switch the sandbox on | `plugin:sandbox` writes both settings | |
 | EmDash, not filed | `emdash-plugin info <handle> <slug>` fails when the publisher's own host is down | `plugin:install` asks the registry's aggregator | |
-| EmDash, not filed | On a Node site the sandbox process outlives the site, and then blocks it | `site:stop` stops it; `plugin:install` and `plugin:remove` restart a Node site | Drop both |
+| EmDash, not filed | On a Node site EmDash stops workerd's launcher, not workerd: the sandbox process outlives a restart of the sandbox and the site itself, keeps its port, and the next one fails with `bind(): Address already in use` | `plugin:sandbox` allows workerd's install script (`allowBuilds` in `pnpm-workspace.yaml`), which puts the program in the launcher's place; `site:stop` stops one left over; `plugin:install` and `plugin:remove` restart a Node site | Drop all three |
+| EmDash, not filed | A Node site's sandbox takes fixed ports from 18788, so two Node sites on one machine cannot both run sandboxed plugins (seen 2026-10-08, macOS: the second one's workerd ends with `bind(): Address already in use`) | None: one Node site with sandboxed plugins at a time | |
 | EmDash, not filed | On a Node site one plugin that cannot start takes every sandboxed plugin down | `plugin:works` reports it; `plugin:remove` takes it out | |
 | EmDash, not filed | Nothing lists what an installed registry plugin declares | `plugin:install` keeps what the registry answered, for `plugin:works` | Ask the site |
 | EmDash's guide, not filed | The backup guide's SQL dump fails on a site with search: D1's export refuses the search tables | `live:backup` takes a Time Travel bookmark and a content package | Add the dump |

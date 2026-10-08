@@ -10,7 +10,7 @@ Written by `charter docs` from what `node tests/status.mjs --page status` prints
 
 **133 steps pass, 0 fail, 0 of 35 tasks have no test.**
 
-The last run: `full`, at commit `5ccdf89+uncommitted`, 2026-10-08 02:58 UTC, on a Mac. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
+The last run: `full`, at commit `5ccdf89+uncommitted`, 2026-10-08 02:58 UTC, on macOS. A run replaces the steps it ran and keeps the rest: the last table says when each step ran. The same test runs on macOS, Linux and Windows in the `stages` workflow, on a release tag.
 
 Every test runs as another developer would: a clean environment, an empty config folder, a site of its own in a temporary folder. Run them: [How to help](../contributing.md).
 

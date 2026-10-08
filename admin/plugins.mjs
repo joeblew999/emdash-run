@@ -26,8 +26,8 @@
 //               and the packages @emdash-cms/sandbox-workerd and workerd
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -101,6 +101,20 @@ const pnpm = (argsFor, cwd) => {
 };
 const mise = (task, quiet = true) => spawnSync("mise", ["run", ...task], { cwd: projectDir, stdio: quiet ? ["ignore", "ignore", "inherit"] : "inherit", shell: win });
 
+// allowBuilds: workerd: true in the site's pnpm-workspace.yaml. Returns the file when it changed it.
+// A workaround, not filed upstream yet: docs/upstream.md, "the sandbox process outlives the site".
+const allowWorkerdBuild = (siteDir) => {
+	const f = join(siteDir, "pnpm-workspace.yaml");
+	const before = existsSync(f) ? readFileSync(f, "utf8") : "";
+	if (/^[ \t]+workerd:[ \t]*true\b/m.test(before)) return null;
+	let after;
+	if (/^[ \t]+workerd:[ \t]*false\b.*$/m.test(before)) after = before.replace(/^([ \t]+workerd:[ \t]*)false\b/m, "$1true");
+	else if (/^allowBuilds:[ \t]*\r?\n/m.test(before)) after = before.replace(/^allowBuilds:[ \t]*\r?\n/m, (m) => `${m}  workerd: true\n`);
+	else after = `${before}${before && !before.endsWith("\n") ? "\n" : ""}allowBuilds:\n  workerd: true\n`;
+	writeFileSync(f, after);
+	return f;
+};
+
 // What a site needs before it can run a sandboxed plugin. Returns what it changed, as lines.
 const sandbox = (siteDir) => {
 	const file = configFile(siteDir);
@@ -124,14 +138,27 @@ const sandbox = (siteDir) => {
 			changed.push(`${w}: the worker_loaders binding LOADER — deploying it needs the Workers Paid plan`);
 		}
 	} else {
+		// workerd's install script, allowed — as EmDash's Cloudflare template allows it, and its Node
+		// template does not. Without it node_modules/workerd/bin/workerd is a Node launcher that runs
+		// the real program as its child; EmDash stops the launcher, the program lives on and keeps
+		// port 18788, and the next sandbox process cannot open it: "bind(): Address already in use",
+		// then "workerd failed to start within 10 seconds" from every sandboxed plugin. That happens
+		// whenever EmDash restarts the sandbox in place: a second plugin loaded a moment after the
+		// first. The script puts the program itself at bin/workerd, so stopping it stops it. (On
+		// Windows the script leaves the launcher: nothing changes there.)
+		const allowed = allowWorkerdBuild(siteDir);
 		const have = sitePackages(siteDir);
 		const missing = ["@emdash-cms/sandbox-workerd", "workerd"].filter((p) => !have[p]);
+		// packages change: the site is stopped first (a running site breaks on Windows otherwise)
+		if (missing.length || allowed) mise(["site:stop"]);
 		if (missing.length) {
-			// packages change: the site is stopped first (a running site breaks on Windows otherwise)
-			mise(["site:stop"]);
 			pnpm(["add", ...missing], siteDir);
 			changed.push(`package.json: ${missing.join(", ")}`);
+		} else if (allowed) {
+			// already installed, with the script refused: run it now
+			pnpm(["rebuild", "workerd"], siteDir);
 		}
+		if (allowed) changed.push(`${allowed}: workerd's install script is allowed (allowBuilds), so the sandbox process stops when EmDash stops it`);
 		if (writeConfig(file, before, addOption(before, "sandboxRunner", '"@emdash-cms/sandbox-workerd/sandbox"'))) changed.push(`${file}: sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox"`);
 	}
 	return changed;
@@ -435,8 +462,16 @@ if (what === "leftover") {
 		console.log(`${state.padEnd(4)} ${check}: ${detail}`);
 	};
 	const run = (task) => {
-		const r = spawnSync("mise", ["run", ...task], { cwd: projectDir, encoding: "utf8", shell: win });
-		return { ok: r.status === 0, tail: `${r.stdout}${r.stderr}`.replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-4).join(" | ").slice(0, 400) };
+		// Its output goes to a file, not a pipe: site:preview leaves the site running, and on Windows
+		// that site keeps the pipe it inherited open — reading to the pipe's end then never returns
+		// (plugin:works did not end on a Windows CI runner, twice).
+		const dir = mkdtempSync(join(tmpdir(), "emdash-run-"));
+		const out = openSync(join(dir, "out.txt"), "w");
+		const r = spawnSync("mise", ["run", ...task], { cwd: projectDir, stdio: ["ignore", out, out], shell: win });
+		closeSync(out);
+		const said = readFileSync(join(dir, "out.txt"), "utf8");
+		try { rmSync(dir, { recursive: true, force: true }); } catch {}
+		return { ok: r.status === 0, tail: said.replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-4).join(" | ").slice(0, 400) };
 	};
 	// 1. the site, with its plugins in it, still passes its checks
 	const check = run(["site:check"]);
@@ -521,8 +556,9 @@ if (what === "leftover") {
 		const log = readLog();
 		const fresh = log.slice(wanted.indexOf(plugin) === 0 ? 0 : read);
 		read = log.length;
-		const notLoaded = fresh.filter((l) => /Failed to load|not found in R2|sandbox is configured but not available|Sandboxed plugins are disabled|Plugin sandbox unavailable|workerd (failed|crashed|exited)|Uncaught \w*Error/i.test(l) && (l.includes(plugin.id) || /sandbox|workerd/i.test(l)));
+		const notLoaded = fresh.filter((l) => /Failed to load|not found in R2|sandbox is configured but not available|Sandboxed plugins are disabled|Plugin sandbox unavailable|workerd (failed|crashed|exited)|Address already in use|Uncaught \w*Error/i.test(l) && (l.includes(plugin.id) || /sandbox|workerd/i.test(l)));
 		const loaded = log.find((l) => /Loaded \w+ plugin /.test(l) && l.includes(plugin.id));
+		notLoaded.sort((a, b) => /Address already in use/.test(b) - /Address already in use/.test(a));
 		line(notLoaded.length ? "FAIL" : "ok", `${n} log`, notLoaded.length ? notLoaded.slice(0, 3).join(" | ").slice(0, 400) : loaded ? `the built site's log says: ${loaded.trim().slice(0, 160)}` : "the built site's log has no line saying it failed to load (EmDash writes 'Loaded … plugin' for a registry plugin, and nothing for one from the site's config)");
 		const refused = fresh.filter((l) => /Missing capability|Host not allowed|exceeded wall-time limit|Sandboxed plugin route error|Route handler failed/i.test(l));
 		line(refused.length ? "FAIL" : "ok", `${n} sandbox`, refused.length ? refused.slice(0, 3).join(" | ").slice(0, 400) : "nothing was refused while its routes and pages were asked (a refusal the plugin catches itself leaves no trace)");
