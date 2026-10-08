@@ -111,5 +111,5 @@ Not surveyed: search, backups. Redirects are covered by `seo-suite` and `link-gu
 - **Node:** installing, updating or removing a plugin restarts the built site, and one plugin that cannot
   start takes the rest down ([upstream bugs](../upstream.md), 20 and 21).
 - **Windows and Linux:** none of the plugin tasks has been run there.
-- **These are other people's plugins.** A new release can break one; `mise run test plugin` installs
+- **These are other people's plugins.** A new release can break one; `mise run dev:test plugin` installs
   the list and runs `plugin:works` on it, on both kinds of site.

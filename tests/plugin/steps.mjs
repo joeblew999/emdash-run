@@ -1,4 +1,4 @@
-// The plugin group: a plugin of your own, and plugins from EmDash's registry.   mise run test:plugin
+// The plugin group: a plugin of your own, and plugins from EmDash's registry.   mise run dev:test plugin
 // The unit tests of the scripts' own functions are here too (*.test.mjs, fixtures/): they run first
 // in every test, and in mise run check.
 import { aSite, attempt, check, env, exists, list, mise, project, read, remove, says, saysAnyCase } from "../lib/site.mjs";

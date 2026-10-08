@@ -2,7 +2,7 @@
 //
 //   step(task, what, fn)      the task does what it says: fn runs to its end
 //   refuses(task, what, fn)   the task must refuse: fn throws (a task it runs fails)
-//   long(() => { … })         the steps inside run only with --all (mise run test:all)
+//   long(() => { … })         the steps inside run only at the level all (mise run dev:test --level all)
 //   setup(fn)                 before the first step: the project the steps work in
 //
 // A step that does not end is stopped at STEP_LIMIT seconds (five minutes) and fails; the steps

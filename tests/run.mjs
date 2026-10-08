@@ -3,18 +3,18 @@
 // (results.json), and a page in docs/reference/. Each runs alone, on a site of its own.
 //
 // THREE LEVELS, the same on a developer's machine and on CI:
-//   mise run test --level smoke   THE BASICS, half a minute: the types and unit tests pass, a
+//   mise run dev:test --level smoke   THE BASICS, half a minute: the types and unit tests pass, a
 //                                 project is made, its tasks run, the site starts, answers and
 //                                 stops. Run it first; a push runs it on three OSes
-//   mise run test                 fast (the default): the everyday steps of site, signin and
+//   mise run dev:test                 fast (the default): the everyday steps of site, signin and
 //                                 plugin — the groups not proven. About a minute a group
-//   mise run test --level all     every step, the long ones too (long(…) in a steps file)
+//   mise run dev:test --level all     every step, the long ones too (long(…) in a steps file)
 //
-//   mise run test plugin          one group, or several, at any level
-//   mise run test live            the live group: it deploys to the Worker kept for testing
-//   mise run test --node          on a Node site made from EmDash's template
-//   mise run test --again         run a group even though it is proven
-//   mise run test site --only site:check   only the steps named so; nothing is recorded
+//   mise run dev:test plugin          one group, or several, at any level
+//   mise run dev:test live            the live group: it deploys to the Worker kept for testing
+//   mise run dev:test --node          on a Node site made from EmDash's template
+//   mise run dev:test --again         run a group even though it is proven
+//   mise run dev:test site --only site:check   only the steps named so; nothing is recorded
 //
 // PROVEN: the group's steps passed and nothing it depends on has changed since (tests/lib/depends.mjs;
 // node tests/record.mjs --depends). A proven group is not run again; on a CI runner nothing is skipped.

@@ -1,4 +1,4 @@
-// The live group: the tasks that act on a deployed site.   mise run test:live
+// The live group: the tasks that act on a deployed site.   mise run dev:test live
 //
 // It puts a fresh starter site on a Worker kept for testing. Two settings, in this repo's gitignored
 // mise.local.toml: TEST_LIVE_URL, its address, and TEST_LIVE_NAME, the Worker's name — its database

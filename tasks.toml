@@ -14,7 +14,7 @@
 # exists a step is one line of `node -e` (a check, a message), and the scripts in scripts/ cover the
 # gaps no command closes: signin-token.mjs, signin-access.mjs, signin-browser.mjs (the only Playwright), emdash.mjs,
 # site.mjs, plugin.mjs.
-# After any change here or in scripts/:  mise run test   (in the emdash-run repo).
+# After any change here or in scripts/:  mise run dev:test   (in the emdash-run repo).
 #
 # THIS FILE, IN ORDER: the tasks you run, group by group — then, at the end, every hidden step they
 # are built from. Nothing is mixed.

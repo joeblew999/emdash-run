@@ -2,7 +2,7 @@
 	"name": "emdash-run-tests",
 	"private": true,
 	"type": "module",
-	"description": "What type-checks the test and the scripts: mise run types.",
+	"description": "What type-checks the test and the scripts: mise run dev:types.",
 	"devDependencies": {
 		"@types/node": "24.10.1",
 		"typescript": "5.9.3"

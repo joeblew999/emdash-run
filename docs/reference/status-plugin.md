@@ -8,7 +8,7 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status-plugin` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Run them: `mise run test plugin`. The steps: `tests/plugin/steps.mjs`. Every group: [What works](status.md).
+Run them: `mise run dev:test plugin`. The steps: `tests/plugin/steps.mjs`. Every group: [What works](status.md).
 
 ## On a Cloudflare site
 

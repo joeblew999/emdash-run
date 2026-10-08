@@ -34,25 +34,28 @@ TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is give
 [task_config]
 includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks/repo?ref=v0.18.0"]
 
-# This repo's own tasks — not in tasks.toml, so a project that includes the tasks does not get them.
-# Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
-# upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
-[tasks.packages]
+# THIS REPO'S OWN TASKS — not in tasks.toml, so a project that includes the tasks does not get them.
+#   dev:*    for working on emdash-run itself: dev:test (three levels), dev:ci (the same on GitHub),
+#            dev:types, dev:src, dev:hooks
+#   check    what must pass before a release. The name is charter's: its release task runs it
+# Everything else here is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue,
+# issues, upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
+[tasks."dev:packages"]
 hide = true
 description = "Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check"
 depends = ["step:admin-tools"]
 run = "pnpm --dir tests install --silent --frozen-lockfile"
 
-[tasks.types]
+[tasks."dev:types"]
 description = "Type-check tests/ and scripts/ (tsconfig.json)"
-depends = ["packages"]
+depends = ["dev:packages"]
 run = "pnpm --dir tests exec tsc -p ../tsconfig.json"
 
 # ONE task for the test, at THREE LEVELS — the same here and on CI (.github/workflows/stages.yml
 # runs this task with a level and nothing else). How it works: the top of tests/run.mjs.
-[tasks.test]
+[tasks."dev:test"]
 description = "The test, at one of three levels. smoke: the basics, half a minute. fast (the default): the everyday steps of the groups that changed, about a minute a group. all: every step. Name groups to run only those: site, signin, plugin, live (live deploys: only when named)"
-depends = ["types"]
+depends = ["dev:types"]
 usage = '''
 arg "[groups]..." help="site, signin, plugin, live. None: site, signin and plugin"
 flag "--level <level>" help="smoke, fast or all" default="fast" {
@@ -64,8 +67,8 @@ flag "--only <words>" help="Only the steps whose name has these words; nothing i
 '''
 run = "node tests/run.mjs {{ usage.groups | default(value=[]) | join(sep=' ') }} --level {{ usage.level }}{% if usage.again %} --again{% endif %}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
 
-[tasks."test:ci"]
-description = "REMOTE: have GitHub run the test at a level, on Linux, macOS and Windows: the stages workflow, which runs mise run test --level <level> there. Prints how to follow it"
+[tasks."dev:ci"]
+description = "REMOTE: have GitHub run the test at a level, on Linux, macOS and Windows: the stages workflow, which runs mise run dev:test --level <level> there. Prints how to follow it"
 usage = '''
 flag "--level <level>" help="smoke, fast or all" default="smoke" {
   choices "smoke" "fast" "all"
@@ -74,13 +77,13 @@ flag "--level <level>" help="smoke, fast or all" default="smoke" {
 run = ["gh workflow run stages.yml -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
 
 [tasks.check]
-description = "What must pass before a release, and what release runs before it tags: the test (mise run test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them)"
-run = [{ task = "test" }, { task = "repo:ci" }]
+description = "What must pass before a release, and what release runs before it tags: the test (mise run dev:test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them)"
+run = [{ task = "dev:test" }, { task = "repo:ci" }]
 
-[tasks.src]
+[tasks."dev:src"]
 description = "EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest"
 run = "git -C .src/emdash pull --ff-only --quiet || git clone --depth 1 --quiet https://github.com/emdash-cms/emdash .src/emdash"
 
-[tasks.hooks]
+[tasks."dev:hooks"]
 description = "Turn on the commit check in this clone (running a test does it too): tests/ and scripts/ type-check, every task has a test step, the generated pages are fresh, docs/ passes the lint"
 run = "git config core.hooksPath .githooks"

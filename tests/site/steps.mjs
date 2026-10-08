@@ -1,4 +1,4 @@
-// The site group: making, running, checking and deleting a site.   mise run test:site
+// The site group: making, running, checking and deleting a site.   mise run dev:test site
 // On a copy of this repo's site/ (test:node: on a site made from EmDash's Node template).
 import { attempt, builtSite, check, cmd, copySite, devSite, exists, forSeconds, list, mise, ports, project, read, remove, says, saysAnyCase, status, where, write } from "../lib/site.mjs";
 import { long, refuses, setup, step } from "../lib/step.mjs";

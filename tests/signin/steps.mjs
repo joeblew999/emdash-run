@@ -1,5 +1,5 @@
 // The signin group: the CLI, an agent and a browser window as an administrator of the built site.
-//   mise run test:signin
+//   mise run dev:test signin
 // (Signing in to a deployed site, and Cloudflare Access, are in the live group.)
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";

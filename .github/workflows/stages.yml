@@ -1,5 +1,5 @@
 # The test on macOS, Linux and Windows, at the level asked for. Nothing is decided here: each job
-# installs mise and runs `mise run test --level <level>`, the task a developer runs, so a pass on
+# installs mise and runs `mise run dev:test --level <level>`, the task a developer runs, so a pass on
 # your machine is a pass on GitHub. The three levels are written in tests/run.mjs.
 #
 #   a push to main    smoke — the basics, a few minutes
@@ -34,7 +34,7 @@ jobs:
       - uses: jdx/mise-action@v5.0.1
         with:
           version: 2026.10.4 # the repo's mise.toml: min_version
-      - run: mise run test --level ${{ inputs.level || (github.ref_type == 'tag' && 'all' || 'smoke') }}
+      - run: mise run dev:test --level ${{ inputs.level || (github.ref_type == 'tag' && 'all' || 'smoke') }}
         env:
           # the one thing a runner has to be given: who it is. GitHub limits anonymous downloads per
           # address, and hosted runners share addresses (EmDash's template is fetched from GitHub)
