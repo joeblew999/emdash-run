@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Exit, setReacher } from "./calls.mjs";
+import { demo } from "./demo.mjs";
 import { plan, reach } from "./graph.mjs";
 import { pluginDemo } from "./plugin-demo.mjs";
 import { projectOf } from "./project.mjs";
@@ -15,7 +16,7 @@ import { tasks } from "./tasks.mjs";
 import { realWorld } from "./world.mjs";
 
 /** Every state the tasks know. */
-export const graph = { ...site, ...signin, ...tasks, ...pluginDemo };
+export const graph = { ...site, ...signin, ...tasks, ...pluginDemo, ...demo };
 
 /**
  * What a task was given: --live, or as tasks.toml passes it on, --live=true / --live=false.

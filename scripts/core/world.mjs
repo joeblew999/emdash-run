@@ -18,7 +18,8 @@ import { dirname, join } from "node:path";
  *   seconds each, a changed lockfile date, and on a CI runner on Windows a refusal.
  * @property {(paths: string[]) => string} digest             one value for what these files hold now; it changes when one of them does
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
- * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string }>} ask   status 0: nothing answered
+ * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string, headers: Record<string, string> }>} ask   status 0: nothing answered.
+ *   A redirect is not followed. headers: the answer's own, their names in small letters (where a redirect leads, what kind of file came back)
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
@@ -72,9 +73,9 @@ export const realWorld = (env) => {
 		ask: async (url, init = {}) => {
 			try {
 				const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout((init.seconds || 30) * 1000), ...init });
-				return { status: res.status, text: await res.text().catch(() => "") };
+				return { status: res.status, text: await res.text().catch(() => ""), headers: Object.fromEntries(res.headers) };
 			} catch {
-				return { status: 0, text: "" };
+				return { status: 0, text: "", headers: {} };
 			}
 		},
 		exec: (program, args, cwd) => {

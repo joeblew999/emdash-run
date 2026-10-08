@@ -2,7 +2,7 @@
 // was asked of it. Nothing is started, read or waited for.
 
 /**
- * @param {{ files?: Record<string, string>, answers?: (url: string, init?: RequestInit) => { status: number, text?: string }, exits?: (command: string) => number, execs?: (command: string) => { code: number, out?: string, err?: string }, changed?: Record<string, number>, output?: (command: string) => string, platform?: NodeJS.Platform }} [given]
+ * @param {{ files?: Record<string, string>, answers?: (url: string, init?: RequestInit) => { status: number, text?: string, headers?: Record<string, string> }, exits?: (command: string) => number, execs?: (command: string) => { code: number, out?: string, err?: string }, changed?: Record<string, number>, output?: (command: string) => string, platform?: NodeJS.Platform }} [given]
  */
 export const fakeWorld = (given = {}) => {
 	const files = given.files ?? {};
@@ -33,7 +33,7 @@ export const fakeWorld = (given = {}) => {
 		},
 		digest: (paths) => paths.map((p) => files[p.replaceAll("\\", "/")] ?? "").join("|"),
 		capture: (program, args) => given.output?.([program, ...args].join(" ")) ?? "",
-		ask: async (url, init) => ({ text: "", ...(given.answers?.(url, init) ?? { status: 0 }) }),
+		ask: async (url, init) => ({ text: "", headers: {}, ...(given.answers?.(url, init) ?? { status: 0 }) }),
 		// paths with a slash, whatever the machine the test runs on joins them with
 		exec: (program, args) => {
 			const command = [program, ...args].join(" ");

@@ -23,6 +23,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`site:logs`](#sitelogs) | Follow the dev site's log |
 | [`site:check`](#sitecheck) | Before a commit: seed valid, types check, site builds |
 | [`site:preview`](#sitepreview) | Build the site and serve it locally (port 4322) — behaves like a deployed site |
+| [`site:demo`](#sitedemo) | Put something real into every core feature of EmDash, so the admin and the site have something to show: site settings (the site's title and tagline are changed), a category and a tag, a picture with alt text, a caption and a focal point, a byline, a published post with all of those on it, a draft with a signed preview link, revisions, a scheduled post, a page in the primary menu and a second menu, a widget in the sidebar and a second widget area, a section, comments (turned on for posts, shown without approval) with a visitor's comment and an answer to it, a redirect, search, an API token that may only read (not kept, not printed), and backups turned on with one taken. Through EmDash's own HTTP API, on this machine's built site and never a deployed one: it builds and starts that site and signs this machine in if needed. One line per feature: made or already there, and what shows that it works. A feature the site refuses is a FAIL line with what the site answered, and the task fails. Run again: nothing is made twice. It needs what EmDash's blog and starter templates have: posts, pages, categories and tags |
 | [`site:reset`](#sitereset) | Empty the local database and start again from the seed. Asks first |
 | [`site:delete`](#sitedelete) | Delete the site folder. Asks first. No site is nothing to delete |
 | [`model:sync`](#modelsync) | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site |
@@ -114,6 +115,12 @@ Before a commit: seed valid, types check, site builds
 - **Usage:** `site:preview`
 
 Build the site and serve it locally (port 4322) — behaves like a deployed site
+
+### `site:demo`
+
+- **Usage:** `site:demo`
+
+Put something real into every core feature of EmDash, so the admin and the site have something to show: site settings (the site's title and tagline are changed), a category and a tag, a picture with alt text, a caption and a focal point, a byline, a published post with all of those on it, a draft with a signed preview link, revisions, a scheduled post, a page in the primary menu and a second menu, a widget in the sidebar and a second widget area, a section, comments (turned on for posts, shown without approval) with a visitor's comment and an answer to it, a redirect, search, an API token that may only read (not kept, not printed), and backups turned on with one taken. Through EmDash's own HTTP API, on this machine's built site and never a deployed one: it builds and starts that site and signs this machine in if needed. One line per feature: made or already there, and what shows that it works. A feature the site refuses is a FAIL line with what the site answered, and the task fails. Run again: nothing is made twice. It needs what EmDash's blog and starter templates have: posts, pages, categories and tags
 
 ### `site:reset`
 
