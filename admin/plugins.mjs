@@ -31,6 +31,9 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { CannotEdit, addImport, addSandboxedPlugin, addToList, sandboxRunnerLines, sandboxedPluginLines, setSandboxRunner } from "./plugin-config-edit.mjs";
+import { deployedAddress, parseJsonc, previewOf, wranglerFile } from "./site.mjs";
+
 const [what, ...argv] = process.argv.slice(2);
 const flags = argv.filter((a) => a.startsWith("--"));
 const args = argv.filter((a) => !a.startsWith("--"));
@@ -51,37 +54,16 @@ const sitePackages = (siteDir) => {
 	return { ...p.dependencies, ...p.devDependencies };
 };
 
-// The emdash({ … }) call in the site's config: where its options start, and how they are indented.
-const emdashOptions = (text) => {
-	const m = /\bemdash\(\s*\{[ \t]*\r?\n/.exec(text);
-	if (!m) return null;
-	const at = m.index + m[0].length;
-	return { at, indent: /^[ \t]*/.exec(text.slice(at))[0] || "\t\t\t" };
-};
-// One import line, after the imports that are there. Nothing when the text already has it.
-const addImport = (text, line) => {
-	if (text.includes(line)) return text;
-	const imports = [...text.matchAll(/^import\b[^;]*;[ \t]*\r?\n/gm)];
-	const at = imports.length ? imports.at(-1).index + imports.at(-1)[0].length : 0;
-	return text.slice(0, at) + line + "\n" + text.slice(at);
-};
-// One option inside emdash({ … }), as its first line. Nothing when the option is already set.
-const addOption = (text, name, value) => {
-	const o = emdashOptions(text);
-	if (!o || new RegExp(`^\\s*${name}\\s*:`, "m").test(text.slice(o.at))) return text;
-	return text.slice(0, o.at) + `${o.indent}${name}: ${value},\n` + text.slice(o.at);
-};
-// One name in a list option inside emdash({ … }) — `sandboxed: [a]` or `plugins: [a()]`.
-const addToList = (text, name, entry) => {
-	const o = emdashOptions(text);
-	if (!o) return text;
-	const list = new RegExp(`^(\\s*${name}\\s*:\\s*\\[)([^\\]]*)\\]`, "m").exec(text.slice(o.at));
-	if (!list) return addOption(text, name, `[${entry}]`);
-	if (list[2].split(",").map((x) => x.trim()).includes(entry)) return text;
-	const start = o.at + list.index + list[1].length;
-	const inside = list[2];
-	const joined = inside.trim() === "" ? entry : inside.replace(/,?\s*$/, "") + `, ${entry}` + (/\n\s*$/.test(inside) ? "," + /\n\s*$/.exec(inside)[0] : "");
-	return text.slice(0, start) + joined + text.slice(start + inside.length);
+// The edits themselves are admin/plugin-config-edit.mjs: text in, text out, inside emdash({ … })
+// only. A config of a shape they cannot edit safely is left as it is, and the lines to add by hand
+// are printed.
+const edited = (file, before, change, byHand) => {
+	try {
+		return change(before);
+	} catch (error) {
+		if (!(error instanceof CannotEdit)) throw error;
+		fail(`${file} was not changed: ${error.message}.\nAdd by hand:\n${byHand.map((l) => `  ${l}`).join("\n")}`);
+	}
 };
 // Write the config only when it changed, and only when Node can still read it; else put it back.
 const writeConfig = (file, before, after) => {
@@ -102,24 +84,39 @@ const pnpm = (argsFor, cwd) => {
 const mise = (task, quiet = true) => spawnSync("mise", ["run", ...task], { cwd: projectDir, stdio: quiet ? ["ignore", "ignore", "inherit"] : "inherit", shell: win });
 
 // What a site needs before it can run a sandboxed plugin. Returns what it changed, as lines.
+const LOADER = '"worker_loaders": [{ "binding": "LOADER" }],';
 const sandbox = (siteDir) => {
 	const file = configFile(siteDir);
 	if (!file) fail(`There is no astro.config in ${siteDir}.`);
+	const cloudflare = isCloudflare(siteDir);
 	const before = readFileSync(file, "utf8");
-	if (!emdashOptions(before)) {
-		fail(`${file} has no  emdash({ …  call laid out as EmDash's templates have it, so this cannot edit it. A sandboxed plugin needs, by hand: sandboxRunner in emdash({ … }) — EmDash docs: deployment/plugin-sandbox.`);
-	}
+	// worked out before anything is changed: a config that cannot be edited stops it here
+	const after = edited(file, before, (t) => setSandboxRunner(t, cloudflare), sandboxRunnerLines(cloudflare));
 	const changed = [];
-	if (isCloudflare(siteDir)) {
-		const after = /^\s*sandboxRunner\s*:/m.test(before) ? before : addOption(addImport(before, 'import { sandbox } from "@emdash-cms/cloudflare";'), "sandboxRunner", "sandbox()");
+	if (cloudflare) {
 		if (writeConfig(file, before, after)) changed.push(`${file}: sandboxRunner: sandbox()`);
 		// The Worker Loader binding, as create-emdash --sandboxed-plugins writes it.
-		const w = join(siteDir, "wrangler.jsonc");
-		if (!existsSync(w)) fail("This Cloudflare site has no wrangler.jsonc. Add a worker_loaders binding named LOADER to its wrangler config by hand.");
+		const w = wranglerFile(siteDir);
+		const byHand = `Add a Worker Loader binding named LOADER to its wrangler config by hand:\n  ${LOADER}`;
+		if (!w) fail(`This Cloudflare site has no wrangler.jsonc. ${byHand}`);
 		const wBefore = readFileSync(w, "utf8");
-		if (!/^\s*"worker_loaders"\s*:/m.test(wBefore)) {
-			const commented = /^(\s*)\/\/\s*("worker_loaders"\s*:.*)$/m;
-			const wAfter = commented.test(wBefore) ? wBefore.replace(commented, "$1$2") : wBefore.replace(/\{[ \t]*\r?\n/, (m) => `${m}\t"worker_loaders": [{ "binding": "LOADER" }],\n`);
+		const loaders = (text) => {
+			try {
+				return parseJsonc(text).worker_loaders ?? null;
+			} catch {
+				return undefined;
+			}
+		};
+		const have = loaders(wBefore);
+		if (have === undefined) fail(`${w} was not changed: it cannot be read as JSON with comments. ${byHand}`);
+		if (!have?.some((l) => l.binding === "LOADER")) {
+			if (have) fail(`${w} was not changed: it has worker_loaders, and none of them is named LOADER. ${byHand}`);
+			const commented = /^([ \t]*)\/\/[ \t]*("worker_loaders"\s*:.*)$/m;
+			// the root object's own brace: the first one that is not in a comment
+			const root = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*\{/.exec(wBefore);
+			const eol = wBefore.includes("\r\n") ? "\r\n" : "\n";
+			const wAfter = commented.test(wBefore) ? wBefore.replace(commented, "$1$2") : root ? wBefore.slice(0, root[0].length) + (/^[ \t]*\r?\n/.test(wBefore.slice(root[0].length)) ? `${eol}\t${LOADER}` : ` ${LOADER}`) + wBefore.slice(root[0].length) : wBefore;
+			if (!loaders(wAfter)?.some((l) => l.binding === "LOADER")) fail(`${w} was not changed: it is not laid out as wrangler writes it. ${byHand}`);
 			writeFileSync(w, wAfter);
 			changed.push(`${w}: the worker_loaders binding LOADER — deploying it needs the Workers Paid plan`);
 		}
@@ -132,7 +129,7 @@ const sandbox = (siteDir) => {
 			pnpm(["add", ...missing], siteDir);
 			changed.push(`package.json: ${missing.join(", ")}`);
 		}
-		if (writeConfig(file, before, addOption(before, "sandboxRunner", '"@emdash-cms/sandbox-workerd/sandbox"'))) changed.push(`${file}: sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox"`);
+		if (writeConfig(file, before, after)) changed.push(`${file}: sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox"`);
 	}
 	return changed;
 };
@@ -150,7 +147,6 @@ const whereIs = (u) => {
 	if (!["localhost", "127.0.0.1", "[::1]"].includes(hostname)) return `DEPLOYED site: ${origin}`;
 	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
 };
-const { deployedAddress, previewOf } = await import("./site.mjs");
 const saved = (kind, url, siteDir) => {
 	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", kind);
 	let f = join(dir, `${savedName(url, siteDir)}.json`);
@@ -275,25 +271,27 @@ if (what === "leftover") {
 	const file = configFile(siteDir);
 	const before = readFileSync(file, "utf8");
 	const local = pkg.replace(/^@[^/]+\//, "").replace(/^(emdash-)?plugin-/, "").replace(/[^a-zA-Z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : "")).replace(/^[^a-zA-Z]+/, "") || "plugin";
-	const how = (lines) => fail(`${file} was not changed: ${lines}`);
-	if (!emdashOptions(before)) how(`it has no  emdash({ …  call laid out as EmDash's templates have it. Add [${pkg}] to it by hand.`);
-	if (new RegExp(`from\\s+["']${pkg.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}["']`).test(before)) {
-		console.log(`config: [${pkg}] is already in ${file} — nothing changed.`);
-	} else if (meta.exports?.["./sandbox"]) {
+	if (meta.exports?.["./sandbox"]) {
 		// What `emdash-plugin build` makes: a descriptor as the default export, for sandboxed: [ … ].
+		// Worked out first: a config that cannot be edited stops this before the sandbox is set up.
+		edited(file, before, (t) => addSandboxedPlugin(t, pkg, local), sandboxedPluginLines(pkg, local));
 		const changed = sandbox(siteDir);
 		for (const line of changed) console.log(`sandbox: ${line}`);
 		const now = readFileSync(file, "utf8");
-		writeConfig(file, now, addToList(addImport(now, `import ${local} from "${pkg}";`), "sandboxed", local));
-		console.log(`config: ${file}: import ${local} from "${pkg}"  and  sandboxed: [${local}]`);
+		const wrote = writeConfig(file, now, edited(file, now, (t) => addSandboxedPlugin(t, pkg, local), sandboxedPluginLines(pkg, local)));
+		console.log(wrote ? `config: ${file}: import ${local} from "${pkg}"  and  sandboxed: [${local}]` : `config: [${pkg}] is already in ${file} — nothing changed.`);
 	} else {
 		// A native plugin exports a function that makes it; EmDash's own are all named <something>Plugin.
 		const entry = typeof meta.exports?.["."] === "string" ? meta.exports["."] : meta.exports?.["."]?.import ?? meta.exports?.["."]?.default ?? meta.module ?? meta.main ?? "index.js";
 		const source = existsSync(join(siteDir, "node_modules", pkg, entry)) ? readFileSync(join(siteDir, "node_modules", pkg, entry), "utf8") : "";
 		const makers = [...new Set([...source.matchAll(/export\s+(?:function|const)\s+(\w+Plugin)\b/g), ...source.matchAll(/export\s*\{[^}]*?\b(?:\w+\s+as\s+)?(\w+Plugin)\b[^}]*\}/g)].map((m) => m[1]))].filter((n) => n !== "createPlugin");
-		if (makers.length !== 1) how(`[${pkg}] is a native plugin and this cannot tell what it exports to make it (found: ${makers.join(", ") || "nothing named …Plugin"}). Its README says; the lines are  import { thePlugin } from "${pkg}"  and, inside emdash({ … }),  plugins: [thePlugin()].`);
-		writeConfig(file, before, addToList(addImport(before, `import { ${makers[0]} } from "${pkg}";`), "plugins", `${makers[0]}()`));
-		console.log(`config: ${file}: import { ${makers[0]} } from "${pkg}"  and  plugins: [${makers[0]}()]  — a native plugin: it runs in the site itself, not in the sandbox`);
+		const byHand = [`import { ${makers[0] ?? "thePlugin"} } from "${pkg}";`, `plugins: [${makers[0] ?? "thePlugin"}()],   // inside emdash({ … })`];
+		if (makers.length !== 1) fail(`${file} was not changed: [${pkg}] is a native plugin and this cannot tell what it exports to make it (found: ${makers.join(", ") || "nothing named …Plugin"}). Its README says.\nAdd by hand:\n${byHand.map((l) => `  ${l}`).join("\n")}`);
+		const wrote = writeConfig(file, before, edited(file, before, (t) => {
+			const withImport = addImport(t, { module: pkg, named: makers[0] });
+			return addToList(withImport.text, "plugins", `${withImport.local}()`);
+		}, byHand));
+		console.log(wrote ? `config: ${file}: import { ${makers[0]} } from "${pkg}"  and  plugins: [${makers[0]}()]  — a native plugin: it runs in the site itself, not in the sandbox` : `config: [${pkg}] is already in ${file} — nothing changed.`);
 	}
 } else if (what === "install") {
 	const [given, siteDir, ...refs] = args;

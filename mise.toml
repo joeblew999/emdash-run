@@ -46,8 +46,8 @@ description = "Full test: every task, three sites at once, then the deployed-sit
 run = "bash tests/replay.sh full"
 
 [tasks.check]
-description = "Every check but the tests themselves, in seconds: every task has a test step, the last recorded test run has no failure and no untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; run mise run test:full before that"
-run = ["node tests/status.mjs --coverage", "node tests/status.mjs --green", { task = "repo:ci" }]
+description = "Every check but the tests themselves, in seconds: the unit tests of the scripts' own functions (tests/*.test.mjs: the edits to astro.config.mjs), every task has a test step, the last recorded test run has no failure and no untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; run mise run test:full before that"
+run = ["node --test \"tests/*.test.mjs\"", "node tests/status.mjs --coverage", "node tests/status.mjs --green", { task = "repo:ci" }]
 
 [tasks.src]
 description = "EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest"

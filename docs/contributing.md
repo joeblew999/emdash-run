@@ -33,7 +33,7 @@ Running a test turns on the commit check in your clone.
 | `mise run docs:review` | Have Claude bring `docs/` into line with [Writing docs](writing.md) |
 | `mise run repo` | REMOTE: keep the repo in shape from `charter.toml`: docs site, issue forms, labels, description, topics, GitHub Pages |
 | `mise run repo:check` | The same, changing nothing: fails if something drifted |
-| `mise run check` | Every check but the tests, in seconds: test steps for every task, a green record, `repo:ci`. What `release` runs before it tags |
+| `mise run check` | Every check but the tests, in seconds: the unit tests (`node --test "tests/*.test.mjs"`), test steps for every task, a green record, `repo:ci`. What `release` runs before it tags |
 | `mise run release -- vX.Y.Z` | REMOTE: cut a release from this machine ([Releases](#releases)) |
 | `mise run repo:ci` | Everything the `repo-check` workflow runs, here: `docs:check`, `repo:check`, `upstream:status`. The workflow runs this one task, so a pass here is a pass on GitHub |
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
@@ -62,10 +62,12 @@ The tests do not use it: each run makes its own sites in a temporary folder, to 
 | `admin/first-admin.mjs` | `signin:passkey`, `signin:open`: the only Playwright |
 | `admin/preview.mjs` | `live:preview`: a preview's resources, its settings, and `wrangler preview` |
 | `admin/plugins.mjs` | The registry `plugin:*` tasks: the requests the admin's Install button makes |
+| `admin/plugin-config-edit.mjs` | The edits `plugin:sandbox`, `plugin:new` and `plugin:add` make to `astro.config.mjs`: text in, text out, inside `emdash({ … })` only, nothing when already there, a refusal when the file is not of a shape it can edit safely |
 | `admin/emdash.mjs` | The `emdash` task: EmDash's CLI, with `--live`, `--preview` and what is saved for the site |
 | `admin/again.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
 | `admin/site.mjs`, `admin/welcome.mjs` | A site's `wrangler.jsonc`, read in one place; closing EmDash's welcome dialog |
 | `tests/replay.sh` | The test. Each step names the task it tests |
+| `tests/config-edit.test.mjs`, `tests/fixtures/config/` | The unit tests of those edits, on fixture configs. `mise run check` runs them |
 | `tests/status.mjs`, `tests/results.json` | The record of what each step showed, and the page written from it ([What works](reference/status.md)) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own three tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
