@@ -13,6 +13,9 @@
   `emdash` task now takes the dev sign-in's token instead.
 - **Emptying the local database removes the token saved for it** (`site:reset`, `site:admin`).
   Left behind, the CLI sent it to the new database and was told "Invalid or expired token".
+- **`docs/tasks.md` is written by mise itself** (`mise generate task-docs`): every task with its
+  description, arguments and flags, rebuilt on every test run, by `mise run docs` and by the
+  commit check.
 - **Working on emdash-run:** `mise run hooks` turns on a commit check — a task without a test step,
   a test step for a task that is gone, or stale generated pages, and the commit is refused.
 

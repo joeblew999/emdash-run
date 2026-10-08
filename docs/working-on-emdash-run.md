@@ -10,6 +10,7 @@ nav_order: 13
 ```
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
+mise run docs          rebuild every generated page (the tests and the commit check do it too)
 mise run hooks         once per clone: turns on the commit check
 ```
 

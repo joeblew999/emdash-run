@@ -133,6 +133,7 @@ if (text.includes(begin) && text.includes(end)) {
 	}
 	const fix = (t) => t
 		.replaceAll("](docs/status.md)", "](status.md)")
+		.replaceAll("](docs/tasks.md)", "](tasks.md)")
 		.replaceAll("](docs/plans/)", "](plans/README.md)")
 		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
 		.replaceAll("](admin/)", "](https://github.com/joeblew999/emdash-run/tree/main/admin)")
@@ -148,6 +149,21 @@ if (text.includes(begin) && text.includes(end)) {
 	for (const p of rest) {
 		writeFileSync(join(docs, p.file), `---\ntitle: "${p.title}"\nnav_order: ${p.order}\n---\n\n${marker}\n\n# ${p.title}\n\n${p.body}\n`);
 	}
+	// Every task, with its arguments and flags: written by mise itself (`mise generate task-docs`)
+	// from tasks.toml, so a task's description is its documentation and there is one place to
+	// write it. Asked from an empty project that includes only tasks.toml — what a developer's
+	// project gets — so this repo's own tasks (test, docs, hooks…) are not in it.
+	{
+		const { mkdtempSync, rmSync } = await import("node:fs");
+		const { tmpdir } = await import("node:os");
+		const view = mkdtempSync(join(tmpdir(), "emdash-run-tasks-"));
+		writeFileSync(join(view, "mise.toml"), `[task_config]\nincludes = [${JSON.stringify(join(repo, "tasks.toml").replaceAll("\\", "/"))}]\n`);
+		const made = execFileSync("mise", ["generate", "task-docs", "--style", "detailed"], { cwd: view, encoding: "utf8", env: { ...process.env, MISE_TRUSTED_CONFIG_PATHS: view } });
+		rmSync(view, { recursive: true, force: true });
+		// the hidden steps a task depends on are not something a developer runs
+		const body = made.split("\n").filter((l) => !l.startsWith("- Depends:")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+		writeFileSync(join(docs, "tasks.md"), `---\ntitle: "Every task"\nnav_order: 3\n---\n\n${marker.replace("from a section of the repo's README.md: edit that, not this.", "by mise from tasks.toml (mise generate task-docs): edit a task's description there, not this.")}\n\n# Every task\n\nWritten by mise itself from [\`tasks.toml\`](https://github.com/joeblew999/emdash-run/blob/main/tasks.toml): each task's description, arguments and flags. In your own project the same is one command away: \`mise tasks\`, or \`mise run <task> --help\`. The order you use them in is on [The tasks](the-tasks.md); what the last test showed for each is on [What works](status.md).\n\n${body}\n`);
+	}
 	const about = {
 		"The tasks": "every task, in the order you use them",
 		"Templates": "the eight kinds of site `site:new` can make",
@@ -161,6 +177,7 @@ if (text.includes(begin) && text.includes(end)) {
 		"Working on emdash-run": "the tests, and where the rules are",
 	};
 	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | ${about[p.title] ?? ""} |`),
+		"| [Every task](tasks.md) | each task's description, arguments and flags — written by mise from `tasks.toml` |",
 		"| [What works](status.md) | every task, and what the last test run showed |",
 		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",
 		"| [For agents](agents/README.md) | the rules for working on this repo |",

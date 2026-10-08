@@ -32,7 +32,9 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 ## The tasks
 
 In the order you use them. This table is written by the test, from the order it runs the tasks in. Run one with
-`mise run <task>`; `mise tasks ls` shows them all.
+`mise run <task>`; `mise tasks ls` shows them all. Each task's arguments and flags are in
+[`docs/tasks.md`](docs/tasks.md), which mise writes from the tasks themselves — a task's
+description in `tasks.toml` is its documentation.
 
 <!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->
 **On this machine**
@@ -240,6 +242,7 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 ```
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
+mise run docs          rebuild every generated page (the tests and the commit check do it too)
 mise run hooks         once per clone: turns on the commit check
 ```
 

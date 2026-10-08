@@ -8,7 +8,9 @@ nav_order: 3
 # The tasks
 
 In the order you use them. This table is written by the test, from the order it runs the tasks in. Run one with
-`mise run <task>`; `mise tasks ls` shows them all.
+`mise run <task>`; `mise tasks ls` shows them all. Each task's arguments and flags are in
+[`docs/tasks.md`](tasks.md), which mise writes from the tasks themselves — a task's
+description in `tasks.toml` is its documentation.
 
 <!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->
 **On this machine**

@@ -50,6 +50,7 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 | [Several sites, or several agents, at once](several-sites-or-several-agents-at-once.md) |  |
 | [Good to know](good-to-know.md) | what asks first, what stops the site, what is not there |
 | [Working on emdash-run](working-on-emdash-run.md) | the tests, and where the rules are |
+| [Every task](tasks.md) | each task's description, arguments and flags — written by mise from `tasks.toml` |
 | [What works](status.md) | every task, and what the last test run showed |
 | [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |
 | [For agents](agents/README.md) | the rules for working on this repo |
