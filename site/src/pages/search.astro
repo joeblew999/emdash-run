@@ -1,0 +1,92 @@
+---
+import { search } from "emdash";
+import Base from "../layouts/Base.astro";
+
+const query = Astro.url.searchParams.get("q")?.trim() || "";
+
+// Use the FTS-backed search() API instead of loading every entry and
+// filtering in JS. FTS scales as the content grows, returns ranked
+// results, and handles tokenization/stemming.
+const { items: results, nextCursor } = query
+	? await search(query, { collections: ["posts", "pages"], limit: 30 })
+	: { items: [], nextCursor: undefined };
+
+function escapeHtml(text: string) {
+	return text
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
+}
+
+// The snippet is cut from the first indexed field, which is the title. When
+// it is the whole title, show its highlights in the heading instead of
+// repeating the title underneath.
+const rows = results.map((result) => {
+	const title = result.title ?? "Untitled";
+	const snippetIsTitle =
+		result.snippet?.replaceAll("<mark>", "").replaceAll("</mark>", "") ===
+		escapeHtml(title);
+	const path = result.slug ?? result.id;
+	return {
+		// Pages live at the site root, posts under /posts.
+		href: result.collection === "pages" ? `/${path}` : `/posts/${path}`,
+		title,
+		titleHtml: snippetIsTitle ? result.snippet : undefined,
+		snippet: snippetIsTitle ? undefined : result.snippet,
+	};
+});
+
+const countLabel = nextCursor
+	? `Top ${rows.length} results`
+	: `${rows.length} ${rows.length === 1 ? "result" : "results"}`;
+---
+
+<Base
+	title={query ? `Search: ${query}` : "Search"}
+	description="Search posts and pages"
+>
+	<h1>Search</h1>
+
+	<form method="get" action="/search" role="search">
+		<input
+			type="search"
+			name="q"
+			value={query}
+			placeholder="Search..."
+			aria-label="Search"
+			autofocus={!query}
+		/>
+		<button type="submit">Search</button>
+	</form>
+
+	{
+		query &&
+			(rows.length === 0 ? (
+				<p>No results for “{query}”.</p>
+			) : (
+				<>
+					<p>
+						{countLabel} for “{query}”
+					</p>
+					<ul>
+						{rows.map((row) => (
+							<li>
+								<a href={row.href}>
+									<h2>
+										{row.titleHtml ? (
+											<Fragment set:html={row.titleHtml} />
+										) : (
+											row.title
+										)}
+									</h2>
+								</a>
+								{row.snippet && <p set:html={row.snippet} />}
+							</li>
+						))}
+					</ul>
+				</>
+			))
+	}
+</Base>

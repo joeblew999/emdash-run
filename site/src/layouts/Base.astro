@@ -1,6 +1,11 @@
 ---
 import { getMenuWithCacheHint, getSiteSettingsWithCacheHint } from "emdash";
-import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
+import {
+	WidgetArea,
+	EmDashHead,
+	EmDashBodyStart,
+	EmDashBodyEnd,
+} from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
@@ -58,6 +63,12 @@ const pageCtx = createPublicPageContext({
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>{fullTitle}</title>
 		<EmDashHead page={pageCtx} />
+		<link
+			rel="alternate"
+			type="application/rss+xml"
+			title={`${siteTitle} RSS Feed`}
+			href="/rss.xml"
+		/>
 	</head>
 	<body>
 		<EmDashBodyStart page={pageCtx} />
@@ -88,13 +99,22 @@ const pageCtx = createPublicPageContext({
 						</a>
 					))
 				}
-				<LiveSearch placeholder="Search..." collections={["posts", "pages"]} />
+				<LiveSearch
+					placeholder="Search..."
+					collections={["posts", "pages"]}
+					searchPage="/search"
+					routeMap={{ pages: "/:path" }}
+				/>
 			</nav>
 		</header>
 
 		<main>
 			<slot />
 		</main>
+
+		<footer>
+			<WidgetArea name="footer" />
+		</footer>
 
 		<EmDashBodyEnd page={pageCtx} />
 	</body>

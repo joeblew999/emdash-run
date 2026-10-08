@@ -6,6 +6,7 @@ import {
 	getSiteSettings,
 } from "emdash";
 import { Image, PortableText, WidgetArea } from "emdash/ui";
+import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import { resolveStarterSiteIdentity } from "../../utils/site-identity";
 
@@ -34,6 +35,16 @@ const seo = getSeoMeta(post, {
 // Taxonomy terms are already hydrated onto the entry by getEmDashEntry.
 const tags = post.data.terms?.tag ?? [];
 const categories = post.data.terms?.category ?? [];
+
+// Bylines are already hydrated onto the entry by getEmDashEntry.
+const bylines = (post.data.bylines ?? []).map(({ byline, roleLabel }) => ({
+	name: byline.displayName,
+	role: roleLabel,
+	avatar: byline.avatarStorageKey
+		? (Astro.locals.emdash?.getPublicMediaUrl?.(byline.avatarStorageKey) ??
+			`/_emdash/api/media/file/${byline.avatarStorageKey.split("/").map(encodeURIComponent).join("/")}`)
+		: null,
+}));
 ---
 
 <Base
@@ -68,6 +79,29 @@ const categories = post.data.terms?.category ?? [];
 		}
 
 		{
+			bylines.length > 0 && (
+				<p>
+					{bylines.map((author, index) => (
+						<span>
+							{index > 0 && ", "}
+							{author.avatar && (
+								<img
+									src={author.avatar}
+									alt=""
+									width="32"
+									height="32"
+									style="border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;margin-inline-end:0.4em;"
+								/>
+							)}
+							{author.name}
+							{author.role && <em> ({author.role})</em>}
+						</span>
+					))}
+				</p>
+			)
+		}
+
+		{
 			categories.length > 0 && (
 				<div>
 					{categories.map((c) => (
@@ -88,6 +122,9 @@ const categories = post.data.terms?.category ?? [];
 				</div>
 			)
 		}
+
+		<Comments collection="posts" contentId={post.data.id} threaded />
+		<CommentForm collection="posts" contentId={post.data.id} />
 	</article>
 
 	<aside>
