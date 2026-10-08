@@ -222,6 +222,14 @@ const ready = async (url, siteDir, api, rebuild) => {
 	if (rebuild || (await api("GET", "/")).status === 0) {
 		console.log(`${rebuild ? "The site's config changed" : `Nothing is answering at ${new URL(url).origin}`}: building and starting it (mise run site:preview)…`);
 		mise(["site:preview"]);
+		// Seen once, in the full test, on one of two Cloudflare sites started in the same second: the
+		// built site came up answering 500 "Error: listen EADDRINUSE: …" to everything. Started
+		// again, it is fine — so once more, and say what it had said.
+		const up = await api("GET", "/");
+		if (up.status !== 200) {
+			console.log(`The built site started but answers ${up.status || "nothing"}: ${up.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300)}\nStarting it once more (mise run site:preview)…`);
+			mise(["site:preview"]);
+		}
 	}
 	if ((await api("GET", "/_emdash/api/admin/plugins")).status !== 200) mise(["signin:token"]);
 };
