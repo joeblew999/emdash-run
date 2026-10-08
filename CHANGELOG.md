@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-10-08
+
+From the first real deployment (the Remy-Sport site) and from running several sites at once. The
+full test on a Mac: 101 steps, every task, three sites side by side and a deployed site, mise
+2026.10.4. Not yet seen on Windows at the full level (the 1.0.1 run hit its time limit with no
+failing step).
+
 - **`site:ports`** gives a project two free ports of its own, in `mise.local.toml` — so several
   sites, or several agents, run on one machine without meeting. The full test now runs three sites
   at once, and holds a lock while it uses the deployed test Worker.
