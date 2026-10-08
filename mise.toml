@@ -38,6 +38,7 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.packages]
+hide = true
 description = "Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check"
 depends = ["step:admin-tools"]
 run = "pnpm --dir tests install --silent --frozen-lockfile"
@@ -73,9 +74,8 @@ flag "--level <level>" help="smoke, fast or all" default="smoke" {
 run = ["gh workflow run stages.yml -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
 
 [tasks.check]
-description = "Every check but the tests, in seconds: types, the smoke test (which runs the unit tests and checks every task has a step), no failure recorded, repo:ci. What release runs before it tags"
-depends = ["types"]
-run = ["node tests/run.mjs --level smoke", "node tests/record.mjs --green", { task = "repo:ci" }]
+description = "What must pass before a release, and what release runs before it tags: the test (mise run test: nothing to run when every group is proven) and repo:ci (the docs and the repo are as charter keeps them)"
+run = [{ task = "test" }, { task = "repo:ci" }]
 
 [tasks.src]
 description = "EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest"

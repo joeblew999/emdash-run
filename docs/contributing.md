@@ -31,7 +31,6 @@ Running a test turns on the commit check in your clone.
 | `mise run test plugin` | One group, or several, at any level: `site`, `signin`, `plugin`, `live` |
 | `mise run test live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
 | `mise run test --node --level all` | Every step, on a Node site made from EmDash's template: before a release |
-| `mise run packages` | Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check. `types` depends on it |
 | `mise run types` | Type-check `tests/` and `scripts/` (`tsconfig.json`). A few seconds; every test and `check` run it first |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
@@ -40,7 +39,7 @@ Running a test turns on the commit check in your clone.
 | `mise run docs:review` | Have Claude bring `docs/` into line with [Writing docs](writing.md) |
 | `mise run repo` | REMOTE: keep the repo in shape from `charter.toml`: docs site, issue forms, labels, description, topics, GitHub Pages |
 | `mise run repo:check` | The same, changing nothing: fails if something drifted |
-| `mise run check` | Every check but the tests, in seconds: the unit tests (`node --test "tests/**/*.test.mjs"`), test steps for every task, a green record, `repo:ci`. What `release` runs before it tags |
+| `mise run check` | What must pass before a release: `mise run test` (nothing to run when every group is proven) and `repo:ci`. What `release` runs before it tags |
 | `mise run release -- vX.Y.Z` | REMOTE: cut a release from this machine ([Releases](#releases)) |
 | `mise run repo:ci` | Everything the `repo-check` workflow runs, here: `docs:check`, `repo:check`, `upstream:status`. The workflow runs this one task, so a pass here is a pass on GitHub |
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
@@ -96,7 +95,7 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tests/lib/results.mjs`, `depends.mjs`, `pages.mjs`, `reporter.mjs`, `groups.mjs` | The records; what a group depends on; the pages; the results handed from Node's runner to the record; the groups |
 | `tests/plugin/*.test.mjs`, `tests/plugin/fixtures/` | The unit tests of the plugin scripts' own functions: the edits to `astro.config.mjs` on fixture configs, and how `plugin:update` compares two releases. Every test and `mise run check` run them first |
 | `tsconfig.json`, `tests/package.json` | What `mise run types` checks, and the TypeScript it checks with |
-| `tests/record.mjs` | The records from the command line: `--page`, `--coverage`, `--green`, `--depends` |
+| `tests/record.mjs` | The records from the command line: `--page`, `--coverage`, `--depends` |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
 | `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test --level <level>` on three OSes — `smoke` on a push to `main`, `all` on a tag, by hand the level you choose. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
