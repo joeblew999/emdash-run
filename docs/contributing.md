@@ -44,7 +44,7 @@ Each test runs as another developer would: a clean environment, an empty config 
 
 A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps.sh`) and what its last run showed (`results.json`), and a page written from that; [What works](reference/status.md) is the index of them. Each group runs alone, on a site of its own, so you run the one you are working on.
 
-A group is **proven** when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. Change a plugin script and only the `plugin` group has to run. A run replaces everything recorded for its group. On a CI runner nothing is skipped.
+A group is **proven** when every step of it passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. What a group depends on is worked out from its steps: the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. A run replaces everything recorded for its group. On a CI runner nothing is skipped.
 
  A failing step prints its last 30 lines of output. A step that has not ended after 15 minutes is stopped and fails, and the steps after it in the group are not run; `STEP_LIMIT=<seconds>` changes the limit.
 

@@ -8,7 +8,7 @@
 //   node tests/record.mjs --coverage               every task has a test step, every step a task
 //   node tests/record.mjs --green                  no failure recorded, no task without a run
 //   node tests/record.mjs --proven <group> [where] exit 0: it passed and nothing has changed since
-//   node tests/record.mjs --fingerprint [group]
+//   node tests/record.mjs --depends [group]    what a group depends on: what re-runs it
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -38,23 +38,47 @@ const stepped = (g) => [...read(`tests/${g}/steps.sh`).matchAll(/^\s*(?:\[[^\n]*
 const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" });
 const [mode, arg, arg2] = process.argv.slice(2);
 
-// WHAT A GROUP DEPENDS ON, as one fingerprint: its tasks and the hidden steps they share, the
-// scripts they run, the test's runner and the group's own folder, and the site the test copies.
-// A group that passed at this fingerprint is PROVEN. Change a plugin script and only the plugin
-// group's fingerprint moves.
+// WHAT A GROUP DEPENDS ON, as one fingerprint — worked out, not listed by hand. From the tasks its
+// steps run (`mise run <task>` in its steps.sh), follow tasks.toml to every task and hidden step
+// those run, and from those to every script they name and every script those import. Add the
+// runner, the group's own folder and the site the test copies. A group that passed at this
+// fingerprint is PROVEN. Change scripts/live-preview.mjs and only the live group's moves.
+const closure = (group) => {
+	const blocks = new Map();
+	let preamble = "";
+	for (const b of read("tasks.toml").split(/^(?=\[)/m)) {
+		const name = (b.match(/^\["?([a-z][a-z:-]*)"?\]/) || [])[1];
+		if (!name || ["env", "vars", "settings", "tools"].includes(name)) preamble += b;
+		else blocks.set(name, b);
+	}
+	const tasksIn = new Set();
+	const walk = (name) => {
+		if (tasksIn.has(name) || !blocks.has(name)) return;
+		tasksIn.add(name);
+		// what the task runs is its lines that are not its description (which names tasks it only mentions)
+		const body = blocks.get(name).split("\n").filter((l) => !/^\s*(description|#)/.test(l)).join("\n");
+		for (const m of body.matchAll(/task\s*=\s*"([^"]+)"|mise run (?:--yes )?([a-z][a-z:-]*)/g)) walk(m[1] || m[2]);
+		for (const d of body.matchAll(/^depends\s*=\s*\[([^\]]*)\]/gm)) for (const m of d[1].matchAll(/"([^"]+)"/g)) walk(m[1]);
+	};
+	for (const m of read(`tests/${group}/steps.sh`).matchAll(/mise run (?:--yes )?([a-z][a-z:-]*)/g)) walk(m[1]);
+	const scripts = new Set();
+	const have = new Set(git("ls-files", "scripts").split("\n").filter(Boolean));
+	const follow = (f) => {
+		if (scripts.has(f) || !have.has(f)) return;
+		scripts.add(f);
+		// a script it imports ("./x.mjs") or starts (join(here, "x.mjs"))
+		for (const m of read(f).matchAll(/"\.\/([\w-]+\.mjs)"|here,\s*"([\w-]+\.mjs)"/g)) follow(`scripts/${m[1] || m[2]}`);
+	};
+	for (const t of tasksIn) for (const m of blocks.get(t).matchAll(/scripts\/([\w\/-]+\.mjs)/g)) follow(`scripts/${m[1]}`);
+	for (const f of have) if (!f.endsWith(".mjs")) scripts.add(f); // package.json, the lock file, quiet/
+	return { preamble, tasks: [...tasksIn].sort(), blocks, scripts: [...scripts].sort() };
+};
 const fingerprint = (group) => {
 	const h = createHash("sha256");
-	const mine = { site: ["site:", "model:", "emdash", "live:check", "content:"], signin: ["signin:", "site:", "emdash"], plugin: ["plugin", "site:", "signin:token"], live: ["live:", "content:", "signin:", "site:", "model:", "emdash", "plugin:works"] }[group];
-	for (const b of read("tasks.toml").split(/^(?=\[)/m)) {
-		const name = (b.match(/^\[(?:tasks\.)?"?([a-z:-]+)"?\]/) || [])[1];
-		if (!name || name.startsWith("step:") || mine.some((p) => name.startsWith(p))) h.update(b);
-	}
-	const shared = ["site.mjs", "site-welcome.mjs", "wrangler-config.mjs", "emdash.mjs", "signin-token.mjs", "package.json"];
-	const own = { signin: /^signin-/, plugin: /^(plugin|signin-browser)/, live: /^(live-|signin-|plugin-works|plugin-api)/ }[group];
-	for (const f of git("ls-files", "scripts").split("\n").filter(Boolean).sort()) {
-		const base = f.slice("scripts/".length);
-		if (shared.includes(base) || own?.test(base)) h.update(f).update(read(f));
-	}
+	const c = closure(group);
+	h.update(c.preamble);
+	for (const t of c.tasks) h.update(c.blocks.get(t));
+	for (const f of c.scripts) h.update(f).update(read(f));
 	for (const f of ["tests/lib.sh", "tests/run.sh"]) h.update(read(f));
 	for (const f of readdirSync(join(repo, "tests", group), { recursive: true }).map(String).sort()) {
 		if (!f.endsWith("results.json") && !f.includes("fixtures") && /\.[a-z]+$/.test(f)) h.update(f).update(read(join("tests", group, f)));
@@ -62,6 +86,14 @@ const fingerprint = (group) => {
 	if (group !== "live") h.update(git("ls-files", "-s", "site")).update(git("diff", "--", "site"));
 	return h.digest("hex").slice(0, 12);
 };
+// `--depends [group]`: what each group depends on, by name — and so what re-runs it.
+if (process.argv[2] === "--depends") {
+	for (const g of process.argv[3] ? [process.argv[3]] : groups) {
+		const c = closure(g);
+		console.log(`${g}\n  tasks:   ${c.tasks.filter((t) => !t.startsWith("step:")).join(" ")}\n  steps:   ${c.tasks.filter((t) => t.startsWith("step:")).length} hidden\n  scripts: ${c.scripts.filter((f) => f.endsWith(".mjs")).map((f) => f.slice(8)).join(" ")}`);
+	}
+	process.exit(0);
+}
 const stateOf = (rows, group) =>
 	!rows.length ? "no run recorded" : rows.some((r) => r.result === "FAIL") ? "**a step fails**" : rows.every((r) => r.proof === fingerprint(group)) ? "proven" : "changed since it passed";
 if (mode === "--fingerprint") {
