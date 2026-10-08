@@ -6,7 +6,7 @@ nav_order: 60
 # Reports for upstream — written, not sent
 
 Things in EmDash, its scaffolders and wrangler that behaved differently from their docs, or that a
-task here has to work around. Nineteen of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
+task here has to work around. Twenty-two of them. Each was run on 2026-10-07 on macOS (and where said, in CI on
 Windows) with EmDash 1.2.0, `@emdash-cms/plugin-cli` 0.13.3, `create-emdash@latest`, Astro 7.3.5,
 wrangler 4.147.0, Node 26, pnpm 12.
 
@@ -140,11 +140,44 @@ says which. Until then the workaround in the last line of each entry is what `ta
   the way for CI.
 - **Here:** `signin:token -- --live`.
 
-Reports 14 to 19 are about plugins. Each was run on 2026-10-07 or 2026-10-08 on macOS with EmDash
+## 14. Two sign-ins at the same moment, and one is lost
+
+- **Run:** three sites side by side on one machine, each doing `emdash login` against its own built
+  site (the full test, 2026-10-07).
+- **Got:** on one of the three, the next command: "Invalid or expired token". Every sign-in is kept
+  in one file, `~/.config/emdash/auth.json`; `cli/credentials.ts` reads it, changes one entry and
+  writes the whole file back, with no lock — so the slower of two writers puts the other's old
+  entry back.
+- **Expected:** write to a temporary file and rename, under a lock; or one file per site.
+- **Here:** `signin:token` keeps one file per site. The test gives each of its three sites a config
+  folder of its own. Agents working side by side: use `signin:token`, not `emdash login`.
+
+## 15. The welcome dialog has no setting
+
+- **Seen:** the admin opens a welcome dialog on top of the page for every new user
+  (`admin/src/components/Shell.tsx`, while `/_emdash/api/auth/me` says `isFirstLogin`). A fresh
+  local database means a new user, so a developer sees it after every `site:reset`.
+- **Proposed:** an option on `emdash()` to leave it out, or not showing it to the dev sign-in's user.
+- **Here:** `site:start` and `signin:token` close it with the call its own button makes
+  (`POST /_emdash/api/auth/me`, `{"action":"dismissWelcome"}`) — `admin/welcome.mjs`.
+
+## 16. With Cloudflare Access configured, the CLI cannot sign in to the dev site
+
+- **Run:** `auth: access({…})` in `astro.config.mjs`; `astro dev`; `emdash schema list`.
+- **Got:** "Not authenticated". `emdash whoami` says "Client will use dev bypass for localhost",
+  and the address it uses, `/_emdash/api/auth/dev-bypass`, answers 404: with an external sign-in
+  the built-in sign-in routes are left out (`injectBuiltinAuthRoutes`), that one among them. The
+  browser's dev sign-in, `/_emdash/api/setup/dev-bypass`, still works.
+- **Expected:** the dev sign-in route present in development whatever `auth` is; the middleware
+  already falls back to it there ("In dev mode, fall back to passkey auth").
+- **Here:** the `emdash` task takes a token from `/_emdash/api/setup/dev-bypass?token=1` when the
+  CLI's route is missing, keeps it for the site, and `site:start` checks the site through it.
+
+Reports 17 to 22 are about plugins. Each was run on 2026-10-07 or 2026-10-08 on macOS with EmDash
 1.2.0, `@emdash-cms/sandbox-workerd` 0.9.3, workerd 1.20261006.1, `@emdash-cms/plugin-cli` 0.13.3
 and `create-emdash@latest`.
 
-## 14. No command installs a registry plugin
+## 17. No command installs a registry plugin
 
 - **Seen:** `emdash --help` and `emdash-plugin --help` have no install. The docs
   (`plugins/installing`) give the admin's Install button as the only way.
@@ -154,7 +187,7 @@ and `create-emdash@latest`.
 - **Proposed:** `emdash plugin install <publisher>/<slug>`.
 - **Here:** `plugin:install` sends those two requests.
 
-## 15. `create-emdash --sandboxed-plugins` does not switch the sandbox on
+## 18. `create-emdash --sandboxed-plugins` does not switch the sandbox on
 
 - **Run:** `pnpm dlx create-emdash@latest sb --template cloudflare:starter --pm pnpm --no-install
   --sandboxed-plugins --yes`.
@@ -164,7 +197,7 @@ and `create-emdash@latest`.
   was not run.
 - **Here:** `plugin:sandbox` writes both.
 
-## 16. `emdash-plugin info <handle> <slug>` fails when the publisher's own host is down
+## 19. `emdash-plugin info <handle> <slug>` fails when the publisher's own host is down
 
 - **Run:** `pnpm dlx @emdash-cms/plugin-cli@latest info nookeshk.bsky.social seo-suite` — a
   plugin `emdash-plugin search seo` had just listed under that handle.
@@ -176,7 +209,7 @@ and `create-emdash@latest`.
 - **Expected:** `info` to ask the aggregator, as the admin does and as its own source comment says.
 - **Here:** `plugin:install` asks the aggregator.
 
-## 17. On a Node site the sandbox process outlives the site, and then blocks it
+## 20. On a Node site the sandbox process outlives the site, and then blocks it
 
 - **Run:** a `node:starter` site with `sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox"`,
   served with `astro preview`. Install one registry plugin, then a second; or stop the site and
@@ -195,7 +228,7 @@ and `create-emdash@latest`.
 - **Here:** `site:stop` also stops a `workerd` run from that site's own `node_modules`, and on a
   Node site `plugin:install` and `plugin:remove` restart the built site.
 
-## 18. On a Node site one plugin that cannot start takes every sandboxed plugin down
+## 21. On a Node site one plugin that cannot start takes every sandboxed plugin down
 
 - **Run:** the same Node site with eleven registry plugins, one of them `@solspace.com/freeform`
   0.1.3.
@@ -208,7 +241,7 @@ and `create-emdash@latest`.
 - **Expected:** a plugin that fails to start to be left out, as on Cloudflare.
 - **Here:** `plugin:works` reports it; `plugin:remove` takes the plugin out.
 
-## 19. Nothing lists what an installed registry plugin declares
+## 22. Nothing lists what an installed registry plugin declares
 
 - **Run:** with `@netdollar.dev/forms` installed, `GET /_emdash/api/admin/plugins`; and
   `POST …/registry/verify` for it again.

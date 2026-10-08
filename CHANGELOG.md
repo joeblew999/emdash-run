@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+Plugins from EmDash's registry: find one, install it with no clicking, and know it works. Run on
+macOS on a Cloudflare and a Node site; not yet against a deployed site, nor on Windows or Linux.
+
+- **`plugin:install -- <publisher>/<slug>`** installs a registry plugin as the admin's Install
+  button does, with the token `signin:token` saved. From a site that is not even running it
+  switches the sandbox on, builds, starts, signs in and installs. `plugin:remove` takes one out.
+- **`plugin:favourites`** installs five chosen plugins in one go — or a project's own list
+  (`PLUGINS`). The list, why, and what was rejected: [`docs/favourite-plugins.md`](docs/favourite-plugins.md).
+- **`plugin:works`** says whether a plugin works, one line per check: builds, starts, listed,
+  routes, admin pages in a real browser, log, sandbox. With no name: every plugin in the site.
+- **`plugin:sandbox`** makes the edits a sandboxed plugin needs (Cloudflare: deploying then needs
+  the Workers Paid plan).
+- **`plugin:new` and `plugin:add` write the plugin's lines in `astro.config.mjs`** — nothing is
+  left to edit by hand.
+- **`site:stop` on a Node site** also stops the sandbox process EmDash leaves running, which
+  otherwise blocks the next start. Six new entries in [`docs/upstream.md`](docs/upstream.md).
+
+## 1.1.0 — 2026-10-08
+
+From the first real deployment (the Remy-Sport site) and from running several sites at once. The
+full test on a Mac: 101 steps, every task, three sites side by side and a deployed site, mise
+2026.10.4. Not yet seen on Windows at the full level (the 1.0.1 run hit its time limit with no
+failing step).
+
+- **`site:ports`** gives a project two free ports of its own, in `mise.local.toml` — so several
+  sites, or several agents, run on one machine without meeting. The full test now runs three sites
+  at once, and holds a lock while it uses the deployed test Worker.
+- **EmDash's welcome dialog no longer appears**: `site:start` and `signin:token` close it for the
+  user they make, with the call the dialog's own button makes. EmDash has no setting for it.
+- **A site set to Cloudflare Access works with the CLI on this machine again.** After
+  `signin:access` and its `auth: access(…)` line, `site:start` failed and every `mise run emdash`
+  on the dev site said "Not authenticated": EmDash leaves out the address its CLI signs in at. The
+  `emdash` task now takes the dev sign-in's token instead.
+- **Emptying the local database removes the token saved for it** (`site:reset`, `site:admin`).
+  Left behind, the CLI sent it to the new database and was told "Invalid or expired token".
+- **`docs/tasks.md` is written by mise itself** (`mise generate task-docs`): every task with its
+  description, arguments and flags, rebuilt on every test run, by `mise run docs` and by the
+  commit check.
+- **Working on emdash-run:** `mise run hooks` turns on a commit check — a task without a test step,
+  a test step for a task that is gone, or stale generated pages, and the commit is refused.
+
 ## 1.0.1 — 2026-10-07
 
 Proven on macOS, Linux and Windows (the `stages` workflow), and by the full test on a Mac: 91 steps,

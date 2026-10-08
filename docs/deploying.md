@@ -19,6 +19,14 @@ mise run live:undo                    back to the previous version
 mise run live:backup
 ```
 
+`signin:access` prints three lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in
+before `live:ship`. It leaves uploaded media public, so pictures on your pages need no sign-in.
+
+**A newly deployed site has no content.** `live:ship` says so, with the commands: sign in with
+`signin:token -- --live`, export this machine's content (`mise run emdash -- site export --output
+site.emdash`), then import it with `--live` — `--analyze` first, which prints a plan, then
+`--plan <digest> --confirm`.
+
 Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
 Access but not change it. For that one task, make an API token in the Cloudflare dashboard
 (My Profile → API Tokens) with **Access: Apps and Policies — Edit** and **Access: Service Tokens —

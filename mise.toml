@@ -42,6 +42,14 @@ run = "bash tests/replay.sh full"
 description = "What developers have reported and nobody has dealt with: the open issues, newest first. Look here first"
 run = "gh issue list --state open --limit 30"
 
+[tasks.docs]
+description = "Rebuild every generated page: docs/tasks.md (mise's own task docs, from tasks.toml), the README's task table, the docs site's pages, docs/status.md. The commit check and every test run do this too"
+run = "node tests/status.mjs --rebuild"
+
+[tasks.hooks]
+description = "Turn on this repo's commit check: a commit that changes a task, the test or the README is refused until the test covers every task and the generated pages are rebuilt"
+run = "git config core.hooksPath .githooks"
+
 [tasks."docs:setup"]
 description = "Write the docs site's config (charter: the same for every repo of the owner's)"
 run = "charter docs"

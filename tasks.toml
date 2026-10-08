@@ -51,8 +51,8 @@ dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" ports \"{{config_root}}\""
 
 ["site:start"]
-description = "Start the dev site in the background (port 4321). EmDash signs you in by itself"
-run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }]
+description = "Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you"
+run = [{ task = "step:there" }, { task = "step:install" }, { task = "step:key" }, { task = "step:dev" }, { task = "step:up" }, "node \"{{ env.MISE_TASK_DIR }}/admin/welcome.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }}"]
 
 ["site:stop"]
 description = "Stop the dev site and the built site"
@@ -280,7 +280,7 @@ run = ["pnpm exec wrangler whoami", "pnpm exec wrangler rollback {{ usage.versio
 description = "Follow the deployed site's log"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "pnpm exec wrangler tail"
+run = "pnpm exec wrangler tail --format pretty"
 
 ["live:backup"]
 description = "Back up the deployed site: database bookmark + content package"
@@ -348,9 +348,9 @@ run = "pnpm exec astro build"
 
 ["step:forget"]
 hide = true
-description = "Remove the local database and uploads, so the next start makes them again from the seed. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
+description = "Remove the local database and uploads, so the next start makes them again from the seed — and the token signin:token saved for that database, which dies with it. Cloudflare sites keep them in .wrangler/state, Node sites in data.db and uploads/"
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-run = "node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\""
+run = ["node -e \"for (const p of ['.wrangler/state', 'data.db', 'data.db-wal', 'data.db-shm', 'uploads']) require('fs').rmSync(p, { recursive: true, force: true })\"", "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" forget ."]
 
 ["step:key"]
 hide = true
@@ -367,10 +367,8 @@ run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT
 ["step:up"]
 hide = true
 silent = "stdout"
-description = "The site answers and the CLI can reach it: asks it for its collections. Fails when it does not — `emdash whoami` does not, it exits 0 with no site running"
-dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
-env = { EMDASH_URL = "http://localhost:{{ env.SITE_PORT | default(value='4321') }}" }
-run = "pnpm exec emdash schema list"
+description = "The site answers and the CLI can reach it: asks it for its collections, through the emdash task — so it works on a site set to Cloudflare Access too. Fails when it does not; `emdash whoami` does not, it exits 0 with no site running"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/emdash.mjs\" http://localhost:{{ env.SITE_PORT | default(value='4321') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" schema list"
 
 ["step:model-changed"]
 hide = true
@@ -451,9 +449,9 @@ run = "pnpm exec wrangler deployments status"
 
 ["step:live-up"]
 hide = true
-description = "The deployed site answers. A plain request, because none of EmDash's commands can ask a deployed site anything before someone has signed in to it. The first request after a deploy runs EmDash's migrations and can take half a minute"
+description = "The deployed site answers with the new version: an address nothing has cached, asked again for up to a minute. A plain request, because none of EmDash's commands can ask a deployed site anything before someone has signed in to it. A new site with no content yet is told how to put it in"
 dir = "{{config_root}}"
-run = "curl --fail --silent --show-error --head --max-time 180 {{ env.LIVE_URL | default(value='') }}"
+run = "node \"{{ env.MISE_TASK_DIR }}/admin/again.mjs\" live-up \"{{ env.LIVE_URL | default(value='') }}\""
 
 ["step:mark"]
 hide = true

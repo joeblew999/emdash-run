@@ -7,9 +7,11 @@
 //                                                       plugin:new  — a plugin that exists is not scaffolded again
 //   node again.mjs ports <project folder>               site:ports  — a project that has its ports keeps them
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { createServer } from "node:net";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const [what, siteDir, ...rest] = process.argv.slice(2);
@@ -46,6 +48,46 @@ if (what === "new") {
 		process.exit(0);
 	}
 	run("pnpm", ["dlx", "@emdash-cms/plugin-cli@latest", "init", name, "--dir", `plugins/${name}`, "--yes", "--publisher", publisher, "--author-name", author, "--security-email", email, "--package-manager", "pnpm"], siteDir);
+} else if (what === "live-up") {
+	// The deployed site answers — the NEW version: an address nothing has cached, asked again for
+	// up to a minute, because for some seconds after a deploy Cloudflare still answers for the old
+	// one, or with a 404 of its own. (siteDir is the address here.) The first request after a
+	// deploy runs EmDash's migrations and can take a while.
+	const address = new URL(siteDir);
+	let last = "no answer";
+	for (let i = 0; i < 20; i++) {
+		address.searchParams.set("emdash-run", String(Date.now()));
+		try {
+			const res = await fetch(address, { redirect: "manual", headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(180_000) });
+			const ours = (res.headers.get("content-type") || "").includes("text/html");
+			last = `HTTP ${res.status}`;
+			if (res.status < 400) {
+				console.log(`${address.origin} answers: ${last}`);
+				process.exit(0);
+			}
+			// a new site has no pages until content is put in: the site's own 404 is an answer
+			if (res.status === 404 && ours && i >= 2) {
+				console.log(`${address.origin} answers, and has no home page yet (${last}). A newly deployed site starts without content:`);
+				console.log("  mise run signin:token -- --live");
+				console.log("  mise run emdash -- site export --output site.emdash                      (this machine's content)");
+				console.log("  mise run emdash -- site import site.emdash --analyze --live              (prints a plan and its digest)");
+				console.log("  mise run emdash -- site import site.emdash --plan <digest> --confirm --live");
+				process.exit(0);
+			}
+		} catch (error) {
+			last = error.message;
+		}
+		await new Promise((done) => setTimeout(done, 3000));
+	}
+	console.error(`${address.origin} did not answer after a minute: ${last}`);
+	process.exit(1);
+} else if (what === "forget") {
+	// The local database is going: the token signin:token saved for it dies with it. Left behind,
+	// the CLI would send it to the next database and be told "Invalid or expired token".
+	// Only this site's: saved names for sites on this machine end in a hash of the site folder.
+	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", "tokens");
+	const mine = `_${createHash("sha256").update(resolve(siteDir)).digest("hex").slice(0, 10)}.json`;
+	for (const f of existsSync(dir) ? readdirSync(dir) : []) if (f.endsWith(mine)) rmSync(join(dir, f), { force: true });
 } else if (what === "ports") {
 	// siteDir is the PROJECT folder here. Two ports nothing is using, written to mise.local.toml —
 	// which git ignores and mise reads — so this project, or this agent's copy of it, never

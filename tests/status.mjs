@@ -65,9 +65,12 @@ const out = [];
 out.push("---", "title: What works", "nav_order: 50", "---", "", "# What works", "");
 out.push("Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.", "");
 out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${tasks.length} tasks have no test.**`, "");
-out.push(`Last run: \`${tier}\`, tasks from ${from}, commit \`${commit}\`, ${when}, ${took}s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.`, "");
+// a rebuild is not a run: it keeps the line the last run wrote
+const statusFile = join(repo, "docs", "status.md");
+const lastRun = rebuild && existsSync(statusFile) ? readFileSync(statusFile, "utf8").split("\n").find((l) => l.startsWith("Last run:")) : null;
+out.push(lastRun ?? `Last run: \`${tier}\`, tasks from ${from}, commit \`${commit}\`, ${when}, ${took}s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.`, "");
 out.push("- `mise run test` — quick: the everyday tasks, one template, about a minute", "- `mise run test:full` — everything: both templates, then the tasks that act on a deployed site", "");
-out.push("Every test runs as another developer would: a clean environment and an empty config folder. Only macOS so far.", "");
+out.push("Every test runs as another developer would: a clean environment and an empty config folder. This page is from a Mac; the same test runs on macOS, Linux and Windows in the `stages` workflow.", "");
 out.push("## By task — every task in `tasks.toml`", "");
 out.push("| task | Cloudflare site | Node site | deployed site | |", "|---|---|---|---|---|");
 for (const t of tasks) {
@@ -130,6 +133,7 @@ if (text.includes(begin) && text.includes(end)) {
 	}
 	const fix = (t) => t
 		.replaceAll("](docs/status.md)", "](status.md)")
+		.replaceAll("](docs/tasks.md)", "](tasks.md)")
 		.replaceAll("](docs/plans/)", "](plans/README.md)")
 		.replaceAll("](docs/agents/README.md)", "](agents/README.md)")
 		.replaceAll("](docs/favourite-plugins.md)", "](favourite-plugins.md)")
@@ -147,6 +151,21 @@ if (text.includes(begin) && text.includes(end)) {
 	for (const p of rest) {
 		writeFileSync(join(docs, p.file), `---\ntitle: "${p.title}"\nnav_order: ${p.order}\n---\n\n${marker}\n\n# ${p.title}\n\n${p.body}\n`);
 	}
+	// Every task, with its arguments and flags: written by mise itself (`mise generate task-docs`)
+	// from tasks.toml, so a task's description is its documentation and there is one place to
+	// write it. Asked from an empty project that includes only tasks.toml — what a developer's
+	// project gets — so this repo's own tasks (test, docs, hooks…) are not in it.
+	{
+		const { mkdtempSync, rmSync } = await import("node:fs");
+		const { tmpdir } = await import("node:os");
+		const view = mkdtempSync(join(tmpdir(), "emdash-run-tasks-"));
+		writeFileSync(join(view, "mise.toml"), `[task_config]\nincludes = [${JSON.stringify(join(repo, "tasks.toml").replaceAll("\\", "/"))}]\n`);
+		const made = execFileSync("mise", ["generate", "task-docs", "--style", "detailed"], { cwd: view, encoding: "utf8", env: { ...process.env, MISE_TRUSTED_CONFIG_PATHS: view } });
+		rmSync(view, { recursive: true, force: true });
+		// the hidden steps a task depends on are not something a developer runs
+		const body = made.split("\n").filter((l) => !l.startsWith("- Depends:")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+		writeFileSync(join(docs, "tasks.md"), `---\ntitle: "Every task"\nnav_order: 3\n---\n\n${marker.replace("from a section of the repo's README.md: edit that, not this.", "by mise from tasks.toml (mise generate task-docs): edit a task's description there, not this.")}\n\n# Every task\n\nWritten by mise itself from [\`tasks.toml\`](https://github.com/joeblew999/emdash-run/blob/main/tasks.toml): each task's description, arguments and flags. In your own project the same is one command away: \`mise tasks\`, or \`mise run <task> --help\`. The order you use them in is on [The tasks](the-tasks.md); what the last test showed for each is on [What works](status.md).\n\n${body}\n`);
+	}
 	const about = {
 		"The tasks": "every task, in the order you use them",
 		"Templates": "the eight kinds of site `site:new` can make",
@@ -160,6 +179,7 @@ if (text.includes(begin) && text.includes(end)) {
 		"Working on emdash-run": "the tests, and where the rules are",
 	};
 	const index = ["| | |", "|---|---|", ...rest.map((p) => `| [${p.title}](${p.file}) | ${about[p.title] ?? ""} |`),
+		"| [Every task](tasks.md) | each task's description, arguments and flags — written by mise from `tasks.toml` |",
 		"| [Favourite plugins](favourite-plugins.md) | the registry plugins `plugin:favourites` installs, why, and what was rejected |",
 		"| [What works](status.md) | every task, and what the last test run showed |",
 		"| [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |",

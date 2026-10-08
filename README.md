@@ -23,7 +23,7 @@ pnpm = "12"
 fnox = "1.36.0"   # keeps your Cloudflare token; only needed for signin:access
 
 [task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.0.1"]
+includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.1.0"]
 ```
 
 That pins release `v1.0.1`; change the tag to update. `ref=main` follows development, but mise
@@ -32,7 +32,9 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 ## The tasks
 
 In the order you use them. This table is written by the test, from the order it runs the tasks in. Run one with
-`mise run <task>`; `mise tasks ls` shows them all.
+`mise run <task>`; `mise tasks ls` shows them all. Each task's arguments and flags are in
+[`docs/tasks.md`](docs/tasks.md), which mise writes from the tasks themselves — a task's
+description in `tasks.toml` is its documentation.
 
 <!-- in-order:begin (written by tests/status.mjs — run a test, do not edit) -->
 **On this machine**
@@ -41,7 +43,7 @@ In the order you use them. This table is written by the test, from the order it 
 |---|---|---|---|
 | 1 | `site:ports` | Give this project two ports of its own (in mise.local.toml), so several projects — or several agents — can run at once | yes |
 | 2 | `site:new` | Make a new site. Template: mise run site:new \-\- node:blog (default cloudflare:blog). A site that is already there is left alone | yes |
-| 3 | `site:start` | Start the dev site in the background (port 4321). EmDash signs you in by itself | yes |
+| 3 | `site:start` | Start the dev site in the background (port 4321). EmDash signs you in by itself, and its welcome dialog is closed for you | yes |
 | 4 | `site:logs` | Follow the dev site's log | yes |
 | 5 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
 | 6 | `site:check` | Before a commit: seed valid, types check, site builds | yes |
@@ -49,25 +51,30 @@ In the order you use them. This table is written by the test, from the order it 
 | 8 | `site:preview` | Build the site and serve it locally (port 4322) — behaves like a deployed site | yes |
 | 9 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
 | 10 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
-| 11 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds and re-adds it | yes |
-| 12 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
-| 13 | `plugin:add` | Add a plugin from npm. mise run plugin:add \-\- &lt;package&gt; | yes |
-| 14 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
-| 15 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
-| 16 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
-| 17 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
-| 18 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
-| 19 | `site:stop` | Stop the dev site and the built site | yes |
-| 20 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
+| 11 | `plugin:sandbox` | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes | yes |
+| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it | yes |
+| 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
+| 14 | `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt; | yes |
+| 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
+| 16 | `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site | yes |
+| 17 | `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin | yes |
+| 18 | `plugin:remove` | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed | yes |
+| 19 | `plugin:favourites` | Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add \-\-live for deployed | yes |
+| 20 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
+| 21 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
+| 22 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
+| 23 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
+| 24 | `site:stop` | Stop the dev site and the built site | yes |
+| 25 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
 
 **On the deployed site**
 
 | | task | what it does | tested |
 |---|---|---|---|
 | 1 | `signin:access` | Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code) | yes |
-| 2 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
-| 3 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
-| 4 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 2 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
+| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
+| 4 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
 | 5 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
 | 6 | `content:pull` | Download the deployed site's content as a package into backups/ | yes |
 | 7 | `live:backup` | Back up the deployed site: database bookmark + content package | yes |
@@ -163,6 +170,14 @@ mise run live:undo                    back to the previous version
 mise run live:backup
 ```
 
+`signin:access` prints three lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in
+before `live:ship`. It leaves uploaded media public, so pictures on your pages need no sign-in.
+
+**A newly deployed site has no content.** `live:ship` says so, with the commands: sign in with
+`signin:token -- --live`, export this machine's content (`mise run emdash -- site export --output
+site.emdash`), then import it with `--live` — `--analyze` first, which prints a plan, then
+`--plan <digest> --confirm`.
+
 Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
 Access but not change it. For that one task, make an API token in the Cloudflare dashboard
 (My Profile → API Tokens) with **Access: Apps and Policies — Edit** and **Access: Service Tokens —
@@ -257,7 +272,14 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 ```
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
+mise run docs          rebuild every generated page (the tests and the commit check do it too)
+mise run hooks         once per clone: turns on the commit check
 ```
+
+The commit check keeps three things together. A commit that touches `tasks.toml`, the test or this
+README is refused if a task has no test step, if a test step names a task that is gone, or if the
+pages built from them (the task table above, [`docs/`](docs/)) are out of date — it rebuilds them
+and asks you to add them.
 
 Each runs as another developer would — a clean environment, an empty config folder, its own site
 in a temporary folder — and adds its results to [`docs/status.md`](docs/status.md). To

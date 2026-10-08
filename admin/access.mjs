@@ -103,7 +103,8 @@ try {
 		console.log("access: a policy already lets people in — left as it is");
 	} else {
 		await api("POST", `apps/${app.id}/policies`, { name: "people", decision: "allow", include: [{ email: { email } }] });
-		console.log(`access: ${email} may sign in, by a code sent to that address`);
+		// not the address itself: this output ends up in logs
+		console.log("access: the address in ADMIN_EMAIL may sign in, by a code sent to it");
 	}
 
 	// 3. machines
@@ -119,7 +120,27 @@ try {
 		console.log("access: a service token for machines made, allowed through, and saved on this machine");
 	}
 
-	const team = (await fetch(`https://${host}/_emdash/admin`, { redirect: "manual" })).headers.get("location") || "";
+	// 4. uploaded media stays public. The application covers all of /_emdash, and the files a page
+	// shows are served from under it: without this, a visitor's browser is sent to the sign-in page
+	// for every image. A second application over that one path, which lets everyone through.
+	const mediaDomain = `${host}/_emdash/api/media/file`;
+	if ((await api("GET", "apps")).some((a) => a.domain === mediaDomain)) {
+		console.log("access: uploaded media is already public");
+	} else {
+		const media = await api("POST", "apps", { name: `${name}: media`, type: "self_hosted", domain: mediaDomain, session_duration: "24h", app_launcher_visible: false });
+		await api("POST", `apps/${media.id}/policies`, { name: "everyone", decision: "bypass", include: [{ everyone: {} }] });
+		console.log(`access: uploaded media stays public (${mediaDomain})`);
+	}
+
+	// The team's domain, from Cloudflare — it is known before the site is ever deployed. Failing
+	// that (a token that may not read it), from where the deployed site sends a visitor.
+	let team = "";
+	try {
+		const org = await api("GET", "organizations");
+		if (org?.auth_domain) team = `https://${org.auth_domain}`;
+	} catch {}
+	if (!team) team = (await fetch(`https://${host}/_emdash/admin`, { redirect: "manual" }).catch(() => null))?.headers.get("location") || "";
+	if (team && !new URL(team).host.endsWith(".cloudflareaccess.com")) team = "";
 	console.log("");
 	console.log("In the site's astro.config.mjs, inside emdash({ ... }):");
 	console.log(`  auth: access({ teamDomain: "${team ? new URL(team).host : "<your-team>.cloudflareaccess.com"}", audienceEnvVar: "CF_ACCESS_AUDIENCE" }),`);
@@ -127,6 +148,7 @@ try {
 	console.log("In wrangler.jsonc:");
 	console.log(`  "vars": { "CF_ACCESS_AUDIENCE": "${app.aud}" },`);
 	console.log('  "preview_urls": false,');
+	if (!team) console.log("(The team's domain could not be read yet. Deploy — mise run live:ship — then run this again for it.)");
 	console.log("Then: mise run live:ship");
 } catch (error) {
 	console.error(`signin:access failed: ${error.message}`);
