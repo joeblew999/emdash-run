@@ -25,6 +25,10 @@ This repo is a set of `mise` tasks for working on an EmDash site. Read this befo
 4. **Start with the issues.** `issues` (in this repo) lists what developers have reported. An open
    issue labelled `needs-triage` is dealt with before anything else: reproduce it with the test,
    fix it, add a test step for it, answer the issue.
+   **To report one yourself:** `charter issue bug` (or `feature`, `upstream`) prints a body with
+   that form's headings; fill it in and pass it to `gh issue create --body-file`, with the labels
+   its first line names. In this repo only — an issue in someone else's tracker is the owner's to
+   send.
    **Say what failed, first, unasked.** Never report something as working that you have not run.
 5. **One plan.** `docs/plans/` holds one open plan, in stages. A finding becomes a box in it, not
    a new plan or a new task.
@@ -77,7 +81,7 @@ More than one agent may be working on this machine. So that none disturbs anothe
 | `tests/status.mjs`, `tests/results.json` | the record, kept across runs; `docs/status.md` (one row per task) and the README's ordered task table are built from it |
 | `.githooks/pre-commit` | on after `mise run hooks`. Change a task → change its test step and its description in the same commit; the hook refuses the commit otherwise, and rebuilds the README table and `docs/` pages. Never edit those pages by hand, never skip the hook |
 | `docs/tasks.md` | every task, in the order a developer uses them (the test's order), written by mise (`mise generate task-docs`) from `tasks.toml` — on every test run, on `mise run docs`, and by the commit check. **One source each:** what a task does is its `description` (and the `help` of its arguments and flags) in `tasks.toml`; the order and what is proven is `tests/replay.sh`; the README holds only what is not a task. A README section lists its tasks with `<!-- tasks:PREFIX -->` `<!-- /tasks -->`, filled from the descriptions — never by hand |
-| `docs/_config.yml`, `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | written by charter, the owner's tool: `docs:setup`, `github:labels` |
+| `docs/_config.yml`, `docs/writing.md`, `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv` | charter's, the owner's tool, the same in every repo of theirs: `docs:setup` writes them, `github:labels` applies the labels, and the commit check refuses a hand edit (`charter docs -check`) and lints `docs/` (`charter docs-lint`, from the charter after 0.13.0). Change them in charter, not here |
 | `mise.toml` | this repo's settings and its own `test` tasks |
 | `site/` | not in the repo. The `site:new` task makes one here to try tasks on; it is gitignored |
 
