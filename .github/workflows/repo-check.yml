@@ -24,6 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.0.1
+        with:
+          version: 2026.10.4 # the repo's mise.toml: min_version
       # One task, the same one a developer runs: what it checks is written in tasks/repo, not here,
       # so a pass on your machine is a pass on GitHub. docs:check, repo:check, upstream:status.
       - run: mise run repo:ci
