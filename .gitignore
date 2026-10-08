@@ -20,5 +20,5 @@ node_modules/
 mise.local.toml
 /.claude/worktrees/
 
-# A site made here with `mise run site:new`, to try the tasks on. Not part of the repo.
-/site/
+# site/ IS part of the repo: a real site, made with `mise run site:new`, to try things on quickly.
+# Its own .gitignore keeps out what is the machine's (node_modules, .env, the local database).

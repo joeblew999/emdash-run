@@ -26,6 +26,7 @@ Running a test turns on the commit check in your clone.
 |---|---|
 | `mise run test` | Quick: the everyday tasks, one template. One task only: `mise run test -- signin:token` |
 | `mise run test:full` | Everything: three sites at once, then the deployed-site tasks. About 20 minutes |
+| `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
 | `mise run docs:setup` | Write the docs site's config and the generated pages |
 | `mise run docs:check` | The generated pages are fresh, and `docs/` passes the lint (`docs:lint` alone: the lint) |
@@ -38,7 +39,18 @@ Running a test turns on the commit check in your clone.
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
 | `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
 
-Each test runs as another developer would: a clean environment, an empty config folder, its own site in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. To try a task by hand here, `mise run site:new` makes a `site/`, which git ignores.
+Each test runs as another developer would: a clean environment, an empty config folder, its own site in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. ## The site in this repo
+
+`site/` is a real site, made with `mise run site:new` (the `cloudflare:blog` template) and committed: the place to try a task or a plugin in seconds, without making a site first. What is the machine's stays out of git: its packages, its `.env`, its local database.
+
+```sh
+mise run site:ports           # once: ports of its own for this clone
+mise run site:start           # the dev site; open /_emdash/api/setup/dev-bypass?redirect=/_emdash/admin
+mise run plugin:favourites    # the favourite plugins into its local database
+mise run plugin:works         # every plugin, one line per check
+```
+
+The tests do not use it: each run makes its own sites in a temporary folder, to prove the tasks from nothing.
 
 ## How it is built
 
@@ -63,7 +75,7 @@ Each test runs as another developer would: a clean environment, an empty config 
 
 - Its skills, in any scaffolded site: `site/.agents/skills/` (`emdash-cli`, `building-emdash-site`, `creating-plugins`).
 - Its docs: the `emdash-docs` MCP server (`.mcp.json`).
-- Its source, to read the code: `git clone https://github.com/emdash-cms/emdash .src/emdash` (`.src/` is ignored by git).
+- Its source, to read the code: `mise run src` clones it into `.src/emdash` (`.src/` is ignored by git).
 
 ## Releases
 
