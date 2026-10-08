@@ -23,10 +23,10 @@ pnpm = "12"
 fnox = "1.36.0"   # keeps your Cloudflare token; only needed for signin:access
 
 [task_config]
-includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.1.0"]
+includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=v1.2.0"]
 ```
 
-That pins release `v1.0.1`; change the tag to update. `ref=main` follows development, but mise
+That pins release `v1.2.0`; change the tag to update. `ref=main` follows development, but mise
 keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 
 ## The tasks
@@ -56,9 +56,9 @@ description in `tasks.toml` is its documentation.
 | 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
 | 14 | `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards | yes |
 | 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
-| 16 | `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site | **FAILS** |
-| 17 | `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin | **FAILS** |
-| 18 | `plugin:remove` | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed | **FAILS** |
+| 16 | `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site | yes |
+| 17 | `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin | yes |
+| 18 | `plugin:remove` | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed | yes |
 | 19 | `plugin:favourites` | Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add \-\-live for deployed | yes |
 | 20 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
 | 21 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |

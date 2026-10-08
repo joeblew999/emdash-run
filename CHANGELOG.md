@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.2.0 — 2026-10-08
+
+Plugins from EmDash's registry, and previews. The full test on a Mac: 133 steps, every one of the
+35 tasks, three sites at once and a deployed site with a preview. Not yet seen on Linux or Windows.
+
+- **`live:preview`** deploys the site as a preview: an address of its own, with its own database,
+  bucket and sessions, beside the live site (Cloudflare's Worker Previews). `LIVE_PREVIEW=<name>`
+  makes every task that takes `--live` act on that preview. `signin:access` covers the preview
+  addresses.
+- **Sites start one at a time.** Two Cloudflare sites started in the same moment took the same
+  debugger port, and one answered 500 to everything.
+- **`signin:token` waits for a new site's tables** instead of failing on a site that has just
+  been started or deployed.
 Plugins from EmDash's registry: find one, install it with no clicking, and know it works. Run on
 macOS on a Cloudflare and a Node site; not yet against a deployed site, nor on Windows or Linux.
 
