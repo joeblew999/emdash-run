@@ -12,6 +12,6 @@
 		"types": ["node"],
 		"typeRoots": ["tests/node_modules/@types"]
 	},
-	"include": ["tests/**/*.mjs", "scripts/*.mjs"],
+	"include": ["tests/**/*.mjs", "scripts/**/*.mjs"],
 	"exclude": ["tests/plugin/fixtures", "**/node_modules"]
 }
