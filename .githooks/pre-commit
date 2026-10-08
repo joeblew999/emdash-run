@@ -4,6 +4,8 @@
 #   2. the docs site's config and the generated pages are what charter would write (docs -check)
 #   3. docs/ passes charter's lint: front matter, dead links, tasks and paths that do not exist
 # charter is in this repo's [tools]; where it is not installed, 2 and 3 are skipped.
+# 0. tests/ and scripts/ type-check (mise run types), when one of them is in the commit
+git diff --cached --quiet -- scripts tests tsconfig.json || mise run types >/dev/null 2>&1 || { mise run types; echo "pre-commit: tests/ or scripts/ does not type-check (mise run types)."; exit 1; }
 git diff --cached --quiet -- tasks.toml tests mise.toml docs README.md AGENTS.md charter.toml && exit 0
 node tests/record.mjs --coverage >/dev/null || exit 1
 command -v charter >/dev/null 2>&1 || exit 0

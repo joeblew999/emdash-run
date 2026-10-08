@@ -82,5 +82,5 @@ description = "EmDash's source into .src/emdash (git ignores it), to read when a
 run = "git -C .src/emdash pull --ff-only --quiet || git clone --depth 1 --quiet https://github.com/emdash-cms/emdash .src/emdash"
 
 [tasks.hooks]
-description = "Turn on the commit check in this clone (running a test does it too): every task has a test step, the generated pages are fresh, docs/ passes the lint"
+description = "Turn on the commit check in this clone (running a test does it too): tests/ and scripts/ type-check, every task has a test step, the generated pages are fresh, docs/ passes the lint"
 run = "git config core.hooksPath .githooks"
