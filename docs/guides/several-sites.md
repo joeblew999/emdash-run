@@ -30,4 +30,4 @@ One thing is not separate: a Node site's plugin sandbox takes fixed ports from 1
 - Sign in with `signin:token`, not `emdash login` ([Upstream issues](../upstream.md)).
 - The rest is in [Rules](../rules.md#working-beside-other-agents-here).
 
-The full test runs three sites at once this way.
+

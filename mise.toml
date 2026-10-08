@@ -38,12 +38,16 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.test]
-description = "Quick test: the everyday tasks from an empty folder, about a minute. One task: mise run test -- signin:token. Records what it saw (tests/results.json) and rewrites the generated pages"
+description = "Quick test: the everyday tasks, on a copy of this repo's site/, about a minute. One test at a time on a machine: a second waits. One task: mise run test -- signin:token. Records what it saw (tests/results.json) and rewrites the generated pages"
 run = "bash tests/replay.sh quick"
 
 [tasks."test:full"]
-description = "Full test: every task, three sites at once, then the deployed-site tasks. About 20 minutes. Records what it saw and rewrites the generated pages"
+description = "Full test: every task on a copy of this repo's site/, then a site made from nothing and deleted, then the deployed-site tasks. Records what it saw and rewrites the generated pages"
 run = "bash tests/replay.sh full"
+
+[tasks."test:node"]
+description = "Every local task on a Node site made from EmDash's template: before a release, not every day. Records what it saw and rewrites the generated pages"
+run = "bash tests/replay.sh node"
 
 [tasks.check]
 description = "Every check but the tests themselves, in seconds: the unit tests of the scripts' own functions (tests/*.test.mjs: the edits to astro.config.mjs), every task has a test step, the last recorded test run has no failure and no untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; run mise run test:full before that"

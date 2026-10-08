@@ -25,7 +25,8 @@ Running a test turns on the commit check in your clone.
 | Task | What it does |
 |---|---|
 | `mise run test` | Quick: the everyday tasks, one template. One task only: `mise run test -- signin:token` |
-| `mise run test:full` | Everything: three sites at once, then the deployed-site tasks. About 20 minutes |
+| `mise run test:full` | Every task, on a copy of `site/`; then a site made from nothing and deleted; then the deployed-site tasks |
+| `mise run test:node` | Every local task on a Node site made from EmDash's template: before a release |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
 | `mise run docs:setup` | Write the docs site's config and the generated pages |
@@ -39,7 +40,7 @@ Running a test turns on the commit check in your clone.
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
 | `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
 
-Each test runs as another developer would: a clean environment, an empty config folder, its own site in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. A failing step prints its last 30 lines of output. A step that has not ended after 15 minutes is stopped and fails, and the steps after it for that site are not run; `STEP_LIMIT=<seconds>` changes the limit.
+Each test runs as another developer would: a clean environment, an empty config folder, a copy of `site/` in a temporary folder. It records what it saw in `tests/results.json`, and [What works](reference/status.md) is written from that. A failing step prints its last 30 lines of output. A step that has not ended after 15 minutes is stopped and fails, and the steps after it for that site are not run; `STEP_LIMIT=<seconds>` changes the limit.
 
 ## The site in this repo
 
@@ -52,7 +53,7 @@ mise run plugin:favourites    # the favourite plugins into its local database
 mise run plugin:works         # every plugin, one line per check
 ```
 
-The tests do not use it: each run makes its own sites in a temporary folder, to prove the tasks from nothing.
+The tests use it: each run works on a copy of it in a temporary folder, so the site you are looking at and its local database are not touched. One test runs at a time on a machine; a second one waits.
 
 ## How it is built
 

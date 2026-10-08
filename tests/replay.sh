@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# The test: the tasks, from an empty folder, in the order a developer uses them. Every step is
-# recorded against the TASK it tests, in tests/results.json, and docs/reference/status.md is rebuilt from
-# that with one line for every task in tasks.toml — so the status and the tasks always match.
+# The test: the tasks, in the order a developer uses them, run on ONE site — the site in this repo,
+# site/. Each run works on a copy of it in a temporary folder (an instant copy on macOS), so the
+# site you are looking at, and its local database, are never touched. Every step is recorded
+# against the TASK it tests, in tests/results.json, and docs/reference/status.md is written from that.
 #
-# TWO LEVELS, and no others:
-#   bash tests/replay.sh quick     one template, the everyday tasks — about a minute
-#   bash tests/replay.sh full      EVERYTHING: both templates, then the tasks that act on a
-#                                  deployed site
+# THE LEVELS:
+#   bash tests/replay.sh quick     the everyday tasks — about a minute
+#   bash tests/replay.sh full      every task: the plugins, a site made from nothing and deleted,
+#                                  then the tasks that act on a deployed site
+#   bash tests/replay.sh node      every local task on a Node site made from EmDash's template:
+#                                  before a release, not every day
+# ONE TEST AT A TIME on a machine: a second one waits for the first. Two at once were handed the
+# same ports and spoiled each other.
 # ONE TASK: add its name — `mise run test -- signin:token` — and the test runs the steps up to and
 # including that task's, then stops the site and cleans up. For working on one task.
 # TEST_FROM=github before either fetches the tasks from GitHub (main) instead of the local files:
@@ -49,6 +54,16 @@ fi
 
 # Provenance first: every task in tasks.toml has a step below, and every step names a real task.
 (cd "$REPO" && node tests/status.mjs --coverage) || exit 1
+# One test at a time on this machine. What must be undone when the test ends is added to CLEANUP.
+CLEANUP=""; trap 'eval "$CLEANUP"' EXIT
+TESTLOCK="$HOME/.config/emdash-run/locks/test"; mkdir -p "$(dirname "$TESTLOCK")"; waited=0
+until mkdir "$TESTLOCK" 2>/dev/null; do
+  if [ -n "$(find "$TESTLOCK" -maxdepth 0 -mmin +90 2>/dev/null)" ]; then rmdir "$TESTLOCK" 2>/dev/null; continue; fi
+  [ "$waited" != 0 ] || echo "Another test is running on this machine: waiting for it to end (one at a time)…"
+  sleep 10; waited=$((waited + 10))
+  [ "$waited" -le 3600 ] || { echo "…it has not ended in an hour: not started. If none is running, remove $TESTLOCK"; exit 1; }
+done
+CLEANUP="$CLEANUP rmdir '$TESTLOCK' 2>/dev/null;"
 # Running the test turns on the commit check in this clone (the generated pages, the docs lint).
 [ -n "${CI:-}" ] || git -C "$REPO" config core.hooksPath .githooks 2>/dev/null || true
 
@@ -110,20 +125,29 @@ project() { # $1 = folder  $2 = template  $3.. = extra [env] lines
 }
 port() { sed -n "s/^$1 = \"\([0-9]*\)\"/\1/p" mise.local.toml; }
 
-local_site() { # $1 = template  $2 = (optional) a label, when this is an extra copy run beside the others
-  local T=$1 SITE BUILT
-  W=${2:-${T%%:*}}; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
+local_site() { # $1 = "site" (a copy of this repo's site/) or a template to make a site from
+  local T=$1 SITE BUILT OWN=""
+  if [ "$T" = site ]; then OWN=1; T=cloudflare:blog; fi
+  W=${T%%:*}; ROWS=$WORK/rows-$W.txt; : > "$ROWS"
   # A config folder of its own. EmDash's CLI keeps every sign-in in ONE file, auth.json, which it
   # reads, changes and writes back with no lock: two `emdash login`s at once and one is lost
-  # (seen 2026-10-07 — "Invalid or expired token" on one of three sites; docs/upstream.md).
-  # Upstream: emdash-cms/emdash#3996 (when fixed: the three sites can share one config folder again)
+  # (seen 2026-10-07 — "Invalid or expired token" when three sites ran at once; docs/upstream.md).
+  # Upstream: emdash-cms/emdash#3996 (when fixed: no config folder of its own is needed)
   export XDG_CONFIG_HOME=$WORK/config-$W; mkdir -p "$XDG_CONFIG_HOME"
   project "$WORK/$W" "$T"
+  if [ -n "$OWN" ]; then
+    # This repo's site, as committed and with its packages if they are installed: copied (cp -c is
+    # an instant copy on macOS), without what is the machine's — its database, its build, its key.
+    cp -Rc "$REPO/site" site 2>/dev/null || cp -R "$REPO/site" site
+    rm -rf site/.wrangler site/dist site/.astro site/.env site/backups
+  fi
   ok site:ports     "gives the project two ports of its own"  'mise run site:ports && test -n "$(port SITE_PORT)" && test -n "$(port PREVIEW_PORT)"'
   ok site:ports     "run again: it keeps them"                'before=$(cat mise.local.toml); says "already has its ports" mise run site:ports && test "$before" = "$(cat mise.local.toml)"'
   SITE=http://localhost:$(port SITE_PORT); BUILT=http://localhost:$(port PREVIEW_PORT)
-  no site:start     "with no site, says so and stops"        'mise run site:start'
-  ok site:new       "makes the site"                          'mise run site:new'
+  if [ -z "$OWN" ]; then
+    no site:start   "with no site, says so and stops"        'mise run site:start'
+    ok site:new     "makes the site"                          'mise run site:new'
+  fi
   ok site:new       "run again: the site is left alone"       'says "already a site" mise run site:new'
   ok site:start     "starts the dev site; EmDash's welcome dialog is closed" 'says "welcome dialog is closed" mise run site:start'
   ok site:start     "run again: it is already running"        'mise run site:start'
@@ -139,7 +163,7 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
   ok signin:token   "the CLI is an administrator of the built site" 'mise run signin:token && says_i "admin" mise run emdash -- whoami --preview'
   ok signin:token   "run again: still an administrator"       'mise run signin:token && says_i "admin" mise run emdash -- whoami --preview'
   ok emdash         "--preview writes to the built site"      "mise run emdash -- content create pages --preview --slug built --data '{\"title\":\"On the built site\"}'"
-  if [ "$TIER" = full ]; then
+  if [ "$TIER" != quick ]; then
     ok signin:token "starts the built site when it is stopped" 'mise run site:stop && mise run signin:token && says slug mise run emdash -- schema list --preview'
     case $T in cloudflare:*) ok live:check "the deploy rehearses with no account" 'mise run live:check';; esac
     no content:pull "with no LIVE_URL says so"                'mise run content:pull'
@@ -187,6 +211,12 @@ local_site() { # $1 = template  $2 = (optional) a label, when this is an extra c
   ok site:stop      "stops both sites; twice is fine"         'mise run site:stop && mise run site:stop && test "$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 $BUILT/ || true)" != 200'
   ok site:delete    "removes the site folder"                 '(cd site && pnpm exec emdash logout >/dev/null 2>&1); mise run --yes site:delete && test ! -e site'
   ok site:delete    "run again: nothing to delete"            'says "nothing to delete" mise run --yes site:delete'
+  if [ -n "$OWN" ] && [ "$TIER" = full ]; then
+    # from nothing: the one thing a copy of a site that exists cannot show
+    no site:start   "with no site, says so and stops"        'mise run site:start'
+    ok site:new     "makes a site from nothing, from EmDash's template" 'mise run site:new -- cloudflare:starter && test -f site/package.json'
+    mise run --yes site:delete > /dev/null 2>&1
+  fi
   cd "$REPO"
 }
 
@@ -209,7 +239,7 @@ live_site() {
   fi
   # the path itself in the trap: LOCK is this function's, and gone by the time the script exits
   # (2026-10-07: the lock was left behind, and the next run skipped the deployed part)
-  trap "rmdir '$LOCK' 2>/dev/null" EXIT
+  CLEANUP="$CLEANUP rmdir '$LOCK' 2>/dev/null;"
   project "$WORK/live" cloudflare:starter "LIVE_URL = \"$U\"" 'ADMIN_EMAIL = "agent@emdash.local"'
   mise run site:ports >/dev/null 2>&1
   ok site:new       "makes the site that will be deployed"    'mise run site:new && sed -i.bak "s/\"my-emdash-site\"/\"$TEST_LIVE_NAME\"/g; s/\"my-emdash-media\"/\"$TEST_LIVE_NAME-media\"/" site/wrangler.jsonc && mise run site:start && mise run site:stop'
@@ -240,24 +270,17 @@ live_site() {
 
 START=$(date +%s)
 case $TIER in
-  full)  # (TEST_ONLY=deployed runs just the last part — for working on that part, not a third level)
-         # THREE AT ONCE, as three agents would be: each in its own folder, on its own ports. The
-         # third is the proof of that and is recorded as one step, not as a third column.
-         [ "${TEST_ONLY:-}" = deployed ] || {
-           local_site cloudflare:blog & local_site node:starter & local_site cloudflare:starter third & wait
-           W=cloudflare; ROWS=$WORK/rows-cloudflare.txt; D=$WORK/cloudflare
-           ok site:ports "three sites at once, each on its own ports with only its own content" \
-             'test "$(grep -c "|FAIL|" "$WORK/rows-third.txt")" = 0 && test "$(grep -c "|PASS|" "$WORK/rows-third.txt")" -gt 20 && test "$(cat "$WORK"/*/mise.local.toml | grep -c PORT)" = "$(cat "$WORK"/*/mise.local.toml | grep PORT | sort -u | wc -l | tr -d " ")"'
-           mv "$WORK/rows-third.txt" "$WORK/third.txt"
-         }
+  full)  # (TEST_ONLY=deployed runs just the last part — for working on that part, not another level)
+         [ "${TEST_ONLY:-}" = deployed ] || local_site site
          LIVE_URL_=${TEST_LIVE_URL:-} live_site ;;
-  *)     local_site cloudflare:starter ;;
+  node)  local_site node:starter ;;
+  *)     local_site site ;;
 esac
 cat "$WORK"/rows-*.txt > "$WORK/rows.txt"
 cd "$REPO"
 # plain `node`: it is on the PATH inside a mise task, and `mise x --` would install every tool in
 # mise.toml first — on a CI runner that meant charter, and GitHub refused the download
-node tests/status.mjs "$WORK/rows.txt" "$TIER" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
+node tests/status.mjs "$WORK/rows.txt" "$( [ "$TIER" = node ] && echo full || echo "$TIER" )" "$( [ "$FROM" = github ] && echo GitHub || echo 'the local files' )" \
   "$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain -- tasks.toml admin tests/replay.sh)" ] && echo '+uncommitted' )" "$(( $(date +%s) - START ))"
 code=$?
 # The pages written from what was just recorded (docs/_generated.toml): charter writes them. It is
