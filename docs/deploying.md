@@ -8,24 +8,21 @@ nav_order: 8
 # Deploying
 
 For a site on Cloudflare. You need to be signed in to Cloudflare (`mise x -- pnpm dlx wrangler login`).
-Every task here is safe to run again:
+Every task is safe to run again. In this order the first time: `signin:access`, put the lines it
+prints into the site, `live:ship`, `signin:token -- --live`.
 
-```
-mise run signin:access                Cloudflare Access in front of the admin
-mise run live:ship                    check, deploy, wait for it to answer
-mise run signin:token -- --live       the CLI is signed in to the deployed site
-mise run live:logs
-mise run live:undo                    back to the previous version
-mise run live:backup
-```
+<!-- tasks:live: -->
+| task | what it does |
+|---|---|
+| `live:ship` | Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's |
+| `live:backup` | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database |
+| `live:logs` | Follow the deployed site's log |
+| `live:undo` | Roll the deployed site back to the previous version (code only) |
+<!-- /tasks -->
 
-`signin:access` prints three lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in
-before `live:ship`. It leaves uploaded media public, so pictures on your pages need no sign-in.
-
-**A newly deployed site has no content.** `live:ship` says so, with the commands: sign in with
-`signin:token -- --live`, export this machine's content (`mise run emdash -- site export --output
-site.emdash`), then import it with `--live` — `--analyze` first, which prints a plan, then
-`--plan <digest> --confirm`.
+**A newly deployed site has no content.** `live:ship` says so, with the commands: export this
+machine's content (`mise run emdash -- site export --output site.emdash`), then import it with
+`--live` — `--analyze` first, which prints a plan, then `--plan <digest> --confirm`.
 
 Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
 Access but not change it. For that one task, make an API token in the Cloudflare dashboard

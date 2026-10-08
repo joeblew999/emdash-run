@@ -1,24 +1,10 @@
 # The stages of working on an EmDash site, as mise tasks. What works right now: docs/status.md.
 #
-# A project gets them with one line in its mise.toml:
-#   [tools]
-#   node = "26"
-#   pnpm = "12"
-#   fnox = "1.36.0"     # only for signin:access: it reads your Cloudflare token from fnox
-#   [task_config]
-#   includes = ["git::https://github.com/joeblew999/emdash-run.git//tasks.toml?ref=<tag or main>"]
-#
-# WHERE THE SITE IS: the folder `site` beside mise.toml, or SITE_FOLDER — "." when the site is the
-# project itself, which is how EmDash lays out an existing site.
-#
-# THIS MACHINE OR THE DEPLOYED SITE — one rule:
-#   site:*   always this machine.          live:*   always the deployed site (LIVE_URL in mise.toml).
-#   Every task that can do either — signin:*, model:sync, emdash — is this machine by default and
-#   the deployed site with  -- --live .   Every task prints where it is acting before it acts.
-#   This machine has two sites: the dev one (site:start, port 4321) and the built one
-#   (site:preview, port 4322). signin:* act on the built one; emdash on the dev one unless --preview.
-#   The live tasks use your wrangler login. signin:access needs more — an API token with Access
-#   edit rights — and reads it from CLOUDFLARE_API_TOKEN or, by itself, from fnox.
+# HOW TO USE THEM is the README: set-up, the one rule for this machine or the deployed site, the
+# settings. WHAT EACH TASK DOES is its `description` below, and nowhere else: mise prints it
+# (`mise tasks`), and docs/tasks.md and the README's tables are written from it. So write a
+# description for a developer who has read nothing else — what it does, where it acts, what it
+# needs, what it stops or asks.
 #
 # THE TOOLS — node and pnpm — are the project's: its mise.toml has a [tools] block. Not declared
 # per task here: a hidden step does not inherit its task's tools.
@@ -97,7 +83,7 @@ run = [
 ]
 
 ["content:pull"]
-description = "Download the deployed site's content as a package into backups/"
+description = "Download the deployed site's content as a package into backups/ in the site (keep that folder out of git)"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:import-how" }]
 
 # ═══ PLUGINS ═════════════════════════════════════════════════════════════════════════════════
@@ -108,7 +94,7 @@ run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:backups" 
 # plugin:install, plugin:favourites and plugin:works act on this machine's built site, as signin:* do.
 
 ["plugin:new"]
-description = "Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new -- <name>. Run again: rebuilds it"
+description = "Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards"
 depends = ["step:there", "step:plugin-details"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
@@ -137,7 +123,7 @@ run = [
 ]
 
 ["plugin:add"]
-description = "Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add -- <package>"
+description = "Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add -- <package>. Stops the site: start it again afterwards"
 depends = ["step:there"]
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
@@ -237,27 +223,27 @@ run = "pnpm dlx @emdash-cms/plugin-cli@latest"
 # and admin/emdash.mjs, option B).
 
 ["signin:token"]
-description = "Sign a machine in, no browser: admin + API token written to the site's database. Add -- --live for deployed"
+description = "Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add -- --live for the deployed one (Cloudflare sites only)"
 depends = ["step:there"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/token.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\" {% if usage.live %}--remote{% else %}--local{% endif %}"
 
 ["signin:access"]
-description = "Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code)"
+description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"
 depends = ["step:live", "step:there"]
 dir = "{{config_root}}"
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/access.mjs\" {{ env.LIVE_URL | default(value='') }} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\""
 
 ["signin:passkey"]
-description = "Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome"
+description = "Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add -- --live for the deployed site. Needs Playwright + Chrome"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %}{{ env.LIVE_URL | default(value='LIVE_URL-is-not-set') }}{% else %}http://localhost:{{ env.PREVIEW_PORT | default(value='4322') }}{% endif %} \"{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}\"{% if usage.live %} --deployed{% endif %}"
 
 ["signin:open"]
-description = "Open a browser window already signed in to the admin. Needs Playwright + Chrome"
+description = "Open a browser window already signed in to the admin, for you to look around. Add -- --live for the deployed site. Needs Playwright + Chrome"
 depends = ["step:there", "step:admin-tools"]
 dir = "{{config_root}}"
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
@@ -266,7 +252,7 @@ run = "node \"{{ env.MISE_TASK_DIR }}/admin/first-admin.mjs\" {% if usage.live %
 # ═══ THE DEPLOYED SITE ═══════════════════════════════════════════════════════════════════════
 
 ["live:ship"]
-description = "Deploy to Cloudflare: check, deploy, wait for the site to answer"
+description = "Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's"
 run = [{ task = "step:live" }, { task = "step:account" }, { task = "live:check" }, { task = "step:deploy" }, { task = "step:deployed" }, { task = "step:live-up" }]
 
 ["live:undo"]
@@ -283,7 +269,7 @@ dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec wrangler tail --format pretty"
 
 ["live:backup"]
-description = "Back up the deployed site: database bookmark + content package"
+description = "Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database"
 run = [{ task = "step:live" }, { task = "step:there" }, { task = "step:account" }, { task = "step:mark" }, { task = "step:backups" }, { task = "step:package" }, { task = "step:backup-how" }]
 
 # ═══ EMDASH ITSELF ═══════════════════════════════════════════════════════════════════════════
@@ -364,6 +350,7 @@ description = "EmDash's dev server, started by Astro in the background — Astro
 dir = "{{config_root}}/{{ env.SITE_FOLDER | default(value='site') }}"
 run = "pnpm exec astro dev --background --host 127.0.0.1 --port {{ env.SITE_PORT | default(value='4321') }}"
 
+# Upstream: emdash-cms/emdash#3995 (when fixed: this can be `emdash whoami`, the command made for it)
 ["step:up"]
 hide = true
 silent = "stdout"

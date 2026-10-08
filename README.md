@@ -49,12 +49,12 @@ description in `tasks.toml` is its documentation.
 | 6 | `site:check` | Before a commit: seed valid, types check, site builds | yes |
 | 7 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
 | 8 | `site:preview` | Build the site and serve it locally (port 4322) — behaves like a deployed site | yes |
-| 9 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
-| 10 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
+| 9 | `signin:token` | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) | yes |
+| 10 | `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
 | 11 | `plugin:sandbox` | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes | yes |
-| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it | yes |
+| 12 | `plugin:new` | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it. Stops the site: start it again afterwards | yes |
 | 13 | `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; | yes |
-| 14 | `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt; | yes |
+| 14 | `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards | yes |
 | 15 | `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms | yes |
 | 16 | `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site | **FAILS** |
 | 17 | `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin | **FAILS** |
@@ -63,7 +63,7 @@ description in `tasks.toml` is its documentation.
 | 20 | `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; | yes |
 | 21 | `emdash:update` | Update the site to the newest EmDash, then type-check and build | yes |
 | 22 | `site:reset` | Empty the local database and start again from the seed. Asks first | yes |
-| 23 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard. Needs Playwright + Chrome | yes |
+| 23 | `signin:passkey` | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
 | 24 | `site:stop` | Stop the dev site and the built site | yes |
 | 25 | `site:delete` | Delete the site folder. Asks first. No site is nothing to delete | yes |
 
@@ -71,15 +71,15 @@ description in `tasks.toml` is its documentation.
 
 | | task | what it does | tested |
 |---|---|---|---|
-| 1 | `signin:access` | Put Cloudflare Access in front of the deployed site's admin (sign in by emailed code) | yes |
+| 1 | `signin:access` | Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox | yes |
 | 2 | `emdash` | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site | yes |
-| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the site to answer | yes |
-| 4 | `signin:token` | Sign a machine in, no browser: admin + API token written to the site's database. Add \-\- \-\-live for deployed | yes |
+| 3 | `live:ship` | Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's | yes |
+| 4 | `signin:token` | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) | yes |
 | 5 | `model:sync` | Record the site's content model in the repo (.emdash/). Add \-\- \-\-live for the deployed site | yes |
-| 6 | `content:pull` | Download the deployed site's content as a package into backups/ | yes |
-| 7 | `live:backup` | Back up the deployed site: database bookmark + content package | yes |
+| 6 | `content:pull` | Download the deployed site's content as a package into backups/ in the site (keep that folder out of git) | yes |
+| 7 | `live:backup` | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database | yes |
 | 8 | `live:logs` | Follow the deployed site's log | yes |
-| 9 | `signin:open` | Open a browser window already signed in to the admin. Needs Playwright + Chrome | yes |
+| 9 | `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome | yes |
 | 10 | `live:undo` | Roll the deployed site back to the previous version (code only) | yes |
 
 <!-- in-order:end -->
@@ -141,17 +141,14 @@ prints where it is acting before it acts.
 On the dev site (`site:start`) you never need to. A built site — `site:preview` locally, or a
 deployed one — has real sign-in. Pick a way:
 
-| task | signs in | browser? | use it for |
-|---|---|---|---|
-| `signin:token` | a machine | no | the CLI, agents, CI — the everyday one |
-| `signin:access` | people | no | a deployed site: Cloudflare Access, sign in by emailed code |
-| `signin:passkey` | a machine | Playwright + Chrome | testing EmDash's own setup wizard |
-| `signin:open` | you | Playwright + Chrome | a browser window already signed in |
-
-```
-mise run signin:token                 this machine's built site
-mise run signin:token -- --live       the deployed site
-```
+<!-- tasks:signin: -->
+| task | what it does |
+|---|---|
+| `signin:token` | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) |
+| `signin:open` | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
+| `signin:passkey` | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
+| `signin:access` | Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox |
+<!-- /tasks -->
 
 These are for development sites. What they save is in `~/.config/emdash-run/` on your machine,
 never in the repo.
@@ -159,24 +156,21 @@ never in the repo.
 ## Deploying
 
 For a site on Cloudflare. You need to be signed in to Cloudflare (`mise x -- pnpm dlx wrangler login`).
-Every task here is safe to run again:
+Every task is safe to run again. In this order the first time: `signin:access`, put the lines it
+prints into the site, `live:ship`, `signin:token -- --live`.
 
-```
-mise run signin:access                Cloudflare Access in front of the admin
-mise run live:ship                    check, deploy, wait for it to answer
-mise run signin:token -- --live       the CLI is signed in to the deployed site
-mise run live:logs
-mise run live:undo                    back to the previous version
-mise run live:backup
-```
+<!-- tasks:live: -->
+| task | what it does |
+|---|---|
+| `live:ship` | Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's |
+| `live:backup` | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database |
+| `live:logs` | Follow the deployed site's log |
+| `live:undo` | Roll the deployed site back to the previous version (code only) |
+<!-- /tasks -->
 
-`signin:access` prints three lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in
-before `live:ship`. It leaves uploaded media public, so pictures on your pages need no sign-in.
-
-**A newly deployed site has no content.** `live:ship` says so, with the commands: sign in with
-`signin:token -- --live`, export this machine's content (`mise run emdash -- site export --output
-site.emdash`), then import it with `--live` — `--analyze` first, which prints a plan, then
-`--plan <digest> --confirm`.
+**A newly deployed site has no content.** `live:ship` says so, with the commands: export this
+machine's content (`mise run emdash -- site export --output site.emdash`), then import it with
+`--live` — `--analyze` first, which prints a plan, then `--plan <digest> --confirm`.
 
 Everything uses that wrangler login except `signin:access`: wrangler's login can read Cloudflare
 Access but not change it. For that one task, make an API token in the Cloudflare dashboard
@@ -192,37 +186,37 @@ Or set `CLOUDFLARE_API_TOKEN` in your environment any other way.
 
 ## Plugins
 
-From EmDash's registry — no package, no config line, no clicking in the admin:
+<!-- tasks:plugin -->
+| task | what it does |
+|---|---|
+| `plugin:sandbox` | Let the site run sandboxed plugins, which every registry plugin is: the runner in the site's config. Run again: nothing changes |
+| `plugin:new` | Make a plugin inside the site: scaffold, test, build, add to the site's config. mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it. Stops the site: start it again afterwards |
+| `plugin:check` | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; |
+| `plugin:add` | Add a plugin from npm: the package, and its lines in the site's config. mise run plugin:add \-\- &lt;package&gt;. Stops the site: start it again afterwards |
+| `plugin:search` | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
+| `plugin:install` | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for the deployed site |
+| `plugin:works` | Does a plugin work? One line per check: builds, starts, listed, routes, admin page, log, sandbox. mise run plugin:works \-\- &lt;name&gt;. No name: every plugin |
+| `plugin:remove` | Remove a registry plugin from the site; what it stored is kept. mise run plugin:remove \-\- &lt;publisher&gt;/&lt;slug&gt;. Add \-\-live for deployed |
+| `plugin:favourites` | Install the favourite registry plugins in one go (docs/favourite-plugins.md), or your own list: PLUGINS in mise.toml. Add \-\-live for deployed |
+| `plugin` | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; |
+| `plugin:publish` | Publish a plugin to EmDash's registry. Asks first |
+<!-- /tasks -->
 
-```
-mise run plugin:search -- forms                     find one; it prints @publisher/slug
-mise run plugin:install -- @netdollar.dev/forms     install it, as the admin's Install button does
-mise run plugin:works -- @netdollar.dev/forms       does it work? one line per check
-mise run plugin:works                               every plugin the site has
-mise run plugin:favourites                          the favourites, in one go
-mise run plugin:remove -- @netdollar.dev/forms
-```
+Two kinds. A **registry** plugin (`plugin:search`, `plugin:install`, `plugin:favourites`) is
+installed into the site's database, as the admin's Install button does: no package, no config
+line. A **package** plugin (`plugin:new`, `plugin:add`) is in `package.json` and
+`astro.config.mjs`, and the task writes both.
 
 The favourites, why each is one, and what was rejected: [`docs/favourite-plugins.md`](docs/favourite-plugins.md).
 Your own list: `PLUGINS = "@a/one @b/two"` under `[env]`.
 
-These act on this machine's built site (`site:preview`), starting it and signing in if needed;
-the dev site shares its database, so the plugins are there too. With `-- --live` they act on the
-deployed site, after `signin:token -- --live`.
+The registry tasks act on this machine's built site (`site:preview`), starting it and signing in
+if needed; the dev site shares its database, so the plugins are there too. With `-- --live` they
+act on the deployed site, after `signin:token -- --live`.
 
-A registry plugin runs in EmDash's sandbox, which a new site does not have switched on.
-`plugin:install` switches it on (`plugin:sandbox`: one line in `astro.config.mjs`, and on
-Cloudflare the `worker_loaders` line in `wrangler.jsonc`; on Node two packages). **On Cloudflare,
-deploying a site with the sandbox on needs the Workers Paid plan.**
-
-Your own, or one from npm — the task writes its lines in `astro.config.mjs`:
-
-```
-mise run plugin:new -- save-log        your own, inside the site
-mise run plugin:add -- <npm package>   someone else's
-mise run plugin:check -- save-log
-mise run plugin -- <anything else in EmDash's plugin CLI>
-```
+A registry plugin runs in EmDash's sandbox, which a new site does not have switched on:
+`plugin:install` switches it on. **On Cloudflare, deploying a site with the sandbox on needs the
+Workers Paid plan.**
 
 ## Settings
 
@@ -254,18 +248,11 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 
 ## Good to know
 
-- **Every task is safe to run again.** `site:new` leaves a site that is there alone, `site:start`
-  leaves a running one running, `signin:token` replaces its own token, `plugin:new` does not
-  scaffold twice, `plugin:install` leaves an installed plugin alone, `site:delete` with no site
-  has nothing to delete. The test runs each of them
-  twice.
-- `site:reset`, `site:delete` and `plugin:publish` ask first. In CI nothing asks.
-- `plugin:new` and `plugin:add` stop the site; start it again afterwards.
-- On a Node site, `plugin:install` and `plugin:remove` restart the built site: EmDash's sandbox
-  process does not survive a change of plugins ([upstream bugs](docs/upstream.md)).
-- `content:pull` and `live:backup` write to `backups/` in the site. Keep it out of git.
-- There is no SQL dump in `live:backup`: Cloudflare's export refuses an EmDash database.
-- `signin:token -- --live` works for Cloudflare sites only.
+- **Every task is safe to run again**, and the test runs each of them twice. A task that deletes
+  or publishes asks first; in CI nothing asks.
+- **Every task prints where it is acting** — the site folder, this machine or the deployed site —
+  before it acts.
+- What a task needs, stops or leaves behind is in its description: [`docs/tasks.md`](docs/tasks.md).
 
 ## Working on emdash-run
 
@@ -273,10 +260,13 @@ each, `site:ports` in each. The full test runs three sites at once this way.
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
 mise run docs          rebuild every generated page (the tests and the commit check do it too)
+mise run setup         charter's set-up for this repo: docs site config, issue forms, labels, the commit check
+mise run upstream      the upstream bugs the code works around, and whether each is still open
 mise run hooks         once per clone: turns on the commit check
 ```
 
-The commit check keeps three things together. A commit that touches `tasks.toml`, the test or this
+The commit check keeps three things together (running a test turns it on too, and CI fails on
+stale pages). A commit that touches `tasks.toml`, the test or this
 README is refused if a task has no test step, if a test step names a task that is gone, or if the
 pages built from them (the task table above, [`docs/`](docs/)) are out of date — it rebuilds them
 and asks you to add them.

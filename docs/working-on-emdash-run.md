@@ -11,12 +11,15 @@ nav_order: 13
 mise run test          the everyday tasks from an empty folder, about a minute
 mise run test:full     everything: both templates, then the deployed-site tasks — about 8 minutes
 mise run docs          rebuild every generated page (the tests and the commit check do it too)
+mise run setup         charter's set-up for this repo: docs site config, issue forms, labels, the commit check
+mise run upstream      the upstream bugs the code works around, and whether each is still open
 mise run hooks         once per clone: turns on the commit check
 ```
 
-The commit check keeps three things together. A commit that touches `tasks.toml`, the test or this
+The commit check keeps three things together (running a test turns it on too, and CI fails on
+stale pages). A commit that touches `tasks.toml`, the test or this
 README is refused if a task has no test step, if a test step names a task that is gone, or if the
-pages built from them (the task table above, [`docs/`](docs/)) are out of date — it rebuilds them
+pages built from them (the task table above, [`docs/`](README.md)) are out of date — it rebuilds them
 and asks you to add them.
 
 Each runs as another developer would — a clean environment, an empty config folder, its own site

@@ -39,6 +39,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v5
         with:
+          # the mise that wrote the pages in docs/ — the test fails when they are stale, and a
+          # different mise could word them differently. Move this with min_version in mise.toml
+          version: 2026.10.4
           install_args: node pnpm
       - name: mise run test (quick)
         if: github.event_name == 'workflow_dispatch' && inputs.level == 'quick'

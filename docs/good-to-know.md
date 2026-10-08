@@ -7,15 +7,8 @@ nav_order: 12
 
 # Good to know
 
-- **Every task is safe to run again.** `site:new` leaves a site that is there alone, `site:start`
-  leaves a running one running, `signin:token` replaces its own token, `plugin:new` does not
-  scaffold twice, `plugin:install` leaves an installed plugin alone, `site:delete` with no site
-  has nothing to delete. The test runs each of them
-  twice.
-- `site:reset`, `site:delete` and `plugin:publish` ask first. In CI nothing asks.
-- `plugin:new` and `plugin:add` stop the site; start it again afterwards.
-- On a Node site, `plugin:install` and `plugin:remove` restart the built site: EmDash's sandbox
-  process does not survive a change of plugins ([upstream bugs](upstream.md)).
-- `content:pull` and `live:backup` write to `backups/` in the site. Keep it out of git.
-- There is no SQL dump in `live:backup`: Cloudflare's export refuses an EmDash database.
-- `signin:token -- --live` works for Cloudflare sites only.
+- **Every task is safe to run again**, and the test runs each of them twice. A task that deletes
+  or publishes asks first; in CI nothing asks.
+- **Every task prints where it is acting** — the site folder, this machine or the deployed site —
+  before it acts.
+- What a task needs, stops or leaves behind is in its description: [`docs/tasks.md`](tasks.md).

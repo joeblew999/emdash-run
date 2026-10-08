@@ -39,7 +39,6 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 
 | | |
 |---|---|
-| [The tasks](the-tasks.md) | every task, in the order you use them |
 | [Templates](templates.md) | the eight kinds of site `site:new` can make |
 | [An existing site](an-existing-site.md) | using the tasks on a repo that already is an EmDash site |
 | [This machine or deployed](this-machine-or-deployed.md) | one rule: no flag is this machine, `--live` is the deployed site |
@@ -50,7 +49,7 @@ keeps the copy it fetched first: run `mise cache clear` to take a newer one.
 | [Several sites, or several agents, at once](several-sites-or-several-agents-at-once.md) |  |
 | [Good to know](good-to-know.md) | what asks first, what stops the site, what is not there |
 | [Working on emdash-run](working-on-emdash-run.md) | the tests, and where the rules are |
-| [Every task](tasks.md) | each task's description, arguments and flags — written by mise from `tasks.toml` |
+| [Every task](tasks.md) | in the order you use them; each one's description, arguments and flags — written by mise from `tasks.toml` |
 | [Favourite plugins](favourite-plugins.md) | the registry plugins `plugin:favourites` installs, why, and what was rejected |
 | [What works](status.md) | every task, and what the last test run showed |
 | [Upstream bugs](upstream.md) | where EmDash, Astro or wrangler do not behave as documented |

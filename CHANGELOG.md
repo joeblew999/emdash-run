@@ -18,6 +18,9 @@ macOS on a Cloudflare and a Node site; not yet against a deployed site, nor on W
   left to edit by hand.
 - **`site:stop` on a Node site** also stops the sandbox process EmDash leaves running, which
   otherwise blocks the next start. Six new entries in [`docs/upstream.md`](docs/upstream.md).
+- **One source for each thing in the docs.** What a task does is its description in `tasks.toml`:
+  `docs/tasks.md` (written by mise, in the order you use the tasks) and every list of tasks in the
+  README are filled from it. The README says only what is not a task.
 
 ## 1.1.0 — 2026-10-08
 
