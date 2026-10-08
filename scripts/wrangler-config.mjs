@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // JSON with comments and trailing commas, as wrangler writes it.
-export const parseJsonc = (text) => {
+export const parseJsonc = (/** @type {string} */ text) => {
 	let out = "";
 	for (let i = 0; i < text.length; i++) {
 		const c = text[i];
@@ -24,9 +24,9 @@ export const parseJsonc = (text) => {
 };
 
 // A Cloudflare site is one with a wrangler config, whatever its format.
-export const isCloudflare = (siteDir) => ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
-export const wranglerFile = (siteDir) => ["wrangler.jsonc", "wrangler.json"].map((f) => join(siteDir, f)).find((f) => existsSync(f));
-export const wranglerConfig = (siteDir) => {
+export const isCloudflare = (/** @type {string} */ siteDir) => ["wrangler.jsonc", "wrangler.json", "wrangler.toml"].some((f) => existsSync(join(siteDir, f)));
+export const wranglerFile = (/** @type {string} */ siteDir) => ["wrangler.jsonc", "wrangler.json"].map((f) => join(siteDir, f)).find((f) => existsSync(f));
+export const wranglerConfig = (/** @type {string} */ siteDir) => {
 	const file = wranglerFile(siteDir);
 	return file ? parseJsonc(readFileSync(file, "utf8")) : null;
 };
@@ -35,6 +35,7 @@ export const wranglerConfig = (siteDir) => {
 // <preview name>-<worker>.<account>.workers.dev. A preview has a database of its own, named in the
 // `previews` block; it is behind the same Cloudflare Access application as the live site, so what
 // this machine saved for the live address — the Access pass — is the one to use.
+/** @param {string} url @param {string} siteDir */
 export const previewOf = (url, siteDir) => {
 	const config = wranglerConfig(siteDir);
 	if (!config?.name || !URL.canParse(url)) return null;
@@ -51,7 +52,7 @@ export const previewOf = (url, siteDir) => {
 // WHICH deployed site: the live one (LIVE_URL), or — with LIVE_PREVIEW=<name> in the environment
 // or in mise.local.toml — the preview of that name. One switch for every task that takes --live,
 // so a branch's checkout can say once that its "deployed site" is its preview.
-export const deployedAddress = (url) => {
+export const deployedAddress = (/** @type {string} */ url) => {
 	const name = process.env.LIVE_PREVIEW;
 	if (!name || !URL.canParse(url)) return url;
 	const u = new URL(url);

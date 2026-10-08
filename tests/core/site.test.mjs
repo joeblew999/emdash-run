@@ -9,12 +9,11 @@ import { site } from "../../scripts/core/site.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
 
 const aSite = { "/p/site/package.json": "{}" };
+/** @param {Parameters<typeof fakeWorld>[0]} given */
 const start = (given) => {
 	const fake = fakeWorld(given);
 	return { ...fake, result: reach(site, "site:start", { world: fake.world, project, flags: {} }) };
 };
-// a dev site that answers once it has been started
-const startsWhenAsked = (fake) => (url) => (fake().ran.some((c) => c.includes("astro dev --background")) ? { status: url.includes("dev-bypass") ? 200 : 200, text: url.includes("dev-bypass") ? '{"data":{"token":"t"}}' : "" } : { status: 0 });
 
 test("no site: says so, with the task that makes one, and runs nothing", async () => {
 	const fake = start({});
@@ -23,9 +22,14 @@ test("no site: says so, with the task that makes one, and runs nothing", async (
 });
 
 test("site:start on a fresh site: install, key, start, the CLI, the welcome dialog — in that order", async () => {
-	/** @type {ReturnType<typeof fakeWorld>} */
-	let fake;
-	fake = fakeWorld({ files: { ...aSite }, answers: (url) => startsWhenAsked(() => fake)(url) });
+	// a dev site that answers once it has been started
+	/** @type {string[]} */
+	let ran = [];
+	const fake = fakeWorld({
+		files: { ...aSite },
+		answers: (url) => (ran.some((c) => c.includes("astro dev --background")) ? { status: 200, text: url.includes("dev-bypass") ? '{"data":{"token":"t"}}' : "" } : { status: 0 }),
+	});
+	ran = fake.ran;
 	const result = await reach(site, "site:start", { world: fake.world, project, flags: {} });
 	assert.deepEqual(fake.ran, [
 		"pnpm install",

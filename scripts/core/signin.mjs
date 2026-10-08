@@ -110,6 +110,7 @@ export const signin = {
 			// folder, and a stale one breaks the dev CLI when the local database is emptied.
 			const passFile = join(world.config, "emdash-run", "access", `${preview ? preview.liveHost : host}.json`);
 			const pass = world.exists(passFile) ? JSON.parse(world.read(passFile)) : null;
+			/** @type {Record<string, string>} */
 			const headers = pass ? { "CF-Access-Client-Id": pass.id, "CF-Access-Client-Secret": pass.secret } : {};
 			if (live) {
 				const authFile = join(world.config, "emdash", "auth.json");

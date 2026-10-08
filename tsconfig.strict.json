@@ -1,0 +1,7 @@
+{
+	// The graph and its states (scripts/core, tests/core): type-checked strictly — no value without a type.
+	// The scripts not yet converted are checked by tsconfig.json, which lets them off that.
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "strict": true },
+	"include": ["scripts/core/**/*.mjs", "tests/core/**/*.mjs"]
+}

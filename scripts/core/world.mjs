@@ -34,7 +34,7 @@ import { dirname, join } from "node:path";
 export const realWorld = (env) => {
 	const win = process.platform === "win32";
 	let node = "";
-	const sleep = (seconds) => new Promise((r) => setTimeout(() => r(undefined), seconds * 1000));
+	const sleep = (/** @type {number} */ seconds) => new Promise((r) => setTimeout(() => r(undefined), seconds * 1000));
 	return {
 		platform: process.platform,
 		at: (name) => (node = name),
@@ -64,6 +64,7 @@ export const realWorld = (env) => {
 			chmodSync(path, 0o600);
 		},
 		newest: (paths) => {
+			/** @param {string} p @returns {number} */
 			const of = (p, depth = 0) => {
 				if (!existsSync(p)) return 0;
 				const st = statSync(p);

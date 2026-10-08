@@ -26,6 +26,7 @@ test("every need in the site graph is a node of it", () => {
 	for (const name of Object.keys(site)) plan(site, name);
 });
 test("reach: a state already reached is skipped, the rest are done in order", async () => {
+	/** @type {string[]} */
 	const order = [];
 	/** @type {import("../../scripts/core/graph.mjs").Graph} */
 	const g = { a: { done: () => true, work: () => void order.push("a") }, b: { needs: () => ["a"], work: () => void order.push("b") }, c: { needs: () => ["b", "a"], work: () => void order.push("c") } };
@@ -34,6 +35,7 @@ test("reach: a state already reached is skipped, the rest are done in order", as
 	assert.deepEqual(result, { did: ["b", "c"], skipped: ["a"] });
 });
 test("reach: a node that fails stops everything after it", async () => {
+	/** @type {string[]} */
 	const order = [];
 	/** @type {import("../../scripts/core/graph.mjs").Graph} */
 	const g = { a: { work: () => { throw new Error("no"); } }, b: { needs: () => ["a"], work: () => void order.push("b") } };
