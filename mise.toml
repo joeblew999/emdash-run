@@ -39,7 +39,8 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.types]
 description = "Type-check the test (tests/) and the scripts behind the tasks (scripts/), as the JavaScript they are: tsconfig.json. A few seconds. Every test runs it first"
-run = ["pnpm --dir tests install --silent --frozen-lockfile", "pnpm --dir tests exec tsc -p ../tsconfig.json"]
+# the scripts' own package too (playwright-core): on a fresh clone nothing has installed it yet
+run = ["pnpm --dir scripts install --silent --frozen-lockfile", "pnpm --dir tests install --silent --frozen-lockfile", "pnpm --dir tests exec tsc -p ../tsconfig.json"]
 
 [tasks.test]
 description = "The test, as you run it while working: the everyday steps of the site, signin and plugin groups that are not proven, about a minute a group, on a copy of this repo's site/. Proven: they passed and nothing the group depends on has changed since (node tests/record.mjs --depends), so it is not run again; -- --again runs it anyway. Never deploys. One test at a time on a machine: a second waits. Each group keeps its own record (tests/<group>/results.json) and page (docs/reference/status-<group>.md)"
