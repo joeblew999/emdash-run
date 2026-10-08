@@ -1,244 +1,176 @@
-// site:demo (scripts/core/demo.mjs), on a made-up EmDash: what it asks of an empty site and in what
-// order, that a second run asks for nothing more, and what it says when the site refuses.
+// site:demo (scripts/core/demo.mjs), on a made-up EmDash: its seed file applied, then what a seed
+// file cannot say, made in order; that a second run asks for nothing more; and what it says when
+// the site refuses, or a photograph cannot be fetched.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { graph } from "../../scripts/core/cli.mjs";
-import { demo, features, picture } from "../../scripts/core/demo.mjs";
+import { demo, features, icon, parts } from "../../scripts/core/demo.mjs";
 import { plan, reach } from "../../scripts/core/graph.mjs";
+import { strangers } from "../../scripts/core/seed.mjs";
 import { savedName } from "../../scripts/core/signin.mjs";
+import { TOKEN, emdash } from "./fake-emdash.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
 
-const TOKEN = "ec_pat_SAVED"; // what signin:token saved on this machine
-const SHOWN_ONCE = "ec_pat_SHOWN_ONCE"; // what EmDash answers a new API token with
-const SIGNATURE = "SIGNED"; // what makes a link a preview link
-
-/**
- * A made-up EmDash: as much of its API, and of the pages it serves, as site:demo asks of it. It
- * keeps what it is sent, and answers in the shapes EmDash 1.2.0 was seen to answer in. It starts as
- * a site that has just been made does: a model, a primary menu, a sidebar, and nothing in them.
- */
-const emdash = () => {
-	/** @type {Record<string, any[]>} */
-	const has = { terms: [], media: [], bylines: [], entries: [], menus: [{ name: "primary", items: [] }], areas: [{ name: "sidebar", widgets: [] }], sections: [], comments: [], redirects: [], tokens: [], archives: [] };
-	/** @type {Record<string, unknown>} */
-	const settings = { title: "My Site" };
-	const backups = { enabled: false, retention: 7 };
-	let commentsOn = false;
-	let ids = 0;
-	/** every request it was sent @type {{ method: string, path: string, signed: boolean }[]} */
-	const asked = [];
-
-	const yes = (/** @type {unknown} */ data, status = 200) => ({ status, text: JSON.stringify({ success: true, data }) });
-	const no = (/** @type {number} */ status, /** @type {string} */ code, /** @type {string} */ message) => ({ status, text: JSON.stringify({ success: false, error: { code, message } }) });
-	const gone = (/** @type {string} */ what) => no(404, "NOT_FOUND", `${what} not found`);
-	const page = (/** @type {string} */ body) => ({ status: 200, text: `<!DOCTYPE html><html>${body}</html>`, headers: { "content-type": "text/html" } });
-	/** Kept in a list, with an id of its own. @param {any[]} list @param {Record<string, unknown>} thing @returns {any} */
-	const keep = (list, thing) => {
-		list.push({ id: `ID${++ids}`, ...thing });
-		return list.at(-1);
-	};
-	/** @param {any[]} list @param {string} field @param {unknown} value @returns {any} */
-	const by = (list, field, value) => list.find((x) => x[field] === value);
-	const entry = (/** @type {string} */ type, /** @type {string} */ key) => has.entries.find((e) => e.type === type && (e.id === key || e.slug === key));
-	const withRev = (/** @type {any} */ e, status = 200) => yes({ item: e, _rev: `rev${e.version}` }, status);
-
-	// the API: a method, a path, what it answers — and `true` where a visitor may ask it too
-	/** @type {[string, RegExp, (at: string[], body: any, query: URLSearchParams) => { status: number, text: string }, boolean?][]} */
-	const api = [
-		["GET", /^\/settings$/, () => yes(settings)],
-		["POST", /^\/settings$/, (_, body) => yes(Object.assign(settings, body))],
-		["GET", /^\/taxonomies\/(\w+)\/terms$/, ([, name]) => yes({ terms: has.terms.filter((t) => t.name === name) })],
-		["GET", /^\/taxonomies\/(\w+)\/terms\/([\w-]+)$/, ([, name, slug]) => (has.terms.some((t) => t.name === name && t.slug === slug) ? yes({ term: { name, slug } }) : gone(`Term '${slug}'`))],
-		["POST", /^\/taxonomies\/(\w+)\/terms$/, ([, name], body) => yes({ term: keep(has.terms, { name, ...body }) }, 201)],
-		["GET", /^\/media$/, (_, __, query) => yes({ items: has.media.filter((m) => m.filename.includes(query.get("q") ?? "")) })],
-		["POST", /^\/media$/, (_, form) => yes({ item: keep(has.media, { filename: form.get("file").name, mimeType: form.get("file").type, width: Number(form.get("width")), height: Number(form.get("height")), alt: form.get("alt"), caption: form.get("caption"), focalX: null, focalY: null, url: "/_emdash/api/media/file/KEY.png" }) }, 201)],
-		["PUT", /^\/media\/(\w+)$/, ([, id], body) => yes({ item: Object.assign(by(has.media, "id", id), body) })],
-		["GET", /^\/admin\/bylines$/, () => yes({ items: has.bylines })],
-		["POST", /^\/admin\/bylines$/, (_, body) => yes(keep(has.bylines, body), 201)],
-		["GET", /^\/content\/(\w+)$/, ([, type], _, query) => yes({ items: has.entries.filter((e) => e.type === type && e.status === (query.get("status") ?? e.status)) })],
-		["POST", /^\/content\/(\w+)$/, ([, type], body) => (entry(type, body.slug) ? no(409, "CONFLICT", `The slug '${body.slug}' is taken`) : withRev(keep(has.entries, { type, status: "draft", version: 1, revisions: 0, scheduledAt: null, bylines: [], seo: {}, taxonomies: {}, ...body }), 201))],
-		["GET", /^\/content\/(\w+)\/([\w-]+)$/, ([, type, key]) => (entry(type, key) ? withRev(entry(type, key)) : gone(`Content item not found: ${key}`))],
-		// an update has to give back the _rev of what it changes, and is a revision of its own
-		["PUT", /^\/content\/(\w+)\/(\w+)$/, ([, type, key], body) => {
-			const e = entry(type, key);
-			if (body._rev !== `rev${e.version}`) return no(409, "CONFLICT", "Content has been modified since last read (version conflict)");
-			Object.assign(e.data, body.data);
-			e.version++;
-			e.revisions++;
-			return withRev(e);
-		}],
-		["POST", /^\/content\/(\w+)\/(\w+)\/(publish|unpublish|schedule)$/, ([, type, key, verb], body) => {
-			const e = entry(type, key);
-			Object.assign(e, verb === "publish" ? { status: "published", revisions: e.revisions || 1 } : verb === "unpublish" ? { status: "draft" } : { status: "scheduled", scheduledAt: body.scheduledAt });
-			e.version++;
-			return withRev(e);
-		}],
-		["GET", /^\/content\/(\w+)\/(\w+)\/revisions$/, ([, type, key]) => yes({ items: [], total: entry(type, key).revisions })],
-		["GET", /^\/content\/(\w+)\/(\w+)\/terms\/(\w+)$/, ([, type, key, name]) => yes({ terms: entry(type, key).taxonomies[name] ?? [] })],
-		["POST", /^\/content\/(\w+)\/(\w+)\/preview-url$/, ([, type, key]) => yes({ url: `/${type}/${entry(type, key).slug}?_preview=${SIGNATURE}` })],
-		["GET", /^\/menus\/([\w-]+)$/, ([, name]) => (by(has.menus, "name", name) ? yes(by(has.menus, "name", name)) : gone(`Menu '${name}'`))],
-		["POST", /^\/menus$/, (_, body) => yes({ name: keep(has.menus, { ...body, items: [] }).name }, 201)],
-		["POST", /^\/menus\/([\w-]+)\/items$/, ([, name], body) => yes(keep(by(has.menus, "name", name).items, body), 201)],
-		["GET", /^\/widget-areas\/([\w-]+)$/, ([, name]) => (by(has.areas, "name", name) ? yes(by(has.areas, "name", name)) : gone(`Widget area "${name}"`))],
-		["POST", /^\/widget-areas$/, (_, body) => yes({ name: keep(has.areas, { ...body, widgets: [] }).name }, 201)],
-		["POST", /^\/widget-areas\/([\w-]+)\/widgets$/, ([, name], body) => yes(keep(by(has.areas, "name", name).widgets, body), 201)],
-		["GET", /^\/sections\/([\w-]+)$/, ([, slug]) => (by(has.sections, "slug", slug) ? yes(by(has.sections, "slug", slug)) : gone(`Section "${slug}"`))],
-		["POST", /^\/sections$/, (_, body) => yes(keep(has.sections, body), 201)],
-		["PUT", /^\/schema\/collections\/posts$/, (_, body) => yes({ item: { commentsEnabled: (commentsOn = body.commentsEnabled) } })],
-		["GET", /^\/comments\/posts\/(\w+)$/, ([, id]) => (commentsOn ? yes({ items: has.comments.filter((c) => c.on === id) }) : no(403, "COMMENTS_DISABLED", "Comments are not enabled for this collection")), true],
-		["POST", /^\/comments\/posts\/(\w+)$/, ([, id], body) => (commentsOn ? yes({ id: keep(has.comments, { on: id, parentId: null, ...body }).id, status: "approved" }, 201) : no(403, "COMMENTS_DISABLED", "Comments are not enabled for this collection")), true],
-		["GET", /^\/redirects$/, () => yes({ items: has.redirects })],
-		["POST", /^\/redirects$/, (_, body) => yes(keep(has.redirects, body), 201)],
-		["GET", /^\/search$/, (_, __, query) => yes({ items: has.entries.filter((e) => e.status === "published" && e.data.title.toLowerCase().includes(query.get("q"))).map((e) => ({ slug: e.slug, title: e.data.title })) }), true],
-		["GET", /^\/admin\/api-tokens$/, () => yes({ items: has.tokens })],
-		["POST", /^\/admin\/api-tokens$/, (_, body) => yes({ token: SHOWN_ONCE, info: keep(has.tokens, body) }, 201)],
-		["GET", /^\/settings\/backups$/, () => yes({ settings: backups, archives: has.archives, storageAvailable: true })],
-		["PUT", /^\/settings\/backups$/, (_, body) => yes(Object.assign(backups, body))],
-		["POST", /^\/settings\/backups\/archives$/, () => yes(keep(has.archives, { name: "emdash-backup.json" }), 201)],
-	];
-
-	const site = {
-		has,
-		asked,
-		/** the requests it answers with a server error, while this is set @type {RegExp | null} */
-		refuses: null,
-		/** What it changed: every request but the reads — and but the asking for a preview link, which makes a signature and keeps nothing. */
-		writes: () => asked.filter((a) => a.method !== "GET" && !a.path.endsWith("/preview-url")).map((a) => `${a.method} ${a.path.replace("/_emdash/api", "").replace(/\/ID\d+/g, "/{id}")}`),
-		/** @param {string} url @param {RequestInit} [init] @returns {{ status: number, text?: string, headers?: Record<string, string> }} */
-		answers: (url, init = {}) => {
-			const { pathname, searchParams } = new URL(url);
-			const method = init.method ?? "GET";
-			const signed = /** @type {Record<string, string>} */ (init.headers ?? {}).Authorization === `Bearer ${TOKEN}`;
-			asked.push({ method, path: pathname, signed });
-			if (site.refuses?.test(`${method} ${pathname}`)) return no(500, "INTERNAL_ERROR", "the database is locked");
-			if (pathname.startsWith("/_emdash/api/media/file/")) return { status: 200, text: "the picture", headers: { "content-type": "image/png" } };
-			if (pathname.startsWith("/_emdash/api/")) {
-				for (const [verb, path, answer, open] of api) {
-					const at = verb === method ? path.exec(pathname.slice("/_emdash/api".length)) : null;
-					if (!at) continue;
-					if (!open && !signed) return no(401, "UNAUTHORIZED", "Authentication required");
-					return answer(at, typeof init.body === "string" ? JSON.parse(init.body) : init.body, searchParams);
-				}
-				return { ...page("<title>Not Found</title>"), status: 404 }; // (what the real one answers a request it has no route for)
-			}
-			// the pages a visitor is served
-			if (pathname === "/") return page(`<title>${settings.title}</title><nav>${by(has.menus, "name", "primary").items.map((/** @type {any} */ i) => `<a>${i.label}</a>`).join("")}</nav>`);
-			const post = entry("posts", /^\/posts\/([\w-]+)$/.exec(pathname)?.[1] ?? "");
-			if (post) return post.status === "published" || searchParams.get("_preview") === SIGNATURE ? page(`<h1>${post.data.title}</h1>`) : { status: 302, headers: { location: "/404" } };
-			const sent = by(has.redirects, "source", pathname);
-			return sent ? { status: sent.type, headers: { location: sent.destination } } : { status: 404 };
-		},
-	};
-	return site;
-};
-
+// The demo's seed file as it ships, where the task looks for it: beside emdash-run's scripts.
+const shipped = readFileSync(new URL("../../seeds/demo.json", import.meta.url), "utf8");
 // site:demo by itself: that this machine is signed in to a built site that is running is the
 // graph's work, and has its own tests (signin.test.mjs). Here it is so: the token is saved.
 const alone = { ...demo, "signin:token": { work: () => {} } };
-const saved = { [`/config/emdash-run/tokens/${savedName("http://localhost:4322", "/p/site")}.json`]: JSON.stringify({ url: "http://localhost:4322", token: TOKEN }) };
-/** @param {ReturnType<typeof emdash>} site */
-const run = async (site) => {
-	const fake = fakeWorld({ files: { ...saved }, answers: site.answers });
+const files = { "/emdash-run/seeds/demo.json": shipped, [`/config/emdash-run/tokens/${savedName("http://localhost:4322", "/p/site")}.json`]: JSON.stringify({ url: "http://localhost:4322", token: TOKEN }) };
+const photograph = () => ({ status: 200, type: "image/jpeg", bytes: new Uint8Array([1, 2, 3]) });
+/** @param {ReturnType<typeof emdash>} site @param {(url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer> }} [downloads] where its photographs come from: by default, they are fetched */
+const run = async (site, downloads = photograph) => {
+	const fake = fakeWorld({ files: { ...files }, answers: site.answers, downloads });
 	const failed = await reach(alone, "site:demo", { world: fake.world, project, flags: {} }).then(() => "", (e) => String(e.message));
 	// (what the task said: not the graph's own line of how long each state took)
-	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed };
+	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed, ran: fake.ran };
 };
 
-// What making each feature asks of an empty site, in order.
+// What the seed file asks of a site just made from the starter template, section by section.
+const SEEDED = [
+	"POST /settings", "POST /settings", "POST /settings", "POST /settings",
+	"PUT /schema/collections/posts",
+	"POST /taxonomies/category/terms", "POST /taxonomies/category/terms", "POST /taxonomies/category/terms", "POST /taxonomies/tag/terms", "POST /taxonomies/tag/terms",
+	"POST /admin/bylines", "POST /admin/bylines",
+	"POST /content/pages", "POST /content/pages/{id}/publish", "POST /content/pages", "POST /content/pages/{id}/publish",
+	// four posts, each with its photograph fetched and uploaded first
+	"POST /media", "POST /content/posts", "POST /content/posts/{id}/publish",
+	"POST /media", "POST /content/posts", "POST /content/posts/{id}/publish",
+	"POST /media", "POST /content/posts", "POST /content/posts/{id}/publish",
+	"POST /media", "POST /content/posts", "POST /content/posts/{id}/publish",
+	// two drafts: one with no photograph, one with
+	"POST /content/posts", "POST /media", "POST /content/posts",
+	"POST /menus/primary/items", "POST /menus/primary/items", "POST /menus/primary/items", "POST /menus/primary/items", "POST /menus", "POST /menus/footer/items", "POST /menus/footer/items",
+	"POST /redirects",
+	"POST /widget-areas/sidebar/widgets", "POST /widget-areas/sidebar/widgets", "POST /widget-areas/sidebar/widgets", "POST /widget-areas/sidebar/widgets", "POST /widget-areas", "POST /widget-areas/footer/widgets",
+	"POST /sections",
+];
+// Then what making each feature of the list in code asks, in order.
 /** @type {[string, string[]][]} */
 const MAKES = [
-	["settings", ["POST /settings"]],
-	["taxonomy terms", ["POST /taxonomies/category/terms", "POST /taxonomies/tag/terms"]],
-	["media", ["POST /media", "PUT /media/{id}"]],
-	["byline", ["POST /admin/bylines"]],
-	["published post", ["POST /content/posts", "POST /content/posts/{id}/publish"]],
-	["draft with a preview link", ["POST /content/posts"]],
+	["search engines", ["PUT /content/posts/{id}"]],
 	["revisions", ["PUT /content/posts/{id}", "PUT /content/posts/{id}", "POST /content/posts/{id}/publish"]],
-	["scheduled post", ["POST /content/posts", "POST /content/posts/{id}/schedule"]],
-	["menus", ["POST /content/pages", "POST /content/pages/{id}/publish", "POST /menus/primary/items", "POST /menus", "POST /menus/footer/items"]],
-	["widgets", ["POST /widget-areas/sidebar/widgets", "POST /widget-areas", "POST /widget-areas/footer/widgets"]],
-	["section", ["POST /sections"]],
+	["scheduled post", ["POST /content/posts/{id}/schedule"]],
 	["comments", ["PUT /schema/collections/posts", "POST /comments/posts/{id}", "POST /comments/posts/{id}"]],
-	["redirect", ["POST /redirects"]],
-	["search", []], // EmDash's own doing: nothing is asked for
+	["preview link", []], // (these three only show what is there)
+	["site icon", ["POST /media", "PUT /media/{id}", "POST /settings"]],
+	["shared links", ["POST /settings"]],
+	["visitor's view", []],
+	["search", []],
 	["API token", ["POST /admin/api-tokens"]],
 	["backup", ["PUT /settings/backups", "POST /settings/backups/archives"]],
 ];
+const shows = ["preview link", "visitor's view", "search"];
+/** The lines of the list in code, each up to its proof. @param {string[]} said */
+const lines = (said) => said.filter((l) => /^(ok {3}|FAIL )/.test(l) && features.some((f) => l.slice(5).startsWith(`${f.name}: `))).map((l) => l.split(" — ")[0]);
 
 test("it stands on this machine being signed in to the built site, running", () => {
 	assert.deepEqual(plan(graph, "site:demo").slice(-3), ["site:built-running", "signin:token", "site:demo"]);
 });
 
-test("an empty site: each feature is made, in order, and each line says what shows it works", async () => {
+test("the seed file that ships is EmDash's seed format, has every section, and has what the list in code stands on", () => {
+	const seed = JSON.parse(shipped);
+	assert.equal(seed.$schema, "https://emdashcms.com/seed.schema.json");
+	assert.deepEqual(strangers(seed), [], "no key site:seed would not apply");
+	assert.doesNotMatch(shipped, /translationOf|"avatar"|"blockTypes"/, "nothing site:seed would skip");
+	for (const section of ["settings", "collections", "taxonomies", "bylines", "content", "menus", "redirects", "widgetAreas", "sections"]) assert.ok(Object.keys(seed[section]).length > 0, section);
+	assert.deepEqual(Object.keys(seed.settings), ["title", "tagline", "social", "seo"], "the settings a seed file can carry: a logo and an icon it can only name by an id the site gives");
+	const { lead, draft, later, redirect, linked } = parts(seed);
+	assert.deepEqual([lead.slug, draft.slug, later.slug, redirect?.destination, linked], ["sketch-it-on-paper-first", "notes-for-the-next-redesign", "what-we-are-reading", "/posts/sketch-it-on-paper-first", "Contact"]);
+	// every post a visitor can come to see has a photograph, by its address, with alt text — and reads like a post
+	const seen = seed.content.posts.filter((/** @type {any} */ e) => e.status === "published" || e === later);
+	assert.equal(seen.length, 5);
+	for (const post of seen) {
+		assert.match(post.data.featured_image.$media.url, /^https:\/\/images\.unsplash\.com\/photo-[\w-]+\?w=1200&h=800&fit=crop$/, post.slug);
+		assert.ok(post.data.featured_image.$media.alt.length > 20 && post.data.excerpt.length > 50 && post.data.content.length >= 6, post.slug);
+	}
+	assert.equal(new Set(seen.map((/** @type {any} */ p) => p.data.featured_image.$media.url)).size, 5, "no photograph twice");
+	assert.match(lead.data.excerpt, /\. \S.*\.$/, "the lead post's excerpt has two sentences: an edit takes the last away, and the next puts it back");
+});
+
+test("a site just made: the seed file is applied, then each feature a seed cannot say is made, in order", async () => {
 	const site = emdash();
-	const { said, failed } = await run(site);
+	const { said, failed, ran } = await run(site);
 	assert.equal(failed, "");
+	assert.match(ran[0], /^emdash seed .*demo\.json --validate$/, "EmDash's own check of the seed file, first");
 	assert.deepEqual(features.map((f) => f.name), MAKES.map(([name]) => name));
-	assert.deepEqual(site.writes(), MAKES.flatMap(([, writes]) => writes));
+	assert.deepEqual(site.writes(), [...SEEDED, ...MAKES.flatMap(([, writes]) => writes)]);
 	assert.equal(said[0], "-> this machine, built site (site:preview): http://localhost:4322");
-	assert.deepEqual(said.slice(1, -1).map((l) => l.split(" — ")[0]), MAKES.map(([name]) => `ok   ${name}: ${name === "search" ? "nothing to make" : "made"}`));
-	assert.equal(said.at(-1), "16 features: 15 made, 0 already there, 1 with nothing to make");
-	assert.ok(said.includes(`ok   redirect: made — /hello sends a visitor on, with a 301, to /posts/kitchen-sink`));
+	assert.ok(said.includes("ok   settings: 4 made (title, tagline, social, seo)"), "the demo's settings replace the site's own");
+	assert.ok(said.includes("ok   content: 8 made (pages/about, pages/contact, posts/leave-it-overnight, posts/a-small-set-of-parts, posts/measure-twice-publish-once, posts/sketch-it-on-paper-first, posts/notes-for-the-next-redesign, posts/what-we-are-reading)"));
+	assert.deepEqual(lines(said), MAKES.map(([name]) => `ok   ${name}: ${shows.includes(name) ? "nothing to make" : "made"}`));
+	assert.ok(said.includes('ok   visitor\'s view: nothing to make — the front page is titled "EmDash Demo" and its menu shows Contact; /posts/sketch-it-on-paper-first answers 200 with its title and its photograph; /hello sends on, with a 301, to /posts/sketch-it-on-paper-first; /robots.txt is the file\'s'));
+	assert.deepEqual(said.slice(-2), ["the seed file, applied: 35 made, 12 already there", "what a seed file cannot say, 11 features: 8 made, 0 already there, 3 with nothing to make"]);
 
 	// what is on the site now
-	assert.deepEqual(site.has.entries.map((e) => `${e.type}/${e.slug} ${e.status}`), ["posts/kitchen-sink published", "posts/work-in-progress draft", "posts/coming-soon scheduled", "pages/contact published"]);
-	const [post, , later] = site.has.entries;
-	assert.equal(post.data.featured_image.id, site.has.media[0].id);
-	assert.deepEqual([post.taxonomies, post.bylines], [{ category: ["tutorials"], tag: ["demo"] }, [{ bylineId: site.has.bylines[0].id }]]);
-	assert.equal(post.data.content[1].markDefs[0].href, "https://emdashcms.com", "the body is Portable Text, a link in it");
+	const { has } = site;
+	const asShipped = JSON.parse(shipped);
+	assert.deepEqual(has.entries.map((e) => `${e.type}/${e.slug} ${e.status}`), ["pages/about published", "pages/contact published", "posts/leave-it-overnight published", "posts/a-small-set-of-parts published", "posts/measure-twice-publish-once published", "posts/sketch-it-on-paper-first published", "posts/notes-for-the-next-redesign draft", "posts/what-we-are-reading scheduled"]);
+	const [, , guest, , , lead, , later] = has.entries;
+	// each post a visitor can see has its own photograph; the one picture made here is the site's icon, and on no post
+	assert.deepEqual(has.media.map((m) => m.filename), ["leave-it-overnight.jpg", "a-small-set-of-parts.jpg", "measure-twice-publish-once.jpg", "sketch-it-on-paper-first.jpg", "what-we-are-reading.jpg", "site-icon.png"]);
+	assert.deepEqual([...has.entries.slice(2, 6), later].map((e) => e.data.featured_image.id), has.media.slice(0, 5).map((m) => m.id));
+	const [mark] = has.media.slice(-1);
+	assert.deepEqual([mark.focalX, mark.focalY, !!mark.alt, !!mark.caption], [0.5, 0.5, true, true]);
+	assert.deepEqual(site.settings, { ...asShipped.settings, favicon: { mediaId: mark.id, alt: mark.alt }, seo: { ...asShipped.settings.seo, defaultOgImage: { mediaId: has.media[3].id, alt: has.media[3].alt } } }, "the file's settings — and the icon, and the picture for shared links: the newest post's photograph");
+	assert.deepEqual([lead.taxonomies, lead.bylines, lead.revisions], [{ category: ["tutorials"], tag: ["process", "tools"] }, [{ bylineId: has.bylines[0].id }], 3]);
+	assert.deepEqual(guest.bylines, [{ bylineId: has.bylines[1].id, roleLabel: "Guest note" }]);
+	assert.equal(has.terms.find((t) => t.slug === "checklists").parentId, has.terms.find((t) => t.slug === "tutorials").id, "a category under another");
+	const written = parts(asShipped).lead.data;
+	assert.deepEqual([lead.data.excerpt, lead.seo], [written.excerpt, { title: written.title, description: written.excerpt }], "after its two edits the post reads as the seed file has it; search engines read its own title and excerpt");
 	assert.ok(Date.parse(later.scheduledAt) > Date.now(), "scheduled for a day to come");
-	assert.deepEqual(site.has.media[0], { ...site.has.media[0], filename: "emdash-demo.png", mimeType: "image/png", width: 480, height: 270, focalX: 0.5, focalY: 0.3 });
-	assert.equal(site.has.comments[1].parentId, site.has.comments[0].id, "the second comment answers the first");
-	assert.deepEqual(site.has.tokens[0].scopes, ["content:read", "media:read"]);
+	assert.deepEqual([has.collections[0].commentsEnabled, has.collections[0].commentsModeration], [true, "none"]);
+	assert.equal(has.comments[1].parentId, has.comments[0].id, "the second comment answers the first");
+	assert.deepEqual(has.tokens[0].scopes, ["content:read", "media:read"]);
+	assert.deepEqual(has.menus[0].items.map((/** @type {any} */ i) => [i.label, i.referenceId]), [["Home", null], ["About", has.entries[0].id], ["Posts", null], ["Contact", has.entries[1].id]], "About and Contact in the menu are the pages");
 
 	// a comment is sent as a visitor sends one, and no token or preview link is ever printed
-	const sent = site.asked.filter((a) => a.method === "POST" && a.path.includes("/comments/"));
-	assert.deepEqual(sent.map((a) => a.signed), [false, false]);
+	assert.deepEqual(site.asked.filter((a) => a.method === "POST" && a.path.includes("/comments/")).map((a) => a.signed), [false, false]);
 	assert.doesNotMatch(said.join("\n"), /ec_pat_|_preview=/);
 });
 
-test("run again: everything is already there, and nothing is made", async () => {
+test("run again: everything is already there, and nothing is made or fetched", async () => {
 	const site = emdash();
 	await run(site);
 	const before = site.writes().length;
-	const { said, failed } = await run(site);
+	const { said, failed } = await run(site, () => {
+		throw new Error("a photograph was fetched again");
+	});
 	assert.equal(failed, "");
 	assert.deepEqual(site.writes().slice(before), []);
-	assert.deepEqual(said.slice(1, -1).map((l) => l.split(" — ")[0]), MAKES.map(([name]) => `ok   ${name}: ${name === "search" ? "nothing to make" : "already there"}`));
-	assert.equal(said.at(-1), "16 features: 0 made, 15 already there, 1 with nothing to make");
+	assert.deepEqual(lines(said), MAKES.map(([name]) => `ok   ${name}: ${shows.includes(name) ? "nothing to make" : "already there"}`));
+	assert.deepEqual(said.slice(-2), ["the seed file, applied: 0 made, 47 already there", "what a seed file cannot say, 11 features: 0 made, 8 already there, 3 with nothing to make"]);
 });
 
 test("a request the site refuses: that feature is a FAIL line with what the site said, the others go on, and the task fails", async () => {
 	const site = emdash();
-	site.refuses = /^POST \/_emdash\/api\/redirects$/;
+	site.refuses = /^POST \/_emdash\/api\/admin\/api-tokens$/;
 	const { said, failed } = await run(site);
-	assert.ok(said.includes("FAIL redirect: POST /_emdash/api/redirects answered 500 INTERNAL_ERROR the database is locked"));
-	assert.equal(said.filter((l) => l.startsWith("ok   ")).length, 15);
-	assert.equal(said.at(-1), "16 features: 14 made, 0 already there, 1 with nothing to make, 1 FAILED");
-	assert.match(failed, /^site:demo: 1 of 16 features could not be made or shown to work/);
+	assert.ok(said.includes("FAIL API token: POST /_emdash/api/admin/api-tokens answered 500 INTERNAL_ERROR the database is locked"));
+	assert.equal(lines(said).filter((l) => l.startsWith("ok   ")).length, 10);
+	assert.equal(said.at(-1), "what a seed file cannot say, 11 features: 7 made, 0 already there, 3 with nothing to make, 1 FAILED");
+	assert.match(failed, /^site:demo: 1 thing could not be made or shown to work/);
 });
 
-test("a run that stopped half way is picked up: what was made is not made again", async () => {
+test("no photograph can be fetched: the posts are made without them and the lines say so; the next run fetches them, and makes nothing twice", async () => {
 	const site = emdash();
-	// nothing can be published: the post, the edits of it, the page for the menu — and search finds no post
-	site.refuses = /\/publish$/;
-	const first = await run(site);
-	assert.deepEqual(first.said.filter((l) => l.startsWith("FAIL")).map((l) => l.split(":")[0]), ["FAIL published post", "FAIL revisions", "FAIL menus", "FAIL search"]);
-	assert.match(first.said.join("\n"), /FAIL search: a visitor's search for "kitchen" found 0 entries, and kitchen-sink is not one/);
-	site.refuses = null;
-	const before = site.writes().length;
+	const first = await run(site, () => ({ status: 0 }));
+	assert.match(first.said.join("\n"), /FAIL content: 3 made \(pages\/about, pages\/contact, posts\/notes-for-the-next-redesign\), 5 not done — posts\/leave-it-overnight: it is there, without a picture that could not be fetched \(featured_image: GET https:\/\/images\.unsplash\.com\/photo-\S+ answered nothing\)\. Run again to fetch it; /);
+	// what stands on a post still finds it; only the photograph is missed
+	assert.deepEqual(lines(first.said).filter((l) => l.startsWith("FAIL")), ["FAIL shared links: sketch-it-on-paper-first has no photograph to use: the seed file's content line above says why", "FAIL visitor's view: sketch-it-on-paper-first has no photograph: the seed file's content line above says why"]);
+	assert.match(first.failed, /^site:demo: 7 things could not be made or shown to work/);
 	const second = await run(site);
 	assert.equal(second.failed, "");
-	// only what was missing: the post published, the page published and put in its menus
-	assert.deepEqual(site.writes().slice(before), ["POST /content/posts/{id}/publish", "POST /content/pages/{id}/publish", "POST /menus/primary/items", "POST /menus", "POST /menus/footer/items"]);
-	assert.equal(second.said.at(-1), "16 features: 2 made, 13 already there, 1 with nothing to make");
-	assert.deepEqual([site.has.entries.length, site.has.media.length, site.has.comments.length], [4, 1, 2]);
+	assert.ok(second.said.includes("ok   content: 5 made (posts/leave-it-overnight, posts/a-small-set-of-parts, posts/measure-twice-publish-once, posts/sketch-it-on-paper-first, posts/what-we-are-reading), 3 already there (pages/about, pages/contact, posts/notes-for-the-next-redesign)"));
+	assert.deepEqual([site.has.entries.length, site.has.media.length, site.has.comments.length], [8, 6, 2]);
+	assert.deepEqual(site.has.entries.slice(2).map((e) => [e.status, !!e.data.featured_image?.id]), [["published", true], ["published", true], ["published", true], ["published", true], ["draft", false], ["scheduled", true]]);
 });
 
-test("the picture is a PNG of the size asked for", () => {
-	const png = picture(3, 2);
+test("the site's icon, made here, is a PNG: a square with a dash across its middle", () => {
+	const png = icon();
 	assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
-	assert.deepEqual([png.subarray(12, 16).toString(), png.readUInt32BE(16), png.readUInt32BE(20)], ["IHDR", 3, 2]);
+	assert.deepEqual([png.subarray(12, 16).toString(), png.readUInt32BE(16), png.readUInt32BE(20)], ["IHDR", 192, 192]);
 	assert.equal(png.subarray(-8, -4).toString(), "IEND");
 });

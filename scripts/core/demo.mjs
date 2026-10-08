@@ -1,139 +1,79 @@
 // site:demo — something real in every core feature of EmDash, on this machine's built site.
 //
 // A site that has just been made has a model and nothing in it, and an admin with nothing in it
-// shows nothing of what EmDash does. This fills it through EmDash's own HTTP API. Not its CLI:
-// that makes a post, uploads a file and adds a term, and has no command for a setting, a byline, a
-// menu item, a widget, a section, a comment, a redirect, a token, a backup or a preview link — so
-// everything is asked one way, and a feature is looked for the way it was made.
+// shows nothing of what EmDash does. What fills it is said in EmDash's own seed format, in
+// seeds/demo.json, and applied as site:seed applies any seed file (seed.mjs): settings, terms, a
+// byline, posts with their photographs, pages, menus, widgets, a section, a redirect, comments
+// turned on. The words a visitor reads are all in that file.
 //
-// It is a LIST OF FEATURES (below). To add one, add an entry:
+// THE LIST BELOW is the rest: what a seed file has no way to say. What search engines read of a
+// post, a second and third revision, the day a post is scheduled for, comments shown without
+// approval and sent by a visitor, a preview link, the site's icon (with a caption and a focal
+// point), the picture a shared link is shown with, a token, a backup. It finds its things by what
+// the seed file holds (parts, below), not by names of its own. To add one, add an entry:
 //   name    what the line is called
 //   have    is it already there? Then nothing is made — the task is safe to run again
 //   make    make it. Every part is looked for first, so a run that stopped half way is picked up
 //   proof   what shows it works, in a few words — asked as a visitor would ask wherever a visitor can
-// The requests are what EmDash 1.2.0 was seen to accept (its own list of them is at
-// /_emdash/api/openapi.json, and where the two differ a note says so).
+// The requests are what EmDash 1.2.0 was seen to accept.
 import { join } from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 
-import { savedName } from "./signin.mjs";
+import { client, good, one, sure } from "./api.mjs";
+import { seedFile, tallied } from "./seed.mjs";
 
 /**
- * @typedef {import("./graph.mjs").Graph} Graph @typedef {import("./graph.mjs").Ctx} Ctx
- * What the site answered. `data` and `error` are EmDash's own JSON: their shape is EmDash's, and is
- * read field by field where it is used.
- * @typedef {{ status: number, text: string, headers: Record<string, string>, data: any, error: { code?: string, message?: string } | undefined, asked: string }} Answer
- * @typedef {object} Api
- * @property {string} origin                                                              the built site's address
- * @property {(method: string, path: string, body?: unknown) => Promise<Answer>} ask      a path of the API, signed in
- * @property {(method: string, path: string, body?: unknown) => Promise<any>} must        the same: its data — or, refused, what the site answered, thrown
- * @property {(path: string) => Promise<any>} find                                        the data of a GET; null when there is no such thing
- * @property {(method: string, path: string, body?: unknown) => Promise<Answer>} visitor  a path of the site, with no sign-in: what anyone gets
+ * @typedef {import("./graph.mjs").Graph} Graph @typedef {import("./api.mjs").Api} Api @typedef {import("./seed.mjs").Seed} Seed
  * @typedef {object} Feature
  * @property {string} name
- * @property {(api: Api) => Promise<boolean>} [have]   (have and make are left out by a feature EmDash makes by itself)
- * @property {(api: Api) => Promise<void>} [make]
- * @property {(api: Api) => Promise<string>} proof
+ * @property {(api: Api, seed: Seed) => Promise<boolean>} [have]   (have and make are left out by a feature that only shows what is there)
+ * @property {(api: Api, seed: Seed) => Promise<void>} [make]
+ * @property {(api: Api, seed: Seed) => Promise<string>} proof
  */
 
-// What the demo is made of. A feature finds its own things again by these names.
-const TITLE = "EmDash Demo";
-const TAGLINE = "Every feature, with something in it";
-const TERMS = [["category", "tutorials", "Tutorials"], ["tag", "demo", "Demo"]];
-const IMAGE = "emdash-demo.png";
-const BYLINE = "demo-editor";
-const POST = "kitchen-sink";
-const POST_TITLE = "The kitchen sink";
-// (the post's excerpt as it is first written, and after each of the two edits that give it revisions)
-const EXCERPTS = ["One post with everything on it.", "One post with everything on it: a picture, a category and a tag.", "One post with everything on it: a picture, a category, a tag, a byline, and a title and description for search engines."];
-const DRAFT = "work-in-progress";
-const DRAFT_TITLE = "A draft, not yet published";
-const LATER = "coming-soon";
-const PAGE = "contact";
-const EMDASH = "https://emdashcms.com";
+const ICON = "site-icon.png";
 const READ_ONLY = "demo-read-only";
 const SCOPES = ["content:read", "media:read"];
 
-/** What has to be so, or the feature fails with these words. @type {(so: unknown, otherwise: string) => asserts so} */
-const sure = (so, otherwise) => {
-	if (!so) throw new Error(otherwise);
-};
-/** The one in a list EmDash answered with that has this value in this field; null when none has. @param {any[]} list @param {string} field @param {unknown} value @returns {any} */
-const one = (list, field, value) => list.find((item) => item[field] === value) ?? null;
-
 /**
- * What a site answered, in a few words — and never a token, should the answer have one in it.
- * @param {Answer} a
+ * What the list stands on, as the seed file has it: the file can be given other words, and the
+ * list still finds its things.
+ * @param {Seed} seed
  */
-const said = (a) => {
-	if (a.status === 0) return "nothing. Is the built site running? mise run site:preview";
-	const words = a.error?.message ? `${a.error.code ?? ""} ${a.error.message}` : (/<title>([^<]*)<\/title>/.exec(a.text)?.[1] ?? a.text.replace(/\s+/g, " ").slice(0, 200));
-	return `${a.status} ${words.trim()}`.replace(/ec_pat_[\w-]+/g, "ec_pat_…").replace(/_preview=[^\s"&]+/g, "_preview=…").trim();
-};
-/** The data of an answer that says yes; one that says no is thrown, as what was asked and what the site said. @param {Answer} a @returns {any} */
-const good = (a) => {
-	sure(a.status >= 200 && a.status < 300, `${a.asked} answered ${said(a)}`);
-	return a.data;
-};
-
-/**
- * How the features speak to the built site: with the token signin:token saved for it on this
- * machine (a token needs no CSRF header), or with nothing, as a visitor.
- * @param {Ctx} ctx @returns {Api}
- */
-const client = ({ world, project }) => {
-	const origin = `http://localhost:${project.builtPort}`;
-	const file = join(world.config, "emdash-run", "tokens", `${savedName(origin, project.site)}.json`);
-	sure(world.exists(file), `This machine has no saved sign-in for ${origin}. Run: mise run signin:token`);
-	const token = JSON.parse(world.read(file)).token;
-	/** @param {string} url @param {string} method @param {unknown} body @param {Record<string, string>} headers @returns {Promise<Answer>} */
-	const send = async (url, method, body, headers) => {
-		// a file goes as a form, which names its own type; everything else is JSON
-		const form = body instanceof FormData;
-		const answer = await world.ask(url, { method, headers: form || body === undefined ? headers : { ...headers, "Content-Type": "application/json" }, body: form ? body : body === undefined ? undefined : JSON.stringify(body), seconds: 60 });
-		/** @type {any} */
-		let json = null;
-		try { json = JSON.parse(answer.text); } catch {}
-		// (what was asked is kept without its query: a preview link's signature is in it)
-		return { ...answer, data: json?.data, error: json?.error, asked: `${method} ${new URL(url).pathname}` };
-	};
-	/** @type {Api["ask"]} */
-	const ask = (method, path, body) => send(`${origin}/_emdash/api${path}`, method, body, { Authorization: `Bearer ${token}` });
+export const parts = (seed) => {
+	/** @type {any[]} */
+	const posts = seed.content?.posts ?? [];
+	const drafts = posts.filter((e) => e.status === "draft");
 	return {
-		origin,
-		ask,
-		must: async (method, path, body) => good(await ask(method, path, body)),
-		find: async (path) => {
-			const answer = await ask("GET", path);
-			return answer.status === 404 ? null : good(answer);
-		},
-		visitor: (method, path, body) => send(new URL(path, origin).href, method, body, {}),
+		/** the last post the file has published: the newest, which a blog shows first */
+		lead: posts.filter((e) => e.status !== "draft").at(-1),
+		/** a draft, to read through a preview link */
+		draft: drafts[0],
+		/** another, to give a day to be published on */
+		later: drafts[1],
+		/** @type {{ source: string, destination: string } | undefined} */
+		redirect: seed.redirects?.[0],
+		/** the menu item that is a page of the file: its label is looked for on the front page @type {string | undefined} */
+		linked: (seed.menus?.[0]?.items ?? []).filter((/** @type {any} */ i) => i.ref).at(-1)?.label,
 	};
 };
 
-/**
- * One block of Portable Text, the form EmDash's API takes a body in: a style, and its words — a
- * string, or [words, address] for a link.
- * @param {string} key @param {string} style @param {(string | [string, string])[]} words @param {boolean} [item] one item of a list
- */
-const block = (key, style, words, item = false) => ({
-	_type: "block",
-	_key: key,
-	style,
-	...(item ? { listItem: "bullet", level: 1 } : {}),
-	markDefs: words.flatMap((w, i) => (typeof w === "string" ? [] : [{ _type: "link", _key: `${key}l${i}`, href: w[1] }])),
-	children: words.map((w, i) => ({ _type: "span", _key: `${key}s${i}`, text: typeof w === "string" ? w : w[0], marks: typeof w === "string" ? [] : [`${key}l${i}`] })),
-});
+/** Does a page show these words? As a visitor reads them: a page writes & < > " ' in a way of its own. @param {string} html @param {string} words */
+const shows = (html, words) => {
+	/** @type {Record<string, string>} */
+	const plain = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", "#x27": "'" };
+	return html.replace(/&(amp|lt|gt|quot|apos|#39|#x27);/g, (_, name) => plain[name]).includes(words);
+};
 
 /**
- * A small picture, made here: nothing is downloaded, and no file is kept in the repo. A PNG is a
- * signature and three chunks — the size, the pixels (rows of red-green-blue, each after a 0 byte,
- * deflated), the end — each chunk with its length before it and a CRC after.
- * @param {number} width @param {number} height
+ * A picture made here: nothing is downloaded, and no file is kept in the repo. A PNG is a signature
+ * and three chunks — the size, the pixels (rows of red-green-blue, each after a 0 byte, deflated),
+ * the end — each chunk with its length before it and a CRC after.
+ * @param {number} width @param {number} height @param {(x: number, y: number) => number[]} colour red, green and blue at a place, each 0 to 255
  */
-export const picture = (width, height) => {
+export const png = (width, height, colour) => {
 	const rows = Buffer.alloc(height * (1 + width * 3));
-	for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) rows.set([40 + Math.round((180 * x) / width), 110, 200 - Math.round((90 * x) / width)], y * (1 + width * 3) + 1 + x * 3);
+	for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) rows.set(colour(x, y), y * (1 + width * 3) + 1 + x * 3);
 	const chunk = (/** @type {string} */ type, /** @type {Buffer} */ data) => {
 		const body = Buffer.concat([Buffer.from(type), data]);
 		const out = Buffer.alloc(body.length + 8);
@@ -148,294 +88,224 @@ export const picture = (width, height) => {
 	size.set([8, 2], 8); // 8 bits a colour, and the colours are red, green, blue
 	return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", size), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]);
 };
+/** The site's icon: a white dash on a blue square, 192 pixels a side. */
+export const icon = () => png(192, 192, (x, y) => (x >= 44 && x < 148 && y >= 86 && y < 106 ? [255, 255, 255] : [37, 99, 235]));
 
 /**
- * An entry of a collection by its slug, with the _rev an update of it has to give back; null when
- * there is none.
- * @param {Api} api @param {string} collection @param {string} slug @returns {Promise<any>}
+ * A post of the seed file as the site has it, with the _rev an update of it has to give back.
+ * Without it a feature cannot go on, and says so.
+ * @param {Api} api @param {any} entry the post, as the seed file has it @param {string} what what the list wants it for @returns {Promise<any>}
  */
-const entry = async (api, collection, slug) => {
-	const got = await api.find(`/content/${collection}/${slug}`);
-	return got && { ...got.item, _rev: got._rev };
+const seeded = async (api, entry, what) => {
+	sure(entry?.slug, `the seed file has no ${what}`);
+	const got = await api.find(`/content/posts/${entry.slug}`);
+	sure(got, `the post ${entry.slug} is not there: the seed file makes it, and its line above says why it did not`);
+	return { ...got.item, _rev: got._rev };
 };
-/** The demo's picture in the media library, or null. @param {Api} api */
-const image = async (api) => one((await api.must("GET", `/media?q=${IMAGE}`)).items, "filename", IMAGE);
-/** The demo's byline, or null. @param {Api} api */
-const byline = async (api) => one((await api.must("GET", `/admin/bylines?search=${BYLINE}`)).items, "slug", BYLINE);
-/** How many revisions the published post has; 0 when there is no such post. @param {Api} api @returns {Promise<number>} */
-const revisions = async (api) => {
-	const post = await entry(api, "posts", POST);
-	return post ? (await api.must("GET", `/content/posts/${post.id}/revisions`)).total : 0;
+/** The icon made here, in the media library; null when it is not. @param {Api} api */
+const image = async (api) => one((await api.must("GET", `/media?q=${ICON}`)).items, "filename", ICON);
+/** How many revisions a post has. @param {Api} api @param {any} found */
+const revisions = async (api, found) => (await api.must("GET", `/content/posts/${found.id}/revisions`)).total;
+/** The comments a visitor is shown under a post; none when comments are off. @param {Api} api @param {any} found @returns {Promise<any[]>} */
+const comments = async (api, found) => {
+	const shown = await api.visitor("GET", `/_emdash/api/comments/posts/${found.id}`);
+	return shown.status === 200 ? shown.data.items : [];
 };
-/** The comments a visitor is shown under the published post; none when there is no post, or comments are off. @param {Api} api @returns {Promise<any[]>} */
-const comments = async (api) => {
-	const post = await entry(api, "posts", POST);
-	const shown = post ? await api.visitor("GET", `/_emdash/api/comments/posts/${post.id}`) : null;
-	return shown?.status === 200 ? shown.data.items : [];
-};
-/** A menu and its items, by its name: made when there is none. @param {Api} api @param {string} name @param {string} label */
-const menu = async (api, name, label) => (await api.find(`/menus/${name}`)) ?? { ...(await api.must("POST", "/menus", { name, label })), items: [] };
-/** A widget area and its widgets, by its name: made when there is none. @param {Api} api @param {string} name @param {string} label */
-const area = async (api, name, label) => (await api.find(`/widget-areas/${name}`)) ?? { ...(await api.must("POST", "/widget-areas", { name, label })), widgets: [] };
 
 /** @type {Feature[]} */
 export const features = [
 	{
-		name: "settings",
-		have: async (api) => (await api.must("GET", "/settings")).title === TITLE,
-		// (POST: EmDash's own list of its requests says PUT, which the site answers with its 404 page)
-		make: async (api) => void (await api.must("POST", "/settings", { title: TITLE, tagline: TAGLINE, url: api.origin })),
-		proof: async (api) => {
-			const front = await api.visitor("GET", "/");
-			sure(front.status === 200 && front.text.includes(TITLE), `the front page answered a visitor ${front.status}, and does not show "${TITLE}"`);
-			return `the front page is titled "${TITLE}"`;
+		// A seed file's entry has no place for what search engines read: it is the post's own title and excerpt.
+		name: "search engines",
+		have: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			return !!(found.seo?.title && found.seo?.description);
+		},
+		make: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			await api.must("PUT", `/content/posts/${found.id}`, { seo: { title: found.data.title, description: found.data.excerpt }, _rev: found._rev });
+		},
+		proof: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			sure(found.seo?.title && found.seo?.description, `${found.slug} has no title or no description for search engines`);
+			return `${found.slug} has a title and a description for search engines: its own title and excerpt`;
 		},
 	},
 	{
-		name: "taxonomy terms",
-		have: async (api) => {
-			for (const [taxonomy, slug] of TERMS) if (!(await api.find(`/taxonomies/${taxonomy}/terms/${slug}`))) return false;
-			return true;
-		},
-		make: async (api) => {
-			for (const [taxonomy, slug, label] of TERMS) if (!(await api.find(`/taxonomies/${taxonomy}/terms/${slug}`))) await api.must("POST", `/taxonomies/${taxonomy}/terms`, { slug, label });
-		},
-		proof: async (api) => {
-			const listed = [];
-			for (const [taxonomy, slug, label] of TERMS) {
-				sure(one((await api.must("GET", `/taxonomies/${taxonomy}/terms`)).terms, "slug", slug), `${label} is not among the terms of ${taxonomy}`);
-				listed.push(`the ${taxonomy} ${label}`);
-			}
-			return `${listed.join(" and ")} are in their lists`;
-		},
-	},
-	{
-		name: "media",
-		have: async (api) => (await image(api))?.focalX != null,
-		make: async (api) => {
-			let item = await image(api);
-			if (!item) {
-				const form = new FormData();
-				form.set("file", new Blob([picture(480, 270)], { type: "image/png" }), IMAGE);
-				for (const [field, value] of [["alt", "A band of colour, from blue to orange"], ["caption", "Made by site:demo, to have a picture to show"], ["width", "480"], ["height", "270"]]) form.set(field, value);
-				item = (await api.must("POST", "/media", form)).item;
-			}
-			// where the picture is cropped around, when a page shows it in another shape
-			await api.must("PUT", `/media/${item.id}`, { focalX: 0.5, focalY: 0.3 });
-		},
-		proof: async (api) => {
-			const item = await image(api);
-			sure(item, `${IMAGE} is not in the media library`);
-			const file = await api.visitor("GET", item.url);
-			const kind = file.headers["content-type"] ?? "no kind of file";
-			sure(file.status === 200 && kind.startsWith("image/"), `the picture's address answered a visitor ${file.status}, ${kind}`);
-			const listed = (await api.must("GET", "/media")).items.length;
-			return `${IMAGE} (${item.width}×${item.height}, alt text, a caption, focal point ${item.focalX}/${item.focalY}) is ${listed === 1 ? "the one item" : `one of ${listed}`} in the library, and its address answers a visitor with ${kind}`;
-		},
-	},
-	{
-		name: "byline",
-		have: async (api) => !!(await byline(api)),
-		make: async (api) => void (await api.must("POST", "/admin/bylines", { slug: BYLINE, displayName: "Demo Editor", bio: "Writes what site:demo puts on the site." })),
-		proof: async (api) => {
-			const made = await byline(api);
-			sure(made, `${BYLINE} is not among the bylines`);
-			return `${made.displayName} (${BYLINE}) is among the bylines`;
-		},
-	},
-	{
-		name: "published post",
-		have: async (api) => (await entry(api, "posts", POST))?.status === "published",
-		make: async (api) => {
-			let post = await entry(api, "posts", POST);
-			if (!post) {
-				const [shown, author] = [await image(api), await byline(api)];
-				sure(shown && author, "it takes the picture and the byline, and they are not there: their lines above say why");
-				post = (
-					await api.must("POST", "/content/posts", {
-						slug: POST,
-						data: {
-							title: POST_TITLE,
-							excerpt: EXCERPTS[0],
-							featured_image: { provider: "local", id: shown.id, alt: shown.alt, width: shown.width, height: shown.height, filename: shown.filename, mimeType: shown.mimeType },
-							// (the API takes a body as Portable Text; EmDash's CLI is what turns markdown into it)
-							content: [
-								block("a", "h2", ["What is on this post"]),
-								block("b", "normal", ["It was made by site:demo, through the HTTP API of ", ["EmDash", EMDASH], "."]),
-								block("c", "normal", ["A picture, with alt text, a caption and a focal point"], true),
-								block("d", "normal", ["A category and a tag"], true),
-								block("e", "normal", ["A byline, and a title and a description for search engines"], true),
-								block("f", "blockquote", [TAGLINE + "."]),
-							],
-						},
-						taxonomies: { category: ["tutorials"], tag: ["demo"] },
-						seo: { title: `${POST_TITLE} — every field of a post`, description: "A post made by site:demo: a picture, a category, a tag, a byline and the fields search engines read." },
-						bylines: [{ bylineId: author.id }],
-					})
-				).item;
-			}
-			await api.must("POST", `/content/posts/${post.id}/publish`, {});
-		},
-		proof: async (api) => {
-			const page = await api.visitor("GET", `/posts/${POST}`);
-			sure(page.status === 200 && page.text.includes(POST_TITLE), `/posts/${POST} answered a visitor ${page.status}, without the post's title`);
-			const post = await entry(api, "posts", POST);
-			/** @type {[unknown, string][]} */
-			const on = [
-				[post.data.featured_image?.id, "a picture"],
-				[(await api.must("GET", `/content/posts/${post.id}/terms/category`)).terms.length, "a category"],
-				[(await api.must("GET", `/content/posts/${post.id}/terms/tag`)).terms.length, "a tag"],
-				[post.bylines?.length, "a byline"],
-				[post.seo?.title && post.seo?.description, "a title and a description for search engines"],
-			];
-			sure(on.every(([is]) => is), `the post has no ${on.filter(([is]) => !is).map(([, what]) => what.replace(/^an? /, "")).join(", no ")}`);
-			return `/posts/${POST} answers a visitor 200 with its title; on the post: ${on.map(([, what]) => what).join(", ")}`;
-		},
-	},
-	{
-		name: "draft with a preview link",
-		have: async (api) => !!(await entry(api, "posts", DRAFT)),
-		make: async (api) =>
-			void (await api.must("POST", "/content/posts", {
-				slug: DRAFT,
-				status: "draft",
-				data: { title: DRAFT_TITLE, excerpt: "Only someone with its preview link can read this.", content: [block("a", "normal", ["Still being written."])] },
-			})),
-		// (the link is asked for each time: it is a signature over the entry and a time, and the site keeps nothing of it)
-		proof: async (api) => {
-			const draft = await entry(api, "posts", DRAFT);
-			const link = (await api.must("POST", `/content/posts/${draft.id}/preview-url`, { expiresIn: "1d" })).url;
-			const path = new URL(link, api.origin).pathname;
-			const [open, preview] = [await api.visitor("GET", path), await api.visitor("GET", link)];
-			sure(open.status !== 200, `${path} answers a visitor 200: the draft is there for anyone to read`);
-			sure(preview.status === 200 && preview.text.includes(DRAFT_TITLE), `the preview link answered ${preview.status}, without the draft's title`);
-			return `${path} answers a visitor ${open.status}, and its preview link — signed, good for a day — answers 200 with the draft`;
-		},
-	},
-	{
+		// The post as the seed file made it is its first revision. Two edits are two more, and no new
+		// words: its excerpt without its last sentence, then whole again — it ends as the file has it.
 		name: "revisions",
-		have: async (api) => (await revisions(api)) >= EXCERPTS.length,
-		make: async (api) => {
-			let post = await entry(api, "posts", POST);
-			sure(post, "the published post is not there to edit: its line above says why");
+		have: async (api, seed) => (await revisions(api, await seeded(api, parts(seed).lead, "published post"))) >= 3,
+		make: async (api, seed) => {
+			const { lead } = parts(seed);
+			let found = await seeded(api, lead, "published post");
+			const whole = String(lead.data.excerpt ?? "");
+			sure(whole, `${lead.slug} has no excerpt in the seed file to edit`);
+			const edits = [whole.replace(/\s+[^.!?]+[.!?]\s*$/, "") || whole, whole];
 			// each update is a revision of its own, and has to give back the _rev of what it changes
-			for (let n = await revisions(api); n < EXCERPTS.length; n++) {
-				const changed = await api.must("PUT", `/content/posts/${post.id}`, { data: { excerpt: EXCERPTS[n] }, _rev: post._rev });
-				post = { ...changed.item, _rev: changed._rev };
+			for (let n = Math.max(1, await revisions(api, found)); n < 3; n++) {
+				const changed = await api.must("PUT", `/content/posts/${found.id}`, { data: { excerpt: edits[n - 1] }, _rev: found._rev });
+				found = { ...changed.item, _rev: changed._rev };
 			}
 			// an update of a published post waits as a draft of it: published, the last one is what a visitor reads
-			await api.must("POST", `/content/posts/${post.id}/publish`, {});
+			await api.must("POST", `/content/posts/${found.id}/publish`, {});
 		},
-		proof: async (api) => `${POST} has ${await revisions(api)} revisions to compare and go back to: as first published, and each edit since`,
+		proof: async (api, seed) => {
+			const { lead } = parts(seed);
+			const found = await seeded(api, lead, "published post");
+			sure(found.data.excerpt === lead.data.excerpt, `${found.slug} does not read as the seed file has it: an edit was left half way`);
+			return `${found.slug} has ${await revisions(api, found)} revisions to compare and go back to, and reads as the seed file has it`;
+		},
 	},
 	{
+		// (a seed file's entry is a draft or published: the day one is to be published is not in the format)
 		name: "scheduled post",
-		have: async (api) => (await entry(api, "posts", LATER))?.status === "scheduled",
-		make: async (api) => {
-			const post =
-				(await entry(api, "posts", LATER)) ??
-				(await api.must("POST", "/content/posts", { slug: LATER, data: { title: "Coming soon", excerpt: "Scheduled: EmDash publishes this by itself when its day comes.", content: [block("a", "normal", ["Not yet."])] } })).item;
+		have: async (api, seed) => (await seeded(api, parts(seed).later, "second draft to schedule")).status === "scheduled",
+		make: async (api, seed) => {
+			const found = await seeded(api, parts(seed).later, "second draft to schedule");
 			// one whose day has come is published: it is taken back, and given a day again
-			if (post.status === "published") await api.must("POST", `/content/posts/${post.id}/unpublish`, {});
-			await api.must("POST", `/content/posts/${post.id}/schedule`, { scheduledAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString() });
+			if (found.status === "published") await api.must("POST", `/content/posts/${found.id}/unpublish`, {});
+			await api.must("POST", `/content/posts/${found.id}/schedule`, { scheduledAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString() });
 		},
-		proof: async (api) => {
-			const due = one((await api.must("GET", "/content/posts?status=scheduled")).items, "slug", LATER);
-			sure(due?.scheduledAt, `${LATER} is not among the scheduled posts`);
-			return `${LATER} is among the scheduled posts, for ${String(due.scheduledAt).slice(0, 10)}`;
-		},
-	},
-	{
-		name: "menus",
-		have: async (api) => {
-			const page = await entry(api, "pages", PAGE);
-			const [main, footer] = [await api.find("/menus/primary"), await api.find("/menus/footer")];
-			return page?.status === "published" && !!main && !!one(main.items, "referenceId", page.id) && !!footer && !!one(footer.items, "customUrl", EMDASH);
-		},
-		make: async (api) => {
-			const page = (await entry(api, "pages", PAGE)) ?? (await api.must("POST", "/content/pages", { slug: PAGE, data: { title: "Contact", content: [block("a", "normal", ["Write to us: ", ["hello@example.com", "mailto:hello@example.com"], "."])] } })).item;
-			if (page.status !== "published") await api.must("POST", `/content/pages/${page.id}/publish`, {});
-			// an item that is a page follows the page: its address and its name are not written twice
-			if (!one((await menu(api, "primary", "Primary Navigation")).items, "referenceId", page.id)) await api.must("POST", "/menus/primary/items", { type: "page", label: "Contact", referenceCollection: "pages", referenceId: page.id });
-			if (!one((await menu(api, "footer", "Footer")).items, "customUrl", EMDASH)) await api.must("POST", "/menus/footer/items", { type: "custom", label: "EmDash", customUrl: EMDASH });
-		},
-		proof: async (api) => {
-			const front = await api.visitor("GET", "/");
-			sure(/>\s*Contact\s*</.test(front.text), `the front page (${front.status}) does not show Contact in its menu`);
-			const footer = (await api.must("GET", "/menus/footer")).items.length;
-			return `the front page's menu shows Contact, an item that is the page ${PAGE}; a second menu, footer, has ${footer} item${footer === 1 ? "" : "s"}`;
-		},
-	},
-	{
-		name: "widgets",
-		have: async (api) => {
-			const [side, foot] = [await api.find("/widget-areas/sidebar"), await api.find("/widget-areas/footer")];
-			return !!side && !!one(side.widgets, "title", "Tags") && !!foot && !!one(foot.widgets, "menuName", "footer");
-		},
-		make: async (api) => {
-			if (!one((await area(api, "sidebar", "Sidebar")).widgets, "title", "Tags")) await api.must("POST", "/widget-areas/sidebar/widgets", { type: "component", componentId: "core:tags", title: "Tags" });
-			if (!one((await area(api, "footer", "Footer")).widgets, "menuName", "footer")) await api.must("POST", "/widget-areas/footer/widgets", { type: "menu", menuName: "footer", title: "Elsewhere" });
-		},
-		proof: async (api) => {
-			const side = (await api.must("GET", "/widget-areas/sidebar")).widgets;
-			const foot = (await api.must("GET", "/widget-areas/footer")).widgets;
-			sure(one(side, "title", "Tags") && one(foot, "menuName", "footer"), "the Tags widget or the footer's menu widget is not in its area");
-			return `the area sidebar has ${side.length} widgets, Tags among them; a second area, footer, shows the menu footer`;
-		},
-	},
-	{
-		name: "section",
-		have: async (api) => !!(await api.find("/sections/newsletter")),
-		make: async (api) =>
-			void (await api.must("POST", "/sections", {
-				slug: "newsletter",
-				title: "Newsletter",
-				description: "A call to sign up, to put into any page.",
-				keywords: ["cta"],
-				content: [block("a", "h3", ["Get the newsletter"]), block("b", "normal", ["One letter a month, and no more."])],
-			})),
-		proof: async (api) => {
-			const made = await api.must("GET", "/sections/newsletter");
-			return `${made.title} is among the sections an editor can put into a page: ${made.content.length} blocks, found by the word ${made.keywords.join(", ")}`;
+		proof: async (api, seed) => {
+			const { later } = parts(seed);
+			const due = one((await api.must("GET", "/content/posts?status=scheduled")).items, "slug", later?.slug);
+			sure(due?.scheduledAt, `${later?.slug} is not among the scheduled posts`);
+			return `${due.slug} is among the scheduled posts, for ${String(due.scheduledAt).slice(0, 10)}`;
 		},
 	},
 	{
 		name: "comments",
-		have: async (api) => (await comments(api)).some((c) => c.parentId),
-		make: async (api) => {
-			const post = await entry(api, "posts", POST);
-			sure(post, "the published post is not there to comment on: its line above says why");
-			// on for posts, and shown at once: a demo has nobody to approve them
-			await api.must("PUT", "/schema/collections/posts", { commentsEnabled: true, commentsModeration: "none" });
+		have: async (api, seed) => (await comments(api, await seeded(api, parts(seed).lead, "published post"))).some((c) => c.parentId),
+		make: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			// The seed file turned comments on for posts. That they are shown at once is not in its format:
+			// a demo has nobody to approve them.
+			await api.must("PUT", "/schema/collections/posts", { commentsModeration: "none" });
 			// sent as a visitor sends one: with no sign-in
-			const send = async (/** @type {Record<string, string>} */ comment) => good(await api.visitor("POST", `/_emdash/api/comments/posts/${post.id}`, comment));
-			const first = one(await comments(api), "parentId", null) ?? (await send({ authorName: "A Visitor", authorEmail: "visitor@example.com", body: "A comment, sent the way a visitor sends one." }));
-			await send({ authorName: "Demo Editor", authorEmail: "editor@example.com", body: "And an answer to it.", parentId: first.id });
+			const send = async (/** @type {Record<string, string>} */ comment) => good(await api.visitor("POST", `/_emdash/api/comments/posts/${found.id}`, comment));
+			const first = one(await comments(api, found), "parentId", null) ?? (await send({ authorName: "Maya", authorEmail: "maya@example.com", body: "Thank you for this. Short, clear, and I am trying it on Monday." }));
+			await send({ authorName: "Demo Editor", authorEmail: "editor@example.com", body: "Glad it is useful. Tell us how it goes.", parentId: first.id });
 		},
-		proof: async (api) => {
-			const shown = await comments(api);
-			sure(shown.length >= 2, `a visitor is shown ${shown.length} comments under ${POST}, not the two that were sent`);
-			return `a visitor is shown ${shown.length} comments under ${POST}, ${shown.filter((c) => c.parentId).length} of them an answer to another`;
-		},
-	},
-	{
-		name: "redirect",
-		have: async (api) => !!one((await api.must("GET", `/redirects?search=${encodeURIComponent("/hello")}`)).items, "source", "/hello"),
-		make: async (api) => void (await api.must("POST", "/redirects", { source: "/hello", destination: `/posts/${POST}`, type: 301 })),
-		proof: async (api) => {
-			const sent = await api.visitor("GET", "/hello");
-			const to = sent.headers.location ? new URL(sent.headers.location, api.origin).pathname : "nowhere";
-			sure(sent.status === 301 && to === `/posts/${POST}`, `/hello answered a visitor ${sent.status}, to ${to}`);
-			return `/hello sends a visitor on, with a 301, to ${to}`;
+		proof: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			const shown = await comments(api, found);
+			sure(shown.length >= 2, `a visitor is shown ${shown.length} comments under ${found.slug}, not the two that were sent`);
+			return `a visitor is shown ${shown.length} comments under ${found.slug}, ${shown.filter((c) => c.parentId).length} of them an answer to another`;
 		},
 	},
 	{
-		name: "search",
+		// nothing to make: the link is a signature over the entry and a time, and the site keeps nothing of it
+		name: "preview link",
+		proof: async (api, seed) => {
+			const draft = await seeded(api, parts(seed).draft, "draft to preview");
+			const link = (await api.must("POST", `/content/posts/${draft.id}/preview-url`, { expiresIn: "1d" })).url;
+			const path = new URL(link, api.origin).pathname;
+			const [open, preview] = [await api.visitor("GET", path), await api.visitor("GET", link)];
+			// (a site answers a draft's address with a redirect, or with its "not found" page: either way without the draft)
+			sure(!shows(open.text, draft.data.title), `${path} shows the draft to any visitor`);
+			sure(preview.status === 200 && shows(preview.text, draft.data.title), `the preview link answered ${preview.status}, without the draft's title`);
+			return `${path} does not show the draft to a visitor (it answers ${open.status}), and its preview link — signed, good for a day — shows it`;
+		},
+	},
+	{
+		// A seed file can name the site's icon only as a picture the library already has, by the id it has
+		// there — which no file can know. So the icon is made here: the one picture that is not a
+		// photograph, and the one given a caption and a focal point, which a seed file's pictures cannot be.
+		// (The site's logo is left as it is, its title in words. EmDash refuses an SVG upload, a name drawn
+		// here would need a font, and a mark with no name would take the title's place in the header.)
+		name: "site icon",
+		have: async (api) => {
+			const item = await image(api);
+			return item?.focalX != null && (await api.must("GET", "/settings")).favicon?.mediaId === item.id;
+		},
+		make: async (api) => {
+			let item = await image(api);
+			if (!item) {
+				const form = new FormData();
+				form.set("file", new Blob([icon()], { type: "image/png" }), ICON);
+				for (const [field, value] of [["alt", "A white dash on a blue square"], ["caption", "The site's icon: what a browser shows on its tab."], ["width", "192"], ["height", "192"]]) form.set(field, value);
+				item = (await api.must("POST", "/media", form)).item;
+			}
+			// where a picture is cropped around when a page shows it in another shape: here, its middle
+			await api.must("PUT", `/media/${item.id}`, { focalX: 0.5, focalY: 0.5 });
+			await api.must("POST", "/settings", { favicon: { mediaId: item.id, alt: item.alt } });
+		},
+		proof: async (api) => {
+			const item = await image(api);
+			sure(item, `${ICON} is not in the media library`);
+			const [front, file] = [await api.visitor("GET", "/"), await api.visitor("GET", item.url)];
+			const kind = file.headers["content-type"] ?? "no kind of file";
+			sure(file.status === 200 && kind.startsWith("image/"), `the icon's address answered a visitor ${file.status}, ${kind}`);
+			sure(new RegExp(`<link[^>]+rel="icon"[^>]+${item.url.split("/").pop().replace(/\W/g, "\\$&")}`).test(front.text), "the front page does not name the icon for the browser's tab");
+			return `the front page names ${ICON} for the browser's tab, and its address answers a visitor with ${kind}; in the library it has alt text, a caption and a focal point (${item.focalX}/${item.focalY})`;
+		},
+	},
+	{
+		// The picture a link to the site is shown with elsewhere, when its page has none of its own: like
+		// the icon, a seed file can only name it by an id the site gives. It is the newest post's photograph.
+		name: "shared links",
+		have: async (api, seed) => {
+			const photo = (await seeded(api, parts(seed).lead, "published post")).data.featured_image;
+			return !!photo?.id && (await api.must("GET", "/settings")).seo?.defaultOgImage?.mediaId === photo.id;
+		},
+		make: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			const photo = found.data.featured_image;
+			sure(photo?.id, `${found.slug} has no photograph to use: the seed file's content line above says why`);
+			// (sent alone, it is put beside the other settings for search engines, which stay as they are)
+			await api.must("POST", "/settings", { seo: { defaultOgImage: { mediaId: photo.id, alt: photo.alt } } });
+		},
+		proof: async (api, seed) => {
+			const found = await seeded(api, parts(seed).lead, "published post");
+			const front = await api.visitor("GET", "/");
+			const named = /<meta[^>]+og:image[^>]+content="([^"]+)"/.exec(front.text)?.[1] ?? "";
+			// (the page names it at the site's public address, which on this machine may be nobody's: its
+			// path is asked of the site that is running here)
+			const file = named ? await api.visitor("GET", new URL(named, api.origin).pathname) : null;
+			sure(file?.status === 200 && (file.headers["content-type"] ?? "").startsWith("image/"), `the front page names no picture for a link to it (og:image), or that picture's address answered a visitor ${file?.status}`);
+			return `a link to the front page, shared elsewhere, is shown with the photograph of ${found.slug}: the page names it, and its address answers a visitor with ${file.headers["content-type"]}`;
+		},
+	},
+	{
+		// what the seed file made, as a visitor meets it
+		name: "visitor's view",
+		proof: async (api, seed) => {
+			const { lead, redirect, linked } = parts(seed);
+			const found = await seeded(api, lead, "published post");
+			const front = await api.visitor("GET", "/");
+			const title = String(seed.settings?.title ?? "");
+			sure(front.status === 200 && shows(front.text, title), `the front page answered a visitor ${front.status}, and does not show "${title}"`);
+			sure(!linked || shows(front.text, linked), `the front page does not show ${linked} in its menu`);
+			const page = await api.visitor("GET", `/posts/${found.slug}`);
+			sure(page.status === 200 && shows(page.text, found.data.title), `/posts/${found.slug} answered a visitor ${page.status}, without the post's title`);
+			// its photograph: on the post, shown on its page, and its file there for anyone
+			const photo = found.data.featured_image;
+			sure(photo?.id, `${found.slug} has no photograph: the seed file's content line above says why`);
+			// (the library's list is what gives an item its address)
+			const item = one((await api.must("GET", `/media?q=${encodeURIComponent(photo.filename ?? "")}`)).items, "id", photo.id);
+			const file = item ? await api.visitor("GET", item.url) : null;
+			sure(file?.status === 200 && (file.headers["content-type"] ?? "").startsWith("image/"), `the photograph of ${found.slug} is not in the media library, or its address answered a visitor ${file?.status}`);
+			sure(!photo.alt || shows(page.text, photo.alt), `the page of ${found.slug} does not show its photograph (by its alt text)`);
+			const sent = redirect ? await api.visitor("GET", redirect.source) : null;
+			const to = sent?.headers.location ? new URL(sent.headers.location, api.origin).pathname : "nowhere";
+			sure(!redirect || (sent?.status === 301 && to === redirect.destination), `${redirect?.source} answered a visitor ${sent?.status}, to ${to}`);
+			// what the file says to search engines' robots is what they are served
+			const robots = String(seed.settings?.seo?.robotsTxt ?? "").trim();
+			sure(!robots || (await api.visitor("GET", "/robots.txt")).text.includes(robots), "/robots.txt is not what the seed file's settings say");
+			return `the front page is titled "${title}"${linked ? ` and its menu shows ${linked}` : ""}; /posts/${found.slug} answers 200 with its title and its photograph${redirect ? `; ${redirect.source} sends on, with a 301, to ${to}` : ""}${robots ? "; /robots.txt is the file's" : ""}`;
+		},
+	},
+	{
 		// nothing to make: EmDash put the post into its index when it was published
-		proof: async (api) => {
-			const found = good(await api.visitor("GET", "/_emdash/api/search?q=kitchen")).items;
-			sure(one(found, "slug", POST), `a visitor's search for "kitchen" found ${found.length} entries, and ${POST} is not one`);
-			return `a visitor's search for "kitchen" finds "${one(found, "slug", POST).title}"`;
+		name: "search",
+		proof: async (api, seed) => {
+			const { lead } = parts(seed);
+			sure(lead?.slug, "the seed file has no published post");
+			const word = String(lead.data.title).split(/\s+/).find((w) => w.length > 4) ?? String(lead.data.title);
+			const found = good(await api.visitor("GET", `/_emdash/api/search?q=${encodeURIComponent(word.toLowerCase())}`)).items;
+			sure(one(found, "slug", lead.slug), `a visitor's search for "${word.toLowerCase()}" found ${found.length} entries, and ${lead.slug} is not one`);
+			return `a visitor's search for "${word.toLowerCase()}" finds "${one(found, "slug", lead.slug).title}"`;
 		},
 	},
 	{
@@ -474,26 +344,31 @@ export const demo = {
 	"site:demo": {
 		needs: () => ["signin:token"],
 		work: async (ctx) => {
-			const { world } = ctx;
+			const { world, project } = ctx;
 			const api = client(ctx);
 			world.say(`-> this machine, built site (site:preview): ${api.origin}`);
-			const count = { made: 0, had: 0, given: 0, failed: 0 };
+			// The demo's seed file ships with these tasks, beside the scripts. Its title and tagline replace
+			// the site's own, which a seed otherwise leaves: that the site is renamed is what was asked for.
+			const { seed, count } = await seedFile(ctx, api, join(project.scripts, "..", "seeds", "demo.json"), { replace: true });
+			const more = { made: 0, had: 0, shown: 0, failed: 0 };
 			for (const feature of features) {
 				// A feature that fails does not stop the others: each line stands for itself, and those that
 				// needed the failed one say so in theirs.
 				try {
-					const had = feature.have ? await feature.have(api) : null;
-					if (had === false) await feature.make?.(api);
-					const proof = await feature.proof(api);
-					count[had === null ? "given" : had ? "had" : "made"]++;
+					const had = feature.have ? await feature.have(api, seed) : null;
+					if (had === false) await feature.make?.(api, seed);
+					const proof = await feature.proof(api, seed);
+					more[had === null ? "shown" : had ? "had" : "made"]++;
 					world.say(`ok   ${feature.name}: ${had === null ? "nothing to make" : had ? "already there" : "made"} — ${proof}`);
 				} catch (e) {
-					count.failed++;
+					more.failed++;
 					world.say(`FAIL ${feature.name}: ${e instanceof Error ? e.message : String(e)}`);
 				}
 			}
-			world.say(`${features.length} features: ${count.made} made, ${count.had} already there, ${count.given} with nothing to make${count.failed ? `, ${count.failed} FAILED` : ""}`);
-			if (count.failed) throw new Error(`site:demo: ${count.failed} of ${features.length} features could not be made or shown to work. Each FAIL line above says what the site answered. Run it again once that is put right: what is already there is left alone.`);
+			world.say(`the seed file, applied: ${tallied(count)}`);
+			world.say(`what a seed file cannot say, ${features.length} features: ${more.made} made, ${more.had} already there, ${more.shown} with nothing to make${more.failed ? `, ${more.failed} FAILED` : ""}`);
+			const failed = count.failed + more.failed;
+			if (failed) throw new Error(`site:demo: ${failed} thing${failed === 1 ? "" : "s"} could not be made or shown to work. Each FAIL line above says which, and what the site answered. Run it again once that is put right: what is there is left alone.`);
 		},
 	},
 };

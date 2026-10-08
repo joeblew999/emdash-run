@@ -20,6 +20,7 @@ import { dirname, join } from "node:path";
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string, headers: Record<string, string> }>} ask   status 0: nothing answered.
  *   A redirect is not followed. headers: the answer's own, their names in small letters (where a redirect leads, what kind of file came back)
+ * @property {(url: string, seconds?: number) => Promise<{ status: number, type: string, bytes: Uint8Array<ArrayBuffer> }>} download   a file from an address, whole — a picture a seed file names, to be uploaded. Redirects are followed; type: what kind of file it says it is; status 0: nothing answered
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
@@ -76,6 +77,15 @@ export const realWorld = (env) => {
 				return { status: res.status, text: await res.text().catch(() => ""), headers: Object.fromEntries(res.headers) };
 			} catch {
 				return { status: 0, text: "", headers: {} };
+			}
+		},
+		download: async (url, seconds = 60) => {
+			try {
+				// (some picture services refuse a request that does not say who is asking)
+				const res = await fetch(url, { signal: AbortSignal.timeout(seconds * 1000), headers: { "User-Agent": "emdash-run" } });
+				return { status: res.status, type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) };
+			} catch {
+				return { status: 0, type: "", bytes: new Uint8Array() };
 			}
 		},
 		exec: (program, args, cwd) => {

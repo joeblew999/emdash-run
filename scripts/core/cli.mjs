@@ -10,13 +10,14 @@ import { demo } from "./demo.mjs";
 import { plan, reach } from "./graph.mjs";
 import { pluginDemo } from "./plugin-demo.mjs";
 import { projectOf } from "./project.mjs";
+import { seed } from "./seed.mjs";
 import { signin } from "./signin.mjs";
 import { site } from "./site.mjs";
 import { tasks } from "./tasks.mjs";
 import { realWorld } from "./world.mjs";
 
 /** Every state the tasks know. */
-export const graph = { ...site, ...signin, ...tasks, ...pluginDemo, ...demo };
+export const graph = { ...site, ...signin, ...tasks, ...pluginDemo, ...seed, ...demo };
 
 /**
  * What a task was given: --live, or as tasks.toml passes it on, --live=true / --live=false.

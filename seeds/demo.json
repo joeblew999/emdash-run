@@ -1,0 +1,1308 @@
+{
+	"$schema": "https://emdashcms.com/seed.schema.json",
+	"version": "1",
+	"meta": {
+		"name": "emdash-run demo",
+		"description": "A small site with something in every core feature of EmDash. What mise run site:demo applies; it is an ordinary seed file, so a copy of it, changed, is applied with mise run site:seed.",
+		"author": "emdash-run"
+	},
+	"settings": {
+		"title": "EmDash Demo",
+		"tagline": "Notes on making small websites well",
+		"social": {
+			"github": "https://github.com/emdash-cms/emdash"
+		},
+		"seo": {
+			"titleSeparator": " — ",
+			"robotsTxt": "User-agent: *\nAllow: /\nDisallow: /_emdash/"
+		}
+	},
+	"collections": [
+		{
+			"slug": "posts",
+			"label": "Posts",
+			"labelSingular": "Post",
+			"urlPattern": "/posts/{slug}",
+			"supports": [
+				"drafts",
+				"revisions",
+				"preview",
+				"scheduling",
+				"search",
+				"seo"
+			],
+			"commentsEnabled": true,
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Title",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "featured_image",
+					"label": "Featured Image",
+					"type": "image"
+				},
+				{
+					"slug": "content",
+					"label": "Content",
+					"type": "portableText",
+					"searchable": true
+				},
+				{
+					"slug": "excerpt",
+					"label": "Excerpt",
+					"type": "text"
+				}
+			]
+		},
+		{
+			"slug": "pages",
+			"label": "Pages",
+			"labelSingular": "Page",
+			"urlPattern": "/pages/{slug}",
+			"supports": [
+				"drafts",
+				"revisions",
+				"preview",
+				"search",
+				"seo"
+			],
+			"fields": [
+				{
+					"slug": "title",
+					"label": "Title",
+					"type": "string",
+					"required": true,
+					"searchable": true
+				},
+				{
+					"slug": "content",
+					"label": "Content",
+					"type": "portableText",
+					"searchable": true
+				}
+			]
+		}
+	],
+	"taxonomies": [
+		{
+			"name": "category",
+			"label": "Categories",
+			"labelSingular": "Category",
+			"hierarchical": true,
+			"collections": [
+				"posts"
+			],
+			"terms": [
+				{
+					"slug": "tutorials",
+					"label": "Tutorials"
+				},
+				{
+					"slug": "checklists",
+					"label": "Checklists",
+					"parent": "tutorials"
+				},
+				{
+					"slug": "notes",
+					"label": "Notes"
+				}
+			]
+		},
+		{
+			"name": "tag",
+			"label": "Tags",
+			"labelSingular": "Tag",
+			"hierarchical": false,
+			"collections": [
+				"posts"
+			],
+			"terms": [
+				{
+					"slug": "process",
+					"label": "Process"
+				},
+				{
+					"slug": "tools",
+					"label": "Tools"
+				}
+			]
+		}
+	],
+	"bylines": [
+		{
+			"id": "byline-demo-editor",
+			"slug": "demo-editor",
+			"displayName": "Demo Editor",
+			"bio": "Writes and edits the notes on this site."
+		},
+		{
+			"id": "byline-guest",
+			"slug": "guest-writer",
+			"displayName": "Guest Writer",
+			"bio": "A note from somebody who makes websites elsewhere.",
+			"isGuest": true
+		}
+	],
+	"menus": [
+		{
+			"name": "primary",
+			"label": "Primary Navigation",
+			"items": [
+				{
+					"type": "custom",
+					"label": "Home",
+					"url": "/"
+				},
+				{
+					"type": "page",
+					"label": "About",
+					"ref": "page-about"
+				},
+				{
+					"type": "custom",
+					"label": "Posts",
+					"url": "/posts"
+				},
+				{
+					"type": "page",
+					"label": "Contact",
+					"ref": "page-contact"
+				}
+			]
+		},
+		{
+			"name": "footer",
+			"label": "Footer",
+			"items": [
+				{
+					"type": "custom",
+					"label": "EmDash",
+					"url": "https://emdashcms.com"
+				},
+				{
+					"type": "custom",
+					"label": "Documentation",
+					"url": "https://docs.emdashcms.com"
+				}
+			]
+		}
+	],
+	"redirects": [
+		{
+			"source": "/hello",
+			"destination": "/posts/sketch-it-on-paper-first",
+			"type": 301
+		}
+	],
+	"widgetAreas": [
+		{
+			"name": "sidebar",
+			"label": "Sidebar",
+			"description": "Beside a post",
+			"widgets": [
+				{
+					"type": "component",
+					"componentId": "core:search",
+					"title": "Search"
+				},
+				{
+					"type": "component",
+					"componentId": "core:categories",
+					"title": "Categories"
+				},
+				{
+					"type": "component",
+					"componentId": "core:tags",
+					"title": "Tags"
+				},
+				{
+					"type": "component",
+					"componentId": "core:recent-posts",
+					"title": "Recent Posts",
+					"props": {
+						"count": 5,
+						"showDate": true
+					}
+				}
+			]
+		},
+		{
+			"name": "footer",
+			"label": "Footer",
+			"description": "At the foot of every page",
+			"widgets": [
+				{
+					"type": "content",
+					"title": "About",
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "A small collection of notes on making websites carefully, kept as a demonstration of what a site looks like with something in every corner.",
+									"marks": []
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"sections": [
+		{
+			"slug": "newsletter",
+			"title": "Newsletter",
+			"description": "An invitation to subscribe, to put into any page.",
+			"keywords": [
+				"newsletter",
+				"subscribe",
+				"email"
+			],
+			"source": "user",
+			"content": [
+				{
+					"_type": "block",
+					"_key": "b0",
+					"style": "h3",
+					"markDefs": [],
+					"children": [
+						{
+							"_type": "span",
+							"_key": "b0s0",
+							"text": "Get the next note by email",
+							"marks": []
+						}
+					]
+				},
+				{
+					"_type": "block",
+					"_key": "b1",
+					"style": "normal",
+					"markDefs": [],
+					"children": [
+						{
+							"_type": "span",
+							"_key": "b1s0",
+							"text": "One short note a month. No tracking, and you can leave whenever you like.",
+							"marks": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"content": {
+		"pages": [
+			{
+				"id": "page-about",
+				"slug": "about",
+				"status": "published",
+				"data": {
+					"title": "About",
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "EmDash Demo is a small collection of notes on making websites carefully: what to decide before a page is built, what to leave out, and when to stop.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "It is also a demonstration. Every post, page, menu and widget here was put in place from a seed file, to show what a site looks like with something in each corner. The notes are real enough to read, and none of them is advice you have to take.",
+									"marks": []
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"id": "page-contact",
+				"slug": "contact",
+				"status": "published",
+				"data": {
+					"title": "Contact",
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [
+								{
+									"_type": "link",
+									"_key": "b0l1",
+									"href": "mailto:hello@example.com"
+								}
+							],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "Corrections, questions and better ideas are all welcome. Write to ",
+									"marks": []
+								},
+								{
+									"_type": "span",
+									"_key": "b0s1",
+									"text": "hello@example.com",
+									"marks": [
+										"b0l1"
+									]
+								},
+								{
+									"_type": "span",
+									"_key": "b0s2",
+									"text": " and somebody will answer within a few days.",
+									"marks": []
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"posts": [
+			{
+				"id": "post-leave-it-overnight",
+				"slug": "leave-it-overnight",
+				"status": "published",
+				"data": {
+					"title": "Leave It Overnight",
+					"excerpt": "Almost every page reads better the next morning. A case for the slowest tool in publishing: a night's sleep.",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=1200&h=800&fit=crop",
+							"alt": "A wave breaking on pale sand, seen from above",
+							"filename": "leave-it-overnight.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "The most useful thing we do to a page before it goes out costs nothing and takes eight hours. We stop, close the laptop, and look at it again tomorrow.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "It sounds like putting things off. It is the opposite. A draft finished at six in the evening is read by the person who wrote it, who knows what every sentence was meant to say. The same draft at nine the next morning is read by a stranger, who only knows what it says.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b2",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b2s0",
+									"text": "What the morning finds",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b3",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b3s0",
+									"text": "The first paragraph is usually throat-clearing, and can go. One sentence is trying to do three jobs. A link points at the wrong page. None of this was visible the night before, because the writer was still inside the piece.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b4",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b4s0",
+									"text": "The tide does the same work on a beach: it goes out, comes back, and the marks that did not matter are gone. What is left is the shape.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b5",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b5s0",
+									"text": "Making room for it",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b6",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b6s0",
+									"text": "The only cost is in the calendar. If something is due on Thursday, it is written by Wednesday. That is the whole method, and it has saved us from more mistakes than any checklist.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"notes"
+					],
+					"tag": [
+						"process"
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-guest",
+						"roleLabel": "Guest note"
+					}
+				]
+			},
+			{
+				"id": "post-a-small-set-of-parts",
+				"slug": "a-small-set-of-parts",
+				"status": "published",
+				"data": {
+					"title": "A Small Set of Parts",
+					"excerpt": "A site built from six pieces you understand is easier to change than one built from sixty clever ones. How we chose ours.",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1558655146-d09347e92766?w=1200&h=800&fit=crop",
+							"alt": "A library of interface components open on a desktop monitor, with houseplants in front",
+							"filename": "a-small-set-of-parts.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "Every site we have enjoyed looking after had the same quality: you could list its parts on one sheet of paper. A heading, a paragraph, a picture with a caption, a quote, a list, a link to the next thing.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "Every site we have dreaded opening had a part for each occasion. A special banner for the spring sale. Three kinds of card that differ by four pixels. Nobody remembers which is which, so each new page gets a new one.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b2",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b2s0",
+									"text": "Choosing the six",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b3",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b3s0",
+									"text": "We start from the writing, not from a library. Take the five most important pages, print them, and circle everything that is not plain text. Whatever is circled more than twice is a part. Whatever is circled once is a temptation.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b4",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b4s0",
+									"text": "One way to show a picture, with room for a caption.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b5",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b5s0",
+									"text": "One way to quote somebody.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b6",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b6s0",
+									"text": "One way to point at the next thing to read.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b7",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b7s0",
+									"text": "Nothing that only one page needs.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b8",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b8s0",
+									"text": "What it buys",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b9",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b9s0",
+									"text": "A new page takes an afternoon instead of a week, because there is nothing to design. A change to how quotes look happens once, everywhere. And a new person can learn the whole site before lunch.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"tutorials"
+					],
+					"tag": [
+						"tools"
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-demo-editor"
+					}
+				]
+			},
+			{
+				"id": "post-measure-twice-publish-once",
+				"slug": "measure-twice-publish-once",
+				"status": "published",
+				"data": {
+					"title": "Measure Twice, Publish Once",
+					"excerpt": "A machinist checks the work before the cut, not after. Here are the five checks we make before anything goes live.",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=800&fit=crop",
+							"alt": "A craftsman checking his work at a machine in a workshop",
+							"filename": "measure-twice-publish-once.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "In a workshop, nobody finds out a part is wrong by shipping it. The check comes before the cut, it takes a minute, and it is the same check every time. Publishing deserves the same habit.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "The five checks",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b2",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b2s0",
+									"text": "Read it aloud, once, from start to finish. The ear catches what the eye forgives.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b3",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b3s0",
+									"text": "Follow every link, including the ones that were certainly right yesterday.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b4",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b4s0",
+									"text": "Look at it on a phone, in daylight.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b5",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b5s0",
+									"text": "Read the title and the first sentence on their own. For most readers, that is the whole piece.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b6",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b6s0",
+									"text": "Ask what a stranger would search for to find it, and make sure those words are on the page.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b7",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b7s0",
+									"text": "Why a list",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b8",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b8s0",
+									"text": "None of this is clever, and that is the point. A list frees you from having to remember, on a busy afternoon, the one thing you only forget on busy afternoons.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b9",
+							"style": "blockquote",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b9s0",
+									"text": "The check is short because it is always the same.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b10",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b10s0",
+									"text": "Ours is taped to the wall. It has saved us more often than we would like to admit.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"checklists"
+					],
+					"tag": [
+						"process",
+						"tools"
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-demo-editor"
+					}
+				]
+			},
+			{
+				"id": "post-sketch-it-on-paper-first",
+				"slug": "sketch-it-on-paper-first",
+				"status": "published",
+				"data": {
+					"title": "Sketch It on Paper First",
+					"excerpt": "Ten minutes with a pencil settles questions that an hour in the editor only postpones. Here is the routine we use before any page is built.",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1523726491678-bf852e717f6a?w=1200&h=800&fit=crop",
+							"alt": "An open notebook covered in hand-drawn page sketches, a pencil resting on it",
+							"filename": "sketch-it-on-paper-first.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "Before a page of this site exists anywhere a visitor could find it, it exists as a rectangle in a notebook. Not a design: a rectangle, with a few scribbled lines for the words and a box where a picture might go.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "normal",
+							"markDefs": [
+								{
+									"_type": "link",
+									"_key": "b1l1",
+									"href": "https://emdashcms.com"
+								}
+							],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "The habit comes from print, where changing your mind was expensive, and it survives because it still works. A pencil is fast, and a page drawn with one cannot be made to look finished, which is the point. (The site itself is kept in ",
+									"marks": []
+								},
+								{
+									"_type": "span",
+									"_key": "b1s1",
+									"text": "EmDash",
+									"marks": [
+										"b1l1"
+									]
+								},
+								{
+									"_type": "span",
+									"_key": "b1s2",
+									"text": ", but that comes later.)",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b2",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b2s0",
+									"text": "The ten-minute routine",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b3",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b3s0",
+									"text": "Write the one sentence a reader should leave with. If there are two, there are two pages.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b4",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b4s0",
+									"text": "Draw the page as boxes, top to bottom, in the order a reader meets them.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b5",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b5s0",
+									"text": "Cross out one box. There is always one.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b6",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b6s0",
+									"text": "Only then open the editor.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b7",
+							"style": "blockquote",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b7s0",
+									"text": "If it does not work as a sketch, it will not work with nicer type.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b8",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b8s0",
+									"text": "What changes",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b9",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b9s0",
+									"text": "The pages get shorter. Not because anyone is counting words, but because a box drawn by hand has to earn its place, and a paragraph pasted into an editor does not.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b10",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b10s0",
+									"text": "Keep the sketches. Six months on, the notebook is the quickest way to remember why a page is the shape it is.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"tutorials"
+					],
+					"tag": [
+						"process",
+						"tools"
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-demo-editor"
+					}
+				]
+			},
+			{
+				"id": "post-notes-for-the-next-redesign",
+				"slug": "notes-for-the-next-redesign",
+				"status": "draft",
+				"data": {
+					"title": "Notes for the Next Redesign",
+					"excerpt": "Things we would do differently, collected as we go.",
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "Fewer templates. Bigger type. One navigation, not two. This list is still growing, and it is not ready for readers.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"notes"
+					]
+				}
+			},
+			{
+				"id": "post-what-we-are-reading",
+				"slug": "what-we-are-reading",
+				"status": "draft",
+				"data": {
+					"title": "What We Are Reading",
+					"excerpt": "Three books and two essays that changed how we plan a page.",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=800&fit=crop",
+							"alt": "A quiet, empty office with a low bookshelf and a sofa against a dark wall",
+							"filename": "what-we-are-reading.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"_key": "b0",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b0s0",
+									"text": "Most of what we know about making websites came from people who wrote it down. Each season we pass a short list around; this is the current one.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b1",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b1s0",
+									"text": "Books",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b2",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b2s0",
+									"text": "A style manual, read slowly: it is a book about making a decision once.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b3",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b3s0",
+									"text": "A history of the printed page, for everything it settled before screens existed.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b4",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b4s0",
+									"text": "A book on finding your way around buildings, which turns out to be about navigation menus.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b5",
+							"style": "h2",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b5s0",
+									"text": "Essays",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b6",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b6s0",
+									"text": "One on writing headings that say what the section says.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b7",
+							"style": "normal",
+							"listItem": "bullet",
+							"level": 1,
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b7s0",
+									"text": "One on why a short page is a kindness.",
+									"marks": []
+								}
+							]
+						},
+						{
+							"_type": "block",
+							"_key": "b8",
+							"style": "normal",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "b8s0",
+									"text": "If a favourite of yours belongs here, tell us. The list is better every time somebody argues with it.",
+									"marks": []
+								}
+							]
+						}
+					]
+				},
+				"taxonomies": {
+					"category": [
+						"notes"
+					],
+					"tag": [
+						"process"
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-demo-editor"
+					}
+				]
+			}
+		]
+	}
+}

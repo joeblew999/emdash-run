@@ -88,16 +88,22 @@ step("site:preview", "serves the built site; dev sign-in is off there", async ()
 	check((await status(`${builtSite()}/_emdash/api/setup/dev-bypass`)) === 403, "403 from the dev sign-in on the built site");
 });
 long(() => {
+	// a seed file, applied to the built site while it runs and has content in it
+	step("site:seed", "applies the site's own seed file, and run again makes nothing", async () => {
+		const first = await mise("site:seed");
+		says(first, "the seed file, applied: ");
+		check(!first.includes("FAIL"), "nothing in the file to fail");
+		says(await mise("site:seed"), "the seed file, applied: 0 made, ");
+	});
 	// something in every feature, asked of the built site as a visitor would ask it
 	step("site:demo", "fills every core feature, and run again changes nothing", async () => {
 		const first = await mise("site:demo");
 		says(first, "ok   backup:");
-		check(!first.includes("FAIL"), "no feature to fail");
-		check((await status(`${builtSite()}/posts/kitchen-sink`)) === 200, "200 from the post it made");
-		check((await status(`${builtSite()}/hello`)) === 301, "301 from the redirect it made");
+		check(!first.includes("FAIL"), "no section and no feature to fail");
+		check((await status(`${builtSite()}/hello`)) === 301, "301 from the redirect the seed file has");
 		const again = await mise("site:demo");
-		says(again, " 0 made, ");
-		check(!again.includes(": made — "), "no feature made a second time");
+		says(again, "the seed file, applied: 0 made, ");
+		says(again, "features: 0 made, ");
 	});
 	if (!node) step("live:check", "the deploy rehearses with no account", () => mise("live:check"));
 	step("emdash:update", "updates, type-checks and builds", () => mise("emdash:update"));
