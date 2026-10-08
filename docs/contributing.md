@@ -29,6 +29,7 @@ Running a test turns on the commit check in your clone.
 | `mise run test:live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
 | `mise run test:all` | Every step of `site`, `signin` and `plugin`, about nine minutes. What CI runs, on Linux, macOS and Windows |
 | `mise run test:node` | Every step, on a Node site made from EmDash's template: before a release |
+| `mise run packages` | Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check. Skipped when nothing changed. `types` and every test depend on it |
 | `mise run types` | Type-check `tests/` and `scripts/` (`tsconfig.json`). A few seconds; every test and `check` run it first |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
