@@ -7,9 +7,9 @@ nav_order: 50
 
 Written by `tests/replay.sh` and `tests/status.mjs`. Do not edit: run a test.
 
-**98 steps pass, 0 fail, 0 of 29 tasks have no test.**
+**101 steps pass, 0 fail, 0 of 29 tasks have no test.**
 
-Last run: `full`, tasks from the local files, commit `f69d726+uncommitted`, 2026-10-07 12:06 UTC, 431s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
+Last run: `full`, tasks from the local files, commit `a27d728+uncommitted`, 2026-10-08 00:20 UTC, 190s. Each run replaces the steps it ran and keeps the rest; the table at the end says when each step last ran.
 
 - `mise run test` — quick: the everyday tasks, one template, about a minute
 - `mise run test:full` — everything: both templates, then the tasks that act on a deployed site
@@ -21,7 +21,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | task | Cloudflare site | Node site | deployed site | |
 |---|---|---|---|---|
 | `content:pull` | pass ×1 | pass ×1 | pass ×1 |  |
-| `emdash` | pass ×4 | pass ×4 | pass ×1 |  |
+| `emdash` | pass ×4 | pass ×4 | pass ×2 |  |
 | `emdash:update` | pass ×1 | pass ×1 | — |  |
 | `live:backup` | — | — | pass ×1 |  |
 | `live:check` (hidden) | pass ×1 | — | — |  |
@@ -35,7 +35,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | `plugin:new` | pass ×2 | pass ×2 | — |  |
 | `plugin:publish` | pass ×1 | pass ×1 | — |  |
 | `plugin:search` | pass ×1 | pass ×1 | — |  |
-| `signin:access` | — | — | pass ×2 |  |
+| `signin:access` | — | — | pass ×4 |  |
 | `signin:open` | pass ×2 | pass ×2 | pass ×1 |  |
 | `signin:passkey` | pass ×1 | pass ×1 | — |  |
 | `signin:token` | pass ×4 | pass ×4 | pass ×2 |  |
@@ -55,7 +55,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | task | where | step | | tier | commit | when |
 |---|---|---|---|---|---|---|
 | `content:pull` | cloudflare | with no LIVE_URL says so | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `content:pull` | deployed | downloads the deployed site as a package | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `content:pull` | deployed | downloads the deployed site as a package | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `content:pull` | node | with no LIVE_URL says so | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash:update` | cloudflare | updates, type-checks and builds | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash:update` | node | updates, type-checks and builds | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
@@ -63,18 +63,19 @@ Every test runs as another developer would: a clean environment and an empty con
 | `emdash` | cloudflare | whoami on the dev site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash` | cloudflare | --live with no LIVE_URL says so | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash` | cloudflare | --preview writes to the built site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `emdash` | deployed | --live reads and writes the deployed site | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `emdash` | deployed | a site set to Cloudflare Access: the dev site starts and the CLI works on it | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `emdash` | deployed | --live reads and writes the deployed site | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `emdash` | node | a quoted JSON argument arrives whole | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash` | node | whoami on the dev site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash` | node | --live with no LIVE_URL says so | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `emdash` | node | --preview writes to the built site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `live:backup` | deployed | the database bookmark and a package | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `live:backup` | deployed | the database bookmark and a package | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `live:check` | cloudflare | the deploy rehearses with no account | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `live:logs` | deployed | shows a request to the deployed site | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
-| `live:ship` | deployed | deploys; the site answers with the change | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
-| `live:undo` | deployed | puts the previous version back: the change is gone | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `live:logs` | deployed | shows a request to the deployed site | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `live:ship` | deployed | deploys; the site answers with the change | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `live:undo` | deployed | puts the previous version back: the change is gone | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `model:sync` | cloudflare | records an added field in .emdash/ | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `model:sync` | deployed | --live records the deployed model | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `model:sync` | deployed | --live records the deployed model | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `model:sync` | node | records an added field in .emdash/ | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:add` | cloudflare | adds a package from npm | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin:add` | cloudflare | run again: no error | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
@@ -92,11 +93,13 @@ Every test runs as another developer would: a clean environment and an empty con
 | `plugin:search` | node | finds plugins in the registry | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin` | cloudflare | passes any command to the plugin CLI | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `plugin` | node | passes any command to the plugin CLI | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `signin:access` | deployed | Cloudflare Access is in front of the admin | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
-| `signin:access` | deployed | run again: changes nothing | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `signin:access` | deployed | Cloudflare Access is in front of the admin | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `signin:access` | deployed | uploaded media stays public; the team's domain is printed before any deploy | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `signin:access` | deployed | run again: changes nothing | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `signin:access` | deployed | a visitor reaches uploaded media without signing in | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `signin:open` | cloudflare | opens a signed-in window (token) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:open` | cloudflare | opens a signed-in window (passkey) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `signin:open` | deployed | --live opens a signed-in window | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `signin:open` | deployed | --live opens a signed-in window | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `signin:open` | node | opens a signed-in window (token) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:open` | node | opens a signed-in window (passkey) | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:passkey` | cloudflare | completes the EmDash wizard on a fresh database | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
@@ -105,8 +108,8 @@ Every test runs as another developer would: a clean environment and an empty con
 | `signin:token` | cloudflare | run again: still an administrator | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:token` | cloudflare | starts the built site when it is stopped | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:token` | cloudflare | the saved token goes when the local database does | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `signin:token` | deployed | --live: the CLI is an administrator of the deployed site | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
-| `signin:token` | deployed | --live, run again: still an administrator | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `signin:token` | deployed | --live: the CLI is an administrator of the deployed site | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
+| `signin:token` | deployed | --live, run again: still an administrator | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `signin:token` | node | the CLI is an administrator of the built site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:token` | node | run again: still an administrator | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `signin:token` | node | starts the built site when it is stopped | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
@@ -120,7 +123,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | `site:delete` | cloudflare | refuses with nobody to ask | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:delete` | cloudflare | removes the site folder | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:delete` | cloudflare | run again: nothing to delete | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `site:delete` | deployed | removes the local site folder | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `site:delete` | deployed | removes the local site folder | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `site:delete` | node | refuses with nobody to ask | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:delete` | node | removes the site folder | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:delete` | node | run again: nothing to delete | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
@@ -128,7 +131,7 @@ Every test runs as another developer would: a clean environment and an empty con
 | `site:logs` | node | shows the dev site log | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:new` | cloudflare | makes the site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:new` | cloudflare | run again: the site is left alone | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
-| `site:new` | deployed | makes the site that will be deployed | PASS | full | `f94adca` | 2026-10-07 11:34 UTC |
+| `site:new` | deployed | makes the site that will be deployed | PASS | full | `a27d728+uncommitted` | 2026-10-08 00:20 UTC |
 | `site:new` | node | makes the site | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:new` | node | run again: the site is left alone | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |
 | `site:ports` | cloudflare | gives the project two ports of its own | PASS | full | `f69d726+uncommitted` | 2026-10-07 12:06 UTC |

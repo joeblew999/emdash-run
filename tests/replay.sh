@@ -165,7 +165,7 @@ live_site() {
   project "$WORK/live" cloudflare:starter "LIVE_URL = \"$U\"" 'ADMIN_EMAIL = "agent@emdash.local"'
   mise run site:ports >/dev/null 2>&1
   ok site:new       "makes the site that will be deployed"    'mise run site:new && sed -i.bak "s/\"my-emdash-site\"/\"$TEST_LIVE_NAME\"/g; s/\"my-emdash-media\"/\"$TEST_LIVE_NAME-media\"/" site/wrangler.jsonc && mise run site:start && mise run site:stop'
-  ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access 2>&1 | tee access.txt | grep -q "access: application"'
+  ok signin:access  "Cloudflare Access is in front of the admin" 'mise run signin:access > access.txt 2>&1; grep -q "access: application" access.txt'
   ok signin:access  "uploaded media stays public; the team's domain is printed before any deploy" 'grep -q "uploaded media" access.txt && grep -q "teamDomain: \"[a-z0-9-]*.cloudflareaccess.com\"" access.txt && node "$REPO/tests/access-config.mjs" access.txt site'
   ok emdash         "a site set to Cloudflare Access: the dev site starts and the CLI works on it" 'grep -q "auth: access(" site/astro.config.mjs && grep -q CF_ACCESS_AUDIENCE site/wrangler.jsonc && mise run site:start && mise run emdash -- schema list | grep -q slug && mise run site:stop'
   STAMP=shipped-$(date +%s)
