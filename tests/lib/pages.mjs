@@ -16,17 +16,17 @@ export const statusPage = () => {
 	const notTested = all.filter((t) => !results.some((r) => r.task === t.name));
 	const out = ["# What works: every task, and what the last test run showed", ""];
 	out.push(`**${results.filter((r) => r.result === "PASS").length} steps pass, ${failures.length} fail, ${notTested.length} of ${all.length} tasks have no recorded run on this machine.**`, "");
-	out.push("The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test:all`. The `stages` workflow runs both on Linux, macOS and Windows. [How to help](../contributing.md) says more.", "");
+	out.push("The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test --level all`. The `stages` workflow runs both on Linux, macOS and Windows. [How to help](../contributing.md) says more.", "");
 	out.push("| Group | What it tests | Run it | Everyday steps | Long steps | Took | Last run | Commit |", "|---|---|---|---|---|---|---|---|");
 	for (const g of groups) {
 		const rows = rowsOf(g).filter((r) => r.where !== "node");
 		const long = rows.filter((r) => r.long);
 		const everyday = rows.filter((r) => !r.long);
 		const last = rows[0];
-		out.push(`| [\`${g}\`](status-${g}.md) | ${about[g]} | \`mise run test:${g}\` | ${everyday.length}: ${stateOf(everyday, g)} | ${long.length ? `${long.length}: ${stateOf(long, g)}` : g === "live" ? "" : "no run recorded"} | ${last?.runSeconds ? time(last.runSeconds) : ""} | ${last?.when ?? ""} | ${last ? `\`${last.commit}\`` : ""} |`);
+		out.push(`| [\`${g}\`](status-${g}.md) | ${about[g]} | \`mise run test ${g}\` | ${everyday.length}: ${stateOf(everyday, g)} | ${long.length ? `${long.length}: ${stateOf(long, g)}` : g === "live" ? "" : "no run recorded"} | ${last?.runSeconds ? time(last.runSeconds) : ""} | ${last?.when ?? ""} | ${last ? `\`${last.commit}\`` : ""} |`);
 	}
 	const node = results.filter((r) => r.where === "node");
-	if (node.length) out.push("", `On a Node site (\`mise run test:node\`, before a release): ${node.filter((r) => r.result === "PASS").length} of ${node.length} steps pass, last run ${node[0].when}.`);
+	if (node.length) out.push("", `On a Node site (\`mise run test --node --level all\`, before a release): ${node.filter((r) => r.result === "PASS").length} of ${node.length} steps pass, last run ${node[0].when}.`);
 	if (failures.length) {
 		out.push("", "## Failing", "", "| Group | Task | On | Step | Its last output |", "|---|---|---|---|---|");
 		for (const r of failures) out.push(`| [\`${r.group}\`](status-${r.group}.md) | \`${r.task}\` | ${r.where} | ${cell(r.step)} | ${cell(r.detail || "")} |`);
@@ -48,7 +48,7 @@ export const statusPage = () => {
 export const groupPage = (g) => {
 	const rows = rowsOf(g);
 	const out = [`# The ${g} tests: ${about[g]}`, ""];
-	out.push(`Run them: \`mise run test:${g}\`. The steps: \`tests/${g}/steps.mjs\`. Every group: [What works](status.md).`, "");
+	out.push(`Run them: \`mise run test ${g}\`. The steps: \`tests/${g}/steps.mjs\`. Every group: [What works](status.md).`, "");
 	if (!rows.length) out.push("No run is recorded.");
 	for (const where of ["cloudflare", "deployed", "node"]) {
 		const mine = rows.filter((r) => r.where === where).sort((a, b) => Number(!!a.long) - Number(!!b.long) || a.order - b.order);

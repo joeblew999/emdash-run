@@ -38,46 +38,44 @@ includes = ["tasks.toml", "git::https://github.com/joeblew999/charter.git//tasks
 # Everything else this repo runs is charter's, from tasks/repo above: release, repo, repo:check, repo:ci, issue, issues,
 # upstream:status, docs:setup, docs:lint, docs:check, docs:review, docs:pages.
 [tasks.packages]
-description = "The packages this repo's own code needs, installed: Playwright for the scripts (by the step the sign-in tasks use), TypeScript for the type check. Under a second when they are there. types and every test depend on it"
+description = "Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check"
 depends = ["step:admin-tools"]
 run = "pnpm --dir tests install --silent --frozen-lockfile"
 
 [tasks.types]
-description = "Type-check the test (tests/) and the scripts behind the tasks (scripts/), as the JavaScript they are: tsconfig.json. A few seconds. Every test runs it first"
+description = "Type-check tests/ and scripts/ (tsconfig.json)"
 depends = ["packages"]
 run = "pnpm --dir tests exec tsc -p ../tsconfig.json"
 
+# ONE task for the test, at THREE LEVELS — the same here and on CI (.github/workflows/stages.yml
+# runs this task with a level and nothing else). How it works: the top of tests/run.mjs.
 [tasks.test]
-description = "The test, as you run it while working: the everyday steps of the site, signin and plugin groups that are not proven, about a minute a group, on a copy of this repo's site/. Proven: they passed and nothing the group depends on has changed since (node tests/record.mjs --depends), so it is not run again; -- --again runs it anyway; -- --only site:check runs only the steps named so, and records nothing. Never deploys. One test at a time on a machine: a second waits. Each group keeps its own record (tests/<group>/results.json) and page (docs/reference/status-<group>.md)"
-run = [{ task = "types" }, "node tests/run.mjs"]
+description = "The test, at one of three levels. smoke: the basics, half a minute. fast (the default): the everyday steps of the groups that changed, about a minute a group. all: every step. Name groups to run only those: site, signin, plugin, live (live deploys: only when named)"
+depends = ["types"]
+usage = '''
+arg "[groups]..." help="site, signin, plugin, live. None: site, signin and plugin"
+flag "--level <level>" help="smoke, fast or all" default="fast" {
+  choices "smoke" "fast" "all"
+}
+flag "--again" help="Run a group even though it is proven"
+flag "--node" help="On a Node site made from EmDash's template"
+flag "--only <words>" help="Only the steps whose name has these words; nothing is recorded"
+'''
+run = "node tests/run.mjs {{ usage.groups | default(value=[]) | join(sep=' ') }} --level {{ usage.level }}{% if usage.again %} --again{% endif %}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
 
-[tasks."test:site"]
-description = "The site group alone: making, running, checking and deleting a site. -- --all for its long steps too, -- --again when it is proven"
-run = [{ task = "types" }, "node tests/run.mjs site"]
-
-[tasks."test:signin"]
-description = "The signin group alone: the CLI and a browser window as an administrator of the built site. -- --all for its long steps too, -- --again when it is proven"
-run = [{ task = "types" }, "node tests/run.mjs signin"]
-
-[tasks."test:plugin"]
-description = "The plugin group alone: a plugin of your own, and plugins from EmDash's registry. -- --all for its long steps too, -- --again when it is proven"
-run = [{ task = "types" }, "node tests/run.mjs plugin"]
-
-[tasks."test:live"]
-description = "REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes: run it after changing a live: task, not every day"
-run = [{ task = "types" }, "node tests/run.mjs live"]
-
-[tasks."test:all"]
-description = "Every step of the site, signin and plugin groups, the long ones too: about nine minutes. What the stages workflow runs on Linux, macOS and Windows, so a pass here is a pass there"
-run = [{ task = "types" }, "node tests/run.mjs --all"]
-
-[tasks."test:node"]
-description = "Every step of the site, signin and plugin groups on a Node site made from EmDash's template: before a release, not every day"
-run = [{ task = "types" }, "node tests/run.mjs --node --all"]
+[tasks."test:ci"]
+description = "REMOTE: have GitHub run the test at a level, on Linux, macOS and Windows: the stages workflow, which runs mise run test --level <level> there. Prints how to follow it"
+usage = '''
+flag "--level <level>" help="smoke, fast or all" default="smoke" {
+  choices "smoke" "fast" "all"
+}
+'''
+run = ["gh workflow run stages.yml -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
 
 [tasks.check]
-description = "Every check but the tests themselves, in seconds: the types, the unit tests of the scripts' own functions (tests/plugin/*.test.mjs), every task has a test step, no group's record has a failure or an untested task, and repo:ci (the docs and the repo are as charter keeps them). mise run release runs this before it tags; the stages workflow runs mise run test:all"
-run = [{ task = "types" }, "node --test \"tests/**/*.test.mjs\"", "node tests/record.mjs --coverage", "node tests/record.mjs --green", { task = "repo:ci" }]
+description = "Every check but the tests, in seconds: types, the smoke test (which runs the unit tests and checks every task has a step), no failure recorded, repo:ci. What release runs before it tags"
+depends = ["types"]
+run = ["node tests/run.mjs --level smoke", "node tests/record.mjs --green", { task = "repo:ci" }]
 
 [tasks.src]
 description = "EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest"

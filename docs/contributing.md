@@ -24,12 +24,14 @@ Running a test turns on the commit check in your clone.
 
 | Task | What it does |
 |---|---|
-| `mise run test` | The test as you run it while working: the everyday steps of the `site`, `signin` and `plugin` groups that are not proven. About a minute a group. Never deploys |
-| `mise run test:site` | One group alone: `test:site`, `test:signin`, `test:plugin`. `-- --all` for its long steps too |
-| `mise run test:live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
-| `mise run test:all` | Every step of `site`, `signin` and `plugin`, about nine minutes. What CI runs, on Linux, macOS and Windows |
-| `mise run test:node` | Every step, on a Node site made from EmDash's template: before a release |
-| `mise run packages` | Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check. Skipped when nothing changed. `types` and every test depend on it |
+| `mise run test --level smoke` | The basics, in half a minute: the types and unit tests pass, a project is made, its tasks run, the site starts, answers and stops. Run it first |
+| `mise run test` | Level `fast`, the default: the everyday steps of the `site`, `signin` and `plugin` groups that are not proven. About a minute a group. Never deploys |
+| `mise run test --level all` | Every step of `site`, `signin` and `plugin`, the long ones too: about nine minutes |
+| `mise run test:ci --level all` | REMOTE: have GitHub run a level on Linux, macOS and Windows (`smoke` when no level is given) |
+| `mise run test plugin` | One group, or several, at any level: `site`, `signin`, `plugin`, `live` |
+| `mise run test live` | REMOTE: the `live` group. It deploys to the Worker kept for testing and takes about five minutes: after changing a `live:` task |
+| `mise run test --node --level all` | Every step, on a Node site made from EmDash's template: before a release |
+| `mise run packages` | Install what this repo's own code needs: Playwright for the scripts, TypeScript for the type check. `types` depends on it |
 | `mise run types` | Type-check `tests/` and `scripts/` (`tsconfig.json`). A few seconds; every test and `check` run it first |
 | `mise run src` | EmDash's source into `.src/emdash`, to read |
 | `mise run issues` | The open issues, newest first. Start here |
@@ -48,9 +50,9 @@ Each test runs as another developer would: a clean environment, an empty config 
 
 A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps.mjs`) and what its last run showed (`results.json`), and a page written from that; [What works](reference/status.md) is the index of them. Each group runs alone, on a site of its own, so you run the one you are working on.
 
-**Short here, everything on CI.** A group's steps are everyday or long. Your own run makes the everyday ones. The long ones, in `t.long(…)` in the steps file, run with `mise run test:all`, which the `stages` workflow runs on a push to `main`, beside a fast job that runs `mise run test` as you do: push and keep working, look at the fast job in a few minutes and at the other when it ends.
+**Three levels, the same here and on CI: `smoke`, `fast`, `all`.** Start with `smoke`; go up a level when the one below holds. The `stages` workflow runs the same task at the level it is given, on Linux, macOS and Windows: `smoke` on a push to `main`, `all` on a release tag, and from your machine the level you choose (`mise run test:ci --level fast`). A group's long steps, the ones only `all` runs, are in `long(…)` in its steps file.
 
-A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. To work on one task, `mise run test:site -- --only "site:check"` runs only the steps whose name has those words, and records nothing. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
+A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test plugin --again` runs it anyway. To work on one task, `mise run test site --only site:check` runs only the steps whose name has those words, and records nothing. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
 
 The test is Node only, and its steps are tests of Node's own runner: no shell and no Unix program, so the same files run on all three OSes.
 
@@ -97,7 +99,7 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tests/record.mjs` | The records from the command line: `--page`, `--coverage`, `--green`, `--depends` |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
-| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test` and `mise run test:all`, each on three OSes, on a push to `main` that changes what the test depends on, on a tag, or by hand. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
+| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test --level <level>` on three OSes — `smoke` on a push to `main`, `all` on a tag, by hand the level you choose. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
 
 ## Reading EmDash
 
@@ -109,8 +111,8 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 
 ```sh
 mise run test                            # the everyday steps: they must be green
-mise run test:live                       # the deployed-site tasks, if a live: task changed
-gh run list --workflow stages --limit 1  # every step, on three OSes: the last push must be green
+mise run test live                       # the deployed-site tasks, if a live: task changed
+mise run test:ci --level all             # every step, on three OSes: it must be green
 git add -A tests docs && git commit      # what it recorded, and the pages written from it
 mise run release -- vX.Y.Z -dry-run      # says what it would do
 mise run release -- vX.Y.Z               # check, tag, push, the GitHub Release with notes from the commits

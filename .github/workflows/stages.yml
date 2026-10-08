@@ -1,13 +1,19 @@
-# The test on macOS, Linux and Windows. Nothing is decided here: each job installs mise and runs
-# one mise task, the same one a developer runs, so a pass on your machine is a pass on GitHub.
-#   mise run test       the everyday steps: an answer in minutes
-#   mise run test:all   every step, the long ones too
-# What they do, how long a step may take, what they print: tests/run.mjs, not this file.
+# The test on macOS, Linux and Windows, at the level asked for. Nothing is decided here: each job
+# installs mise and runs `mise run test --level <level>`, the task a developer runs, so a pass on
+# your machine is a pass on GitHub. The three levels are written in tests/run.mjs.
 #
-# Started by a push to main that changes what the test depends on, by a release tag, or by hand.
+#   a push to main    smoke — the basics, a few minutes
+#   by hand           the level you choose:  gh workflow run stages.yml -f level=all
+#   a release tag     all
 name: stages
 on:
   workflow_dispatch:
+    inputs:
+      level:
+        description: "smoke: the basics. fast: the everyday steps. all: every step"
+        type: choice
+        options: [smoke, fast, all]
+        default: smoke
   push:
     branches: [main]
     paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", "tsconfig.json", ".github/workflows/stages.yml", "!tests/*/results.json"]
@@ -20,7 +26,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: ["test", "test:all"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -29,7 +34,7 @@ jobs:
       - uses: jdx/mise-action@v5.0.1
         with:
           version: 2026.10.4 # the repo's mise.toml: min_version
-      - run: mise run ${{ matrix.task }}
+      - run: mise run test --level ${{ inputs.level || (github.ref_type == 'tag' && 'all' || 'smoke') }}
         env:
           # the one thing a runner has to be given: who it is. GitHub limits anonymous downloads per
           # address, and hosted runners share addresses (EmDash's template is fetched from GitHub)

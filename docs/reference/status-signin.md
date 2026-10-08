@@ -8,7 +8,7 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status-signin` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Run them: `mise run test:signin`. The steps: `tests/signin/steps.mjs`. Every group: [What works](status.md).
+Run them: `mise run test signin`. The steps: `tests/signin/steps.mjs`. Every group: [What works](status.md).
 
 ## On a Cloudflare site
 

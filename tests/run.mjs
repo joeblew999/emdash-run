@@ -2,15 +2,19 @@
 // folder here with its steps (steps.mjs: tests of Node's own runner) and what its last run showed
 // (results.json), and a page in docs/reference/. Each runs alone, on a site of its own.
 //
-//   mise run test             the everyday steps of site, signin and plugin: the groups not proven.
-//                             About a minute a group. Never deploys
-//   mise run test:plugin      one group (test:site, test:signin, test:plugin)
-//   mise run test:live        the live group: it deploys to the Worker kept for testing, 5 minutes
-//   mise run test:all         EVERY step of site, signin and plugin, the long ones too
-//   mise run test:node        every step, on a Node site made from EmDash's template
-//   … -- --again              run a group even though it is proven
-//   … -- --only "site:check"  only the steps whose name has these words (Node's --test-name-pattern).
-//                             For working on one task: nothing is recorded
+// THREE LEVELS, the same on a developer's machine and on CI:
+//   mise run test --level smoke   THE BASICS, half a minute: the types and unit tests pass, a
+//                                 project is made, its tasks run, the site starts, answers and
+//                                 stops. Run it first; a push runs it on three OSes
+//   mise run test                 fast (the default): the everyday steps of site, signin and
+//                                 plugin — the groups not proven. About a minute a group
+//   mise run test --level all     every step, the long ones too (long(…) in a steps file)
+//
+//   mise run test plugin          one group, or several, at any level
+//   mise run test live            the live group: it deploys to the Worker kept for testing
+//   mise run test --node          on a Node site made from EmDash's template
+//   mise run test --again         run a group even though it is proven
+//   mise run test site --only site:check   only the steps named so; nothing is recorded
 //
 // PROVEN: the group's steps passed and nothing it depends on has changed since (tests/lib/depends.mjs;
 // node tests/record.mjs --depends). A proven group is not run again; on a CI runner nothing is skipped.
@@ -33,17 +37,20 @@ import { statusPage } from "./lib/pages.mjs";
 import { coverage, proven, record } from "./lib/results.mjs";
 
 const argv = process.argv.slice(2);
-const only = argv.includes("--only") ? argv.splice(argv.indexOf("--only"), 2)[1] : "";
-if (argv.some((a) => !groups.includes(a) && !["--again", "--node", "--all"].includes(a))) {
-	console.error("usage: node tests/run.mjs [site|signin|plugin|live]… [--all] [--again] [--node] [--only <words>]");
+const flag = (name) => (argv.includes(name) ? argv.splice(argv.indexOf(name), 2)[1] : "");
+const level = flag("--level") || "fast";
+// smoke is the site group's steps that make a project, start the site, ask it and stop it
+const only = level === "smoke" ? "site:(ports|start|stop)" : flag("--only");
+if (!["smoke", "fast", "all"].includes(level) || argv.some((a) => !groups.includes(a) && !["--again", "--node"].includes(a))) {
+	console.error("usage: node tests/run.mjs [site|signin|plugin|live]… [--level smoke|fast|all] [--again] [--node] [--only <words>]");
 	process.exit(2);
 }
 const onNode = argv.includes("--node");
-const all = argv.includes("--all");
+const all = level === "all";
 const again = argv.includes("--again") || !!only || !!process.env.CI;
 const asked = argv.filter((a) => groups.includes(a));
 // live is run when it is asked for by name: it deploys, and takes five minutes
-const want = asked.length ? asked : ["site", "signin", "plugin"];
+const want = level === "smoke" ? ["site"] : asked.length ? asked : ["site", "signin", "plugin"];
 const node = (...args) => spawnSync(process.execPath, args, { cwd: repo, encoding: "utf8" });
 
 // tasks.toml cannot change without the test changing with it
@@ -100,7 +107,7 @@ for (const group of todo) {
 	const where = whereOf(group, onNode);
 	const rowsFile = join(work, `${group}.rows.json`);
 	const env = { ...process.env, TEST_GROUP: group, TEST_WHERE: where, TEST_WORK: work, TEST_ALL: all ? "1" : "" };
-	console.log(`==== ${group} (${where}${group === "live" ? "" : all ? ", every step" : ", the everyday steps"})`);
+	console.log(`==== ${group} (${where}${group === "live" ? "" : `, level ${level}`})`);
 	const began = Date.now();
 	// After the group, whatever it left running is stopped — also when the test is interrupted.
 	const tidy = () => {

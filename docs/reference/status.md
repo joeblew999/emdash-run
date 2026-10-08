@@ -10,16 +10,16 @@ Written by `charter docs` from what `node tests/record.mjs --page status` prints
 
 **132 steps pass, 0 fail, 1 of 36 tasks have no recorded run on this machine.**
 
-The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test:all`. The `stages` workflow runs both on Linux, macOS and Windows. [How to help](../contributing.md) says more.
+The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test --level all`. The `stages` workflow runs both on Linux, macOS and Windows. [How to help](../contributing.md) says more.
 
 | Group | What it tests | Run it | Everyday steps | Long steps | Took | Last run | Commit |
 |---|---|---|---|---|---|---|---|
-| [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test:site` | 17: changed since it passed | no run recorded | 1 min 13 s | 2026-10-08 05:03 UTC | `4c9d7c9+uncommitted` |
-| [`signin`](status-signin.md) | the CLI and a browser window as an administrator of the built site | `mise run test:signin` | 9: changed since it passed | no run recorded | 1 min 43 s | 2026-10-08 04:39 UTC | `ada7563+uncommitted` |
-| [`plugin`](status-plugin.md) | a plugin of your own, and plugins from EmDash's registry | `mise run test:plugin` | 29: changed since it passed | no run recorded | 4 min 26 s | 2026-10-08 04:44 UTC | `ada7563+uncommitted` |
-| [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test:live` | 22: changed since it passed |  | 5 min 33 s | 2026-10-08 04:50 UTC | `cad9abe` |
+| [`site`](status-site.md) | making, running, checking and deleting a site | `mise run test site` | 17: changed since it passed | no run recorded | 1 min 13 s | 2026-10-08 05:03 UTC | `4c9d7c9+uncommitted` |
+| [`signin`](status-signin.md) | the CLI and a browser window as an administrator of the built site | `mise run test signin` | 9: changed since it passed | no run recorded | 1 min 43 s | 2026-10-08 04:39 UTC | `ada7563+uncommitted` |
+| [`plugin`](status-plugin.md) | a plugin of your own, and plugins from EmDash's registry | `mise run test plugin` | 29: changed since it passed | no run recorded | 4 min 26 s | 2026-10-08 04:44 UTC | `ada7563+uncommitted` |
+| [`live`](status-live.md) | the tasks that act on a deployed site | `mise run test live` | 22: changed since it passed |  | 5 min 33 s | 2026-10-08 04:50 UTC | `cad9abe` |
 
-On a Node site (`mise run test:node`, before a release): 55 of 55 steps pass, last run 2026-10-08 01:44 UTC.
+On a Node site (`mise run test --node --level all`, before a release): 55 of 55 steps pass, last run 2026-10-08 01:44 UTC.
 
 ## By task
 
