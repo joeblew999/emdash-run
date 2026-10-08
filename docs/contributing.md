@@ -47,7 +47,7 @@ Each test runs as another developer would: a clean environment, an empty config 
 
 A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps.mjs`) and what its last run showed (`results.json`), and a page written from that; [What works](reference/status.md) is the index of them. Each group runs alone, on a site of its own, so you run the one you are working on.
 
-**Short here, everything on CI.** A group's steps are everyday or long. Your own run makes the everyday ones. The long ones, in `t.long(…)` in the steps file, run with `mise run test:all`, which is the one task the `stages` workflow runs on a push to `main`: push and keep working, and look at the workflow when it ends.
+**Short here, everything on CI.** A group's steps are everyday or long. Your own run makes the everyday ones. The long ones, in `t.long(…)` in the steps file, run with `mise run test:all`, which the `stages` workflow runs on a push to `main`, beside a fast job that runs `mise run test` as you do: push and keep working, look at the fast job in a few minutes and at the other when it ends.
 
 A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
 
@@ -94,7 +94,7 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `tests/record.mjs` | Writes each group's record, says whether a group is proven, and prints the pages ([What works](reference/status.md) and one per group) |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
-| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test:all` on three OSes, on a push to `main` that changes what the test depends on, on a tag, or by hand. `repo-check.yml`: charter's, `mise run repo:ci` on every push |
+| `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: on three OSes, `mise run test` (a `fast` job: an answer in minutes) and `mise run test:all` (an `all` job: every step), on a push to `main` that changes what the test depends on, on a tag, or by hand (`gh workflow run stages.yml -f which=fast`). `repo-check.yml`: charter's, `mise run repo:ci` on every push |
 
 ## Reading EmDash
 

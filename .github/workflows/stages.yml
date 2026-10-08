@@ -1,23 +1,37 @@
-# Every step of the test, on macOS, Linux and Windows: mise run test:all — one task, the same one a
-# developer can run. A developer's own run (mise run test) is the everyday steps, in a minute or
-# two; the long ones are run here. The live group is not: a runner has no deployed test site.
+# The test on macOS, Linux and Windows, as the two tasks a developer runs:
+#   fast   mise run test       the everyday steps: an answer in minutes
+#   all    mise run test:all   every step, the long ones too
+# Each job runs one mise task, so what passes here passes on a developer's machine and the other
+# way round. On a runner no group is skipped as proven. The live group is not run: a runner has no
+# deployed test site.
 #
-# Started by a push to main that changes what the test depends on, by a release tag, or by hand.
+# Started by a push to main that changes what the test depends on, by a release tag, or by hand
+# (gh workflow run stages.yml -f which=fast).
 name: stages
 on:
   workflow_dispatch:
+    inputs:
+      which:
+        description: "fast = mise run test; all = mise run test:all"
+        type: choice
+        options: [both, fast, all]
+        default: both
   push:
     branches: [main]
-    paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", ".github/workflows/stages.yml", "!tests/*/results.json"]
+    paths: ["tasks.toml", "scripts/**", "tests/**", "site/**", "mise.toml", "tsconfig.json", ".github/workflows/stages.yml", "!tests/*/results.json"]
     tags: ["v*"]
 concurrency:
   group: stages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   test:
+    # fast and all are the same job with a different task
+    name: ${{ matrix.task == 'test' && 'fast' || 'all' }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
+        # by hand, one of the two can be chosen; a push or a tag runs both
+        task: ${{ fromJSON(inputs.which == 'fast' && '["test"]' || inputs.which == 'all' && '["test:all"]' || '["test", "test:all"]') }}
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -42,8 +56,8 @@ jobs:
           # different mise could word them differently. Move this with min_version in mise.toml
           version: 2026.10.4
           install_args: node pnpm
-      - name: mise run test:all
-        run: mise run test:all
+      - name: mise run ${{ matrix.task }}
+        run: mise run ${{ matrix.task }}
       # What this run recorded (tests/<group>/results.json), as the page docs/reference/status.md is written
       # from it. Not the committed page: a runner has no charter to rewrite it, so that one would
       # show the developer's last run, not this one.

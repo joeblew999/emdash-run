@@ -10,8 +10,9 @@
 //   mise run test:node        every step, on a Node site made from EmDash's template
 //   … -- --again              run it even though it is proven
 //
-// EVERYDAY AND LONG: a steps file puts its long steps in t.long(…). They run with --all (and on a
-// CI runner, always); a run without it leaves what was last recorded for them as it is.
+// EVERYDAY AND LONG: a steps file puts its long steps in t.long(…). They run with --all; a run
+// without it leaves what was last recorded for them as it is. The stages workflow runs both, as
+// two jobs: `mise run test` for an answer in minutes, `mise run test:all` for every step.
 // PROVEN: every step of the group passed, and nothing it depends on has changed since
 // (tests/record.mjs --depends). A proven group is not run again. On a CI runner nothing is skipped.
 // A RUN IS THE WHOLE TRUTH FOR ITS GROUP: it replaces everything recorded for that group.
@@ -54,7 +55,7 @@ if (unknown.length) {
 	process.exit(2);
 }
 const onNode = argv.includes("--node");
-const all = argv.includes("--all") || !!process.env.CI;
+const all = argv.includes("--all");
 const again = argv.includes("--again") || !!process.env.CI;
 const asked = argv.filter((a) => groups.includes(a));
 // live is run when it is asked for by name: it deploys, and takes five minutes
