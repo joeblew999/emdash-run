@@ -1,6 +1,7 @@
 // The site's states (scripts/core/site.mjs), each with a made-up outside: what it runs, in what
 // order, and when it does nothing.
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import { reach } from "../../scripts/core/graph.mjs";
@@ -30,7 +31,7 @@ test("site:start on a fresh site: install, key, start, the CLI, the welcome dial
 		"pnpm install",
 		"pnpm exec emdash secrets generate --write .env",
 		"pnpm exec astro dev --background --host 127.0.0.1 --port 4321",
-		`${process.execPath} /emdash-run/scripts/emdash.mjs http://localhost:4321 /p/site schema list`,
+		`${process.execPath} ${join("/emdash-run/scripts", "emdash.mjs")} http://localhost:4321 /p/site schema list`,
 	]);
 	assert.deepEqual(result.skipped, ["site:exists"]);
 	assert.ok(fake.said.includes("welcome: EmDash's welcome dialog is closed for the dev user"));
@@ -61,7 +62,8 @@ test("the welcome dialog cannot be closed: said, and the task does not fail", as
 	assert.ok(fake.said.some((l) => l.includes("could not close EmDash's welcome dialog")));
 });
 
-test("site:stop: both sites, and only this site's own sandbox process", async () => {
+// (the sandbox process is a thing of macOS and Linux: on Windows site:stop stops the two sites only)
+test("site:stop: both sites, and only this site's own sandbox process", { skip: process.platform === "win32" }, async () => {
 	const fake = fakeWorld({
 		files: { ...aSite, "/p/site/node_modules/workerd": "" },
 		output: () => "  11 /p/site/node_modules/.pnpm/workerd/bin/workerd serve x\n  22 /other/site/node_modules/workerd/bin/workerd serve x\n  33 /p/site/node_modules/x/bin/node serve\n",

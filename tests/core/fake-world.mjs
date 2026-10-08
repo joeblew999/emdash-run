@@ -24,8 +24,9 @@ export const fakeWorld = (given = {}) => {
 		},
 		capture: (program, args) => given.output?.([program, ...args].join(" ")) ?? "",
 		ask: async (url, init) => ({ text: "", ...(given.answers?.(url, init) ?? { status: 0 }) }),
-		exists: (path) => path in files,
-		read: (path) => files[path] ?? "",
+		// paths with a slash, whatever the machine the test runs on joins them with
+		exists: (path) => path.replaceAll("\\", "/") in files,
+		read: (path) => files[path.replaceAll("\\", "/")] ?? "",
 		sleep: async () => {},
 		alone: (_name, fn) => fn(),
 		kill: (pid) => void killed.push(pid),
