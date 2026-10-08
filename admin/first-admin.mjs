@@ -37,7 +37,10 @@ const args = process.argv.slice(2);
 const deployed = args.includes("--deployed");
 const show = args.includes("--show");
 const checks = args.filter((a) => a.startsWith("--check=")).map((a) => a.slice(8));
-const [url, siteDir] = args.filter((a) => !a.startsWith("--"));
+const [given, siteDir] = args.filter((a) => !a.startsWith("--"));
+// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+const { deployedAddress, previewOf } = await import("./site.mjs");
+const url = deployed && given ? deployedAddress(given) : given;
 if (!url || !siteDir) {
 	console.error("usage: node first-admin.mjs <site address> <site folder> [--deployed]");
 	process.exit(1);
@@ -160,7 +163,10 @@ try {
 	// What signin:token and signin:access saved for this site, if anything.
 	const savedDir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run");
 	const savedJson = (kind) => {
-		const f = join(savedDir, kind, `${savedName(url, siteDir)}.json`);
+		let f = join(savedDir, kind, `${savedName(url, siteDir)}.json`);
+		// a preview of the Worker is behind the live site's Access application: the same pass
+		const preview = kind === "access" && !existsSync(f) ? previewOf(url, siteDir) : null;
+		if (preview) f = join(savedDir, kind, `${preview.liveHost}.json`);
 		return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
 	};
 	const savedToken = savedJson("tokens");

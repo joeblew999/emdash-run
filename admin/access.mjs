@@ -136,13 +136,17 @@ try {
 	// shows are served from under it: without this, a visitor's browser is sent to the sign-in page
 	// for every image. A second application over that one path, which lets everyone through.
 	const mediaDomain = `${host}/_emdash/api/media/file`;
-	const mediaOver = host.endsWith(".workers.dev") ? [mediaDomain, `*-${host}/_emdash/api/media/file`] : [mediaDomain];
+	// The same for what plugins serve to visitors (a form's submit address, an indexing key):
+	// /_emdash/api/plugins/. EmDash itself decides which of a plugin's routes are public; without
+	// this Cloudflare sends a visitor's browser to the sign-in page before EmDash is asked.
+	const open = [mediaDomain, `${host}/_emdash/api/plugins`];
+	const mediaOver = host.endsWith(".workers.dev") ? [...open, ...open.map((d) => `*-${d}`)] : open;
 	const mediaApp = (await api("GET", "apps")).find((a) => a.domain === mediaDomain);
 	if (mediaApp && mediaOver.every((d) => (mediaApp.self_hosted_domains || [mediaApp.domain]).includes(d))) {
-		console.log("access: uploaded media is already public");
+		console.log("access: uploaded media and plugins' public routes are already public");
 	} else if (mediaApp) {
 		await api("PUT", `apps/${mediaApp.id}`, { name: mediaApp.name, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
-		console.log("access: uploaded media stays public on the preview addresses too");
+		console.log("access: uploaded media and plugins' public routes stay public, on the preview addresses too");
 	} else {
 		const media = await api("POST", "apps", { name: `${name}: media`, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
 		await api("POST", `apps/${media.id}/policies`, { name: "everyone", decision: "bypass", include: [{ everyone: {} }] });

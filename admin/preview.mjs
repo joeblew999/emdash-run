@@ -110,6 +110,20 @@ if (!config.previews) {
 	config = wranglerConfig(siteDir);
 }
 
+// A preview inherits nothing, so what the live site is given after the block was written has to be
+// given to the previews too: the plugin sandbox's binding (mise run plugin:sandbox), and vars.
+for (const key of ["worker_loaders", "vars"]) {
+	if (config[key] && !config.previews[key]) {
+		const text = readFileSync(file, "utf8");
+		const at = text.search(/"previews"\s*:\s*\{/);
+		const open = text.indexOf("{", at);
+		writeFileSync(file, `${text.slice(0, open + 1)}\n\t\t${JSON.stringify(key)}: ${JSON.stringify(config[key])},${text.slice(open + 1)}`);
+		console.log(`preview: the previews block now has "${key}", as the live site does`);
+		changed = true;
+		config = wranglerConfig(siteDir);
+	}
+}
+
 // 2. preview addresses on
 if (config.preview_urls !== true) {
 	let text = readFileSync(file, "utf8");

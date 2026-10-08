@@ -200,7 +200,7 @@ live_site() {
   ok live:preview   "--delete removes it; again: nothing to delete" 'mise run live:preview -- test --delete | grep -q "is deleted" && mise run live:preview -- test --delete | grep -q "nothing to delete"'
   ok live:logs      "shows a request to the deployed site"    '(for_a_while 20 mise run live:logs > tail.txt 2>&1 &); sleep 12; curl -s -o /dev/null "$LIVE_URL_/?from=test"; sleep 10; grep -q GET tail.txt'
   [ -n "${CI:-}" ] || ok signin:open "--live opens a signed-in window" 'SIGNIN_OPEN_SECONDS=3 mise run signin:open -- --live 2>&1 | grep -q "open: signed in"'
-  ok signin:access  "a visitor reaches uploaded media without signing in" 'test "$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL_/_emdash/api/media/file/none.png")" != 302 && test "$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL_/_emdash/admin")" = 302'
+  ok signin:access  "a visitor reaches uploaded media and plugins' public routes without signing in" 'test "$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL_/_emdash/api/media/file/none.png")" != 302 && test "$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL_/_emdash/api/plugins/none/info")" != 302 && test "$(curl -s -o /dev/null -w "%{http_code}" "$LIVE_URL_/_emdash/admin")" = 302'
   ok live:undo      "puts the previous version back: the change is gone" "mise run live:undo && (for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS \$LIVE_URL_/zz-shipped?t=\$i 2>/dev/null | grep -q $STAMP || exit 0; sleep 3; done; exit 1)"
   ok site:delete    "removes the local site folder"           'mise run --yes site:delete && test ! -e site'
   cd "$REPO"

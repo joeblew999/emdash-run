@@ -150,8 +150,13 @@ const whereIs = (u) => {
 	if (!["localhost", "127.0.0.1", "[::1]"].includes(hostname)) return `DEPLOYED site: ${origin}`;
 	return `this machine, ${port === (process.env.PREVIEW_PORT || "4322") ? "built site (site:preview)" : "dev site (site:start)"}: ${origin}`;
 };
+const { deployedAddress, previewOf } = await import("./site.mjs");
 const saved = (kind, url, siteDir) => {
-	const f = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", kind, `${savedName(url, siteDir)}.json`);
+	const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "emdash-run", kind);
+	let f = join(dir, `${savedName(url, siteDir)}.json`);
+	// a preview of the Worker is behind the live site's Access application: the same pass
+	const preview = kind === "access" && !existsSync(f) ? previewOf(url, siteDir) : null;
+	if (preview) f = join(dir, `${preview.liveHost}.json`);
 	return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
 };
 // What the site said a registry plugin declares, kept when plugin:install installs it: EmDash has
@@ -290,7 +295,9 @@ if (what === "leftover") {
 		console.log(`config: ${file}: import { ${makers[0]} } from "${pkg}"  and  plugins: [${makers[0]}()]  — a native plugin: it runs in the site itself, not in the sandbox`);
 	}
 } else if (what === "install") {
-	const [url, siteDir, ...refs] = args;
+	const [given, siteDir, ...refs] = args;
+	// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+	const url = flags.includes("--deployed") ? deployedAddress(given) : given;
 	const deployed = flags.includes("--deployed");
 	if (!url || !URL.canParse(url)) fail("This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
 	if (!refs.length) fail("Which plugin? mise run plugin:install -- <publisher>/<slug> — find one with: mise run plugin:search -- forms");
@@ -359,7 +366,9 @@ if (what === "leftover") {
 } else if (what === "remove") {
 	// The admin's Uninstall, for a registry plugin. Its stored data is kept, as the admin keeps it
 	// by default. One that is not installed is nothing to remove.
-	const [url, siteDir, ...refs] = args;
+	const [given, siteDir, ...refs] = args;
+	// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+	const url = flags.includes("--deployed") ? deployedAddress(given) : given;
 	const deployed = flags.includes("--deployed");
 	if (!url || !URL.canParse(url)) fail("This needs the address of the deployed site. Set LIVE_URL in the [env] block of mise.toml.");
 	if (!refs.length) fail("Which plugin? mise run plugin:remove -- <publisher>/<slug>");
@@ -388,7 +397,9 @@ if (what === "leftover") {
 } else if (what === "works") {
 	// "It works", as one line per check. This machine only: it builds the site. No name: every
 	// plugin the site has.
-	const [url, siteDir, ...names] = args;
+	const [given, siteDir, ...names] = args;
+	// LIVE_PREVIEW=<name>: the deployed site meant is that preview of it (site.mjs)
+	const url = flags.includes("--deployed") ? deployedAddress(given) : given;
 	console.error(`-> ${whereIs(url)}`);
 	const api = client(url, siteDir);
 	let failed = 0;
