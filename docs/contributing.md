@@ -50,9 +50,9 @@ A group is the unit. Each has a folder, `tests/<group>/`, with its steps (`steps
 
 **Short here, everything on CI.** A group's steps are everyday or long. Your own run makes the everyday ones. The long ones, in `t.long(…)` in the steps file, run with `mise run test:all`, which the `stages` workflow runs on a push to `main`, beside a fast job that runs `mise run test` as you do: push and keep working, look at the fast job in a few minutes and at the other when it ends.
 
-A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
+A group is **proven** when its everyday steps passed and nothing it depends on has changed since. A proven group is not run again; `mise run test:plugin -- --again` runs it anyway. To work on one task, `mise run test:site -- --only "site:check"` runs only the steps whose name has those words, and records nothing. What a group depends on is worked out from its steps, with mise's own reading of the tasks (`mise tasks ls --json`): the tasks they run, every hidden step and script those reach, the runner, and the site. `node tests/record.mjs --depends` prints it for each group, so you can see what a change will re-run. Change `scripts/live-preview.mjs` and only the `live` group has to run. On a CI runner nothing is skipped.
 
-The test is Node only: no shell and no Unix program, so the same files run on all three OSes.
+The test is Node only, and its steps are tests of Node's own runner: no shell and no Unix program, so the same files run on all three OSes.
 
 A failing step prints its last 30 lines of output. A step that has not ended after 5 minutes is stopped and fails, and the steps after it in the group are not run; `STEP_LIMIT=<seconds>` changes the limit.
 
@@ -89,10 +89,12 @@ The tests use it: each run works on a copy of it in a temporary folder, so the s
 | `scripts/site.mjs` | What makes tasks safe to run again; `site:ports`; starting one site at a time |
 | `scripts/wrangler-config.mjs`, `scripts/site-welcome.mjs` | A site's `wrangler.jsonc`, read in one place, and which deployed site `--live` means; closing EmDash's welcome dialog |
 | `tests/site/`, `tests/signin/`, `tests/plugin/`, `tests/live/` | One folder per group: `steps.mjs`, its steps, each naming the task it tests; `results.json`, what its last run showed |
-| `tests/run.mjs` | The runner: which groups, one test at a time, a clean environment, and what the steps are written with (`t.ok`, `t.no`, `t.long`, `t.mise`, `t.says`), listed at its top |
+| `tests/run.mjs` | Which groups run, one test at a time, and the record of each. The steps themselves are run by Node's own test runner (`node --test`), which times them, stops one that does not end and prints them |
+| `tests/lib/step.mjs`, `tests/lib/site.mjs` | What a steps file is written with (`step`, `refuses`, `long`, `setup`), and what a step does: run a task (`mise`, `attempt`), read a file, ask the site |
+| `tests/lib/results.mjs`, `depends.mjs`, `pages.mjs`, `reporter.mjs`, `groups.mjs` | The records; what a group depends on; the pages; the results handed from Node's runner to the record; the groups |
 | `tests/plugin/*.test.mjs`, `tests/plugin/fixtures/` | The unit tests of the plugin scripts' own functions: the edits to `astro.config.mjs` on fixture configs, and how `plugin:update` compares two releases. Every test and `mise run check` run them first |
 | `tsconfig.json`, `tests/package.json` | What `mise run types` checks, and the TypeScript it checks with |
-| `tests/record.mjs` | Writes each group's record, says whether a group is proven, and prints the pages ([What works](reference/status.md) and one per group) |
+| `tests/record.mjs` | The records from the command line: `--page`, `--coverage`, `--green`, `--depends` |
 | `.githooks/pre-commit` | The commit check: every task has a test step, the generated pages are fresh, `docs/` passes the lint |
 | `mise.toml`, `charter.toml` | This repo's own tasks (the rest are charter's, included from its `tasks/repo`), and the repo as charter keeps it |
 | `.github/workflows/` | Each runs one mise task, so what GitHub runs you can run. `stages.yml`: `mise run test` and `mise run test:all`, each on three OSes, on a push to `main` that changes what the test depends on, on a tag, or by hand. Nothing else is in the workflow: it installs mise and runs the task. `repo-check.yml`: charter's, `mise run repo:ci` on every push |

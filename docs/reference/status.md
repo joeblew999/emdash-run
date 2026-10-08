@@ -8,9 +8,9 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/record.mjs --page status` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-**132 steps pass, 0 fail, 1 of 36 tasks have no test.**
+**132 steps pass, 0 fail, 1 of 36 tasks have no recorded run on this machine.**
 
-The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test:all`, which is what CI runs on Linux, macOS and Windows. [How to help](../contributing.md) says more.
+The test is in four groups, named as the tasks are. Each runs alone, on a site of its own, and has a page of its own with every step. A group is **proven** when its everyday steps passed and nothing it depends on has changed since: its tasks, its scripts, its steps, the site. `mise run test` runs the everyday steps of the groups that are not proven, in about a minute a group. The long steps run with `mise run test:all`. The `stages` workflow runs both on Linux, macOS and Windows. [How to help](../contributing.md) says more.
 
 | Group | What it tests | Run it | Everyday steps | Long steps | Took | Last run | Commit |
 |---|---|---|---|---|---|---|---|
