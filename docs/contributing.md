@@ -32,6 +32,8 @@ Running a test turns on the commit check in your clone.
 | `mise run docs:review` | Have Claude bring `docs/` into line with [Writing docs](writing.md) |
 | `mise run repo` | REMOTE: keep the repo in shape from `charter.toml`: docs site, issue forms, labels, description, topics, GitHub Pages |
 | `mise run repo:check` | The same, changing nothing: fails if something drifted |
+| `mise run check` | Every check but the tests, in seconds: test steps for every task, a green record, `repo:ci`. What `release` runs before it tags |
+| `mise run release -- vX.Y.Z` | REMOTE: cut a release from this machine ([Releases](#releases)) |
 | `mise run repo:ci` | Everything the `repo-check` workflow runs, here: `docs:check`, `repo:check`, `upstream:status`. The workflow runs this one task, so a pass here is a pass on GitHub |
 | `mise run upstream:status` | Every upstream issue the code works around, and whether it is still open |
 | `mise run issue -- bug` | The body to fill in for an issue of one kind (`bug`, `feature`, `upstream`, `plan`), and the `gh` command that files it |
@@ -65,4 +67,11 @@ Each test runs as another developer would: a clean environment, an empty config 
 
 ## Releases
 
-A release is a version tag pushed to GitHub: the `stages` workflow then runs the full test on macOS, Linux and Windows. Before the tag: `mise run test:full` passes here, and `CHANGELOG.md` has the version's heading.
+```sh
+mise run test:full                       # everything, about 20 minutes: it must be green
+git add -A tests docs && git commit      # what it recorded, and the pages written from it
+mise run release -- vX.Y.Z -dry-run      # says what it would do
+mise run release -- vX.Y.Z               # check, tag, push, the GitHub Release with notes from the commits
+```
+
+`release` is charter's: it runs `mise run check` here and does not wait for GitHub. The `stages` workflow then runs the full test on macOS, Linux and Windows on the tag. What changed in a release is its notes on [the releases page](https://github.com/joeblew999/emdash-run/releases).

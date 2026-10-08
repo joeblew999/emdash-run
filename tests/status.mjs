@@ -5,6 +5,7 @@
 //   node tests/status.mjs <rows file> <tier> <tasks from> <commit> <took seconds>   record a run
 //   node tests/status.mjs --page status     print docs/reference/status.md, from its # title on
 //   node tests/status.mjs --coverage        every task has a test step, every step a task
+//   node tests/status.mjs --green           the record has no failure and no untested task
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -43,6 +44,20 @@ if (mode === "--coverage") {
 const results = existsSync(store) ? JSON.parse(readFileSync(store, "utf8")) : [];
 // a description can hold <name>, a | or two dashes: each would break a table on the docs site
 const cellText = (t) => t.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("--", "\\-\\-");
+
+// `--green`: what a release needs of the record — no failing step, no task without a test run.
+if (mode === "--green") {
+	const failing = results.filter((r) => r.result === "FAIL");
+	const untested = tasks().filter((t) => !results.some((r) => r.task === t.name));
+	for (const r of failing) console.error(`FAIL  ${r.task} (${r.where}): ${r.step}`);
+	if (untested.length) console.error(`no test run recorded for: ${untested.map((t) => t.name).join(", ")}`);
+	if (failing.length || untested.length) {
+		console.error("The record in tests/results.json is not green: mise run test:full");
+		process.exit(1);
+	}
+	console.log(`green: ${results.length} recorded steps pass, every task has a test run`);
+	process.exit(0);
+}
 
 if (mode === "--page" && arg === "status") {
 	const all = tasks();
