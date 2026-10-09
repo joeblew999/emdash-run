@@ -53,7 +53,9 @@ export const lockCovers = (packageJson, lock) => {
 /**
  * WHAT ANY SITE NEEDS before it is a site and not a template: asked of the built site, when it is
  * running and this machine is signed in to it. One line each, yes or no, and for a no where it is
- * set. Only looks.
+ * set. Only looks. (A seed file can carry the title, tagline, address and social links; a logo, a
+ * favicon and the picture for shared links name a file already in the site's library, which a seed
+ * file cannot — mise run site:demo sets the last two for the demo.)
  * @param {Ctx} ctx @returns {Promise<string[]>}
  */
 export const essentials = async ({ world, project }) => {
@@ -79,10 +81,10 @@ export const essentials = async ({ world, project }) => {
 	const needs = [
 		["a title and a tagline of its own", !!settings.title && settings.title !== "My Site" && !!settings.tagline, "settings.title, settings.tagline in the seed"],
 		["its public address", !!settings.url && !/localhost|127\.0\.0\.1/.test(settings.url), "settings.url in the seed (the deployed address)"],
-		["a logo", !!settings.logo, "settings.logo in the seed"],
-		["a favicon", !!settings.favicon, "settings.favicon in the seed"],
+		["a logo", !!settings.logo, "the admin: Settings, General (a PNG or JPEG: EmDash does not take an SVG)"],
+		["a favicon", !!settings.favicon, "the admin: Settings, General"],
 		["social links", Object.keys(settings.social ?? {}).length > 0, "settings.social in the seed"],
-		["a default picture for links shared elsewhere", !!settings.seo?.defaultOgImage, "settings.seo.defaultOgImage in the seed"],
+		["a default picture for links shared elsewhere", !!settings.seo?.defaultOgImage, "the admin: Settings, SEO"],
 		["a person who can sign in (not only the machine's account)", people.length > 0, "ADMIN_EMAIL in mise.local.toml, then mise run signin:token; or an invitation from the admin"],
 		["a way to send email (invitations, comment and form notices)", !!email?.available, "an email provider in astro.config.mjs"],
 		["backups switched on", !!backups?.settings?.enabled, "the admin: Settings, Backups"],

@@ -119,7 +119,7 @@ test("what any site needs: asked of the built site when this machine is signed i
 	};
 	const bare = fakeWorld({ files: { ...signedIn }, answers: answers({ title: "My Site", tagline: "" }) });
 	const lines = await essentials({ world: bare.world, project, flags: {}, args: [], argv: [], env: {}, did: [], standsOn: false });
-	assert.ok(lines.includes("no   a logo   — set in: settings.logo in the seed"));
+	assert.ok(lines.includes("no   a logo   — set in: the admin: Settings, General (a PNG or JPEG: EmDash does not take an SVG)"));
 	assert.ok(lines.includes("no   a person who can sign in (not only the machine's account)   — set in: ADMIN_EMAIL in mise.local.toml, then mise run signin:token; or an invitation from the admin"));
 	assert.ok(lines.includes("yes  backups switched on"));
 	const set = fakeWorld({ files: { ...signedIn }, answers: answers({ title: "Acme", tagline: "Things", logo: { mediaId: "m" }, url: "https://acme.example" }) });
