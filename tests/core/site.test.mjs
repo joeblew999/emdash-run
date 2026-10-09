@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { reach } from "../../scripts/core/graph.mjs";
-import { lockCovers, site } from "../../scripts/core/site.mjs";
+import { essentials, lockCovers, site } from "../../scripts/core/site.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
 
 const aSite = { "/p/site/package.json": "{}" };
@@ -108,4 +108,23 @@ test("site:status only looks: it says each state and the task that reaches it, a
 	assert.ok(fake.said.includes("yes  its packages"));
 	assert.ok(fake.said.includes("no   the dev site running   — to get there: mise run site:start"));
 	assert.ok(fake.said.includes("no   this machine signed in to the built site   — to get there: mise run signin:token"));
+});
+
+test("what any site needs: asked of the built site when this machine is signed in, a yes or a no with where it is set", async () => {
+	const signedIn = { ...aSite, "/config/emdash-run/tokens/localhost_4322_abc.json": '{"token":"t"}' };
+	/** @param {any} settings */
+	const answers = (settings) => (/** @type {string} */ url) => {
+		const data = url.endsWith("/settings") ? settings : url.endsWith("/admin/users") ? { items: [{ email: "agent@emdash.local" }] } : url.endsWith("/settings/email") ? { available: false } : url.endsWith("/settings/backups") ? { settings: { enabled: true } } : { items: [] };
+		return { status: 200, text: JSON.stringify({ data }) };
+	};
+	const bare = fakeWorld({ files: { ...signedIn }, answers: answers({ title: "My Site", tagline: "" }) });
+	const lines = await essentials({ world: bare.world, project, flags: {}, args: [], argv: [], env: {}, did: [], standsOn: false });
+	assert.ok(lines.includes("no   a logo   — set in: settings.logo in the seed"));
+	assert.ok(lines.includes("no   a person who can sign in (not only the machine's account)   — set in: ADMIN_EMAIL in mise.local.toml, then mise run signin:token; or an invitation from the admin"));
+	assert.ok(lines.includes("yes  backups switched on"));
+	const set = fakeWorld({ files: { ...signedIn }, answers: answers({ title: "Acme", tagline: "Things", logo: { mediaId: "m" }, url: "https://acme.example" }) });
+	const after = await essentials({ world: set.world, project, flags: {}, args: [], argv: [], env: {}, did: [], standsOn: false });
+	assert.ok(after.includes("yes  a logo") && after.includes("yes  its public address") && after.includes("yes  a title and a tagline of its own"));
+	// not signed in: nothing is asked, and nothing is claimed
+	assert.deepEqual(await essentials({ world: fakeWorld({ files: { ...aSite } }).world, project, flags: {}, args: [], argv: [], env: {}, did: [], standsOn: false }), []);
 });

@@ -20,6 +20,13 @@ const savedTokens = () => {
 // a token: the same steps the live group runs on the deployed site
 tokenSteps({ live: false });
 
+step("signin:mcp", "prints how an agent connects to the site's MCP server, and never the token", async () => {
+	const out = await mise("signin:mcp");
+	says(out, "/_emdash/api/mcp");
+	says(out, "Bearer ${EMDASH_MCP_TOKEN}");
+	check(!/ec_pat_[A-Za-z0-9_-]{20,}/.test(out), "no token in what it prints");
+});
+
 long(() => {
 	step("signin:token", "starts the built site when it is stopped", async () => {
 		await mise("site:stop");

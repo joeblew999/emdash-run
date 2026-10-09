@@ -42,6 +42,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin:publish`](#pluginpublish) | Publish a plugin to EmDash's registry. Asks first |
 | [`plugin`](#plugin) | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; |
 | [`signin:token`](#signintoken) | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) |
+| [`signin:mcp`](#signinmcp) | How an agent connects to the site's own MCP server: EmDash has one, with tools for content, schema, media, menus, taxonomies and more, and it takes the token signin:token saves. Prints the address and the settings for an agent's .mcp.json, with the token read from the environment, never printed. This machine's built site; add \-\- \-\-live for the deployed one |
 | [`signin:access`](#signinaccess) | Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox |
 | [`signin:passkey`](#signinpasskey) | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
 | [`signin:open`](#signinopen) | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
@@ -278,6 +279,15 @@ Anything else in EmDash's plugin CLI. mise run plugin -- info &lt;publisher> &lt
 Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add -- --live for the deployed one (Cloudflare sites only)
 
 - **Usage:** `signin:token [--live]`
+
+**Flags**
+- **`--live`** — The deployed site at LIVE_URL instead of the local production build
+
+### `signin:mcp`
+
+How an agent connects to the site's own MCP server: EmDash has one, with tools for content, schema, media, menus, taxonomies and more, and it takes the token signin:token saves. Prints the address and the settings for an agent's .mcp.json, with the token read from the environment, never printed. This machine's built site; add -- --live for the deployed one
+
+- **Usage:** `signin:mcp [--live]`
 
 **Flags**
 - **`--live`** — The deployed site at LIVE_URL instead of the local production build

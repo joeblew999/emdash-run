@@ -204,6 +204,11 @@ description = "Sign a machine in with no browser — the everyday way, for the C
 usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:token --live={{ usage.live | default(value=false) }}"
 
+["signin:mcp"]
+description = "How an agent connects to the site's own MCP server: EmDash has one, with tools for content, schema, media, menus, taxonomies and more, and it takes the token signin:token saves. Prints the address and the settings for an agent's .mcp.json, with the token read from the environment, never printed. This machine's built site; add -- --live for the deployed one"
+usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local production build"'
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:mcp --live={{ usage.live | default(value=false) }}"
+
 ["signin:access"]
 description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:access"

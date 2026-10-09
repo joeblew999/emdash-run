@@ -50,6 +50,47 @@ export const lockCovers = (packageJson, lock) => {
 	return Object.entries({ ...pkg.dependencies, ...pkg.devDependencies }).every(([name, spec]) => new RegExp(`^\\s+'?${escaped(name)}'?:\\r?\\n\\s+specifier: '?${escaped(String(spec))}'?\\s*$`, "m").test(lock));
 };
 
+/**
+ * WHAT ANY SITE NEEDS before it is a site and not a template: asked of the built site, when it is
+ * running and this machine is signed in to it. One line each, yes or no, and for a no where it is
+ * set. Only looks.
+ * @param {Ctx} ctx @returns {Promise<string[]>}
+ */
+export const essentials = async ({ world, project }) => {
+	const tokens = join(world.config, "emdash-run", "tokens");
+	const file = world.list(tokens).find((f) => f.startsWith(`localhost_${project.builtPort}_`));
+	if (!file) return [];
+	const token = JSON.parse(world.read(join(tokens, file)) || "{}").token;
+	/** What the site's API answers at a path: its `data`, or null. @param {string} path @returns {Promise<any>} */
+	const get = async (path) => {
+		const a = await world.ask(`${project.built}/_emdash/api/${path}`, { headers: { Authorization: `Bearer ${token}` }, seconds: 20 });
+		try {
+			return a.status === 200 ? JSON.parse(a.text).data : null;
+		} catch {
+			return null;
+		}
+	};
+	const settings = await get("settings");
+	if (!settings) return [];
+	const [users, email, backups, plugins] = await Promise.all([get("admin/users"), get("settings/email"), get("settings/backups"), get("admin/plugins")]);
+	// a person: an administrator who is not one the sign-in tasks made for a machine
+	const people = (users?.items ?? []).filter((/** @type {any} */ u) => !String(u.email).endsWith("@emdash.local") && !u.disabled);
+	/** @type {[string, boolean, string][]} */
+	const needs = [
+		["a title and a tagline of its own", !!settings.title && settings.title !== "My Site" && !!settings.tagline, "settings.title, settings.tagline in the seed"],
+		["its public address", !!settings.url && !/localhost|127\.0\.0\.1/.test(settings.url), "settings.url in the seed (the deployed address)"],
+		["a logo", !!settings.logo, "settings.logo in the seed"],
+		["a favicon", !!settings.favicon, "settings.favicon in the seed"],
+		["social links", Object.keys(settings.social ?? {}).length > 0, "settings.social in the seed"],
+		["a default picture for links shared elsewhere", !!settings.seo?.defaultOgImage, "settings.seo.defaultOgImage in the seed"],
+		["a person who can sign in (not only the machine's account)", people.length > 0, "ADMIN_EMAIL in mise.local.toml, then mise run signin:token; or an invitation from the admin"],
+		["a way to send email (invitations, comment and form notices)", !!email?.available, "an email provider in astro.config.mjs"],
+		["backups switched on", !!backups?.settings?.enabled, "the admin: Settings, Backups"],
+		["plugins", (plugins?.items ?? []).length > 0, "mise run plugin:favourites"],
+	];
+	return ["what any site needs, on the built site:", ...needs.map(([what, is, where]) => `${is ? "yes" : "no "}  ${what}${is ? "" : `   — set in: ${where}`}`)];
+};
+
 /** @type {Graph} */
 export const site = {
 	"site:exists": {
@@ -194,6 +235,7 @@ export const site = {
 			];
 			for (const [what, is, how] of states) world.say(`${(await is) ? "yes" : "no "}  ${what}${(await is) ? "" : `   — to get there: ${how}`}`);
 			if (!project.live) world.say("     (no deployed site is named: LIVE_URL in the [env] block of mise.toml)");
+			for (const line of await essentials(ctx)) world.say(line);
 		},
 	},
 	// The task site:stop: both sites stopped, and a Node site's sandbox process with them. EmDash

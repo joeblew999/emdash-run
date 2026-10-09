@@ -50,6 +50,23 @@ const siteBin = (/** @type {Ctx} */ { world, project }, /** @type {string} */ pk
 
 /** @type {Graph} */
 export const signin = {
+	// The task signin:mcp: how an agent connects to the site's own MCP server (EmDash has one, with
+	// tools for content, schema, media, menus, taxonomies and more). It answers the token signin:token
+	// saved, so this stands on being signed in. The token is never printed: the settings name the
+	// file it is in.
+	"signin:mcp": {
+		needs: () => ["signin:token"],
+		work: ({ world, project, flags }) => {
+			const url = flags.live ? deployedAddress(project.live) : `http://localhost:${project.builtPort}`;
+			const { origin } = new URL(url);
+			const file = join(world.config, "emdash-run", "tokens", `${savedName(url, project.site)}.json`);
+			world.say(`the site's MCP server: ${origin}/_emdash/api/mcp`);
+			world.say(`it takes the header  Authorization: Bearer <token>  — the token is the "token" in ${file}`);
+			world.say("for an agent that reads .mcp.json (keep the token out of the file: it reads it from the environment):");
+			console.log(JSON.stringify({ mcpServers: { emdash: { type: "http", url: `${origin}/_emdash/api/mcp`, headers: { Authorization: "Bearer ${EMDASH_MCP_TOKEN}" } } } }, null, 2));
+			world.say(`and in the shell that starts the agent:  export EMDASH_MCP_TOKEN="$(node -p 'require(process.argv[1]).token' '${file}')"`);
+		},
+	},
 	// The deployed site answers. Only reported: nothing here can bring a deployed site up.
 	"live:answers": {
 		needs: () => ["live:set", "site:exists"],
