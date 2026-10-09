@@ -77,7 +77,7 @@ export const registrySteps = ({ live }) => {
 		refuses("plugin:update", `${on}: an older release is refused`, () => mise("plugin:update", `${bulletin}@0.1.0`, "--yes", ...flag));
 
 		// Everything the site now has — on this machine only. On a deployed site, straight after these
-		// installs, plugin:works with no name failed in four runs out of five, a different way each
+		// installs, plugin:works with no name failed in three runs out of four, a different way each
 		// time, none of it this repo's: a plugin "active, NOT in the admin's manifest"; a plugin's admin
 		// page refused with 400 "Too many subrequests by single Worker invocation" (EmDash's sandbox
 		// gives a plugin 10 a call, and Cloudflare holds it to that only when deployed); 404 "Plugin
