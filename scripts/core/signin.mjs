@@ -130,7 +130,7 @@ export const signin = {
 			const file = join(world.config, "emdash-run", "tokens", `${savedName(url, project.site)}.json`);
 			world.keep(file, JSON.stringify({ url: origin, token: minted.raw }));
 
-			// Deployed sites only: the token, and the Cloudflare Access pass if this machine has one, also
+			// OPTION A (scripts/emdash.mjs has option B). Deployed sites only: the token, and the Cloudflare Access pass if this machine has one, also
 			// go into EmDash's OWN sign-in store, as `emdash login` would put them — `emdash whoami` takes
 			// extra headers only from there. Not for this machine's sites: those are stored per project
 			// folder, and a stale one breaks the dev CLI when the local database is emptied.

@@ -11,7 +11,7 @@ The tasks are written for macOS, Linux and Windows. What has been shown to work,
 
 - **macOS:** the run in [What the tests showed](reference/tests.md), on a developer's machine. Each block there says its level; a step marked as skipped was not run.
 - **Linux and Windows:** only what the `stages` workflow on GitHub has run. Of the test as it is now that is the smoke level, which passes on Linux, macOS and Windows: the unit tests, and a project given its ports whose dev site starts, answers and signs a developer in.
-- **Windows, beyond that:** the fast and all levels have not passed there. The last run of every step on Windows failed ([issue 6](https://github.com/joeblew999/emdash-run/issues/6), open).
+- **Windows, beyond that:** the fast and all levels have not passed there. In the last run of every step on Windows the steps on the dev site passed, and the first step that builds the site and starts the built one did not end in five minutes ([issue 6](https://github.com/joeblew999/emdash-run/issues/6), open).
 
 ## 1. Include the tasks
 

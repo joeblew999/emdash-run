@@ -61,7 +61,16 @@ export const install = async (/** @type {string[]} */ args, /** @type {string[]}
 		}
 		// 1. what the admin's consent dialog shows: the site reads the publisher's signed records
 		// a release asked for by version is the one verified and installed, newest or not
-		const verify = await api("POST", "/_emdash/api/admin/plugins/registry/verify", { did: pkg.did, slug: w.slug, ...(w.version ? { version: w.version } : {}) });
+		// The site fetches them from the publisher's own server (their PDS), which is somebody else's
+		// and now and then does not answer: "The direct PDS request failed". That refusal alone is
+		// asked again, twice, a few seconds apart, and said.
+		const body = { did: pkg.did, slug: w.slug, ...(w.version ? { version: w.version } : {}) };
+		let verify = await api("POST", "/_emdash/api/admin/plugins/registry/verify", body);
+		for (let again = 0; again < 2 && !verify.ok && verify.error?.code === "RECORD_VERIFICATION_FAILED" && /PDS request failed/.test(verify.error.message ?? ""); again++) {
+			console.log(`     ${w.name}: the publisher's server did not answer the site (${said(verify)}): asking again`);
+			await new Promise((r) => setTimeout(r, 4000));
+			verify = await api("POST", "/_emdash/api/admin/plugins/registry/verify", body);
+		}
 		if (!verify.ok) {
 			console.log(`FAIL ${w.name}: the site would not verify it — ${said(verify)}`);
 			failed++;

@@ -41,9 +41,7 @@ mise run plan -- signin:token --live      # what a task would stand on there; no
 
 ## Three tasks never act on a deployed site
 
-`site:seed`, `site:demo` and `plugin:demo` make things on this machine's built site only. Not one of them has a `--live` flag, and only `plugin:demo` refuses one.
-
-Do not give `--live` to `site:seed` or `site:demo`: it is not refused. `mise run plan -- site:demo --live` shows what they would then stand on. With `LIVE_URL` set, `signin:token` is reached for the deployed site first, so this machine is signed in to it if it is not already; the work is then tried on this machine's built site all the same.
+`site:seed`, `site:demo` and `plugin:demo` make things on this machine's built site only. Not one of them has a `--live` flag, and each refuses one: asked with `--live` it stops at its first state, before anything is signed in to the deployed site, and does nothing.
 
 ## A preview of the deployed site
 

@@ -35,8 +35,10 @@ step("site:status", "says where the site is, state by state, and for what is not
 	check(/(yes {2}the dev site running|no {3}the dev site running {3}— to get there: mise run site:start)/.test(out), "the dev site: yes, or no with the task that starts it");
 });
 step("plan", "prints the states a task stands on, in order, and starts nothing", async () => {
-	const out = await mise("plan", "signin:token");
-	check(out.indexOf("site:built") < out.indexOf("site:built-running") && out.indexOf("site:built-running") < out.indexOf("signin:token"), "site:built, then site:built-running, then signin:token");
+	// (the lines that are a state's name and nothing else: mise prints the command it runs first, and
+	// that line has the task's name in it too)
+	const states = (await mise("plan", "signin:token")).split("\n").map((l) => l.trim()).filter((l) => /^[a-z]+:[a-z-]+$/.test(l));
+	check(states.join(" ").endsWith("site:built site:built-running signin:token"), `site:built, then site:built-running, then signin:token — it printed: ${states.join(" ")}`);
 	says(await mise("plan", "signin:token", "--live"), "live:answers");
 });
 

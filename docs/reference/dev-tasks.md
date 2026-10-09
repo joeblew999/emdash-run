@@ -16,7 +16,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 |---|---|
 | [`dev:types`](#devtypes) | Type-check tests/ and scripts/ (tsconfig.json) |
 | [`dev:api-types`](#devapi-types) | Write scripts/core/emdash-api.d.ts, the types of every request EmDash's HTTP API has, from scripts/core/emdash-openapi.json (with openapi-typescript). The requests the tasks make themselves are checked against it by dev:types: a path, a method or a body that EmDash does not have is a type error. The JSON file is a copy of EmDash's own list, GET /_emdash/api/openapi.json of a built site this machine is signed in to, and its first key says which EmDash it is from. To move to a newer EmDash: save that site's list over the file, keep the first key, run this, then dev:types — which says which of the tasks' requests no longer fit |
-| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name) |
+| [`dev:test`](#devtest) | The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts and answers. fast, the default: the everyday steps. all: every step, the long ones too. smoke and fast use one test site that is kept, and kept running, from one run to the next; all starts from nothing. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name) |
 | [`dev:test:unit`](#devtestunit) | The unit tests, in a second: the graph of states and each state with a made-up outside, the edits to a site's config, and that every task has a test step |
 | [`dev:test:site`](#devtestsite) | The site group: making, running, checking and deleting a site, on a copy of site/ |
 | [`dev:test:signin`](#devtestsignin) | The signin group: the CLI and a browser window as an administrator of the built site |
@@ -26,7 +26,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`check`](#check) | What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them) |
 | [`dev:src`](#devsrc) | EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest |
 | [`dev:commit`](#devcommit) | What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check) |
-| [`dev:hooks`](#devhooks) | Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit |
+| [`dev:hooks`](#devhooks) | Turn on the commit check in this clone: every commit runs dev:commit |
 
 ## From `joeblew999/charter//tasks/repo`
 
@@ -61,7 +61,7 @@ Write scripts/core/emdash-api.d.ts, the types of every request EmDash's HTTP API
 
 ### `dev:test`
 
-The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)
+The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts and answers. fast, the default: the everyday steps. all: every step, the long ones too. smoke and fast use one test site that is kept, and kept running, from one run to the next; all starts from nothing. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)
 
 - **Usage:** `dev:test [--level <level>] [--node]`
 
@@ -174,7 +174,7 @@ What the commit check runs, in seconds: the types (dev:types), the unit tests (e
 
 - **Usage:** `dev:hooks`
 
-Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit
+Turn on the commit check in this clone: every commit runs dev:commit
 
 ### `docs:setup`
 

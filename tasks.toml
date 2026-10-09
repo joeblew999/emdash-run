@@ -50,7 +50,7 @@ description = "Follow the dev site's log"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:logs"
 
 ["site:check"]
-description = "Before a commit: seed valid, types check, site builds"
+description = "Before a commit: seed valid, types check, site builds. A site with no typescript gets typescript@6 added to its devDependencies first, and says so: without it astro check asks to install it, checks nothing and ends as a success"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" site:check"
 
 ["site:preview"]
@@ -99,7 +99,7 @@ run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" content:pull"
 # machine's built site and no other.
 
 ["plugin:new"]
-description = "Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new -- <name>. Run again: rebuilds it. Stops the site: start it again afterwards"
+description = "Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new -- <name>. Run again: rebuilds it"
 usage = 'arg "<name>" help="The slug of the plugin, e.g. save-log"'
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:new {{ usage.name }}"
 
@@ -109,7 +109,7 @@ usage = 'arg "<name>" help="The folder name of the plugin under plugins/"'
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:check {{ usage.name }}"
 
 ["plugin:add"]
-description = "Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add -- <package>. Run again: nothing changes. Stops the site: start it again afterwards"
+description = "Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add -- <package>. Run again: nothing changes"
 usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:add {{ usage.package }}"
 
@@ -203,8 +203,8 @@ run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin"
 # To try the other one, start from an empty database (site:reset locally).
 #
 # Once signed in, `mise run emdash -- <command> --url <site>` adds what this machine saved for
-# that site. `whoami` behind Cloudflare Access is handled two ways (see scripts/signin-token.mjs, option A,
-# and scripts/emdash.mjs, option B).
+# that site. `whoami` behind Cloudflare Access is handled two ways (option A: the task signin:token puts the
+# token and the pass into EmDash's own sign-in store, scripts/core/signin.mjs; option B: scripts/emdash.mjs).
 
 ["signin:token"]
 description = "Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add -- --live for the deployed one (Cloudflare sites only)"
@@ -233,7 +233,7 @@ run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:open --live=
 # ═══ THE DEPLOYED SITE ═══════════════════════════════════════════════════════════════════════
 
 ["live:ship"]
-description = "Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's"
+description = "Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's content to it"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" live:ship"
 
 ["live:preview"]

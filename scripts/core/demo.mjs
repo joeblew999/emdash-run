@@ -355,7 +355,7 @@ export const demo = {
 	// The task site:demo. It stands on this machine being signed in to the built site, which stands
 	// on that site being built and running: the graph sees to all three.
 	"site:demo": {
-		needs: () => ["signin:token"],
+		needs: () => ["site:local-only", "signin:token"],
 		work: async (ctx) => {
 			const { world, project } = ctx;
 			const api = await connect(ctx);

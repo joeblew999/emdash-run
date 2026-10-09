@@ -513,7 +513,7 @@ export const seed = {
 	// The task site:seed. It stands on this machine being signed in to the built site, which stands
 	// on that site being built and running: the graph sees to all three.
 	"site:seed": {
-		needs: () => ["signin:token"],
+		needs: () => ["site:local-only", "signin:token"],
 		work: async (ctx) => {
 			const { world, project, args } = ctx;
 			const api = await connect(ctx);

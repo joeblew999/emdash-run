@@ -12,12 +12,13 @@ import { strangers } from "../../scripts/core/seed.mjs";
 import { savedName } from "../../scripts/core/signin.mjs";
 import { TOKEN, emdash } from "./fake-emdash.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
+import { site } from "../../scripts/core/site.mjs";
 
 // The demo's seed file as it ships, where the task looks for it: beside emdash-run's scripts.
 const shipped = readFileSync(new URL("../../seeds/demo.json", import.meta.url), "utf8");
 // site:demo by itself: that this machine is signed in to a built site that is running is the
 // graph's work, and has its own tests (signin.test.mjs). Here it is so: the token is saved.
-const alone = { ...demo, "signin:token": { work: () => {} } };
+const alone = { ...demo, "site:local-only": site["site:local-only"], "signin:token": { work: () => {} } };
 const files = { "/emdash-run/seeds/demo.json": shipped, [`/config/emdash-run/tokens/${savedName("http://localhost:4322", "/p/site")}.json`]: JSON.stringify({ url: "http://localhost:4322", token: TOKEN }) };
 const photograph = () => ({ status: 200, type: "image/jpeg", bytes: new Uint8Array([1, 2, 3]) });
 /** @param {ReturnType<typeof emdash>} site @param {(url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer> }} [downloads] where its photographs come from: by default, they are fetched */
@@ -25,7 +26,7 @@ const run = async (site, downloads = photograph) => {
 	const fake = fakeWorld({ files: { ...files }, answers: site.answers, packages: site.packages, downloads });
 	const failed = await reach(alone, "site:demo", { world: fake.world, project, flags: {} }).then(() => "", (e) => String(e.message));
 	// (what the task said: not the graph's own line of how long each state took)
-	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed, ran: fake.ran };
+	return { said: fake.said.filter((l) => !l.startsWith("done in ") && !l.startsWith("already so (")), failed, ran: fake.ran };
 };
 
 // What the seed file asks of a site just made from the starter template, section by section.
@@ -68,6 +69,8 @@ const lines = (said) => said.filter((l) => /^(ok {3}|FAIL )/.test(l) && features
 
 test("it stands on this machine being signed in to the built site, running", () => {
 	assert.deepEqual(plan(graph, "site:demo").slice(-3), ["site:built-running", "signin:token", "site:demo"]);
+	// asked for the deployed site it stops at the first state, before anything signs in to that site
+	assert.equal(plan(graph, "site:demo", { live: true })[0], "site:local-only");
 });
 
 test("the seed file that ships is EmDash's seed format, has every section, and has what the list in code stands on", () => {

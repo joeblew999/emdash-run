@@ -1,17 +1,23 @@
-2026-10-09 02:38 UTC, commit d1c980c, level fast, macOS: passed in 108 s
+2026-10-09 03:25 UTC, commit 8c6521d, level all, macOS: passed in 240 s
 
-✔ signin:token — this machine's built site: the CLI is an administrator of it (2710.858458ms)
-✔ signin:token — this machine's built site, run again: still an administrator (2079.121625ms)
-✔ emdash — this machine's built site: --preview reads and writes it (2408.560042ms)
-✔ signin:mcp — prints how an agent connects to the site's MCP server, and never the token (782.543125ms)
-﹣ signin:token — starts the built site when it is stopped (2.058125ms) # SKIP
-﹣ signin:open — opens a signed-in window (token) (0.143708ms) # SKIP
-﹣ signin:passkey — completes the EmDash wizard on a fresh database (0.381ms) # SKIP
-﹣ signin:open — opens a signed-in window (passkey) (0.249375ms) # SKIP
-﹣ signin:token — the saved token goes when the local database does (0.237ms) # SKIP
-﹣ site:admin — a fresh built site, signed in, in one go (0.555708ms) # SKIP
+signin:token: 35.7 s — site:built 14.3 s, site:built-running 19.7 s, signin:token 1.2 s
+✔ signin:token — this machine's built site: the CLI is an administrator of it (56677.447625ms)
+✔ signin:token — this machine's built site, run again: still an administrator (1451.909375ms)
+✔ emdash — this machine's built site: --preview reads and writes it (1007.56175ms)
+✔ signin:mcp — prints how an agent connects to the site's MCP server, and never the token (181.298042ms)
+      signin:token: 7.2 s — site:built-running 6.2 s
+✔ signin:token — starts the built site when it is stopped (8945.863125ms)
+      signin:open: 12.6 s — signin:open 12.4 s
+✔ signin:open — opens a signed-in window (token) (12585.030917ms)
+      signin:passkey: 67.5 s — site:built-running 5.3 s, signin:passkey 15.4 s
+✔ signin:passkey — completes the EmDash wizard on a fresh database (73233.86375ms)
+      signin:open: 8.2 s — signin:open 8.0 s
+✔ signin:open — opens a signed-in window (passkey) (8169.728584ms)
+✔ signin:token — the saved token goes when the local database does (2148.119459ms)
+      site:admin: 67.3 s — site:built-running 4.6 s, site:admin 14.3 s
+✔ site:admin — a fresh built site, signed in, in one go (67848.18075ms)
 ℹ tests 10
-ℹ pass 4
+ℹ pass 10
 ℹ fail 0
-ℹ skipped 6
-ℹ duration_ms 108256.801417
+ℹ skipped 0
+ℹ duration_ms 240260.526

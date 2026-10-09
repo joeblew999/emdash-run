@@ -11,10 +11,11 @@ import { seed, strangers } from "../../scripts/core/seed.mjs";
 import { savedName } from "../../scripts/core/signin.mjs";
 import { TOKEN, emdash } from "./fake-emdash.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
+import { site } from "../../scripts/core/site.mjs";
 
 // site:seed by itself: that this machine is signed in to a built site that is running is the
 // graph's work, and has its own tests (signin.test.mjs). Here it is so: the token is saved.
-const alone = { ...seed, "signin:token": { work: () => {} } };
+const alone = { ...seed, "site:local-only": site["site:local-only"], "signin:token": { work: () => {} } };
 const saved = { [`/config/emdash-run/tokens/${savedName("http://localhost:4322", "/p/site")}.json`]: JSON.stringify({ url: "http://localhost:4322", token: TOKEN }) };
 /** A seed file where a site has its own. @param {unknown} content */
 const own = (content) => ({ "/p/site/seed/seed.json": JSON.stringify(content) });
@@ -23,7 +24,7 @@ const run = async (site, files, more = {}) => {
 	const fake = fakeWorld({ files: { ...saved, ...files }, answers: site.answers, packages: site.packages, downloads: more.downloads });
 	const failed = await reach(alone, "site:seed", { world: fake.world, project, flags: {}, args: more.args ?? [] }).then(() => "", (e) => String(e.message));
 	// (what the task said: not the graph's own line of how long each state took)
-	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed, ran: fake.ran };
+	return { said: fake.said.filter((l) => !l.startsWith("done in ") && !l.startsWith("already so (")), failed, ran: fake.ran };
 };
 
 // A seed with something in every section site:seed applies, for a site that has posts, pages, a
@@ -55,6 +56,8 @@ const FULL = {
 
 test("it stands on this machine being signed in to the built site, running", () => {
 	assert.deepEqual(plan(graph, "site:seed").slice(-3), ["site:built-running", "signin:token", "site:seed"]);
+	// asked for the deployed site it stops at the first state, before anything signs in to that site
+	assert.equal(plan(graph, "site:seed", { live: true })[0], "site:local-only");
 });
 
 test("each section is applied, in EmDash's order: what is not there is made, what is there is left alone", async () => {

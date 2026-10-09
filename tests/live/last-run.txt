@@ -1,0 +1,81 @@
+2026-10-09 03:17 UTC, commit 8c6521d, level all, macOS: passed in 494 s
+
+site:new: 21.8 s — site:new 21.5 s
+      site:start: 37.5 s — site:dev-running 36.6 s
+      site:stop: 2.1 s — site:stop 1.9 s
+✔ site:new — makes the site that will be deployed (61547.042ms)
+✔ signin:access — Cloudflare Access is in front of the admin (1731.923875ms)
+✔ signin:access — uploaded media stays public; the team's domain is printed before any deploy (68.09825ms)
+      site:start: 14.1 s — site:dev-running 13.5 s
+✔ emdash — a site set to Cloudflare Access: the dev site starts and the CLI works on it (16194.895958ms)
+✔ plugin:sandbox — the site that will be deployed can run sandboxed plugins (205.757875ms)
+      live:ship: 35.8 s — site:typescript 2.5 s, site:built 6.7 s, site:check 13.6 s, live:check 17.1 s, live:ship 35.6 s
+✔ live:ship — deploys; the site answers with the change (35879.905167ms)
+✔ signin:access — run again: changes nothing (1476.945375ms)
+      signin:token: 2.2 s — signin:token 1.8 s
+✔ signin:token — the deployed site: the CLI is an administrator of it (2781.144375ms)
+✔ signin:token — the deployed site, run again: still an administrator (2520.952916ms)
+      emdash: 6.3 s — emdash 6.2 s
+✔ emdash — the deployed site: --live reads and writes it (6994.457167ms)
+      plugin:remove: 7.1 s — plugin:remove 6.8 s
+✔ plugin:install — the deployed site: what a run stopped half way left installed is taken out first (7084.827042ms)
+      plugin:install: 11.0 s — plugin:install 10.7 s
+✔ plugin:install — the deployed site: installs a registry plugin with no clicking (11009.589542ms)
+✔ plugin:install — the deployed site, run again: it is already installed (1882.064ms)
+      plugin:install: 3.9 s
+✔ plugin:install — the deployed site: a plugin that can change things or reach outside is not installed without a yes (must refuse) (3892.362583ms)
+      plugin:works: 14.2 s — plugin:works 14.0 s
+✔ plugin:works — the deployed site: the registry plugin loads and answers (14240.578375ms)
+      plugin:install: 2.6 s
+✔ plugin:install — the deployed site: a release other than the one asked for is not installed (must refuse) (2615.352916ms)
+      plugin:install: 2.3 s
+✔ plugin:install — the deployed site: a plugin the registry does not have: says so and fails (must refuse) (2337.29125ms)
+✔ plugin:works — the deployed site: a plugin the site does not have fails (must refuse) (1459.0315ms)
+      plugin:remove: 3.8 s — plugin:remove 3.5 s
+✔ plugin:remove — the deployed site: removes a registry plugin (3842.6435ms)
+✔ plugin:remove — the deployed site, run again: nothing to remove (1613.052833ms)
+      plugin:favourites: 41.8 s — plugin:favourites 41.5 s
+✔ plugin:favourites — the deployed site: installs the favourites in one go (41787.435166ms)
+      plugin:favourites: 6.0 s — live:answers 1.1 s, plugin:favourites 4.7 s
+✔ plugin:favourites — the deployed site, run again: all already installed (6042.278625ms)
+      plugin:favourites: 9.7 s — live:answers 3.1 s, plugin:favourites 6.4 s
+✔ plugin:favourites — the deployed site: PLUGINS in the project chooses the list (9715.054ms)
+✔ plugin:update — the deployed site: a plugin that is not installed: says so and fails (must refuse) (1736.985583ms)
+      plugin:install: 11.1 s — plugin:install 10.6 s
+✔ plugin:install — the deployed site: an older release, asked for by version, is the one installed (11103.285833ms)
+✔ plugin:update — the deployed site: no release named: says which the site has and the registry's newest, and fails (must refuse) (1755.413792ms)
+      plugin:update: 8.8 s — plugin:update 8.3 s
+✔ plugin:update — the deployed site: to the release named: prints what was granted and what each release declares (8843.793209ms)
+✔ plugin:update — the deployed site, run again: nothing to update (1881.572291ms)
+      plugin:update: 3.9 s
+✔ plugin:update — the deployed site: an older release is refused (must refuse) (3903.668625ms)
+      plugin:remove: 19.3 s — plugin:remove 18.8 s
+✔ plugin:remove — the deployed site: removes several at once (19309.035709ms)
+✔ plugin:works — --live: the deployed site is checked from outside; it says what it skips, and builds and restarts nothing (1506.632416ms)
+✔ model:sync — --live records the deployed model (1233.647209ms)
+      content:pull: 43.9 s — content:pull 43.7 s
+✔ content:pull — downloads the deployed site as a package (43874.611584ms)
+      live:backup: 48.5 s — live:backup 48.4 s
+✔ live:backup — the database bookmark and a package (48521.125208ms)
+      live:preview: 33.9 s — site:check 4.9 s, live:check 5.9 s, live:preview 33.7 s
+✔ live:preview — a preview: an address of its own, the live site still answers (35531.307959ms)
+      live:preview: 16.1 s — site:check 4.2 s, live:check 5.1 s, live:preview 16.0 s
+✔ live:preview — run again: the same preview, nothing new made (16131.209709ms)
+      signin:token: 5.4 s — live:answers 1.9 s, signin:token 3.2 s
+✔ signin:token — LIVE_PREVIEW: the CLI is an administrator of the preview, in the preview's own database (7338.627083ms)
+      live:preview: 2.3 s — live:preview 2.1 s
+      live:preview: 2.3 s — live:preview 2.1 s
+✔ live:preview — --delete removes it; again: nothing to delete (4575.409791ms)
+✔ live:logs — shows a request to the deployed site (22016.94625ms)
+      signin:open: 9.0 s — signin:open 8.8 s
+✔ signin:open — --live opens a signed-in window (9007.270209ms)
+✔ signin:access — a visitor reaches uploaded media and plugins' public routes without signing in (290.458541ms)
+      live:undo: 9.1 s — live:undo 8.7 s
+✔ live:undo — puts the previous version back: the change is gone (9219.2275ms)
+      site:delete: 9.3 s — site:stop 1.3 s, site:delete 9.1 s
+✔ site:delete — removes the local site folder (9289.963958ms)
+ℹ tests 43
+ℹ pass 43
+ℹ fail 0
+ℹ skipped 0
+ℹ duration_ms 494294.845416

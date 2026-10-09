@@ -114,7 +114,7 @@ export async function main(argv) {
 		const access = read("access") ?? (preview && existsSync(join(dir, "access", `${preview.liveHost}.json`)) ? JSON.parse(readFileSync(join(dir, "access", `${preview.liveHost}.json`), "utf8")) : null);
 		if (access && !inStore && !env.EMDASH_HEADERS) env.EMDASH_HEADERS = `CF-Access-Client-Id: ${access.id}\nCF-Access-Client-Secret: ${access.secret}`;
 	}
-	// Upstream: emdash-cms/emdash#3994 (when fixed: take out option B here and option A in signin-token.mjs)
+	// Upstream: emdash-cms/emdash#3994 (when fixed: take out option B here and option A, the write to EmDash's own sign-in store in core/signin.mjs)
 	// OPTION B (being tried, 2026-10-07, alongside A): `whoami` with the token in the environment.
 	// EmDash's `whoami` sends the token but not EMDASH_HEADERS, so behind Cloudflare Access it gets
 	// the login page. Here the same question is asked with both — the request `whoami` itself makes,

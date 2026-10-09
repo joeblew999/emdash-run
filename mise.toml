@@ -29,7 +29,7 @@ fnox = "1.36.0" # secrets: the Cloudflare token for the live: tasks — fnox exe
 "github:joeblew999/charter" = "0.18.0"
 
 [env]
-TEMPLATE = "cloudflare:starter" # what site:new makes site/ from when it is given no argument
+TEMPLATE = "cloudflare:blog" # what site:new makes site/ from when it is given no argument: the template site/ here was made from
 
 # tasks.toml: the product, what another repo includes. dev.toml: for working on emdash-run itself.
 # charter's tasks/repo: how the repo is kept.

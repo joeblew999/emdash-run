@@ -611,16 +611,8 @@ export const demo = async (ctx, list = recipes, install = installer(ctx)) => {
 
 /** @type {Graph} */
 export const pluginDemo = {
-	// A task for the site on this machine only stands on this first. Asked with --live it stops here,
-	// before any other state is reached: a flag goes to every state a task stands on, and
-	// signin:token --live would have signed in to the deployed site.
-	"site:local-only": {
-		done: ({ flags }) => !flags.live,
-		work: () => {
-			throw new Error("This task acts on the site on this machine only, and it was asked for the deployed one (--live). Nothing was done.");
-		},
-	},
-	// Then what every task on registry plugins stands on here (pluginNeeds in tasks.mjs): the site
+	// site:local-only first (scripts/core/site.mjs), then what every task on registry plugins stands on
+	// here (pluginNeeds in tasks.mjs): the site
 	// able to run sandboxed plugins, built, running, and this machine signed in to it.
 	"plugin:demo": { needs: () => ["site:local-only", "plugin:sandbox", "signin:token"], work: (ctx) => demo(ctx) },
 };

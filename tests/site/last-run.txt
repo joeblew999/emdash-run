@@ -1,40 +1,46 @@
-2026-10-09 02:38 UTC, commit d1c980c, level fast, macOS: passed in 99 s
+2026-10-09 03:24 UTC, commit 8c6521d, level all, macOS: passed in 197 s
 
-✔ site:ports — gives the project two ports of its own (189.198041ms)
-✔ site:ports — run again: it keeps them (180.435833ms)
-✔ site:new — run again: the site is left alone (179.834208ms)
-✔ site:status — says where the site is, state by state, and for what is not so the task that gets it there (204.749708ms)
-✔ plan — prints the states a task stands on, in order, and starts nothing (280.488208ms)
-      site:start: 50.5 s — site:dev-running 47.1 s, site:start 2.9 s
-✔ site:start — starts the dev site; EmDash's welcome dialog is closed (50534.859583ms)
-      site:start: 3.4 s
-✔ site:start — run again: it is already running (3392.357792ms)
-✔ site:start — the dev site answers; dev sign-in works (327.390041ms)
-✔ site:logs — shows the dev site log (2031.642417ms)
-      emdash: 2.4 s — emdash 1.6 s
-✔ emdash — a quoted JSON argument arrives whole (3766.420792ms)
-✔ emdash — whoami on the dev site (1152.207375ms)
-✔ emdash — --live with no LIVE_URL says so (must refuse) (525.094125ms)
-✔ content:pull — with no LIVE_URL says so (must refuse) (691.542708ms)
-﹣ site:check — passes on a sound site (0.213083ms) # SKIP
-﹣ site:check — fails on a type error (0.040333ms) # SKIP
-      model:sync: 2.5 s — model:sync 1.6 s
-✔ model:sync — records an added field in .emdash/ (3988.724791ms)
-✔ site:preview — serves the built site; dev sign-in is off there (872.373042ms)
-﹣ site:seed — applies the site's own seed file, and run again makes nothing (0.4555ms) # SKIP
-﹣ site:demo — fills every core feature, and run again changes nothing (0.095541ms) # SKIP
-﹣ live:check — the deploy rehearses with no account (0.05875ms) # SKIP
-﹣ emdash:update — updates, type-checks and builds (0.065333ms) # SKIP
-﹣ site:reset — empties the local content (0.069917ms) # SKIP
-﹣ site:reset — refuses with nobody to ask (must refuse) (0.071167ms) # SKIP
-﹣ site:delete — refuses with nobody to ask (must refuse) (0.059708ms) # SKIP
-﹣ site:stop — stops both sites; twice is fine (0.047833ms) # SKIP
-﹣ site:delete — removes the site folder (0.047167ms) # SKIP
-﹣ site:delete — run again: nothing to delete (0.06725ms) # SKIP
-﹣ site:start — with no site, says so and stops (must refuse) (0.051333ms) # SKIP
-﹣ site:new — makes a site from nothing, from EmDash's template (0.0475ms) # SKIP
+✔ site:ports — gives the project two ports of its own (20812.496541ms)
+✔ site:ports — run again: it keeps them (95.590083ms)
+✔ site:new — run again: the site is left alone (94.331042ms)
+✔ site:status — says where the site is, state by state, and for what is not so the task that gets it there (99.4575ms)
+✔ plan — prints the states a task stands on, in order, and starts nothing (161.33925ms)
+      site:start: 29.1 s — site:dev-running 27.9 s
+✔ site:start — starts the dev site; EmDash's welcome dialog is closed (29132.831542ms)
+✔ site:start — run again: it is already running (791.413708ms)
+✔ site:start — the dev site answers; dev sign-in works (94.833833ms)
+✔ site:logs — shows the dev site log (2013.6555ms)
+✔ emdash — a quoted JSON argument arrives whole (1002.099375ms)
+✔ emdash — whoami on the dev site (360.30075ms)
+✔ emdash — --live with no LIVE_URL says so (must refuse) (139.572625ms)
+✔ content:pull — with no LIVE_URL says so (must refuse) (141.831708ms)
+      site:check: 15.6 s — site:built 6.6 s, site:check 15.2 s
+✔ site:check — passes on a sound site (15598.822084ms)
+      site:check: 6.8 s
+✔ site:check — fails on a type error (6826.936ms)
+✔ model:sync — records an added field in .emdash/ (1588.208417ms)
+      site:preview: 3.3 s — site:built-running 3.1 s
+✔ site:preview — serves the built site; dev sign-in is off there (3349.764708ms)
+✔ site:seed — applies the site's own seed file, and run again makes nothing (1994.353084ms)
+      site:demo: 2.4 s — site:demo 2.2 s
+✔ site:demo — fills every core feature, and run again changes nothing (3457.97725ms)
+      live:check: 10.6 s — site:check 8.8 s, live:check 10.2 s
+✔ live:check — the deploy rehearses with no account (10607.234416ms)
+      emdash:update: 45.4 s — site:built 6.6 s, emdash:update 18.6 s, site:dev-running 23.4 s, site:built-running 3.1 s
+✔ emdash:update — updates, type-checks and builds (45364.787959ms)
+      site:reset: 21.8 s — site:dev-running 13.4 s, site:reset 15.1 s, site:built-running 6.4 s
+✔ site:reset — empties the local content (23200.143333ms)
+✔ site:reset — refuses with nobody to ask (must refuse) (30.983083ms)
+✔ site:delete — refuses with nobody to ask (must refuse) (30.038875ms)
+✔ site:stop — stops both sites; twice is fine (1622.279291ms)
+      site:delete: 7.6 s — site:delete 7.5 s
+✔ site:delete — removes the site folder (8763.642416ms)
+✔ site:delete — run again: nothing to delete (125.884042ms)
+✔ site:start — with no site, says so and stops (must refuse) (85.9435ms)
+      site:new: 12.3 s — site:new 12.2 s
+✔ site:new — makes a site from nothing, from EmDash's template (12310.748334ms)
 ℹ tests 29
-ℹ pass 15
+ℹ pass 29
 ℹ fail 0
-ℹ skipped 14
-ℹ duration_ms 98461.10225
+ℹ skipped 0
+ℹ duration_ms 197431.834209

@@ -17,7 +17,7 @@ depends = ["dev:packages"]
 run = "pnpm --dir tests exec openapi-typescript ../scripts/core/emdash-openapi.json -o ../scripts/core/emdash-api.d.ts --default-non-nullable false"
 
 ["dev:test"]
-description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts, answers and stops. fast, the default: the everyday steps. all: every step, the long ones too. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)"
+description = "The test of every task, at one of three levels, the same here and on GitHub (dev:ci). smoke: the basics, in half a minute — a project is made, its tasks run, the site starts and answers. fast, the default: the everyday steps. all: every step, the long ones too. smoke and fast use one test site that is kept, and kept running, from one run to the next; all starts from nothing. It is the unit tests and the site, signin and plugin groups, each a task of its own that mise runs side by side — so it takes as long as the slowest of them. (The live group deploys: dev:test:live, by name)"
 usage = '''
 flag "--level <level>" help="smoke, fast or all" default="fast" {
   choices "smoke" "fast" "all"
@@ -103,5 +103,5 @@ depends = ["dev:types"]
 run = ["node tests/run.mjs --unit", { task = "docs:check" }]
 
 ["dev:hooks"]
-description = "Turn on the commit check in this clone (running the test does it too): every commit runs dev:commit"
+description = "Turn on the commit check in this clone: every commit runs dev:commit"
 run = "git config core.hooksPath .githooks"

@@ -23,7 +23,7 @@ Without `--yes`, `plugin:install` prints what a plugin asks for and stops at one
 
 These act on this machine's built site (`site:preview`), starting it and signing in if needed. With `-- --live` they act on the deployed site, after `signin:token -- --live`; with `LIVE_PREVIEW=<name>` as well, on that [preview](preview.md) of it.
 
-On a deployed Cloudflare site, `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`, and `plugin:works` for one plugin passed with `--live` on 2026-10-09. `plugin:works -- --live` with no name, every plugin the site has, does not hold there: a deployed site refuses a plugin's admin page now and then, a different plugin's each run. The task says each in a `FAIL` line and fails, which is what a person opening that page is shown ([Upstream issues](../upstream.md)).
+On a deployed Cloudflare site, `plugin:install`, `plugin:favourites`, `plugin:update`, `plugin:remove`, and `plugin:works` for one plugin passed with `--live` on 2026-10-09. `plugin:works -- --live` with no name, every plugin the site has, does not hold there: straight after the installs it failed in three runs of four, a different way each time — a plugin's admin page refused, or a plugin listed as active and not in the admin's manifest. The task says each in a `FAIL` line and fails, which is what a person opening that page is shown ([Upstream issues](../upstream.md)). The test runs that check on this machine only.
 
 The dev site shares the built site's database, so the plugins are there too. A dev site that is already running does not load a plugin installed this way until it is started again: `mise run site:stop`, then `mise run site:start`.
 

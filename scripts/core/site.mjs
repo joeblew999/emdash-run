@@ -242,6 +242,15 @@ export const site = {
 				await startedAndAnswering(ctx, "preview", project.built, project.builtPort, 180, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
 			}),
 	},
+	// A task for the site on this machine only stands on this first. Asked with --live it stops here,
+	// before any other state is reached: a flag goes to every state a task stands on, and
+	// signin:token --live would have signed in to the deployed site.
+	"site:local-only": {
+		done: ({ flags }) => !flags.live,
+		work: () => {
+			throw new Error("This task acts on the site on this machine only, and it was asked for the deployed one (--live). Nothing was done.");
+		},
+	},
 	// The task site:preview
 	"site:preview": {
 		needs: () => ["site:built-running"],
