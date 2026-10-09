@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
 
+import { setReacher } from "../../scripts/core/calls.mjs";
 import { reach } from "../../scripts/core/graph.mjs";
 import { essentials, lockCovers, site } from "../../scripts/core/site.mjs";
 import { fakeWorld, project } from "./fake-world.mjs";
@@ -127,4 +128,18 @@ test("what any site needs: asked of the built site when this machine is signed i
 	assert.ok(after.includes("yes  a logo") && after.includes("yes  its public address") && after.includes("yes  a title and a tagline of its own"));
 	// not signed in: nothing is asked, and nothing is claimed
 	assert.deepEqual(await essentials({ world: fakeWorld({ files: { ...aSite } }).world, project, flags: {}, args: [], argv: [], env: {}, did: [], standsOn: false }), []);
+});
+
+test("packages change under a running dev site: it is stopped first and started again after", async () => {
+	/** @type {string[]} */
+	const asked = [];
+	setReacher(async (name) => void asked.push(name));
+	const lock = "importers:\n  .:\n    dependencies:\n      astro:\n        specifier: ^7\n";
+	const fake = fakeWorld({
+		files: { ...aSite, "/p/site/package.json": '{"dependencies":{"astro":"^7"}}', "/p/site/pnpm-lock.yaml": lock, "/p/site/node_modules/.pnpm/lock.yaml": "an older lock", "/p/site/node_modules/astro": "" },
+		answers: () => ({ status: 200 }),
+	});
+	await reach(site, "site:installed", { world: fake.world, project, flags: {} });
+	assert.deepEqual(fake.ran, ["astro dev stop", "pnpm install"]);
+	assert.deepEqual(asked, ["site:dev-running"]);
 });

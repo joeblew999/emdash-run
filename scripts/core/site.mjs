@@ -1,6 +1,8 @@
 // The states of a site on this machine, as nodes of the graph (graph.mjs).
 import { join, resolve } from "node:path";
 
+import { task } from "./calls.mjs";
+
 /** @typedef {import("./graph.mjs").Graph} Graph @typedef {import("./graph.mjs").Ctx} Ctx */
 
 /** A command that must succeed. @param {Ctx} ctx @param {string} program @param {string[]} args */
@@ -110,7 +112,20 @@ export const site = {
 			const lock = world.read(join(project.site, "pnpm-lock.yaml"));
 			return lock !== "" && lock === world.read(join(project.site, "node_modules", ".pnpm", "lock.yaml")) && lockCovers(world.read(join(project.site, "package.json")), lock);
 		},
-		work: (ctx) => must(ctx, "pnpm", ["install"]),
+		// Packages changed under a RUNNING dev site leave it answering 500 from its next request on
+		// (Vite has the old ones in hand) — and not at once, so a look straight afterwards sees nothing
+		// wrong. So a dev site that is running is stopped before the install and started again after.
+		work: async (ctx) => {
+			const { world, project } = ctx;
+			const running = world.exists(join(project.site, "node_modules", "astro")) && (await answers(ctx, project.dev));
+			if (running) {
+				world.say("the dev site is running: stopping it while its packages change, and starting it again after");
+				world.tool("astro", ["dev", "stop"], project.site);
+				world.remove(join(project.site, "node_modules", ".vite"));
+			}
+			must(ctx, "pnpm", ["install"]);
+			if (running) await task("site:dev-running");
+		},
 	},
 	"site:key": {
 		needs: () => ["site:installed"],
