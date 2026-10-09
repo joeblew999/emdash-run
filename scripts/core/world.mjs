@@ -41,6 +41,7 @@ import { pathToFileURL } from "node:url";
  * @property {(seconds: number) => Promise<void>} sleep
  * @property {<T>(name: string, fn: () => Promise<T>) => Promise<T>} alone             while no other project on this machine does the same
  * @property {(pid: number) => void} kill
+ * @property {(pid: number) => boolean} alive                 a process with this number is there
  * @property {NodeJS.Platform} platform
  */
 
@@ -168,6 +169,15 @@ export const realWorld = (env) => {
 		},
 		kill: (pid) => {
 			try { process.kill(pid); } catch {}
+		},
+		// (signal 0 sends nothing: it only asks. EPERM is a process that is there and is not ours.)
+		alive: (pid) => {
+			try {
+				process.kill(pid, 0);
+				return true;
+			} catch (e) {
+				return /** @type {NodeJS.ErrnoException} */ (e).code === "EPERM";
+			}
 		},
 	};
 };

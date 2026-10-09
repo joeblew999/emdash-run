@@ -1,42 +1,44 @@
-2026-10-08 07:50 UTC, commit b2e7424, level fast, macOS: passed in 26 s
+2026-10-09 02:37 UTC, commit d1c980c, level fast, macOS: passed in 28 s
 
-plugin:remove: 5.2 s — plugin:remove 4.9 s
-✔ plugin:sandbox — the site can run sandboxed plugins: the runner is in its config (5495.513667ms)
-✔ plugin:sandbox — run again: nothing changes (279.685875ms)
-﹣ plugin:new — scaffolds, tests, builds and adds a plugin — to the site's config too, by itself (0.190083ms) # SKIP
-﹣ plugin:check — the plugin passes its checks (0.064667ms) # SKIP
-﹣ plugin:new — run again: not scaffolded twice, still builds, the config is not touched (0.064334ms) # SKIP
-﹣ plugin:add — a native plugin from npm: the package is added, its two lines are printed, the config is not touched (0.049375ms) # SKIP
-﹣ plugin:publish — asks first, and stops with nobody to answer (a real publish is never run) (must refuse) (0.092416ms) # SKIP
-﹣ plugin — passes any command to the plugin CLI (0.066ms) # SKIP
-✔ plugin:search — finds plugins in the registry (978.892958ms)
-      plugin:install: 4.6 s — plugin:install 4.2 s
-✔ plugin:install — this machine's built site: installs a registry plugin with no clicking (4566.139459ms)
-✔ plugin:install — this machine's built site, run again: it is already installed (786.666792ms)
-      plugin:install: 2.7 s
-✔ plugin:install — this machine's built site: a plugin that can change things or reach outside is not installed without a yes (must refuse) (2676.286709ms)
-      plugin:works: 5.6 s — plugin:works 5.3 s
-✔ plugin:works — this machine's built site: the registry plugin loads and answers (5569.389542ms)
-﹣ plugin:install — this machine's built site: a release other than the one asked for is not installed (must refuse) (0.114708ms) # SKIP
-﹣ plugin:install — this machine's built site: a plugin the registry does not have: says so and fails (must refuse) (0.024708ms) # SKIP
-﹣ plugin:works — this machine's built site: a plugin the site does not have fails (must refuse) (0.020875ms) # SKIP
-✔ plugin:remove — this machine's built site: removes a registry plugin (787.001209ms)
-✔ plugin:remove — this machine's built site, run again: nothing to remove (775.541209ms)
-﹣ plugin:favourites — this machine's built site: installs the favourites in one go (0.11825ms) # SKIP
-﹣ plugin:favourites — this machine's built site, run again: all already installed (0.045125ms) # SKIP
-﹣ plugin:favourites — this machine's built site: PLUGINS in the project chooses the list (0.019959ms) # SKIP
-﹣ plugin:update — this machine's built site: a plugin that is not installed: says so and fails (must refuse) (0.01975ms) # SKIP
-﹣ plugin:install — this machine's built site: an older release, asked for by version, is the one installed (0.017834ms) # SKIP
-﹣ plugin:update — this machine's built site: no release named: says which the site has and the registry's newest, and fails (must refuse) (0.016209ms) # SKIP
-﹣ plugin:update — this machine's built site: to the release named: prints what was granted and what each release declares (0.022041ms) # SKIP
-﹣ plugin:update — this machine's built site, run again: nothing to update (0.015416ms) # SKIP
-﹣ plugin:update — this machine's built site: an older release is refused (must refuse) (0.014166ms) # SKIP
-﹣ plugin:works — this machine's built site, no name: every plugin in the site loads and answers — the favourites among them (0.014042ms) # SKIP
-﹣ plugin:remove — this machine's built site: removes several at once (0.019792ms) # SKIP
-﹣ plugin:works — --fresh: checks, builds and restarts the site first, then every check passes (0.013208ms) # SKIP
-﹣ plugin:works — the plugin plugin:new made: its route answers from the sandbox (0.01675ms) # SKIP
-ℹ tests 31
+plugin:remove: 8.1 s — plugin:remove 7.5 s
+✔ plugin:sandbox — the site can run sandboxed plugins: the runner is in its config (8356.301625ms)
+✔ plugin:sandbox — run again: nothing changes (178.637708ms)
+﹣ plugin:new — scaffolds, tests, builds and adds a plugin — to the site's config too, by itself (0.130625ms) # SKIP
+﹣ plugin:check — the plugin passes its checks (0.064541ms) # SKIP
+﹣ plugin:new — run again: not scaffolded twice, still builds, the config is not touched (0.075042ms) # SKIP
+﹣ plugin:add — a native plugin from npm: the package is added, its two lines are printed, the config is not touched (0.057708ms) # SKIP
+﹣ plugin:publish — asks first, and stops with nobody to answer (a real publish is never run) (must refuse) (0.058792ms) # SKIP
+﹣ plugin — passes any command to the plugin CLI (0.050041ms) # SKIP
+✔ plugin:search — finds plugins in the registry (1020.006ms)
+      plugin:install: 6.3 s — plugin:install 6.0 s
+✔ plugin:install — this machine's built site: installs a registry plugin with no clicking (6254.278542ms)
+✔ plugin:install — this machine's built site, run again: it is already installed (732.371458ms)
+      plugin:install: 3.4 s
+✔ plugin:install — this machine's built site: a plugin that can change things or reach outside is not installed without a yes (must refuse) (3428.65075ms)
+      plugin:works: 6.4 s — plugin:works 6.2 s
+✔ plugin:works — this machine's built site: the registry plugin loads and answers (6438.363166ms)
+﹣ plugin:install — this machine's built site: a release other than the one asked for is not installed (must refuse) (0.1635ms) # SKIP
+﹣ plugin:install — this machine's built site: a plugin the registry does not have: says so and fails (must refuse) (0.044708ms) # SKIP
+﹣ plugin:works — this machine's built site: a plugin the site does not have fails (must refuse) (0.024083ms) # SKIP
+✔ plugin:remove — this machine's built site: removes a registry plugin (762.580083ms)
+✔ plugin:remove — this machine's built site, run again: nothing to remove (819.14175ms)
+﹣ plugin:favourites — this machine's built site: installs the favourites in one go (0.101583ms) # SKIP
+﹣ plugin:favourites — this machine's built site, run again: all already installed (0.025791ms) # SKIP
+﹣ plugin:favourites — this machine's built site: PLUGINS in the project chooses the list (0.021292ms) # SKIP
+﹣ plugin:update — this machine's built site: a plugin that is not installed: says so and fails (must refuse) (0.018542ms) # SKIP
+﹣ plugin:install — this machine's built site: an older release, asked for by version, is the one installed (0.016666ms) # SKIP
+﹣ plugin:update — this machine's built site: no release named: says which the site has and the registry's newest, and fails (must refuse) (0.015458ms) # SKIP
+﹣ plugin:update — this machine's built site: to the release named: prints what was granted and what each release declares (0.015042ms) # SKIP
+﹣ plugin:update — this machine's built site, run again: nothing to update (0.014292ms) # SKIP
+﹣ plugin:update — this machine's built site: an older release is refused (must refuse) (0.014875ms) # SKIP
+﹣ plugin:remove — this machine's built site: removes the plugin that was updated (0.0145ms) # SKIP
+﹣ plugin:works — this machine's built site, no name: every plugin in the site loads and answers — the favourites among them (0.015125ms) # SKIP
+﹣ plugin:remove — this machine's built site: removes several at once (0.014625ms) # SKIP
+﹣ plugin:works — --fresh: checks, builds and restarts the site first, then every check passes (0.013666ms) # SKIP
+﹣ plugin:works — the plugin plugin:new made: its route answers from the sandbox (0.014166ms) # SKIP
+﹣ plugin:demo — each plugin does its real thing, and run again changes nothing (0.013708ms) # SKIP
+ℹ tests 33
 ℹ pass 9
 ℹ fail 0
-ℹ skipped 22
-ℹ duration_ms 25994.004083
+ℹ skipped 24
+ℹ duration_ms 28134.168041

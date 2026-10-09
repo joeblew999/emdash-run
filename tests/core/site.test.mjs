@@ -72,6 +72,33 @@ test("a dev site that answers 500 is not running: it is stopped and started agai
 	assert.ok(fake.ran.indexOf("astro dev stop") < fake.ran.indexOf("astro dev --background --host 127.0.0.1 --port 4321"));
 });
 
+test("a built site whose server ended after it had started: said, with its own log, and started once more — not waited for", async () => {
+	let starts = 0;
+	const fake = fakeWorld({
+		files: { ...aSite, "/p/site/.env": "EMDASH_ENCRYPTION_KEY=abc\n", "/p/site/dist/server/entry.mjs": "", "/p/site/.astro/preview.json": '{"pid":7}' },
+		changed: { "/p/site/dist/server": 2, "/p/site/src": 1 },
+		exits: (c) => (c.startsWith("astro preview --background") ? (starts++, 0) : 0),
+		// the first server is gone at once; the second answers
+		alive: () => starts > 1,
+		answers: () => ({ status: starts > 1 ? 200 : 0 }),
+	});
+	const result = await reach(site, "site:built-running", { world: fake.world, project, flags: { restart: true } });
+	assert.ok(result.did.includes("site:built-running"));
+	assert.equal(starts, 2);
+	assert.ok(fake.said.some((l) => l.includes("ended after it had started")));
+	assert.ok(fake.ran.indexOf("astro preview logs") < fake.ran.lastIndexOf("astro preview --background --host 127.0.0.1 --port 4322"));
+});
+
+test("a built site that is there and answers nothing: started once, waited for, and its own log is shown with the failure", async () => {
+	const fake = fakeWorld({
+		files: { ...aSite, "/p/site/.env": "EMDASH_ENCRYPTION_KEY=abc\n", "/p/site/dist/server/entry.mjs": "", "/p/site/.astro/preview.json": '{"pid":7}' },
+		changed: { "/p/site/dist/server": 2, "/p/site/src": 1 },
+	});
+	await assert.rejects(reach(site, "site:built-running", { world: fake.world, project, flags: { restart: true } }), /was started and has not answered in 3 minutes/);
+	assert.equal(fake.ran.filter((c) => c.startsWith("astro preview --background")).length, 1);
+	assert.equal(fake.ran.at(-1), "astro preview logs");
+});
+
 test("the dev site dies on start: its own log is shown, and the task fails", async () => {
 	const fake = start({ files: { ...aSite }, exits: (c) => (c.includes("astro dev --background") ? 1 : 0) });
 	await assert.rejects(fake.result, /the dev site did not start/);

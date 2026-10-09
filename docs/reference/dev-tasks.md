@@ -22,7 +22,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`dev:test:signin`](#devtestsignin) | The signin group: the CLI and a browser window as an administrator of the built site |
 | [`dev:test:plugin`](#devtestplugin) | The plugin group: a plugin of your own, and plugins from EmDash's registry |
 | [`dev:test:live`](#devtestlive) | REMOTE: the live group — the tasks that act on a deployed site, on the Worker kept for testing (TEST_LIVE_URL and TEST_LIVE_NAME in mise.local.toml). It deploys, and takes about five minutes |
-| [`dev:ci`](#devci) | REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag |
+| [`dev:ci`](#devci) | REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow), on the branch you are on, as it is pushed. By itself GitHub runs smoke on a push to main and all on a release tag |
 | [`check`](#check) | What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them) |
 | [`dev:src`](#devsrc) | EmDash's source into .src/emdash (git ignores it), to read when a task meets something EmDash does that its docs do not say. Run again: the newest |
 | [`dev:commit`](#devcommit) | What the commit check runs, in seconds: the types (dev:types), the unit tests (every task has a test step among them), and the docs are fresh and pass the lint (docs:check) |
@@ -141,7 +141,7 @@ REMOTE: the live group — the tasks that act on a deployed site, on the Worker 
 
 ### `dev:ci`
 
-REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag
+REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow), on the branch you are on, as it is pushed. By itself GitHub runs smoke on a push to main and all on a release tag
 
 - **Usage:** `dev:ci [--level <level>]`
 

@@ -2,7 +2,7 @@
 // was asked of it. Nothing is started, read or waited for.
 
 /**
- * @param {{ files?: Record<string, string>, answers?: (url: string, init?: RequestInit) => { status: number, text?: string, headers?: Record<string, string> }, downloads?: (url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer>, headers?: Record<string, string> }, packages?: Record<string, unknown>, exits?: (command: string) => number, execs?: (command: string) => { code: number, out?: string, err?: string }, changed?: Record<string, number>, output?: (command: string) => string, platform?: NodeJS.Platform }} [given]
+ * @param {{ files?: Record<string, string>, answers?: (url: string, init?: RequestInit) => { status: number, text?: string, headers?: Record<string, string> }, downloads?: (url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer>, headers?: Record<string, string> }, packages?: Record<string, unknown>, exits?: (command: string) => number, execs?: (command: string) => { code: number, out?: string, err?: string }, changed?: Record<string, number>, output?: (command: string) => string, alive?: (pid: number) => boolean, platform?: NodeJS.Platform }} [given]
  */
 export const fakeWorld = (given = {}) => {
 	const files = given.files ?? {};
@@ -61,6 +61,7 @@ export const fakeWorld = (given = {}) => {
 		sleep: async () => {},
 		alone: (_name, fn) => fn(),
 		kill: (pid) => void killed.push(pid),
+		alive: (pid) => given.alive?.(pid) ?? true,
 	};
 	return { world, ran, said, killed, files, execd, sqls };
 };

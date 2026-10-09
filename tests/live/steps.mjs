@@ -138,8 +138,13 @@ step("live:preview", "--delete removes it; again: nothing to delete", async () =
 // watching it, and who gets in
 step("live:logs", "shows a request to the deployed site", async () => {
 	const log = forSeconds(22, "live:logs");
-	await sleep(12);
-	await status(`${live}/?from=test`);
+	await sleep(8);
+	// Asked a few times, each at an address of its own: the log follows some seconds behind, and a
+	// page that a cache answers never reaches the Worker, so is never in its log.
+	for (let i = 0; i < 5; i++) {
+		await status(`${live}/?from=${stamp}-${i}`);
+		await sleep(2);
+	}
 	says(await log, "GET");
 });
 if (!ci) step("signin:open", "--live opens a signed-in window", async () => {

@@ -113,6 +113,49 @@ export const essentials = async ({ world, project }) => {
 	return ["what any site needs, on the built site:", ...needs.map(([what, is, where]) => `${is ? "yes" : "no "}  ${what}${is ? "" : `   — set in: ${where}`}`)];
 };
 
+/**
+ * A site started in the background, and waited for until it has answered once: what it answered.
+ * Astro says "running" as soon as the server listens. One that has ended since then would be waited
+ * for in silence, to the last second: it is said, with the site's own log — which says why, and
+ * which the next start empties — and started once more.
+ * @param {Ctx} ctx @param {"dev" | "preview"} command @param {string} url @param {string} port
+ * @param {number} seconds how long it is waited for  @param {Record<string, string>} [more] variables for it alone
+ */
+const startedAndAnswering = async ({ world, project }, command, url, port, seconds, more) => {
+	const name = command === "dev" ? "dev site" : "built site";
+	const log = () => {
+		world.say(`What the ${name}'s own log says:`);
+		world.tool("astro", [command, "logs"], project.site);
+	};
+	const start = () => {
+		if (world.tool("astro", [command, "--background", "--host", "127.0.0.1", "--port", port], project.site, more) === 0) return;
+		log();
+		throw new Error(`the ${name} did not start`);
+	};
+	// Astro's own note of the server it started (.astro/dev.json, preview.json): is that process there?
+	const there = () => {
+		try {
+			return world.alive(JSON.parse(world.read(join(project.site, ".astro", `${command}.json`))).pid);
+		} catch {
+			return false;
+		}
+	};
+	start();
+	for (let waited = 0, again = false; waited < seconds; waited += 0.5) {
+		const answer = await world.ask(`${url}/`, { seconds });
+		if (answer.status !== 0) return answer;
+		if (!again && !there()) {
+			again = true;
+			world.say(`The ${name}'s server ended after it had started. Its log, and then it is started once more.`);
+			log();
+			start();
+		}
+		await world.sleep(0.5);
+	}
+	log();
+	throw new Error(`The ${name} at ${url} was started and has not answered in ${seconds / 60} minutes.`);
+};
+
 /** @type {Graph} */
 export const site = {
 	"site:exists": {
@@ -169,20 +212,8 @@ export const site = {
 					world.tool("astro", ["dev", "stop"], project.site);
 					world.remove(join(project.site, "node_modules", ".vite"));
 				}
-				const code = world.tool("astro", ["dev", "--background", "--host", "127.0.0.1", "--port", project.devPort], project.site);
-				if (code !== 0) {
-					// a site started in the background that died says only that it did: its own log says why
-					world.say("What the site's own log says:");
-					world.tool("astro", ["dev", "logs"], project.site);
-					throw new Error("the dev site did not start");
-				}
-				for (let waited = 0; waited < 120; waited += 0.5) {
-					const answer = await world.ask(`${project.dev}/`, { seconds: 120 });
-					if (answer.status >= 500) world.say(`The site at ${project.dev} answers ${answer.status}: ${answer.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400)}`);
-					if (answer.status !== 0) return;
-					await world.sleep(0.5);
-				}
-				throw new Error(`The site at ${project.dev} was started and has not answered in two minutes.`);
+				const answer = await startedAndAnswering(ctx, "dev", project.dev, project.devPort, 120);
+				if (answer.status >= 500) world.say(`The site at ${project.dev} answers ${answer.status}: ${answer.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400)}`);
 			}),
 	},
 	// The production build — what a deploy ships. Not made again while nothing it is made from has
@@ -208,17 +239,7 @@ export const site = {
 			ctx.world.alone("starting-a-site", async () => {
 				const { world, project } = ctx;
 				world.tool("astro", ["preview", "stop"], project.site);
-				const code = world.tool("astro", ["preview", "--background", "--host", "127.0.0.1", "--port", project.builtPort], project.site, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
-				if (code !== 0) {
-					world.say("What the built site's own log says:");
-					world.tool("astro", ["preview", "logs"], project.site);
-					throw new Error("the built site did not start");
-				}
-				for (let waited = 0; waited < 180; waited += 0.5) {
-					if ((await world.ask(`${project.built}/`, { seconds: 180 })).status !== 0) return;
-					await world.sleep(0.5);
-				}
-				throw new Error(`The built site at ${project.built} was started and has not answered in three minutes.`);
+				await startedAndAnswering(ctx, "preview", project.built, project.builtPort, 180, { EMDASH_SITE_URL: `http://localhost:${project.builtPort}` });
 			}),
 	},
 	// The task site:preview

@@ -81,13 +81,13 @@ flag "--only <words>" help="Only the steps whose name has these words"
 run = "node tests/run.mjs live --level {{ usage.level }}{% if usage.node %} --node{% endif %}{% if usage.only %} --only {{ usage.only }}{% endif %}"
 
 ["dev:ci"]
-description = "REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow). By itself GitHub runs smoke on a push to main and all on a release tag"
+description = "REMOTE: have GitHub run dev:test at a level on Linux, macOS and Windows (the stages workflow), on the branch you are on, as it is pushed. By itself GitHub runs smoke on a push to main and all on a release tag"
 usage = '''
 flag "--level <level>" help="smoke, fast or all" default="smoke" {
   choices "smoke" "fast" "all"
 }
 '''
-run = ["gh workflow run stages.yml -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
+run = ["gh workflow run stages.yml --ref {{ exec(command='git branch --show-current') }} -f level={{ usage.level }}", "echo Started. Follow it: gh run watch, or gh run list --workflow stages --limit 1"]
 
 [check]
 description = "What must pass before a release, and what release runs before it tags: the test (dev:test) and repo:ci (the docs and the repo are as charter keeps them)"
