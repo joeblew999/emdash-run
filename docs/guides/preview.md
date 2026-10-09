@@ -1,6 +1,6 @@
 ---
 title: Preview
-nav_order: 5
+nav_order: 6
 parent: Guides
 ---
 
@@ -9,8 +9,8 @@ parent: Guides
 A preview is this folder's code deployed under the same Worker with **its own database, bucket and sessions**. The live site is not touched. It is Cloudflare's [Worker Previews](https://developers.cloudflare.com/workers/previews/), which is in open beta.
 
 ```sh
-mise run live:preview                 # named after the git branch
-mise run live:preview -- try-nav      # or name it
+mise run live:preview -- try-nav      # a preview named try-nav
+mise run live:preview                 # with no name: named after the git branch
 ```
 
 It prints the address: `https://<name>-<worker>.<account>.workers.dev`. Run it again to update the same preview.
@@ -19,20 +19,24 @@ The first time, it makes what a preview needs and Cloudflare does not make for i
 
 ## Act on a preview
 
-Set `LIVE_PREVIEW` and every task that takes `--live` acts on that preview:
+Set `LIVE_PREVIEW` and a task that takes `--live` acts on that preview:
 
 ```sh
 LIVE_PREVIEW=try-nav mise run signin:token -- --live
-LIVE_PREVIEW=try-nav mise run emdash -- site import site.emdash --analyze --live
+LIVE_PREVIEW=try-nav mise run emdash -- whoami --live
 ```
 
 Put `LIVE_PREVIEW = "try-nav"` in `mise.local.toml` and this checkout's deployed site is its preview.
+
+**Only when `LIVE_URL` is the Worker's `workers.dev` address.** With any other address, a domain of your own, `LIVE_PREVIEW` is not read and nothing says so: the task acts on the live site.
 
 A new preview has no content. Bring it as for a first deploy: [Deploy](deploy.md#the-first-time), step 5.
 
 ## Sign-in
 
-Run `mise run signin:access` once after the first preview: it puts the site's Access application over the preview addresses too. Until then a preview's admin is open to anyone with the address.
+`signin:access` puts the site's Access application over the Worker's preview addresses too, so a preview's admin is behind the same sign-in as the live one. If it has not been run for this site, a preview's admin is open to anyone with the address: run it.
+
+It covers the preview addresses only when `LIVE_URL` is a `workers.dev` address.
 
 ## Remove one
 
@@ -44,6 +48,8 @@ The preview's database, bucket and session store are kept for the next one.
 
 ## Limits
 
-- `signin:open` and `signin:passkey` do not read `LIVE_PREVIEW`.
+- `model:sync -- --live` does not read `LIVE_PREVIEW`: it records the live site's model. Neither do `content:pull` and the other tasks that are always the deployed site.
+- `signin:open`, `signin:passkey` and `signin:mcp` read `LIVE_PREVIEW`, and no test step runs them on a preview. No test step runs `live:preview` without a name.
+- `live:preview` sets `"preview_urls": true` in `wrangler.jsonc`, where `signin:access` prints `"preview_urls": false` among its lines to put in: a preview has no address without it.
 - Previews share one database: two previews of one site see the same content.
 - Preview addresses being on also gives every deployed version an address of its own; its `/_emdash` is behind Access like the previews.

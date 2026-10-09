@@ -1,6 +1,6 @@
 ---
 title: Deploy
-nav_order: 4
+nav_order: 5
 parent: Guides
 ---
 
@@ -11,7 +11,7 @@ For a site made from a `cloudflare:*` template. Sign in to Cloudflare once: `mis
 ## The first time
 
 1. Name the Worker, database and bucket in `site/wrangler.jsonc`, and set `LIVE_URL` and `ADMIN_EMAIL` under `[env]` in `mise.toml`.
-2. `mise run signin:access`: Cloudflare Access in front of the admin. It prints three lines for `astro.config.mjs` and `wrangler.jsonc`; put them in.
+2. `mise run signin:access`: Cloudflare Access in front of the admin. It prints the lines to put in `astro.config.mjs` and `wrangler.jsonc`; put them in.
 3. `mise run live:ship`: check, deploy, wait for the new version to answer.
 4. `mise run signin:token -- --live`: the CLI is an administrator of the deployed site.
 5. Bring the content. A newly deployed site has none:
@@ -21,6 +21,10 @@ mise run emdash -- site export --output site.emdash                         # th
 mise run emdash -- site import site.emdash --analyze --live                 # prints a plan and its digest
 mise run emdash -- site import site.emdash --plan <digest> --confirm --live
 ```
+
+These three are EmDash's own `site export` and `site import`, as `live:ship` prints them for a site with no home page. No test step runs them.
+
+`site:seed` and `site:demo` do not fill a deployed site: [This machine or deployed](local-or-deployed.md#three-tasks-never-act-on-a-deployed-site).
 
 ## After that
 
@@ -43,6 +47,7 @@ fnox set CLOUDFLARE_API_TOKEN    # it asks for the value
 
 ## Limits
 
-- `signin:access` covers `/_emdash` only: the site's pages stay public, and so does uploaded media.
+- `signin:access` covers `/_emdash` only: the site's pages stay public, and so do uploaded media and the addresses a plugin opens to visitors.
 - `live:undo` rolls back code, not content. For content: `live:backup` before a risky change.
 - A deployed site with the plugin sandbox on needs the Workers Paid plan.
+- The deploying tasks are tested by the live group, which deploys to a Worker kept for it and is run by name ([How to help](../contributing.md#the-test)).
