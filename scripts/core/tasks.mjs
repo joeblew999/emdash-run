@@ -101,7 +101,7 @@ export const tasks = {
 	"site:ports": { work: (ctx) => job(siteJob, ["ports", ctx.project.root]) },
 	"site:logs": { needs: () => ["site:exists"], work: (ctx) => tool(ctx, "astro", "dev", "logs", "--follow") },
 	"site:check": {
-		needs: () => ["site:installed"],
+		needs: () => ["site:typescript"],
 		work: async (ctx) => {
 			if (ctx.env.SITE_SEED !== "none") tool(ctx, "emdash", "seed", "--validate");
 			tool(ctx, "astro", "check");
@@ -140,7 +140,7 @@ export const tasks = {
 	// ─── EmDash itself ───────────────────────────────────────────────────────────────────────────
 	emdash: { needs: () => ["site:exists"], work: (ctx) => job(emdashCli, [devAddress(ctx), ctx.project.site, ...ctx.argv]) },
 	"emdash:update": {
-		needs: () => ["site:exists"],
+		needs: () => ["site:typescript"],
 		work: async (ctx) => {
 			pnpm(ctx, "up", "--latest", "emdash", "@emdash-cms/cloudflare");
 			tool(ctx, "astro", "check");

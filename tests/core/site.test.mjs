@@ -143,3 +143,16 @@ test("packages change under a running dev site: it is stopped first and started 
 	assert.deepEqual(fake.ran, ["astro dev stop", "pnpm install"]);
 	assert.deepEqual(asked, ["site:dev-running"]);
 });
+
+test("a site with no typescript: it is added before anything is type-checked, and said", async () => {
+	setReacher(async () => {});
+	const lock = "importers:\n  .:\n    dependencies:\n      astro:\n        specifier: ^7\n";
+	const installed = { ...aSite, "/p/site/package.json": '{"dependencies":{"astro":"^7"}}', "/p/site/pnpm-lock.yaml": lock, "/p/site/node_modules/.pnpm/lock.yaml": lock };
+	const without = fakeWorld({ files: { ...installed } });
+	await reach(site, "site:typescript", { world: without.world, project, flags: {} });
+	assert.deepEqual(without.ran, ["pnpm add --save-dev typescript@6"]);
+	assert.ok(without.said.some((l) => l.includes("nothing is type-checked")));
+	const withIt = fakeWorld({ files: { ...installed, "/p/site/node_modules/typescript": "" } });
+	await reach(site, "site:typescript", { world: withIt.world, project, flags: {} });
+	assert.deepEqual(withIt.ran, []);
+});

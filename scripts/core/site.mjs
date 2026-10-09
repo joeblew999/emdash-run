@@ -19,6 +19,24 @@ const tool = ({ world, project }, name, args) => {
 const answers = async ({ world }, url) => (await world.ask(`${url}/`, { seconds: 5 })).status !== 0;
 
 /**
+ * A change to the site's packages. Changed under a RUNNING dev site they leave it answering 500 from
+ * its next request on (Vite has the old ones in hand) — and not at once, so a look straight
+ * afterwards sees nothing wrong. So a dev site that is running is stopped first and started again after.
+ * @param {Ctx} ctx @param {() => void} change
+ */
+const changingPackages = async (ctx, change) => {
+	const { world, project } = ctx;
+	const running = world.exists(join(project.site, "node_modules", "astro")) && (await answers(ctx, project.dev));
+	if (running) {
+		world.say("the dev site is running: stopping it while its packages change, and starting it again after");
+		world.tool("astro", ["dev", "stop"], project.site);
+		world.remove(join(project.site, "node_modules", ".vite"));
+	}
+	change();
+	if (running) await task("site:dev-running");
+};
+
+/**
  * What a site's build is made from. The server part of the build is what is compared with these: a
  * dist/ with only its client half is not a build (one stopped half way left exactly that).
  * @param {string} dir the site's folder @param {import("./world.mjs").World} world
@@ -112,19 +130,18 @@ export const site = {
 			const lock = world.read(join(project.site, "pnpm-lock.yaml"));
 			return lock !== "" && lock === world.read(join(project.site, "node_modules", ".pnpm", "lock.yaml")) && lockCovers(world.read(join(project.site, "package.json")), lock);
 		},
-		// Packages changed under a RUNNING dev site leave it answering 500 from its next request on
-		// (Vite has the old ones in hand) — and not at once, so a look straight afterwards sees nothing
-		// wrong. So a dev site that is running is stopped before the install and started again after.
-		work: async (ctx) => {
-			const { world, project } = ctx;
-			const running = world.exists(join(project.site, "node_modules", "astro")) && (await answers(ctx, project.dev));
-			if (running) {
-				world.say("the dev site is running: stopping it while its packages change, and starting it again after");
-				world.tool("astro", ["dev", "stop"], project.site);
-				world.remove(join(project.site, "node_modules", ".vite"));
-			}
-			must(ctx, "pnpm", ["install"]);
-			if (running) await task("site:dev-running");
+		work: (ctx) => changingPackages(ctx, () => must(ctx, "pnpm", ["install"])),
+	},
+	// What `astro check` type-checks with. EmDash's templates do not all have it, and without it
+	// astro asks "install it?", checks nothing and ends as if all were well: a check that passes
+	// having looked at nothing. So it is put in, as astro would on a yes — said, and seen in git.
+	"site:typescript": {
+		needs: () => ["site:installed"],
+		done: ({ world, project }) => world.exists(join(project.site, "node_modules", "typescript")),
+		work: (ctx) => {
+			ctx.world.say("this site has no typescript, which astro check needs — without it nothing is type-checked: adding it to the site's devDependencies");
+			// (6: astro check says it does not work with TypeScript 7 yet — "install TypeScript 6 instead")
+			return changingPackages(ctx, () => must(ctx, "pnpm", ["add", "--save-dev", "typescript@6"]));
 		},
 	},
 	"site:key": {
