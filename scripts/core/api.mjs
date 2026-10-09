@@ -63,7 +63,16 @@ export const connect = async ({ world, project }) => {
 		const { path: names, query, body } = /** @type {{ path?: Record<string, string>, query?: Record<string, unknown>, body?: unknown }} */ (given ?? {});
 		const at = path.replace(/\{(\w+)\}/g, (_, name) => encodeURIComponent(names?.[name] ?? ""));
 		const search = new URLSearchParams(Object.entries(query ?? {}).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)])).toString();
-		const answer = await world.ask(`${origin}/_emdash/api${at}${search ? `?${search}` : ""}`, { method: method.toUpperCase(), headers: body === undefined ? headers : { ...headers, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), seconds: 60 });
+		const ask = () => world.ask(`${origin}/_emdash/api${at}${search ? `?${search}` : ""}`, { method: method.toUpperCase(), headers: body === undefined ? headers : { ...headers, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), seconds: 60 });
+		// A site that has only just been made or emptied is still setting itself up while it answers
+		// its first requests — EmDash makes its tables and loads its own seed over several of them —
+		// and until it has, asking for a list answers 500. Reading is asked again, a few times, a
+		// little apart; a request that changes something is never sent twice.
+		let answer = await ask();
+		for (let again = 0; method.toUpperCase() === "GET" && answer.status >= 500 && again < 8; again++) {
+			await world.sleep(2);
+			answer = await ask();
+		}
 		let json = null;
 		try { json = JSON.parse(answer.text); } catch {}
 		// (what was asked is told without its query)
