@@ -1,7 +1,7 @@
 // The plugin group: a plugin of your own, and plugins from EmDash's registry.   mise run dev:test plugin
 // The unit tests of the scripts' own functions are here too (*.test.mjs, fixtures/): they run first
 // in every test, and in mise run check.
-import { aSite, attempt, check, exists, mise, read, says, saysAnyCase } from "../lib/site.mjs";
+import { aSite, attempt, body, builtSite, check, exists, mise, read, says, saysAnyCase, where } from "../lib/site.mjs";
 import { registryClean, registrySteps } from "../both/registry.mjs";
 import { long, refuses, setup, step } from "../lib/step.mjs";
 
@@ -76,18 +76,32 @@ long(() => {
 	});
 });
 
-// six registry plugins, each doing what it is for — it installs them and asks the internet, so at the level all
+// seven registry plugins, each doing what it is for — it installs them and asks the internet, so at the level all
 long(() => {
 	step("plugin:demo", "each plugin does its real thing, and run again changes nothing", async () => {
-		const six = ["seo-suite", "link-guardian", "media-alt-text-queue", "contact-forms", "forms", "linguadash"];
+		const seven = ["seo-suite", "link-guardian", "media-alt-text-queue", "contact-forms", "forms", "linguadash", "instant-indexer"];
 		const first = await mise("plugin:demo");
-		for (const plugin of six) says(first, `ok   ${plugin}: `);
-		says(first, "all 6 plugins did their real thing");
+		for (const plugin of seven) says(first, `ok   ${plugin}: `);
+		says(first, "all 7 plugins did their real thing");
 		const again = await mise("plugin:demo");
-		for (const plugin of six) says(again, `ok   ${plugin}: already so — `);
+		for (const plugin of seven) says(again, `ok   ${plugin}: already so — `);
 		check(!again.includes(": installed"), "nothing installed the second time");
 		// no second message in either form
 		says(again, "is in the export of submissions, once");
 		says(again, "are among its entries, once");
+		// What a visitor is given. This repo's site/ can show it: its config has the two packages that
+		// draw a form, and French among its languages. A site made from EmDash's template has neither,
+		// and each line says so.
+		if (where === "cloudflare") {
+			says(again, 'a visitor finds its form "Contact" on /pages/contact');
+			says(again, 'a visitor finds its form "Feedback" on /pages/feedback');
+			says(again, "a visitor reads the post in French at /fr/posts/chaque-lien-est-une-promesse");
+			const home = await body(`${builtSite()}/`);
+			check(home.includes("Every link is a promise") && home.includes('alt="The Earth at night'), "the home page to show the post, with its photograph");
+			check((await body(`${builtSite()}/fr/`)).includes("Chaque lien est une promesse"), "the French home page to show the post in French");
+		} else {
+			says(again, "it is on no page, for this site cannot draw it");
+			says(again, "no visitor can open it: French is not one of this site's languages");
+		}
 	});
 });

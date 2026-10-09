@@ -18,8 +18,11 @@
     "@astrojs/cloudflare": "^14.3.1",
     "@astrojs/react": "^6.0.5",
     "@emdash-cms/cloudflare": "^1.0.1",
+    "@masonjames/emdash-contact-forms": "0.2.0",
+    "@netdollar/emdash-forms": "0.1.0",
     "astro": "^7.3.2",
     "emdash": "^1.0.1",
+    "emdash-plugin-linguadash": "0.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

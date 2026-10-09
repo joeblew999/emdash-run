@@ -8,7 +8,9 @@ import {
 } from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
+import { LanguageSwitcher } from "emdash-plugin-linguadash/astro";
 import { Font } from "astro:assets";
+import { localePath } from "../utils/locale";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import "../styles/tokens.css";
 import "../styles/theme.css";
@@ -80,10 +82,15 @@ const pageCtx = createPublicPageContext({
 
 // Check if user is logged in (for showing admin link)
 const isLoggedIn = !!Astro.locals.user;
+
+// The language of the address this page is asked at (astro.config.mjs: i18n),
+// and the home page in that language
+const locale = Astro.currentLocale;
+const home = localePath(locale, "/");
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale ?? "en"}>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -109,7 +116,7 @@ const isLoggedIn = !!Astro.locals.user;
 		<EmDashBodyStart page={pageCtx} />
 		<header class="site-header">
 			<nav class="nav">
-				<a href="/" class="site-title">
+				<a href={home} class="site-title">
 					{
 						siteLogo ? (
 							<img
@@ -146,6 +153,15 @@ const isLoggedIn = !!Astro.locals.user;
 							))
 						}
 					</div>
+					{/* This page in each of the site's languages: LinguaDash's own switcher.
+					    On a post it leads to the post's translation, where one is published;
+					    anywhere else, and where there is none, to that language's home page. */}
+					<div class="lang-switcher">
+						<LanguageSwitcher
+							collection={content?.collection}
+							entryId={content?.id}
+						/>
+					</div>
 				</div>
 				{
 					isLoggedIn && (
@@ -165,7 +181,7 @@ const isLoggedIn = !!Astro.locals.user;
 			<div class="footer-inner">
 				<div class="footer-grid">
 					<div class="footer-brand">
-						<a href="/" class="footer-logo">
+						<a href={home} class="footer-logo">
 							{
 								siteLogo ? (
 									<img
@@ -523,6 +539,29 @@ const isLoggedIn = !!Astro.locals.user;
 
 			.nav-links a:hover {
 				color: var(--color-brand);
+			}
+
+			/* The language switcher draws a plain list: its look is given here */
+			.lang-switcher :global(ul) {
+				display: flex;
+				gap: var(--spacing-3);
+				list-style: none;
+				font-size: var(--font-size-sm);
+			}
+
+			.lang-switcher :global(a) {
+				color: var(--color-muted);
+				text-decoration: none;
+				transition: color var(--transition-fast);
+			}
+
+			.lang-switcher :global(a:hover) {
+				color: var(--color-brand);
+			}
+
+			.lang-switcher :global(a[aria-current="page"]) {
+				color: var(--color-text);
+				font-weight: 500;
 			}
 
 			.nav-admin {

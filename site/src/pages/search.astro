@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { search } from "emdash";
 import Base from "../layouts/Base.astro";
+import { localePath } from "../utils/locale";
 
 const query = Astro.url.searchParams.get("q")?.trim() || "";
 
@@ -10,8 +11,14 @@ const query = Astro.url.searchParams.get("q")?.trim() || "";
 // filtering in JS. FTS scales as the post count grows, returns ranked
 // results, and handles tokenization/stemming. Templates that grep all
 // post bodies in JS quickly become unusable past a few hundred posts.
+// Only the posts in the language of this page (a French post is not a result of
+// an English search), and each linked to at its address in its language.
 const { items: results } = query
-	? await search(query, { collections: ["posts"], limit: 30 })
+	? await search(query, {
+			collections: ["posts"],
+			locale: Astro.currentLocale,
+			limit: 30,
+		})
 	: { items: [] };
 ---
 
@@ -54,7 +61,7 @@ const { items: results } = query
 					{results.map((result) => (
 						<li class="search-result">
 							<a
-								href={`/posts/${result.slug ?? result.id}`}
+								href={localePath(result.locale, `/posts/${result.slug ?? result.id}`)}
 								class="result-link"
 							>
 								<h2 class="result-title">{result.title ?? "Untitled"}</h2>

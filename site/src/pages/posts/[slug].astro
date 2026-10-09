@@ -11,6 +11,7 @@ import { Image, PortableText, WidgetArea } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
+import { localePath } from "../../utils/locale";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 
@@ -20,7 +21,14 @@ if (!slug) {
 	return Astro.redirect("/404");
 }
 
-const { entry: post, cacheHint } = await getEmDashEntry("posts", slug);
+// The language of the address this page is asked at: /posts/<slug> is English and
+// /fr/posts/<slug> (src/pages/fr/posts/[slug].astro, which draws this page) is French.
+// An entry is asked for in that language: a slug alone can be in more than one.
+const locale = Astro.currentLocale;
+
+const { entry: post, cacheHint } = await getEmDashEntry("posts", slug, {
+	locale,
+});
 
 if (!post) {
 	return Astro.redirect("/404");
@@ -74,6 +82,7 @@ const tags = post.data.terms?.tag ?? [];
 const { entries: recentPosts, cacheHint: recentPostsCacheHint } = await getEmDashCollection(
 	"posts",
 	{
+	locale,
 	orderBy: { published_at: "desc" },
 	limit: 4,
 	},
@@ -95,7 +104,7 @@ const otherPostsWithTags = otherPosts.map((p) => ({
 }));
 
 const publishDate =
-	post.data.publishedAt?.toLocaleDateString("en-US", {
+	post.data.publishedAt?.toLocaleDateString(locale ?? "en-US", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
@@ -266,7 +275,7 @@ const publishDate =
 									title={p.data.title}
 									excerpt={p.data.excerpt}
 									featuredImage={p.data.featured_image}
-									href={`/posts/${p.id}`}
+									href={localePath(locale, `/posts/${p.data.slug ?? p.id}`)}
 									date={p.data.publishedAt ?? undefined}
 									readingTime={getReadingTime(p.data.content)}
 									tags={postTags.map((t) => ({ slug: t.slug, label: t.label }))}

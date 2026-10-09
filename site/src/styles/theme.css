@@ -24,10 +24,67 @@
   }
 */
 
+/*
+  The stylesheet of the Contact Forms block (astro.config.mjs): it lays the form
+  out, and hides the field that is there for robots to fill in. What this site
+  changes of it is at the end of this file.
+*/
+@import "@masonjames/emdash-contact-forms/styles";
+
 :root {
 }
 
 /* Keep the signed-in Admin link separated from the primary navigation. */
 .nav-admin {
 	margin-inline-start: var(--spacing-5);
+}
+
+/*
+  The Contact Forms block in this site's colours. Its own stylesheet (imported
+  above) paints it for a light page only: a near-white field under the light
+  text of dark mode.
+*/
+.mjcf-form {
+	margin-top: var(--spacing-8);
+}
+
+.mjcf-input {
+	font: inherit;
+	background: var(--color-surface);
+	border-color: var(--color-border);
+	border-radius: var(--radius);
+}
+
+.mjcf-input:focus-visible {
+	outline: none;
+	border-color: var(--color-brand);
+	box-shadow: 0 0 0 3px var(--color-brand-ring);
+}
+
+.mjcf-submit {
+	background: var(--color-brand);
+	color: var(--color-on-brand);
+	border-radius: var(--radius);
+}
+
+.mjcf-submit:hover {
+	background: var(--color-brand-hover);
+}
+
+/* (the line under a field is for what is wrong with it: not a paragraph of the page's text) */
+main .mjcf-form p.mjcf-error,
+main .mjcf-form p.mjcf-help {
+	margin: 0;
+}
+
+/*
+  The Forms block draws a card of its own, in its own colours: only room above
+  it, and its heading is the card's, not a heading of the page's text.
+*/
+main .forms-public {
+	margin-top: var(--spacing-8);
+}
+
+main .forms-public .fs-public-heading h2 {
+	margin-top: 0;
 }

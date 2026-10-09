@@ -1,0 +1,20 @@
+---
+// The French address of a post, /fr/posts/<slug>. It is the page of /posts/<slug>, drawn here:
+// that page asks for the entry in the language of the address it is asked at.
+//
+// A slug with no post is sent to the 404 page from here, before that page is drawn: only a
+// page can send a visitor on, and here the post's page is a component of this one.
+import { decodeSlug, getEmDashEntry } from "emdash";
+import Post from "../../posts/[slug].astro";
+
+const slug = decodeSlug(Astro.params.slug);
+const { entry } = slug
+	? await getEmDashEntry("posts", slug, { locale: Astro.currentLocale })
+	: { entry: null };
+
+if (!entry) {
+	return Astro.redirect("/404");
+}
+---
+
+<Post />

@@ -23,7 +23,8 @@ import { pathToFileURL } from "node:url";
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string, headers: Record<string, string> }>} ask   status 0: nothing answered.
  *   A redirect is not followed. headers: the answer's own, their names in small letters (where a redirect leads, what kind of file came back)
  * @property {(site: string, name: string) => Promise<unknown>} load   what one of the site's own packages gives a program that imports it (emdash/client, emdash/seed): the copy that site has installed, so it is the EmDash that site runs
- * @property {(url: string, seconds?: number) => Promise<{ status: number, type: string, bytes: Uint8Array<ArrayBuffer> }>} download   a file from an address, whole — a picture a seed file names, to be uploaded. Redirects are followed; type: what kind of file it says it is; status 0: nothing answered
+ * @property {(url: string, seconds?: number) => Promise<{ status: number, type: string, bytes: Uint8Array<ArrayBuffer>, headers: Record<string, string> }>} download   a file at an address, whole, as its bytes
+ *   (ask gives an answer as text, which a picture is not): a picture a seed file or a task names, to be uploaded. A redirect is followed. status 0: nothing answered
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
  * @property {(path: string) => string} read
@@ -87,9 +88,9 @@ export const realWorld = (env) => {
 			try {
 				// (some picture services refuse a request that does not say who is asking)
 				const res = await fetch(url, { signal: AbortSignal.timeout(seconds * 1000), headers: { "User-Agent": "emdash-run" } });
-				return { status: res.status, type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) };
+				return { status: res.status, type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()), headers: Object.fromEntries(res.headers) };
 			} catch {
-				return { status: 0, type: "", bytes: new Uint8Array() };
+				return { status: 0, type: "", bytes: new Uint8Array(), headers: {} };
 			}
 		},
 		exec: (program, args, cwd) => {

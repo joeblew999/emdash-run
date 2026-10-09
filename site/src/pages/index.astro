@@ -7,6 +7,7 @@ import {
 import { Image } from "emdash/ui";
 import Base from "../layouts/Base.astro";
 import PostCard from "../components/PostCard.astro";
+import { localePath } from "../utils/locale";
 import { getReadingTime } from "../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 
@@ -14,8 +15,16 @@ import { resolveBlogSiteIdentity } from "../utils/site-identity";
 // instead of fetching every post and discarding the tail in JS.
 const POSTS_PER_PAGE = 7;
 
+// The language of the address this page is asked at: / is English, and /fr/
+// (src/pages/fr/index.astro, which draws this page) is French. The posts listed
+// are those in that language, and each links to its address in it.
+const locale = Astro.currentLocale;
+const postPath = (post: { id: string; data: { slug: string | null } }) =>
+	localePath(locale, `/posts/${post.data.slug ?? post.id}`);
+
 const [{ entries: posts, cacheHint }, settings] = await Promise.all([
 	getEmDashCollection("posts", {
+		locale,
 		orderBy: { published_at: "desc" },
 		limit: POSTS_PER_PAGE + 1, // +1 to detect "view all" need
 	}),
@@ -67,7 +76,7 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 // Format date helper
 function formatDate(date: Date | null | undefined) {
 	if (!date) return null;
-	return date.toLocaleDateString("en-US", {
+	return date.toLocaleDateString(locale ?? "en-US", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
@@ -91,7 +100,7 @@ function formatDate(date: Date | null | undefined) {
 				{featuredPost && (
 					<section class="featured-section">
 						<div class="featured-grid">
-							<a href={`/posts/${featuredPost.id}`} class="featured-image-link">
+							<a href={postPath(featuredPost)} class="featured-image-link">
 								<div class="featured-image" {...featuredPost.edit.featured_image}>
 									<Image image={featuredPost.data.featured_image} />
 								</div>
@@ -136,7 +145,7 @@ function formatDate(date: Date | null | undefined) {
 									</span>
 								</div>
 								<a
-									href={`/posts/${featuredPost.id}`}
+									href={postPath(featuredPost)}
 									class="featured-title-link"
 								>
 									<h1 class="featured-title" {...featuredPost.edit.title}>{featuredPost.data.title}</h1>
@@ -175,7 +184,7 @@ function formatDate(date: Date | null | undefined) {
 									title={post.data.title ?? "Untitled"}
 									excerpt={post.data.excerpt}
 									featuredImage={post.data.featured_image}
-									href={`/posts/${post.id}`}
+									href={postPath(post)}
 									date={post.data.publishedAt ?? undefined}
 									readingTime={getReadingTime(post.data.content)}
 									tags={tags}
