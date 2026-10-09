@@ -18,9 +18,9 @@ const alone = { ...seed, "signin:token": { work: () => {} } };
 const saved = { [`/config/emdash-run/tokens/${savedName("http://localhost:4322", "/p/site")}.json`]: JSON.stringify({ url: "http://localhost:4322", token: TOKEN }) };
 /** A seed file where a site has its own. @param {unknown} content */
 const own = (content) => ({ "/p/site/seed/seed.json": JSON.stringify(content) });
-/** @param {ReturnType<typeof emdash>} site @param {Record<string, string>} files @param {{ args?: string[], exits?: (command: string) => number, downloads?: (url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer> } }} [more] */
+/** @param {ReturnType<typeof emdash>} site @param {Record<string, string>} files @param {{ args?: string[], downloads?: (url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer> } }} [more] */
 const run = async (site, files, more = {}) => {
-	const fake = fakeWorld({ files: { ...saved, ...files }, answers: site.answers, exits: more.exits, downloads: more.downloads });
+	const fake = fakeWorld({ files: { ...saved, ...files }, answers: site.answers, packages: site.packages, downloads: more.downloads });
 	const failed = await reach(alone, "site:seed", { world: fake.world, project, flags: {}, args: more.args ?? [] }).then(() => "", (e) => String(e.message));
 	// (what the task said: not the graph's own line of how long each state took)
 	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed, ran: fake.ran };
@@ -61,8 +61,8 @@ test("each section is applied, in EmDash's order: what is not there is made, wha
 	const site = emdash();
 	const { said, failed, ran } = await run(site, own(FULL));
 	assert.equal(failed, "");
-	// EmDash's own check of the file comes before anything is asked of the site
-	assert.deepEqual(ran, [`emdash seed ${join("/p/site", "seed", "seed.json")} --validate`]);
+	// EmDash's own check — the site's — is given the file as it is; no program is started
+	assert.deepEqual([site.checked, ran], [[FULL], []]);
 	assert.deepEqual(site.writes(), [
 		"POST /settings",
 		"PUT /schema/collections/posts",
@@ -261,9 +261,26 @@ test("the file: the site's own where EmDash looks for it, or the one given — a
 	assert.match(none.failed, /^There is no seed file at .*seed\.json\. Give one: mise run site:seed -- <file>/);
 });
 
-test("a file EmDash's own check refuses: nothing is asked of the site", async () => {
+test("a file EmDash's own check refuses: its reasons are given, and nothing is asked of the site", async () => {
 	const site = emdash();
-	const { failed } = await run(site, own(FULL), { exits: (command) => (command.includes("--validate") ? 1 : 0) });
-	assert.match(failed, /^EmDash's own check refuses this seed file/);
+	site.check = () => ({ valid: false, errors: ["menus[0]: label is required", "menus[0].items: must be an array"], warnings: [] });
+	const { failed } = await run(site, own(FULL));
+	assert.equal(failed, "EmDash's own check refuses this seed file, and nothing was applied:\n  menus[0]: label is required\n  menus[0].items: must be an array");
+	assert.deepEqual(site.asked, []);
+});
+
+test("what EmDash's check warns of is said, and the file is applied", async () => {
+	const site = emdash();
+	site.check = () => ({ valid: true, errors: [], warnings: ['widgetAreas[0].widgets[2].settings: not applied; widget options belong in "props"'] });
+	const { said, failed } = await run(site, own({ version: "1", redirects: [{ source: "/a", destination: "/b" }] }));
+	assert.equal(failed, "");
+	assert.deepEqual(said.slice(1, 4), [`the seed file: ${join("/p/site", "seed", "seed.json")}`, 'EmDash\'s check of the file warns: widgetAreas[0].widgets[2].settings: not applied; widget options belong in "props"', "ok   redirects: 1 made (/a)"]);
+});
+
+test("a file that is not JSON, and a site whose EmDash cannot be loaded: said, and nothing is asked", async () => {
+	const site = emdash();
+	assert.match((await run(site, { "/p/site/seed/seed.json": "{ not json" })).failed, /seed\.json is not JSON \(.*\)\. Nothing was applied\.$/);
+	const bare = fakeWorld({ files: { ...saved, ...own(FULL) }, answers: site.answers });
+	await assert.rejects(reach(alone, "site:seed", { world: bare.world, project, flags: {} }), /Cannot find package 'emdash\/client'/);
 	assert.deepEqual(site.asked, []);
 });

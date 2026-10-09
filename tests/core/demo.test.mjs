@@ -22,7 +22,7 @@ const files = { "/emdash-run/seeds/demo.json": shipped, [`/config/emdash-run/tok
 const photograph = () => ({ status: 200, type: "image/jpeg", bytes: new Uint8Array([1, 2, 3]) });
 /** @param {ReturnType<typeof emdash>} site @param {(url: string) => { status: number, type?: string, bytes?: Uint8Array<ArrayBuffer> }} [downloads] where its photographs come from: by default, they are fetched */
 const run = async (site, downloads = photograph) => {
-	const fake = fakeWorld({ files: { ...files }, answers: site.answers, downloads });
+	const fake = fakeWorld({ files: { ...files }, answers: site.answers, packages: site.packages, downloads });
 	const failed = await reach(alone, "site:demo", { world: fake.world, project, flags: {} }).then(() => "", (e) => String(e.message));
 	// (what the task said: not the graph's own line of how long each state took)
 	return { said: fake.said.filter((l) => !l.startsWith("done in ")), failed, ran: fake.ran };
@@ -78,7 +78,7 @@ test("the seed file that ships is EmDash's seed format, has every section, and h
 	for (const section of ["settings", "collections", "taxonomies", "bylines", "content", "menus", "redirects", "widgetAreas", "sections"]) assert.ok(Object.keys(seed[section]).length > 0, section);
 	assert.deepEqual(Object.keys(seed.settings), ["title", "tagline", "social", "seo"], "the settings a seed file can carry: a logo and an icon it can only name by an id the site gives");
 	const { lead, draft, later, redirect, linked } = parts(seed);
-	assert.deepEqual([lead.slug, draft.slug, later.slug, redirect?.destination, linked], ["sketch-it-on-paper-first", "notes-for-the-next-redesign", "what-we-are-reading", "/posts/sketch-it-on-paper-first", "Contact"]);
+	assert.deepEqual([lead?.slug, draft?.slug, later?.slug, redirect?.destination, linked], ["sketch-it-on-paper-first", "notes-for-the-next-redesign", "what-we-are-reading", "/posts/sketch-it-on-paper-first", "Contact"]);
 	// every post a visitor can come to see has a photograph, by its address, with alt text — and reads like a post
 	const seen = seed.content.posts.filter((/** @type {any} */ e) => e.status === "published" || e === later);
 	assert.equal(seen.length, 5);
@@ -87,14 +87,14 @@ test("the seed file that ships is EmDash's seed format, has every section, and h
 		assert.ok(post.data.featured_image.$media.alt.length > 20 && post.data.excerpt.length > 50 && post.data.content.length >= 6, post.slug);
 	}
 	assert.equal(new Set(seen.map((/** @type {any} */ p) => p.data.featured_image.$media.url)).size, 5, "no photograph twice");
-	assert.match(lead.data.excerpt, /\. \S.*\.$/, "the lead post's excerpt has two sentences: an edit takes the last away, and the next puts it back");
+	assert.match(String(lead?.data.excerpt), /\. \S.*\.$/, "the lead post's excerpt has two sentences: an edit takes the last away, and the next puts it back");
 });
 
 test("a site just made: the seed file is applied, then each feature a seed cannot say is made, in order", async () => {
 	const site = emdash();
 	const { said, failed, ran } = await run(site);
 	assert.equal(failed, "");
-	assert.match(ran[0], /^emdash seed .*demo\.json --validate$/, "EmDash's own check of the seed file, first");
+	assert.deepEqual([site.checked, ran], [[JSON.parse(shipped)], []], "EmDash's own check — the site's — is given the seed file; no program is started");
 	assert.deepEqual(features.map((f) => f.name), MAKES.map(([name]) => name));
 	assert.deepEqual(site.writes(), [...SEEDED, ...MAKES.flatMap(([, writes]) => writes)]);
 	assert.equal(said[0], "-> this machine, built site (site:preview): http://localhost:4322");
@@ -118,7 +118,7 @@ test("a site just made: the seed file is applied, then each feature a seed canno
 	assert.deepEqual([lead.taxonomies, lead.bylines, lead.revisions], [{ category: ["tutorials"], tag: ["process", "tools"] }, [{ bylineId: has.bylines[0].id }], 3]);
 	assert.deepEqual(guest.bylines, [{ bylineId: has.bylines[1].id, roleLabel: "Guest note" }]);
 	assert.equal(has.terms.find((t) => t.slug === "checklists").parentId, has.terms.find((t) => t.slug === "tutorials").id, "a category under another");
-	const written = parts(asShipped).lead.data;
+	const written = parts(asShipped).lead?.data ?? {};
 	assert.deepEqual([lead.data.excerpt, lead.seo], [written.excerpt, { title: written.title, description: written.excerpt }], "after its two edits the post reads as the seed file has it; search engines read its own title and excerpt");
 	assert.ok(Date.parse(later.scheduledAt) > Date.now(), "scheduled for a day to come");
 	assert.deepEqual([has.collections[0].commentsEnabled, has.collections[0].commentsModeration], [true, "none"]);

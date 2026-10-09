@@ -1,10 +1,93 @@
 // A made-up EmDash for the tests of site:seed and site:demo: as much of its API, and of the pages
 // it serves, as those two ask of it. It keeps what it is sent, and answers in the shapes EmDash
-// 1.2.0 was seen to answer in. Given to the made-up world (fake-world.mjs) as its `answers`.
+// 1.2.0 was seen to answer in. Given to the made-up world (fake-world.mjs) as its `answers` — and,
+// as its `packages`, a made-up emdash/client and emdash/seed: what a site's own EmDash gives the
+// tasks. No test has the real package, or reaches a network.
 
 export const TOKEN = "ec_pat_SAVED"; // what signin:token saved on this machine
 export const SHOWN_ONCE = "ec_pat_SHOWN_ONCE"; // what EmDash answers a new API token with
 export const SIGNATURE = "SIGNED"; // what makes a link a preview link
+
+/**
+ * A made-up emdash/client: the calls the tasks make of EmDash's own client, each as the request the
+ * real one was seen to make for it (EmDash 1.2.0, src/client/index.ts). Like the real one, it sends
+ * each request to the interceptors it is given — the last of which, here as there, answers it.
+ */
+export class EmDashClient {
+	/** @param {{ baseUrl: string, token?: string, interceptors: ((request: Request) => Promise<Response>)[] }} options */
+	constructor({ baseUrl, token, interceptors }) {
+		this.baseUrl = baseUrl;
+		this.token = token;
+		this.send = interceptors[interceptors.length - 1];
+	}
+	/** @param {string} method @param {string} path @param {unknown} [body] @returns {Promise<any>} */
+	async ask(method, path, body) {
+		const form = body instanceof FormData;
+		const headers = { Accept: "application/json", ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}), ...(body !== undefined && !form ? { "Content-Type": "application/json" } : {}) };
+		const response = await this.send(new Request(`${this.baseUrl}/_emdash/api${path}`, { method, headers, body: form ? body : body === undefined ? undefined : JSON.stringify(body) }));
+		const json = await response.json().catch(() => ({}));
+		// (the real one throws its EmDashApiError: an error with the status, EmDash's code and its words)
+		if (!response.ok) throw Object.assign(new Error(json.error?.message ?? `HTTP ${response.status}`), { status: response.status, code: json.error?.code ?? "UNKNOWN_ERROR" });
+		return json.data;
+	}
+	/** @param {string} slug */
+	async collection(slug) {
+		return (await this.ask("GET", `/schema/collections/${slug}?includeFields=true`)).item;
+	}
+	async taxonomies() {
+		return (await this.ask("GET", "/taxonomies")).taxonomies;
+	}
+	/** @param {string} taxonomy */
+	async terms(taxonomy) {
+		return { items: (await this.ask("GET", `/taxonomies/${taxonomy}/terms`)).terms };
+	}
+	/** @param {string} taxonomy @param {unknown} input */
+	createTerm(taxonomy, input) {
+		return this.ask("POST", `/taxonomies/${taxonomy}/terms`, input);
+	}
+	/** @param {string} collection @param {string} id */
+	async get(collection, id) {
+		const got = await this.ask("GET", `/content/${collection}/${id}`);
+		return { ...got.item, _rev: got._rev };
+	}
+	/** @param {string} collection @param {{ status?: string }} [options] */
+	list(collection, options = {}) {
+		return this.ask("GET", `/content/${collection}${options.status ? `?status=${options.status}` : ""}`);
+	}
+	/** @param {string} collection @param {string} id @param {{ data?: unknown, _rev?: string }} input */
+	async update(collection, id, input) {
+		const got = await this.ask("PUT", `/content/${collection}/${id}`, { data: input.data, ...(input._rev ? { _rev: input._rev } : {}) });
+		return { ...got.item, _rev: got._rev };
+	}
+	/** @param {string} collection @param {string} id */
+	async publish(collection, id) {
+		await this.ask("POST", `/content/${collection}/${id}/publish`);
+	}
+	/** @param {string} collection @param {string} id */
+	async unpublish(collection, id) {
+		await this.ask("POST", `/content/${collection}/${id}/unpublish`);
+	}
+	/** @param {string} collection @param {string} id @param {{ at: string }} options */
+	async schedule(collection, id, options) {
+		await this.ask("POST", `/content/${collection}/${id}/schedule`, { scheduledAt: options.at });
+	}
+	/** @param {Uint8Array<ArrayBuffer> | Blob} file @param {string} filename @param {{ alt?: string, caption?: string, contentType?: string }} [options] */
+	async mediaUpload(file, filename, options = {}) {
+		const form = new FormData();
+		form.append("file", file instanceof Blob ? file : new Blob([file], { type: options.contentType }), filename);
+		if (options.alt) form.append("alt", options.alt);
+		if (options.caption) form.append("caption", options.caption);
+		return (await this.ask("POST", "/media", form)).item;
+	}
+	/** @param {string} name */
+	menu(name) {
+		return this.ask("GET", `/menus/${name}`);
+	}
+	/** @param {string} query */
+	async search(query) {
+		return (await this.ask("GET", `/search?q=${encodeURIComponent(query)}`)).items;
+	}
+}
 
 /**
  * It starts as a site just made from EmDash's starter template does: its model, a primary menu, a
@@ -57,9 +140,15 @@ export const emdash = () => {
 		["POST", /^\/schema\/collections\/(\w+)\/fields$/, ([, slug], body) => found(by(has.collections, "slug", slug), `Collection not found: ${slug}`, (c) => ({ item: keep(c.fields, body) }))],
 		["GET", /^\/relations$/, () => yes({ relations: has.relations })],
 		["POST", /^\/relations$/, (_, body) => yes({ relation: keep(has.relations, body) }, 201)],
+		["GET", /^\/taxonomies$/, () => yes({ taxonomies: has.taxonomies })],
 		["GET", /^\/taxonomies\/(\w+)$/, ([, name]) => found(by(has.taxonomies, "name", name), `Taxonomy '${name}'`, (taxonomy) => ({ taxonomy }))],
 		["POST", /^\/taxonomies$/, (_, body) => yes({ taxonomy: keep(has.taxonomies, body) }, 201)],
-		["GET", /^\/taxonomies\/(\w+)\/terms$/, ([, name]) => yes({ terms: has.terms.filter((t) => t.name === name) })],
+		// (as a tree: a term under another is listed inside it, not beside it)
+		["GET", /^\/taxonomies\/(\w+)\/terms$/, ([, name]) => {
+			/** @param {string | null} parent @returns {unknown[]} */
+			const under = (parent) => has.terms.filter((t) => t.name === name && t.parentId === parent).map((t) => ({ ...t, children: under(t.id) }));
+			return yes({ terms: under(null) });
+		}],
 		["GET", /^\/taxonomies\/(\w+)\/terms\/([\w-]+)$/, ([, name, slug]) => found(has.terms.find((t) => t.name === name && t.slug === slug), `Term '${slug}'`, (term) => ({ term }))],
 		["POST", /^\/taxonomies\/(\w+)\/terms$/, ([, name], body) => (by(has.taxonomies, "name", name) ? yes({ term: keep(has.terms, { name, parentId: null, ...body }) }, 201) : no(404, "NOT_FOUND", `Taxonomy '${name}' not found`))],
 		["GET", /^\/media$/, (_, __, query) => yes({ items: has.media.filter((m) => m.filename.includes(query.get("q") ?? "")) })],
@@ -105,7 +194,7 @@ export const emdash = () => {
 		["POST", /^\/comments\/posts\/(\w+)$/, ([, id], body) => commentsOff() ?? yes({ id: keep(has.comments, { on: id, parentId: null, ...body }).id, status: "approved" }, 201), true],
 		["GET", /^\/redirects$/, (_, __, query) => yes({ items: has.redirects.filter((r) => r.source.includes(query.get("search") ?? "")) })],
 		["POST", /^\/redirects$/, (_, body) => yes(keep(has.redirects, body), 201)],
-		["GET", /^\/search$/, (_, __, query) => yes({ items: has.entries.filter((e) => e.status === "published" && e.data.title.toLowerCase().includes(query.get("q"))).map((e) => ({ slug: e.slug, title: e.data.title })) }), true],
+		["GET", /^\/search$/, (_, __, query) => yes({ items: has.entries.filter((e) => e.status === "published" && e.data.title.toLowerCase().includes(query.get("q"))).map((e) => ({ id: e.id, collection: e.type, slug: e.slug, title: e.data.title })) }), true],
 		["GET", /^\/admin\/api-tokens$/, () => yes({ items: has.tokens })],
 		["POST", /^\/admin\/api-tokens$/, (_, body) => yes({ token: SHOWN_ONCE, info: keep(has.tokens, body) }, 201)],
 		["GET", /^\/settings\/backups$/, () => yes({ settings: backups, archives: has.archives, storageAvailable: true })],
@@ -114,6 +203,12 @@ export const emdash = () => {
 	];
 
 	const site = {
+		/** what EmDash's own check says of a seed file: a test may have it refuse one, or warn @type {(file: unknown) => { valid: boolean, errors: string[], warnings: string[] }} */
+		check: () => ({ valid: true, errors: [], warnings: [] }),
+		/** every seed file its check was given @type {unknown[]} */
+		checked: [],
+		/** what the site's packages give a program that loads them: the made-up world's `packages` @type {Record<string, unknown>} */
+		packages: {},
 		has,
 		settings,
 		asked,
@@ -125,7 +220,8 @@ export const emdash = () => {
 		answers: (url, init = {}) => {
 			const { pathname, searchParams } = new URL(url);
 			const method = init.method ?? "GET";
-			const signed = /** @type {Record<string, string>} */ (init.headers ?? {}).Authorization === `Bearer ${TOKEN}`;
+			const headers = /** @type {Record<string, string>} */ (init.headers ?? {});
+			const signed = (headers.Authorization ?? headers.authorization) === `Bearer ${TOKEN}`;
 			asked.push({ method, path: pathname, signed });
 			if (site.refuses?.test(`${method} ${pathname}`)) return no(500, "INTERNAL_ERROR", "the database is locked");
 			if (pathname.startsWith("/_emdash/api/media/file/")) return { status: 200, text: "the picture", headers: { "content-type": "image/png" } };
@@ -154,5 +250,6 @@ export const emdash = () => {
 			return sent ? { status: sent.type, headers: { location: sent.destination } } : { status: 404 };
 		},
 	};
+	site.packages = { "emdash/client": { EmDashClient }, "emdash/seed": { validateSeed: (/** @type {unknown} */ file) => (site.checked.push(file), site.check(file)) } };
 	return site;
 };

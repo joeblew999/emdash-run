@@ -4,9 +4,11 @@
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir, hostname } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 /**
  * @typedef {object} World
@@ -20,6 +22,7 @@ import { dirname, join } from "node:path";
  * @property {(program: string, args: string[], cwd: string) => string} capture      a command's output, not shown
  * @property {(url: string, init?: RequestInit & { seconds?: number }) => Promise<{ status: number, text: string, headers: Record<string, string> }>} ask   status 0: nothing answered.
  *   A redirect is not followed. headers: the answer's own, their names in small letters (where a redirect leads, what kind of file came back)
+ * @property {(site: string, name: string) => Promise<unknown>} load   what one of the site's own packages gives a program that imports it (emdash/client, emdash/seed): the copy that site has installed, so it is the EmDash that site runs
  * @property {(url: string, seconds?: number) => Promise<{ status: number, type: string, bytes: Uint8Array<ArrayBuffer> }>} download   a file from an address, whole — a picture a seed file names, to be uploaded. Redirects are followed; type: what kind of file it says it is; status 0: nothing answered
  * @property {(program: string, args: string[], cwd: string) => { code: number, out: string, err: string }} exec   a command, not shown: its exit code and what it printed
  * @property {(path: string) => boolean} exists
@@ -79,6 +82,7 @@ export const realWorld = (env) => {
 				return { status: 0, text: "", headers: {} };
 			}
 		},
+		load: (site, name) => import(pathToFileURL(createRequire(join(site, "package.json")).resolve(name)).href),
 		download: async (url, seconds = 60) => {
 			try {
 				// (some picture services refuse a request that does not say who is asking)

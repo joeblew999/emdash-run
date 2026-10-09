@@ -9,10 +9,13 @@
 		"target": "es2024",
 		"module": "nodenext",
 		"moduleResolution": "nodenext",
-		"skipLibCheck": true,
+		// Declaration files are checked too: scripts/core has three (the types of EmDash's requests, which
+		// a program writes — mise run dev:api-types — and two written by hand), and a mistake in one
+		// would otherwise pass in silence, as a type that fits anything.
+		"skipLibCheck": false,
 		"types": ["node"],
 		"typeRoots": ["tests/node_modules/@types"]
 	},
-	"include": ["tests/**/*.mjs", "scripts/**/*.mjs"],
+	"include": ["tests/**/*.mjs", "scripts/**/*.mjs", "scripts/**/*.d.ts"],
 	"exclude": ["tests/plugin/fixtures", "**/node_modules"]
 }

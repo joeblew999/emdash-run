@@ -2,9 +2,10 @@
 	"name": "emdash-run-tests",
 	"private": true,
 	"type": "module",
-	"description": "What type-checks the test and the scripts: mise run dev:types.",
+	"description": "What type-checks the test and the scripts (mise run dev:types), and what writes the types of EmDash's requests from its own list of them (mise run dev:api-types).",
 	"devDependencies": {
 		"@types/node": "24.10.1",
+		"openapi-typescript": "7.13.0",
 		"typescript": "5.9.3"
 	}
 }
