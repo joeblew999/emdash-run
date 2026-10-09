@@ -6,9 +6,11 @@
 //   node tests/run.mjs <group> [--level …]       that group's steps: site, signin, plugin, live
 //   node tests/run.mjs --report                  the docs page of what the last runs showed
 //
-// THE PROOF: a group's run at the level fast or all leaves Node's own report of it — every step,
-// passed or failed, with its time — in tests/<group>/last-run.txt, under a line that says when, at
-// which commit, at which level and on what. docs/reference/tests.md is those files, as they are.
+// THE PROOF: a group's run at the level all — every step — leaves Node's own report of it, each
+// step passed or failed, with its time, in tests/<group>/last-run.txt, under a line that says when,
+// at which commit and on what. docs/reference/tests.md is those files, as they are. A smoke or fast
+// run writes none: it is what the commit and the release check run, and a check that changed a file
+// a generated page is made from would fail the docs check that follows it.
 //
 //   tests/<group>/steps.mjs   a group's steps: tests of Node's runner, named after the task each tests
 //   tests/lib/step.mjs        what a steps file is written with: step, refuses, long, setup
@@ -21,7 +23,7 @@ const argv = process.argv.slice(2);
 const flag = (/** @type {string} */ name) => (argv.includes(name) ? argv.splice(argv.indexOf(name), 2)[1] : "");
 const report = (/** @type {string} */ g) => `tests/${g}/last-run.txt`;
 if (argv.includes("--report")) {
-	console.log("# What the tests showed\n\nEach block is Node's own report of a group's last run on a developer's machine: every step, passed (✔) or failed (✖), with its time. The line above it says when it ran, at which commit, at which level and on what. On Linux, macOS and Windows the same tasks run in the [stages workflow](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml).");
+	console.log("# What the tests showed\n\nEach block is Node's own report of a group's last run of every step (`mise run dev:test --level all`) on a developer's machine: each step passed (✔) or failed (✖), with its time. The line above it says when it ran, at which commit and on what. A smoke or fast run is not recorded. On Linux, macOS and Windows the same tasks run in the [stages workflow](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml).");
 	for (const g of groups) if (existsSync(report(g))) console.log(`\n## ${g}\n\n\`\`\`text\n${readFileSync(report(g), "utf8").trim()}\n\`\`\``);
 	process.exit(0);
 }
@@ -40,8 +42,8 @@ if (argv.includes("--unit")) process.exit(test("tests/**/*.test.mjs"));
 if (level === "smoke" && group !== "site") process.exit(0);
 const pattern = level === "smoke" ? "site:(ports|start)" : only;
 const began = Date.now();
-// a whole group at fast or all is proof worth keeping: Node writes its report to a file too
-const kept = !pattern && !process.env.CI ? ["--test-reporter=spec", "--test-reporter-destination=stdout", "--test-reporter=spec", `--test-reporter-destination=${report(group)}`] : [];
+// a whole group at the level all is proof worth keeping: Node writes its report to a file too
+const kept = level === "all" && !pattern && !process.env.CI ? ["--test-reporter=spec", "--test-reporter-destination=stdout", "--test-reporter=spec", `--test-reporter-destination=${report(group)}`] : [];
 const code = test(...kept, ...(pattern ? [`--test-name-pattern=${pattern}`] : []), `tests/${group}/steps.mjs`);
 const took = Math.round((Date.now() - began) / 1000);
 // each step's time is on its line above; this is the group's

@@ -8,7 +8,7 @@ parent: "Reference"
 
 Written by `charter docs` from what `node tests/run.mjs --report` prints (docs/_generated.toml): don't edit, change the code that command reads, then `mise run docs:setup`.
 
-Each block is Node's own report of a group's last run on a developer's machine: every step, passed (✔) or failed (✖), with its time. The line above it says when it ran, at which commit, at which level and on what. On Linux, macOS and Windows the same tasks run in the [stages workflow](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml).
+Each block is Node's own report of a group's last run of every step (`mise run dev:test --level all`) on a developer's machine: each step passed (✔) or failed (✖), with its time. The line above it says when it ran, at which commit and on what. A smoke or fast run is not recorded. On Linux, macOS and Windows the same tasks run in the [stages workflow](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml).
 
 ## site
 

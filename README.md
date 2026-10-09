@@ -46,7 +46,7 @@ EmDash, Astro and wrangler have good command lines, and these tasks run them. Wh
 
 The other tasks (`site:start`, `site:check`, `live:ship` and the like) are those tools' own commands in the order they have to run: a convenience, and the states the tasks above stand on.
 
-**Known to work:** every task has test steps, and [what the last recorded run showed](docs/reference/tests.md), step by step with times, is in the docs: a step it shows as skipped, or does not show, was not run in that run. The same test runs on three operating systems on GitHub: [![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml). Only its smoke level has been run there so far, and on Windows the levels above it have not passed: [what has been shown to work, and where](docs/getting-started.md).
+**Known to work:** every task has test steps, and [what the last recorded run showed](docs/reference/tests.md), step by step with times, is in the docs: a step it does not show was not run in that run. The same test runs on three operating systems on GitHub: [![stages](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml/badge.svg)](https://github.com/joeblew999/emdash-run/actions/workflows/stages.yml). Only its smoke level has been run there so far, and on Windows the levels above it have not passed: [what has been shown to work, and where](docs/getting-started.md).
 
 ## What is in this repository
 

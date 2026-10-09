@@ -32,7 +32,7 @@ Don't edit these: change what they are written from.
 | Page or file | Written by | From |
 |---|---|---|
 | [Tasks](reference/tasks.md), [The tasks for working on this repo](reference/dev-tasks.md) | `mise run docs:setup` (`charter docs-tasks`) | each task's `description`, arguments and flags, in the order they are written: `tasks.toml` for the first, `dev.toml` and charter's own tasks for the second |
-| [What the tests showed](reference/tests.md) | `mise run docs:setup` | `tests/<group>/last-run.txt`, which a whole group run at the level fast or all writes on a developer's machine |
+| [What the tests showed](reference/tests.md) | `mise run docs:setup` | `tests/<group>/last-run.txt`, which a whole group run at the level all writes on a developer's machine |
 | `scripts/core/emdash-api.d.ts` | `mise run dev:api-types` | `scripts/core/emdash-openapi.json`, a saved copy of EmDash's own list of its requests |
 | `_config.yml`, `_sass/`, `llms.txt`, [Writing docs](writing.md), [How this repo is kept](repo.md) and `repo/` | `mise run docs:setup` | [charter](https://github.com/joeblew999/charter) |
 | `.github/ISSUE_TEMPLATE/`, `.github/labels.tsv`, `.github/workflows/repo-check.yml`, `renovate.json` | `mise run repo` | charter |
@@ -56,7 +56,7 @@ Every file charter writes says so in its first lines. `charter files` lists them
 | **[Reference](reference.md)** | Tables: tasks, settings, templates, plugins |
 | [Tasks](reference/tasks.md) | Every task: what it does, its arguments and flags |
 | [The tasks for working on this repo](reference/dev-tasks.md) | The same, for `dev:*`, `check` and the tasks charter gives |
-| [What the tests showed](reference/tests.md) | Every test step of the last recorded run, passed, failed or skipped, with its time |
+| [What the tests showed](reference/tests.md) | Every test step of the last recorded run, passed or failed, with its time |
 | [Settings](reference/settings.md) | Everything you can set in `mise.toml` |
 | [Templates](reference/templates.md) | The eight kinds of site `site:new` makes |
 | [Favourite plugins](reference/favourite-plugins.md) | What `plugin:favourites` installs, why, and every plugin that was tried |

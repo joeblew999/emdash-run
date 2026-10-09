@@ -37,7 +37,7 @@ What each task and level is: [its description](reference/dev-tasks.md#devtest). 
 
 - **The levels smoke and fast work on one test site that is kept, and kept running**, between runs: a copy of `site/` in `~/.cache/emdash-run/bench`, made again when `site/` changes; with `--node`, a site made from `node:starter` in `bench-node`. A step then costs what its task costs. The groups take it in turn.
 - **The level all starts from nothing**: each group in a temporary folder of its own, removed at the end. Only there are the steps that stop, empty and delete a site, and the long ones, `site:check`, `site:seed`, `site:demo`, `plugin:demo` and `plugin:new` among them.
-- **A whole group run at the level fast or all** leaves Node's report of it in `tests/<group>/last-run.txt`, which [What the tests showed](reference/tests.md) is written from. A smoke run, a run with `--only` and a run on GitHub leave none.
+- **A whole group run at the level all** leaves Node's report of it in `tests/<group>/last-run.txt`, which [What the tests showed](reference/tests.md) is written from: run `mise run docs:setup` after it and commit both. A smoke or fast run, a run with `--only` and a run on GitHub leave none, so `mise run check` changes no file.
 - **The live group** deploys to a Worker kept for it, and is not part of `dev:test`: `mise run dev:test:live`.
 - **On GitHub** a push to `main` that touches the tasks, the scripts, the tests or `site/` runs the level smoke, and a release tag the level all. Not run there at any level: the two `signin:open` steps, which need a screen, the live group, and the Node site (`--node`). What has passed there: [Getting started](getting-started.md).
 
