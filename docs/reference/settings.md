@@ -22,12 +22,14 @@ All optional, under `[env]`. One that is yours alone, such as an address or a po
 | `ADMIN_NAME` | `Site Admin` | That administrator's name |
 | `PLUGINS` | The favourites | What `plugin:favourites` installs: `@publisher/slug`, with `@version` to hold one to a release, separated by spaces |
 | `PLUGIN_PUBLISHER`, `PLUGIN_AUTHOR`, `PLUGIN_SECURITY_EMAIL` | | Needed by `plugin:new` |
+| `COYWOLF_VERSION` | `v0.35.11` | The release of Coywolf Pack `plugin:coywolf` installs: a tag of [coywolf-llc/coywolf-pack](https://github.com/coywolf-llc/coywolf-pack/tags) |
+| `COYWOLF_SOURCE` | | Anything `pnpm add` takes, in place of that release's tarball: a fork's, or a local checkout of the pack |
 
 Read from the environment, not set in `mise.toml`:
 
 | Variable | What it is |
 |---|---|
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | For `signin:access`, which also reads them from fnox if it is installed ([Deploy](../guides/deploy.md#the-token-signinaccess-needs)); `live:preview` uses them, when set, to switch preview addresses on |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | For `signin:access` and `live:zone`, which also reads them from fnox if it is installed ([Deploy](../guides/deploy.md#the-token-signinaccess-needs)); `live:preview` uses them, when set, to switch preview addresses on |
 | `EMDASH_TOKEN`, `EMDASH_HEADERS` | EmDash's own: given, the `emdash` task uses them in place of what this machine saved for the site |
 | `MISE_YES`, `CI` | Either counts as `--yes` for the plugin tasks |
 | `XDG_CONFIG_HOME` | Where the sign-in tasks save, in `emdash-run/` under it; `~/.config` without it |

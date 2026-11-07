@@ -32,6 +32,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin:new`](#pluginnew) | Make a plugin inside the site: scaffold, test, build, add to the site's config (its import, and its name in sandboxed: [ … ] of emdash({ … }); a config it cannot edit safely is left alone, with the lines to add). mise run plugin:new \-\- &lt;name&gt;. Run again: rebuilds it |
 | [`plugin:check`](#plugincheck) | Check a plugin: manifest, types, tests, build, bundle. mise run plugin:check \-\- &lt;name&gt; |
 | [`plugin:add`](#pluginadd) | Add a plugin from npm: the package, and for a sandboxed plugin (one built with emdash-plugin build) its two lines in the site's astro.config.mjs. A native plugin's two lines are printed for you to add, and the task stops there: which of its exports makes the plugin is for its README to say, and this does not guess. A config it cannot edit safely is left alone, with the lines to add. mise run plugin:add \-\- &lt;package&gt;. Run again: nothing changes |
+| [`plugin:coywolf`](#plugincoywolf) | Put Coywolf Pack (github.com/coywolf-llc/coywolf-pack, @coywolf/emdash) in a Cloudflare site, wired as its README says: the package from its release tarball (COYWOLF_VERSION, v0.35.11 by default) and the peers it names that the site lacks; coywolfPlugin() in plugins: [ … ] of emdash({ … }) and Vite told not to pre-bundle it; Cloudflare's route cache with route rules for every page, when the site has no cache: option; coywolfPack() first in src/middleware.ts (made when there is none, the site's own after it when there is); and in wrangler.jsonc CF_VERSION_METADATA, a SELF service binding to the Worker itself, Smart Placement and Workers Logs. Every module of the pack starts off: nothing a visitor sees changes until an administrator turns a feature on under Plugins → Coywolf Pack. It refuses a Node site, and EmDash older than 1.2.0 (the pack's own floor: mise run emdash:update). A file it cannot edit safely is left alone, with the lines to add, and nothing else is changed. It stops the site while its packages change. This machine's site; the page cache works only once deployed (mise run live:ship). Run again: nothing changes |
 | [`plugin:search`](#pluginsearch) | Search EmDash's plugin registry. mise run plugin:search \-\- forms |
 | [`plugin:sandbox`](#pluginsandbox) | Let the site run sandboxed plugins, which every registry plugin is: sandboxRunner in emdash({ … }) of the site's astro.config.mjs and, on a Cloudflare site, the Worker Loader binding in wrangler.jsonc; on a Node site its two packages, and workerd's install script allowed in pnpm-workspace.yaml, so the sandbox process stops when EmDash stops it. Stops the site when it changes packages. A file it cannot edit safely is left alone, with the lines to add by hand. Run again: nothing changes |
 | [`plugin:install`](#plugininstall) | Install a plugin from EmDash's registry, no clicking: mise run plugin:install \-\- &lt;publisher&gt;/&lt;slug&gt;, or &lt;publisher&gt;/&lt;slug&gt;@&lt;version&gt; for that release and no other, newest or not. It prints everything the plugin asks for; one that can change things or reach outside the site, and any install with \-\-live, needs \-\-yes |
@@ -44,7 +45,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`plugin`](#plugin) | Anything else in EmDash's plugin CLI. mise run plugin \-\- info &lt;publisher&gt; &lt;slug&gt; |
 | [`signin:token`](#signintoken) | Sign a machine in with no browser — the everyday way, for the CLI, agents and CI: an admin and an API token written to the site's database. This machine's built site; add \-\- \-\-live for the deployed one (Cloudflare sites only) |
 | [`signin:mcp`](#signinmcp) | How an agent connects to the site's own MCP server: EmDash has one, with tools for content, schema, media, menus, taxonomies and more, and it takes the token signin:token saves. Prints the address and the settings for an agent's .mcp.json, with the token read from the environment, never printed. This machine's built site; add \-\- \-\-live for the deployed one |
-| [`signin:access`](#signinaccess) | Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox |
+| [`signin:access`](#signinaccess) | Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. A site whose application is already made (its audience is CF_ACCESS_AUDIENCE in wrangler.jsonc), given a domain of its own, has the same application put over the new address: no second one. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox |
 | [`signin:passkey`](#signinpasskey) | Sign a machine in through EmDash's real setup wizard, with a passkey — for testing the wizard itself. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
 | [`signin:open`](#signinopen) | Open a browser window already signed in to the admin, for you to look around. Add \-\- \-\-live for the deployed site. Needs Playwright + Chrome |
 | [`live:ship`](#liveship) | Deploy to Cloudflare: check, deploy, wait for the new version to answer. A newly deployed site has no content: it prints how to bring this machine's content to it |
@@ -54,6 +55,7 @@ Run one with `mise run <task>`; its arguments and flags go after `--`. `mise tas
 | [`live:backup`](#livebackup) | Back up the deployed site: a database bookmark to restore to, and a content package in backups/. No SQL dump — Cloudflare's export refuses an EmDash database |
 | [`emdash:update`](#emdashupdate) | Update the site to the newest EmDash, then type-check and build |
 | [`emdash`](#emdash) | EmDash's CLI. This machine by default; add \-\-live for the deployed site, \-\-preview for the built site |
+| [`live:zone`](#livezone) | Set the Cloudflare zone the deployed site's domain (LIVE_URL) is in as Coywolf runs its EmDash sites: Smart Tiered Cache and Early Hints for the zone, and two custom rules for the site's host alone — a Managed Challenge to unverified bots that say they are Chrome before 140 or iOS 15 and earlier, and a block of WordPress probes (*.php, /wp-admin, /wp-json, /wp-content, /wp-includes). Written for the Free plan (no regular expressions). It prints each setting and rule before it sends it. It needs an API token that may change the zone, CLOUDFLARE_API_TOKEN or fnox's, with Zone Settings Edit and Zone WAF Edit: wrangler's login cannot; without one it stops and changes nothing. A workers.dev address is in no zone of yours, and is refused. Run again: what is already so is left as it is |
 | [`live:check`](#livecheck) | Hidden. site:check, then a dry run of the deploy |
 | [`site:admin`](#siteadmin) | Hidden. Fresh built site + signin:passkey in one go. Empties the local database |
 
@@ -187,6 +189,12 @@ Add a plugin from npm: the package, and for a sandboxed plugin (one built with e
 **Arguments**
 - **`<package>`** — The npm package, e.g. @emdash-cms/plugin-forms
 
+### `plugin:coywolf`
+
+- **Usage:** `plugin:coywolf`
+
+Put Coywolf Pack (github.com/coywolf-llc/coywolf-pack, @coywolf/emdash) in a Cloudflare site, wired as its README says: the package from its release tarball (COYWOLF_VERSION, v0.35.11 by default) and the peers it names that the site lacks; coywolfPlugin() in plugins: [ … ] of emdash({ … }) and Vite told not to pre-bundle it; Cloudflare's route cache with route rules for every page, when the site has no cache: option; coywolfPack() first in src/middleware.ts (made when there is none, the site's own after it when there is); and in wrangler.jsonc CF_VERSION_METADATA, a SELF service binding to the Worker itself, Smart Placement and Workers Logs. Every module of the pack starts off: nothing a visitor sees changes until an administrator turns a feature on under Plugins → Coywolf Pack. It refuses a Node site, and EmDash older than 1.2.0 (the pack's own floor: mise run emdash:update). A file it cannot edit safely is left alone, with the lines to add, and nothing else is changed. It stops the site while its packages change. This machine's site; the page cache works only once deployed (mise run live:ship). Run again: nothing changes
+
 ### `plugin:search`
 
 Search EmDash's plugin registry. mise run plugin:search -- forms
@@ -306,7 +314,7 @@ How an agent connects to the site's own MCP server: EmDash has one, with tools f
 
 - **Usage:** `signin:access`
 
-Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox
+Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. A site whose application is already made (its audience is CF_ACCESS_AUDIENCE in wrangler.jsonc), given a domain of its own, has the same application put over the new address: no second one. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox
 
 ### `signin:passkey`
 
@@ -376,6 +384,12 @@ Update the site to the newest EmDash, then type-check and build
 - **Usage:** `emdash`
 
 EmDash's CLI. This machine by default; add --live for the deployed site, --preview for the built site
+
+### `live:zone`
+
+- **Usage:** `live:zone`
+
+Set the Cloudflare zone the deployed site's domain (LIVE_URL) is in as Coywolf runs its EmDash sites: Smart Tiered Cache and Early Hints for the zone, and two custom rules for the site's host alone — a Managed Challenge to unverified bots that say they are Chrome before 140 or iOS 15 and earlier, and a block of WordPress probes (*.php, /wp-admin, /wp-json, /wp-content, /wp-includes). Written for the Free plan (no regular expressions). It prints each setting and rule before it sends it. It needs an API token that may change the zone, CLOUDFLARE_API_TOKEN or fnox's, with Zone Settings Edit and Zone WAF Edit: wrangler's login cannot; without one it stops and changes nothing. A workers.dev address is in no zone of yours, and is refused. Run again: what is already so is left as it is
 
 ### `live:check`
 

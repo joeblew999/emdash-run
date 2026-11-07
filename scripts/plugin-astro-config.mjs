@@ -234,12 +234,12 @@ export const addImport = (text, { module, default: byDefault, named }) => {
 	return { text: text.slice(0, at) + (last && !last.endsLine ? eol : "") + line + eol + text.slice(at), local };
 };
 
-// ── the emdash({ … }) call ───────────────────────────────────────────────────────────────────
+// ── the emdash({ … }) and defineConfig({ … }) calls ──────────────────────────────────────────
 
-// The one call of EmDash's integration, and the braces of its options.
-export const emdashCall = (/** @type {string} */ text, kind = kinds(text)) => {
-	const name = imports(text, kind).find((i) => i.module === "emdash/astro" && !i.typeOnly)?.default;
-	if (!name) throw new CannotEdit('it does not import EmDash\'s integration:  import emdash from "emdash/astro"');
+// The one call of a function a module gives, and the braces of the options it is given.
+/** @param {string} text @param {Uint8Array} kind @param {string | null | undefined} name @param {string} missing */
+const callOf = (text, kind, name, missing) => {
+	if (!name) throw new CannotEdit(missing);
 	const calls = [...text.matchAll(new RegExp(`(?<![\\w$.])${escaped(name)}\\s*\\(`, "g"))].filter((m) => kind[m.index] === CODE);
 	if (calls.length !== 1) throw new CannotEdit(calls.length ? `it calls ${name}( … ) ${calls.length} times, and this cannot tell which is the site's` : `it never calls ${name}( … )`);
 	const open = skipSpace(text, kind, calls[0].index + calls[0][0].length);
@@ -254,7 +254,16 @@ export const emdashCall = (/** @type {string} */ text, kind = kinds(text)) => {
 	});
 	return { name, open, close, props, kind };
 };
-const option = (/** @type {ReturnType<typeof emdashCall>} */ call, /** @type {string} */ name) => {
+/** @typedef {ReturnType<typeof callOf>} Call */
+
+// The one call of EmDash's integration.
+export const emdashCall = (/** @type {string} */ text, kind = kinds(text)) =>
+	callOf(text, kind, imports(text, kind).find((i) => i.module === "emdash/astro" && !i.typeOnly)?.default, 'it does not import EmDash\'s integration:  import emdash from "emdash/astro"');
+// The one call of Astro's defineConfig: the site's own options, beside integrations: [ … ].
+export const configCall = (/** @type {string} */ text, kind = kinds(text)) =>
+	callOf(text, kind, imports(text, kind).find((i) => i.module === "astro/config" && !i.typeOnly)?.named.find((n) => n.imported === "defineConfig")?.local, 'it does not import Astro\'s defineConfig:  import { defineConfig } from "astro/config"');
+
+const option = (/** @type {Call} */ call, /** @type {string} */ name) => {
 	const found = call.props.find((p) => p.name === name && !p.spread);
 	if (!found && call.props.some((p) => p.spread)) throw new CannotEdit(`the options of ${call.name}({ … }) include a spread (...), so this cannot tell whether ${name} is already set`);
 	return found ?? null;
@@ -262,10 +271,12 @@ const option = (/** @type {ReturnType<typeof emdashCall>} */ call, /** @type {st
 
 // Is this option set, at the top level of emdash({ … })?
 export const hasOption = (/** @type {string} */ text, /** @type {string} */ name) => option(emdashCall(text), name) !== null;
+// Is this option set, at the top level of defineConfig({ … })?
+export const hasConfigOption = (/** @type {string} */ text, /** @type {string} */ name) => option(configCall(text), name) !== null;
 
-// One option in emdash({ … }), as its first. Nothing when the option is already set.
-export const addOption = (/** @type {string} */ text, /** @type {string} */ name, /** @type {string} */ value) => {
-	const call = emdashCall(text);
+// One option, as the first of a call's. Nothing when the option is already set.
+/** @param {string} text @param {Call} call @param {string} name @param {string} value */
+const addOptionTo = (text, call, name, value) => {
 	if (option(call, name)) return text;
 	const { open, close, props } = call;
 	const eol = eolOf(text);
@@ -277,7 +288,19 @@ export const addOption = (/** @type {string} */ text, /** @type {string} */ name
 		return text.slice(0, open + 1) + ` ${name}: ${value},` + (/\s/.test(text[open + 1]) ? "" : " ") + text.slice(open + 1);
 	}
 	const indent = props.length && !text.slice(text.lastIndexOf("\n", firstAt) + 1, firstAt).trim() ? indentAt(text, firstAt) : indentAt(text, close) + "\t";
-	return text.slice(0, breakAt + 1) + `${indent}${name}: ${value},${eol}` + text.slice(breakAt + 1);
+	// a value of several lines is indented as the option is
+	const laid = value.replace(/\n/g, `${eol}${indent}`);
+	return text.slice(0, breakAt + 1) + `${indent}${name}: ${laid},${eol}` + text.slice(breakAt + 1);
+};
+// One option in emdash({ … }), as its first. Nothing when the option is already set.
+export const addOption = (/** @type {string} */ text, /** @type {string} */ name, /** @type {string} */ value) => addOptionTo(text, emdashCall(text), name, value);
+// One option in defineConfig({ … }), as its first. Nothing when the option is already set.
+export const addConfigOption = (/** @type {string} */ text, /** @type {string} */ name, /** @type {string} */ value) => addOptionTo(text, configCall(text), name, value);
+// The text of an option's value in defineConfig({ … }), or null when it is not set.
+export const configOptionText = (/** @type {string} */ text, /** @type {string} */ name) => {
+	const call = configCall(text);
+	const found = option(call, name);
+	return found && found.value >= 0 ? text.slice(found.value, trimBack(text, call.kind, found.end, found.value)) : null;
 };
 
 // One entry in a list option of emdash({ … }): `sandboxed: [a]` or `plugins: [a()]`. Nothing when

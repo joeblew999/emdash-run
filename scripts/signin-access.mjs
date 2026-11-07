@@ -16,6 +16,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { Exit } from "./core/calls.mjs";
+import { wranglerConfig } from "./wrangler-config.mjs";
 
 /** @param {string[]} argv */
 export async function main(argv) {
@@ -92,9 +93,27 @@ export async function main(argv) {
 		// 1. the application
 		const name = host.split(".")[0];
 		const domain = `${host}/_emdash`;
-		let app = (await api("GET", "apps")).find((/** @type {any} */ a) => a.domain === domain);
+		const apps = await api("GET", "apps");
+		const covers = (/** @type {any} */ a, /** @type {string} */ d) => a.domain === d || (a.self_hosted_domains || []).includes(d);
+		let app = apps.find((/** @type {any} */ a) => covers(a, domain));
+		// The site already has an application (its audience is in wrangler.jsonc) over another address
+		// — its workers.dev one, before it was given a domain of its own: the same application is put
+		// over this address too. A second application would have another audience, which the site's
+		// auth: access( … ) line does not accept.
+		const audience = (() => {
+			try {
+				return wranglerConfig(siteDir)?.vars?.CF_ACCESS_AUDIENCE ?? null;
+			} catch {
+				return null;
+			}
+		})();
+		const theSites = !app && audience ? apps.find((/** @type {any} */ a) => a.aud === audience) : null;
 		if (app) {
 			console.log(`access: application "${app.name}" is already over ${domain}`);
+		} else if (theSites) {
+			const over = theSites.self_hosted_domains || [theSites.domain];
+			app = await api("PUT", `apps/${theSites.id}`, { name: theSites.name, type: "self_hosted", domain: theSites.domain, self_hosted_domains: [...new Set([...over, domain])], session_duration: theSites.session_duration || "24h", app_launcher_visible: false });
+			console.log(`access: application "${app.name}" (the audience in wrangler.jsonc) is now over ${domain} too`);
 		} else {
 			app = await api("POST", "apps", { name, type: "self_hosted", domain, session_duration: "24h", app_launcher_visible: false });
 			console.log(`access: application "${name}" made over ${domain}`);
@@ -144,11 +163,14 @@ export async function main(argv) {
 		// this Cloudflare sends a visitor's browser to the sign-in page before EmDash is asked.
 		const open = [mediaDomain, `${host}/_emdash/api/plugins`];
 		const mediaOver = host.endsWith(".workers.dev") ? [...open, ...open.map((d) => `*-${d}`)] : open;
-		const mediaApp = (await api("GET", "apps")).find((/** @type {any} */ a) => a.domain === mediaDomain);
-		if (mediaApp && mediaOver.every((d) => (mediaApp.self_hosted_domains || [mediaApp.domain]).includes(d))) {
+		const allApps = await api("GET", "apps");
+		// by its address, or — for a site given a domain of its own — the one made beside the site's application
+		const mediaApp = allApps.find((/** @type {any} */ a) => covers(a, mediaDomain)) ?? allApps.find((/** @type {any} */ a) => a.name === `${app.name}: media`);
+		const mediaHas = mediaApp ? mediaApp.self_hosted_domains || [mediaApp.domain] : [];
+		if (mediaApp && mediaOver.every((d) => mediaHas.includes(d))) {
 			console.log("access: uploaded media and plugins' public routes are already public");
 		} else if (mediaApp) {
-			await api("PUT", `apps/${mediaApp.id}`, { name: mediaApp.name, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
+			await api("PUT", `apps/${mediaApp.id}`, { name: mediaApp.name, type: "self_hosted", domain: mediaApp.domain, self_hosted_domains: [...new Set([...mediaHas, ...mediaOver])], session_duration: "24h", app_launcher_visible: false });
 			console.log("access: uploaded media and plugins' public routes stay public, on the preview addresses too");
 		} else {
 			const media = await api("POST", "apps", { name: `${name}: media`, type: "self_hosted", domain: mediaDomain, self_hosted_domains: mediaOver, session_duration: "24h", app_launcher_visible: false });
