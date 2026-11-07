@@ -105,3 +105,29 @@ long(() => {
 		}
 	});
 });
+
+// Coywolf Pack, last: it puts a middleware and Cloudflare's route cache in the site, which the
+// steps above do not expect. It fetches the release from codeload.github.com, so at the level all.
+long(() => {
+	step("plugin:coywolf", "the pack and its peers in package.json, its plugin, middleware and bindings in the site's files; the site still builds", async () => {
+		if (where !== "cloudflare") {
+			const r = await attempt("plugin:coywolf");
+			check(r.code !== 0, "a Node site refused");
+			says(r.out, "EmDash's Cloudflare adapter");
+			return;
+		}
+		await mise("plugin:coywolf");
+		check(read("site/package.json").includes("@coywolf/emdash"), "@coywolf/emdash in package.json");
+		check(/plugins: \[[^\]]*coywolfPlugin\(\)/.test(config()), "coywolfPlugin() in astro.config.mjs");
+		check(read("site/src/middleware.ts").includes("sequence(coywolfPack(), siteMiddleware)"), "coywolfPack() before the site's own middleware");
+		const w = read("site/wrangler.jsonc");
+		for (const key of ["CF_VERSION_METADATA", '"binding": "SELF"', '"mode": "smart"', '"observability"']) check(w.includes(key), `${key} in wrangler.jsonc`);
+		await mise("site:check");
+	});
+	step("plugin:coywolf", "run again: nothing changes", async () => {
+		if (where !== "cloudflare") return;
+		const before = config() + read("site/package.json") + read("site/wrangler.jsonc") + read("site/src/middleware.ts");
+		says(await mise("plugin:coywolf"), "nothing changed");
+		check(before === config() + read("site/package.json") + read("site/wrangler.jsonc") + read("site/src/middleware.ts"), "every file as it was");
+	});
+});

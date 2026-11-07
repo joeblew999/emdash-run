@@ -66,6 +66,7 @@ step("emdash", "whoami on the dev site", async () => {
 	saysAnyCase(await mise("emdash", "whoami"), "dev-bypass");
 });
 refuses("emdash", "--live with no LIVE_URL says so", () => mise("emdash", "schema", "list", "--live"));
+refuses("live:zone", "with no LIVE_URL says so, and changes no zone", () => mise("live:zone"));
 refuses("content:pull", "with no LIVE_URL says so", () => mise("content:pull"));
 
 // checking it

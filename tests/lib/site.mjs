@@ -35,7 +35,10 @@ const include = process.env.TEST_FROM === "github" ? `git::https://github.com/jo
 // Another developer's machine: nothing but HOME, PATH and a config folder that is empty and this
 // group's own. (EmDash's CLI keeps every sign-in in ONE file there, read and written with no lock —
 // Upstream: emdash-cms/emdash#3996.) On Windows a program needs more than that to start at all.
-const keep = ["HOME", "PATH", "TERM", "CI", "GITHUB_TOKEN", "GIGET_AUTH", "TEST_LIVE_URL", "TEST_LIVE_NAME"];
+// How this machine reaches the internet is kept too: a developer behind a proxy (a company's, or a
+// Claude cloud session's) has no network without it.
+const network = ["HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"];
+const keep = ["HOME", "PATH", "TERM", "CI", "GITHUB_TOKEN", "GIGET_AUTH", "TEST_LIVE_URL", "TEST_LIVE_NAME", ...network];
 /** @type {NodeJS.ProcessEnv} */
 export const env = win ? { ...process.env } : Object.fromEntries(keep.filter((k) => process.env[k]).map((k) => [k, process.env[k]]));
 // who is asking GitHub, where the machine says: EmDash's template is fetched from there (giget)

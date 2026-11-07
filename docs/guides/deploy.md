@@ -45,6 +45,16 @@ fnox init                        # if this machine has no fnox config yet
 fnox set CLOUDFLARE_API_TOKEN    # it asks for the value
 ```
 
+## A domain of its own, and the zone's settings
+
+A `workers.dev` address is in no zone of yours. To give the site a domain in a zone on your account, add it to `routes` in `site/wrangler.jsonc`, set `LIVE_URL` to it, and deploy:
+
+```jsonc
+"routes": [{ "pattern": "www.example.com", "custom_domain": true }],
+```
+
+Then `mise run signin:access` again: it puts the site's Access application (the one whose audience is `CF_ACCESS_AUDIENCE` in `wrangler.jsonc`) over the new address as well, and its media and plugin routes stay public there too. A second application would have another audience, which the site does not accept. And `mise run live:zone` sets the zone as Coywolf runs its sites ([Plugins](plugins.md#coywolf-pack-a-faster-cheaper-cloudflare-site)). It needs a token of its own, as `signin:access` does: **Zone → Zone Settings → Edit** and **Zone → Zone WAF → Edit**, in `CLOUDFLARE_API_TOKEN` or fnox.
+
 ## Limits
 
 - `signin:access` covers `/_emdash` only: the site's pages stay public, and so do uploaded media and the addresses a plugin opens to visitors.

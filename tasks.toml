@@ -113,6 +113,10 @@ description = "Add a plugin from npm: the package, and for a sandboxed plugin (o
 usage = 'arg "<package>" help="The npm package, e.g. @emdash-cms/plugin-forms"'
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:add {{ usage.package }}"
 
+["plugin:coywolf"]
+description = "Put Coywolf Pack (github.com/coywolf-llc/coywolf-pack, @coywolf/emdash) in a Cloudflare site, wired as its README says: the package from its release tarball (COYWOLF_VERSION, v0.35.11 by default) and the peers it names that the site lacks; coywolfPlugin() in plugins: [ … ] of emdash({ … }) and Vite told not to pre-bundle it; Cloudflare's route cache with route rules for every page, when the site has no cache: option; coywolfPack() first in src/middleware.ts (made when there is none, the site's own after it when there is); and in wrangler.jsonc CF_VERSION_METADATA, a SELF service binding to the Worker itself, Smart Placement and Workers Logs. Every module of the pack starts off: nothing a visitor sees changes until an administrator turns a feature on under Plugins → Coywolf Pack. It refuses a Node site, and EmDash older than 1.2.0 (the pack's own floor: mise run emdash:update). A file it cannot edit safely is left alone, with the lines to add, and nothing else is changed. It stops the site while its packages change. This machine's site; the page cache works only once deployed (mise run live:ship). Run again: nothing changes"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" plugin:coywolf"
+
 ["plugin:search"]
 description = "Search EmDash's plugin registry. mise run plugin:search -- forms"
 usage = 'arg "<words>" help="What to look for, e.g. forms"'
@@ -217,7 +221,7 @@ usage = 'flag "--live" help="The deployed site at LIVE_URL instead of the local 
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:mcp --live={{ usage.live | default(value=false) }}"
 
 ["signin:access"]
-description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"
+description = "Sign people in to the deployed site: Cloudflare Access in front of its admin, by a code emailed to ADMIN_EMAIL. Uploaded media stays public. A site whose application is already made (its audience is CF_ACCESS_AUDIENCE in wrangler.jsonc), given a domain of its own, has the same application put over the new address: no second one. Prints three lines for astro.config.mjs and wrangler.jsonc. Needs a Cloudflare API token with Access edit rights, in CLOUDFLARE_API_TOKEN or in fnox"
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" signin:access"
 
 ["signin:passkey"]
@@ -268,6 +272,10 @@ description = "EmDash's CLI. This machine by default; add --live for the deploye
 run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" emdash"
 
 # ═══ HIDDEN, BUT RUN BY NAME ═════════════════════════════════════════════════════════════════
+
+["live:zone"]
+description = "Set the Cloudflare zone the deployed site's domain (LIVE_URL) is in as Coywolf runs its EmDash sites: Smart Tiered Cache and Early Hints for the zone, and two custom rules for the site's host alone — a Managed Challenge to unverified bots that say they are Chrome before 140 or iOS 15 and earlier, and a block of WordPress probes (*.php, /wp-admin, /wp-json, /wp-content, /wp-includes). Written for the Free plan (no regular expressions). It prints each setting and rule before it sends it. It needs an API token that may change the zone, CLOUDFLARE_API_TOKEN or fnox's, with Zone Settings Edit and Zone WAF Edit: wrangler's login cannot; without one it stops and changes nothing. A workers.dev address is in no zone of yours, and is refused. Run again: what is already so is left as it is"
+run = "node \"{{ env.MISE_TASK_DIR }}/scripts/core/cli.mjs\" live:zone"
 
 ["live:check"]
 description = "Hidden. site:check, then a dry run of the deploy"

@@ -63,6 +63,30 @@ What the tasks write in `astro.config.mjs`, and what they leave to you:
 
 The tasks edit only the top level of the one `emdash({ … })` call, and change nothing that is already there. A config where that call is not written out (its options in a variable, a spread among them, two calls) is left as it is, and the task prints the lines to add by hand.
 
+## Coywolf Pack: a faster, cheaper Cloudflare site
+
+```sh
+mise run plugin:coywolf     # the pack, wired into the site
+mise run live:ship          # its page cache only works once deployed
+mise run live:zone          # the zone's settings, once the site has a domain of its own
+```
+
+[Coywolf Pack](https://github.com/coywolf-llc/coywolf-pack) (`@coywolf/emdash`) is one native plugin with the features of Coywolf's WordPress plugins. Coywolf runs seven EmDash sites on it for Workers Paid's $5 a month ([their write-up](https://notes.recollect.fyi/share/nSejSR2HYjlL4dQGCox3q2), read 2026-11-07). What makes that cheap is its page cache: a page is kept in the cache in front of the Worker for a week, so a visit to it runs no Worker and reads no D1; a deploy or an edit clears what changed, and warming visits the site's pages again after a clear, so a reader or a crawler is not the one who waits.
+
+It needs more than the two lines `plugin:add` prints for a native plugin, so it has a task of its own. What [`plugin:coywolf`](../reference/tasks.md#plugincoywolf) writes:
+
+| File | What | Why |
+|---|---|---|
+| `package.json` | `@coywolf/emdash` from the release's tarball (`COYWOLF_VERSION`), and the peers it names that the site lacks | It is not on npm. Its README asks for the tarball: a `github:` install is recorded as an SSH address, which a CI runner cannot fetch |
+| `astro.config.mjs` | `coywolfPlugin()` in `plugins: [ … ]` of `emdash({ … })`; `vite.optimizeDeps` | A pre-bundled copy gets its own `emdash` |
+| `astro.config.mjs` | `cache: { provider: cacheCloudflare() }` and route rules for every page, when the site has no `cache:` | The page cache is Astro's route cache, in front of the Worker. A site that has its own `cache:` keeps it, and its own lifetimes |
+| `src/middleware.ts` | `coywolfPack()` first, the site's own after it; the file, when there is none | Redirects, `robots.txt`, downloads, and the cache's clears and warming are answered there |
+| `wrangler.jsonc` | `CF_VERSION_METADATA`, `SELF` (a service binding to the Worker itself), Smart Placement, Workers Logs | A deploy clears the cache; warming calls the Worker; the Worker runs near its database; the usage card reads the logs |
+
+Every module of the pack starts off: nothing a visitor sees changes until an administrator turns it on, under **Plugins → Coywolf Pack → Features**. The page cache's lifetimes and warming are under **Plugins → Performance**.
+
+[`live:zone`](../reference/tasks.md#livezone) is the other half of the write-up: Smart Tiered Cache and Early Hints for the zone, and two custom rules for the site's host only — a Managed Challenge to unverified bots that say they are Chrome before 140 or iOS 15 and earlier (Coywolf found scrapers were its largest CPU cost), and a block of WordPress probes. It is written for the Free plan, which has no regular expressions in rules, and needs an API token that may change the zone ([Deploy](deploy.md)).
+
 ## Limits
 
 - On Cloudflare, deploying a site with the sandbox on needs the Workers Paid plan.

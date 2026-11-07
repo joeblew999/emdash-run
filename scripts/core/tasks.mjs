@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { main as emdashCli } from "../emdash.mjs";
 import { main as livePreview } from "../live-preview.mjs";
 import { main as liveUp } from "../live-ship.mjs";
+import { main as liveZone } from "../live-zone.mjs";
+import { main as pluginCoywolf } from "../plugin-coywolf.mjs";
 import { main as pluginNew } from "../plugin-new.mjs";
 import { main as pluginJob } from "../plugin.mjs";
 import { main as signinAccess } from "../signin-access.mjs";
@@ -196,6 +198,8 @@ export const tasks = {
 			await job(pluginJob, ["config", ctx.project.site, ctx.args[0]]);
 		},
 	},
+	// Coywolf Pack: a native plugin with a middleware and bindings of its own (scripts/plugin-coywolf.mjs)
+	"plugin:coywolf": { needs: () => ["site:installed"], work: (ctx) => job(pluginCoywolf, [ctx.project.site]) },
 	"plugin:publish": {
 		needs: () => ["site:exists"],
 		work: (ctx) => {
@@ -230,6 +234,8 @@ export const tasks = {
 			world.say(`-> DEPLOYED site: ${project.live}`);
 		},
 	},
+	// the zone the deployed site's domain is in: Coywolf's settings (scripts/live-zone.mjs)
+	"live:zone": { work: (ctx) => job(liveZone, [ctx.project.live, ctx.project.site]) },
 	"live:check": {
 		work: async (ctx) => {
 			await task("site:check");
